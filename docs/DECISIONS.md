@@ -103,7 +103,92 @@ peran `authenticated`.
 hanya dicek di UI, siapa pun yang memanggil PostgREST langsung dengan anon key
 bisa melewatinya — termasuk menaikkan tier-nya sendiri.
 
-## 10. Next.js 16, bukan 14/15
+## 10. Auth tetap Supabase, bukan Clerk
+
+Sempat dipertimbangkan memakai Clerk. Tidak jadi, karena seluruh model
+keamanan sudah terikat ke `auth.uid()`: 17 RLS policy, foreign key
+`merchants.id → auth.users(id)`, dan trigger `handle_new_user`.
+
+Memakai Clerk berarti memilih antara memasangnya sebagai third-party auth
+provider Supabase — dua sistem identitas untuk satu produk — atau membuang RLS
+dan memindahkan seluruh kontrol akses ke kode aplikasi. Yang kedua membuang
+properti keamanan terkuat dari desain ini.
+
+Ekonominya juga tidak cocok: paket Pro Rp79.000/bulan, sementara Clerk menagih
+biaya tetap bulanan plus per-MAU — termasuk untuk merchant Starter yang gratis
+dan mungkin tidak pernah konversi.
+
+Yang benar-benar hilang dengan tidak memakai Clerk adalah Organizations, yang
+baru relevan saat fitur multi-staff paket Studio dibangun. Sampai saat itu tiba,
+tabel `staff` biasa sudah cukup.
+
+## 11. Password sebagai jalur masuk utama
+
+Awalnya hanya Magic Link dan Google. Ditambahkan email + password, dengan
+Magic Link dipertahankan sebagai opsi "masuk tanpa password".
+
+Alasannya audiens: pemilik usaha kecil membuka Booka dari HP. Magic Link
+memaksa mereka keluar aplikasi, mencari email yang sering mendarat di tab
+Promosi, lalu kembali. Setiap perpindahan itu kehilangan sebagian orang.
+
+Pesan kegagalan sengaja tidak membedakan "email tidak terdaftar" dari "password
+salah", dan `resetPasswordForEmail` selalu melaporkan berhasil — supaya halaman
+masuk tidak bisa dipakai memetakan siapa saja yang punya akun.
+
+## 12. Kuota transaksi ditegakkan di database
+
+Batas 10 transaksi/bulan paket STARTER semula hanya ditampilkan di dashboard
+dan tidak ditegakkan di mana pun — merchant Starter bisa memakai Booka tanpa
+batas selamanya.
+
+Sekarang dijaga trigger `bookings_enforce_quota`. Yang dihitung adalah booking
+`PENDING` + `PAID` yang dibuat bulan berjalan menurut waktu Jakarta; booking
+`CANCELLED` mengembalikan kuotanya, supaya pesanan yang ditinggalkan pelanggan
+tidak menghanguskan jatah merchant.
+
+Angka di dashboard memanggil `my_quota_usage()`, yang memakai fungsi hitung
+yang sama dengan trigger — supaya yang ditampilkan tidak pernah berbeda dari
+yang diberlakukan.
+
+Sisa celah yang diketahui: dua insert bersamaan bisa sama-sama lolos dan
+melewati kuota satu baris. Advisory lock per merchant di dalam transaksi
+`POST /api/bookings` akan menutupnya di Phase 5.
+
+## 13. Grant EXECUTE fungsi harus dicabut eksplisit dari anon & authenticated
+
+Migration awal sudah benar menangani tabel: setiap tabel di-`REVOKE ALL` dulu
+dari `anon`/`authenticated`, karena Supabase memasang `ALTER DEFAULT
+PRIVILEGES` yang memberi `ALL` pada tabel baru di schema `public`.
+
+Yang terlewat: Supabase memasang default privileges yang sama untuk **fungsi**.
+`REVOKE EXECUTE ... FROM PUBLIC` yang ditulis di migration awal tidak menyentuh
+grant langsung ke `anon`/`authenticated` tersebut, sehingga setiap fungsi ikut
+terekspos di `/rest/v1/rpc/`.
+
+Yang paling serius: `count_bookings_this_month(uuid)` bisa dipanggil tanpa sesi
+sama sekali, membocorkan jumlah transaksi bulan berjalan milik merchant mana
+pun yang UUID-nya diketahui.
+
+Diperbaiki di `20260730000300_lock_down_function_execute.sql`, yang juga
+memasang `alter default privileges in schema public revoke execute on functions
+from anon, authenticated` supaya kelas bug ini tidak terulang — fungsi baru
+sekarang tertutup secara default, dan yang memang publik wajib di-`GRANT`
+eksplisit.
+
+Ditemukan lewat Supabase security advisor setelah migration diterapkan ke
+project cloud, lalu dikonfirmasi langsung dengan membaca `pg_proc.proacl` dan
+`pg_default_acl`. Regresinya sekarang dijaga tes di `supabase/tests/99_verify.sql`.
+
+## 14. Tipe `my_quota_usage` ditulis manual, berbeda dari hasil generate
+
+`supabase gen types` menuliskan `quota` sebagai `number` non-null, padahal
+`booking_quota_for_tier()` mengembalikan `NULL` untuk paket PRO dan STUDIO.
+Generator tidak bisa menyimpulkan nullability dari nilai balik fungsi SQL.
+
+`src/types/database.ts` memakai `quota: number | null`. Kalau file itu suatu
+saat diganti hasil generate, perbedaan ini harus dipasang kembali.
+
+## 15. Next.js 16, bukan 14/15
 
 PRD menyebut Next.js 14/15. `create-next-app@latest` memasang 16.2.12. App
 Router tetap sama; perbedaan yang berdampak: konvensi `middleware.ts` berganti

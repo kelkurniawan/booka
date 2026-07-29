@@ -17,8 +17,13 @@ Penyimpangan dari PRD dan alasannya: `docs/DECISIONS.md`
 ## Status
 
 Phase 1–2 dari PRD bagian 6 sudah selesai (scaffold, skema + RLS, auth,
-onboarding, shell dashboard). Phase 3–6 belum: halaman dashboard di luar
-Ringkasan masih berupa `PhasePlaceholder`.
+onboarding, shell dashboard), plus landing page dan penegakan kuota transaksi.
+Phase 3–6 belum: halaman dashboard di luar Ringkasan masih berupa
+`PhasePlaceholder`.
+
+Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
+`/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
+tetap tersedia.
 
 ## Stack
 
@@ -47,6 +52,13 @@ file lama. Setiap tabel baru di `public` harus di-`REVOKE ALL` dulu dari `anon`
 dan `authenticated` — Supabase memberi ALL secara default lewat
 `ALTER DEFAULT PRIVILEGES`. Grant per kolom, bukan grant tabel lalu revoke
 kolom: di Postgres hak tingkat tabel tidak bisa dipreteli per kolom.
+
+**Fungsi baru tertutup secara default** sejak migration
+`20260730000300_lock_down_function_execute.sql` memasang
+`alter default privileges ... revoke execute on functions from anon,
+authenticated`. Fungsi yang memang harus dipanggil dari klien wajib di-`GRANT
+EXECUTE` eksplisit ke peran yang tepat. `REVOKE ... FROM PUBLIC` saja tidak
+cukup — itu tidak mencabut grant langsung ke `anon`/`authenticated`.
 
 `src/types/database.ts` harus ikut diperbarui setiap skema berubah. Semua tipe
 tabel wajib berupa `type`, **bukan** `interface` — postgrest-js menuntut

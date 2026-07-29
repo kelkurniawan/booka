@@ -16,17 +16,9 @@ import {
 import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import type { SubscriptionTier } from "@/types/database";
 
 export const metadata: Metadata = {
   title: "Ringkasan",
-};
-
-/** Batas transaksi per bulan menurut paket langganan (PRD bagian 1). */
-const MONTHLY_BOOKING_LIMIT: Record<SubscriptionTier, number | null> = {
-  STARTER: 10,
-  PRO: null,
-  STUDIO: null,
 };
 
 export default async function DashboardPage() {
@@ -40,21 +32,18 @@ export default async function DashboardPage() {
   }
 
   const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const [merchantResult, monthlyPaid, upcoming, serviceCount, availabilityCount, connections] =
+  const [merchantResult, quotaResult, upcoming, serviceCount, availabilityCount, connections] =
     await Promise.all([
       supabase
         .from("merchants")
         .select("username, subscription_tier")
         .eq("id", user.id)
         .maybeSingle(),
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("merchant_id", user.id)
-        .eq("status", "PAID")
-        .gte("created_at", monthStart),
+      // Angka kuota diambil dari fungsi yang sama dengan yang dipakai trigger
+      // penegak batas, supaya yang ditampilkan di sini persis sama dengan yang
+      // benar-benar diberlakukan saat booking masuk.
+      supabase.rpc("my_quota_usage"),
       supabase
         .from("bookings")
         .select("id, service_name, customer_name, start_datetime, status")
@@ -79,8 +68,10 @@ export default async function DashboardPage() {
     ]);
 
   const tier = merchantResult.data?.subscription_tier ?? "STARTER";
-  const limit = MONTHLY_BOOKING_LIMIT[tier];
-  const used = monthlyPaid.count ?? 0;
+  const quotaRow = quotaResult.data?.[0];
+  const used = quotaRow?.used ?? 0;
+  const limit = quotaRow?.quota ?? null;
+  const quotaFull = limit !== null && used >= limit;
   const services = serviceCount.count ?? 0;
   const workingHours = availabilityCount.count ?? 0;
   const hasPayment = (connections.data?.length ?? 0) > 0;
@@ -98,6 +89,20 @@ export default async function DashboardPage() {
         title="Ringkasan"
         description="Kondisi akun dan jadwal terdekat Anda."
       />
+
+      {/* Momen upgrade paling kuat: merchant sedang kehilangan pesanan. */}
+      {quotaFull ? (
+        <Alert variant="destructive">
+          <AlertTitle>Kuota {limit} transaksi bulan ini sudah habis</AlertTitle>
+          <AlertDescription>
+            Halaman booking Anda menolak pesanan baru sampai bulan depan.{" "}
+            <Link href={ROUTES.billing} className="underline underline-offset-4">
+              Naik ke paket Pro
+            </Link>{" "}
+            untuk menerima pesanan tanpa batas.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {pendingSteps.length > 0 ? (
         <Alert>
@@ -121,7 +126,13 @@ export default async function DashboardPage() {
           icon={<CalendarClock className="size-4" />}
           label="Transaksi bulan ini"
           value={limit === null ? `${used}` : `${used} / ${limit}`}
-          hint={limit === null ? "Tanpa batas" : "Batas paket Starter"}
+          hint={
+            limit === null
+              ? "Tanpa batas"
+              : quotaFull
+                ? "Kuota habis — pesanan baru ditolak"
+                : `Sisa ${limit - used} pesanan bulan ini`
+          }
         />
         <StatCard
           icon={<Sparkles className="size-4" />}

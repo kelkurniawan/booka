@@ -1,7 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { ROUTES, isProtectedPath } from "@/lib/routes";
+import { ROUTES, isGuestOnlyPath, isProtectedPath } from "@/lib/routes";
 import type { Database } from "@/types/database";
 
 /**
@@ -74,7 +74,9 @@ export async function updateSession(request: NextRequest) {
     return response;
   }
 
-  if (pathname === ROUTES.login) {
+  // /reset-password sengaja tidak termasuk di sini — halaman itu justru dibuka
+  // dalam keadaan bersesi, lewat tautan pemulihan dari email.
+  if (isGuestOnlyPath(pathname)) {
     const url = request.nextUrl.clone();
     url.pathname = ROUTES.dashboard;
     url.search = "";

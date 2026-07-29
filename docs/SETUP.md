@@ -45,10 +45,12 @@ dan di environment variable hosting, jangan pernah jadi build arg Docker
 
 ## 3. Migration database
 
-Jalankan berurutan di **Supabase Dashboard → SQL Editor**:
+Jalankan **semua file** di `supabase/migrations/` berurutan menurut nama, lewat
+**Supabase Dashboard → SQL Editor**. Untuk menyalin semuanya sekaligus:
 
-1. `supabase/migrations/20260729000100_init_schema.sql`
-2. `supabase/migrations/20260729000200_rls_policies.sql`
+```bash
+npm run db:print | pbcopy
+```
 
 Atau lewat Supabase CLI kalau project sudah di-link:
 
@@ -70,8 +72,18 @@ ada di daftar itu — di sanalah token payment gateway merchant disimpan.
 - Redirect URLs: tambahkan `http://localhost:3000/auth/callback`
   (dan URL produksi nanti, misal `https://booka.app/auth/callback`)
 
-**Authentication → Providers → Email**: aktifkan, dan pastikan
-"Confirm email" menyala agar Magic Link berfungsi.
+**Authentication → Providers → Email**: aktifkan.
+
+Perhatikan setelan **Confirm email**:
+
+- **Menyala** — merchant harus mengklik tautan konfirmasi sebelum bisa masuk.
+  Lebih aman, tapi menambah satu perpindahan ke aplikasi email saat mendaftar.
+- **Mati** — sesi langsung terbentuk begitu pendaftaran selesai. Konversi lebih
+  tinggi, tapi email belum terverifikasi.
+
+Halaman `/daftar` menangani keduanya: kalau Supabase tidak mengembalikan sesi,
+merchant diarahkan ke layar "cek email"; kalau sesi langsung ada, merchant
+lanjut ke onboarding tanpa berhenti.
 
 **Authentication → Providers → Google**: aktifkan, lalu isi Client ID dan
 Client Secret dari Google Cloud Console. Di Google Cloud, daftarkan

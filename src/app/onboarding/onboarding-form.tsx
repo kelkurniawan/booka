@@ -22,16 +22,22 @@ const INITIAL_STATE: OnboardingState = { status: "idle" };
 export function OnboardingForm({
   appUrl,
   defaultFullName,
+  defaultUsername = "",
 }: {
   appUrl: string;
   defaultFullName: string;
+  /** Username yang sudah diketik merchant di halaman depan, kalau ada. */
+  defaultUsername?: string;
 }) {
   const [state, formAction] = useActionState(completeOnboarding, INITIAL_STATE);
 
   const [fullName, setFullName] = useState(defaultFullName);
-  const [username, setUsername] = useState(() => suggestUsername(defaultFullName));
+  const [username, setUsername] = useState(
+    () => defaultUsername || suggestUsername(defaultFullName),
+  );
   // Selama merchant belum menyentuh kolom username, isinya mengikuti nama usaha.
-  const [usernameTouched, setUsernameTouched] = useState(false);
+  // Username bawaan dari halaman depan dianggap pilihan sadar, jadi tidak ditimpa.
+  const [usernameTouched, setUsernameTouched] = useState(Boolean(defaultUsername));
   // Hasil disimpan bersama username yang diperiksa, supaya respons yang
   // datang terlambat tidak dipakai untuk username yang sudah berganti.
   const [lastCheck, setLastCheck] = useState<{

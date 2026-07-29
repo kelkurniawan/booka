@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -8,15 +9,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { sanitizeRedirect } from "@/lib/routes";
+import { ROUTES, sanitizeRedirect } from "@/lib/routes";
 
-import { LoginForm } from "./login-form";
+import { SignInForm } from "./sign-in-form";
 
 export const metadata: Metadata = {
   title: "Masuk",
 };
 
-export default async function LoginPage({
+export default async function SignInPage({
   searchParams,
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
@@ -36,11 +37,22 @@ export default async function LoginPage({
         {params.error === "oauth" ? (
           <Alert variant="destructive">
             <AlertDescription>
-              Gagal masuk lewat Google. Silakan coba lagi atau gunakan tautan email.
+              Gagal masuk lewat Google. Silakan coba lagi atau gunakan email.
             </AlertDescription>
           </Alert>
         ) : null}
-        <LoginForm next={next} />
+
+        <SignInForm next={next} />
+
+        <p className="text-muted-foreground text-center text-sm">
+          Belum punya akun?{" "}
+          <Link
+            href={ROUTES.signup}
+            className="text-foreground underline underline-offset-4"
+          >
+            Daftar gratis
+          </Link>
+        </p>
       </CardContent>
     </Card>
   );

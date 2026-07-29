@@ -11,6 +11,7 @@ import {
 import { serverEnv } from "@/lib/env/server";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
+import { usernameSchema } from "@/lib/validations/merchant";
 
 import { OnboardingForm } from "./onboarding-form";
 
@@ -20,7 +21,13 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  // `?u=` dikirim dari kolom klaim tautan di halaman depan.
+  searchParams: Promise<{ u?: string }>;
+}) {
+  const { u } = await searchParams;
   const supabase = await createClient();
   const {
     data: { user },
@@ -61,6 +68,7 @@ export default async function OnboardingPage() {
           <OnboardingForm
             appUrl={serverEnv().appUrl}
             defaultFullName={defaultFullName}
+            defaultUsername={usernameSchema.safeParse(u).data ?? ""}
           />
         </CardContent>
       </Card>

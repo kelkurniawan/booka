@@ -34,6 +34,16 @@ from public.merchants;
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'dashboard' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "dashboard"');
+-- Rute auth berbahasa Indonesia, ditambahkan di migration 20260730000100.
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'masuk' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "masuk"');
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'daftar' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "daftar"');
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'reset-password' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "reset-password"');
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'AB' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username terlalu pendek / huruf besar');
@@ -104,6 +114,51 @@ select pg_temp.expect_fail(
   $q$insert into public.services (merchant_id, name, price, duration_minutes) values ('11111111-1111-1111-1111-111111111111', 'Trial', 1000, 3)$q$,
   'durasi layanan 3 menit');
 
+-- 5b. Kuota transaksi bulanan
+-- Merchant sudah dinaikkan ke PRO di tes sebelumnya, jadi turunkan dulu ke
+-- STARTER untuk menguji batasnya.
+update public.merchants set subscription_tier = 'STARTER'
+where id = '11111111-1111-1111-1111-111111111111';
+
+-- Sudah ada 2 booking aktif (PAID + PENDING) dari blok sebelumnya; isi sampai
+-- menyentuh batas 10, memakai jam yang tidak saling bentrok.
+do $$
+declare
+  i integer;
+begin
+  for i in 1..8 loop
+    begin
+      insert into public.bookings (
+        merchant_id, service_name, service_price, duration_minutes,
+        start_datetime, end_datetime, customer_name, customer_whatsapp, status
+      ) values (
+        '11111111-1111-1111-1111-111111111111', 'Makeup Wisuda', 350000, 60,
+        ('2026-08-10 08:00+07'::timestamptz + (i * interval '2 hours')),
+        ('2026-08-10 09:00+07'::timestamptz + (i * interval '2 hours')),
+        'Pelanggan ' || i, '+62811000' || lpad(i::text, 4, '0'), 'PAID'
+      );
+    exception when others then
+      raise notice 'insert ke-% gagal: %', i, sqlerrm;
+    end;
+  end loop;
+end $$;
+
+select case when public.count_bookings_this_month('11111111-1111-1111-1111-111111111111') = 10
+            then 'OK   kuota terpakai 10 dari 10'
+            else 'FAIL hitungan kuota = ' ||
+                 public.count_bookings_this_month('11111111-1111-1111-1111-111111111111') end as t5b;
+
+select pg_temp.expect_fail(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status) values ('11111111-1111-1111-1111-111111111111', 'Makeup Wisuda', 350000, 60, '2026-08-20 08:00+07', '2026-08-20 09:00+07', 'Pelanggan Ke-11', '+6281199990000', 'PENDING')$q$,
+  'booking ke-11 pada paket STARTER');
+
+update public.merchants set subscription_tier = 'PRO'
+where id = '11111111-1111-1111-1111-111111111111';
+
+select pg_temp.expect_ok(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status) values ('11111111-1111-1111-1111-111111111111', 'Makeup Wisuda', 350000, 60, '2026-08-20 08:00+07', '2026-08-20 09:00+07', 'Pelanggan Ke-11', '+6281199990000', 'PENDING')$q$,
+  'booking ke-11 setelah upgrade ke PRO');
+
 -- 6. get_booked_ranges hanya mengembalikan waktu
 select 'OK   get_booked_ranges -> ' || count(*) || ' slot terisi' as t6
 from public.get_booked_ranges('studio-mawar', '2026-08-03 00:00+07', '2026-08-04 00:00+07');
@@ -124,6 +179,30 @@ select case when has_column_privilege('anon', 'public.merchants', 'whatsapp_numb
        case when has_schema_privilege('anon', 'private', 'USAGE')
             then 'FAIL anon bisa mengakses schema private'
             else 'OK   anon TIDAK bisa mengakses schema private' end as t7e;
+
+-- 7b. Hak EXECUTE fungsi
+-- Supabase memberi EXECUTE ke anon/authenticated pada setiap fungsi baru di
+-- schema public lewat ALTER DEFAULT PRIVILEGES. Hanya get_booked_ranges yang
+-- boleh publik; my_quota_usage hanya untuk yang login; sisanya tertutup.
+select
+  case when has_function_privilege('anon', 'public.count_bookings_this_month(uuid)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil count_bookings_this_month (bocor data merchant lain)'
+       else 'OK   anon TIDAK bisa memanggil count_bookings_this_month' end as t7f,
+  case when has_function_privilege('authenticated', 'public.count_bookings_this_month(uuid)', 'EXECUTE')
+       then 'FAIL merchant login bisa mengintip kuota merchant lain'
+       else 'OK   count_bookings_this_month tertutup dari authenticated' end as t7g,
+  case when has_function_privilege('anon', 'public.enforce_booking_quota()', 'EXECUTE')
+       then 'FAIL fungsi trigger enforce_booking_quota terekspos ke anon'
+       else 'OK   fungsi trigger TIDAK terekspos ke anon' end as t7h,
+  case when has_function_privilege('anon', 'public.my_quota_usage()', 'EXECUTE')
+       then 'FAIL anon bisa memanggil my_quota_usage'
+       else 'OK   my_quota_usage tertutup dari anon' end as t7i,
+  case when has_function_privilege('authenticated', 'public.my_quota_usage()', 'EXECUTE')
+       then 'OK   merchant login bisa memanggil my_quota_usage'
+       else 'FAIL merchant login TIDAK bisa memanggil my_quota_usage' end as t7j,
+  case when has_function_privilege('anon', 'public.get_booked_ranges(text, timestamptz, timestamptz)', 'EXECUTE')
+       then 'OK   anon bisa memanggil get_booked_ranges (memang publik)'
+       else 'FAIL anon TIDAK bisa memanggil get_booked_ranges' end as t7k;
 
 -- 8. RLS aktif di semua tabel
 select relname, relrowsecurity

@@ -108,6 +108,11 @@ type Relationship<Column extends string, ForeignTable extends string> = {
 };
 
 export type Database = {
+  // Memberi tahu postgrest-js versi PostgREST yang dipakai project, supaya
+  // createClient tidak perlu diberi parameter versi secara manual.
+  __InternalSupabase: {
+    PostgrestVersion: "14.5";
+  };
   public: {
     Tables: {
       merchants: {
@@ -177,6 +182,18 @@ export type Database = {
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string }[];
+      };
+      /**
+       * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
+       *
+       * Ditulis manual dan sengaja BERBEDA dari hasil `supabase gen types`,
+       * yang menuliskannya sebagai `number` non-null. Generator tidak bisa
+       * menyimpulkan nullability dari nilai balik fungsi SQL, jadi tipe
+       * hasil generate keliru di titik ini.
+       */
+      my_quota_usage: {
+        Args: never;
+        Returns: { used: number; quota: number | null }[];
       };
     };
     Enums: {
