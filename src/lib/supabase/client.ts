@@ -13,7 +13,7 @@ export function createClient() {
   const env = clientEnv();
 
   return createBrowserClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.supabaseUrl,
+    env.supabaseKey,
   );
 }

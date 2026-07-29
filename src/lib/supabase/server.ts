@@ -18,8 +18,8 @@ export async function createClient() {
   const env = serverEnv();
 
   return createServerClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.supabaseUrl,
+    env.supabaseKey,
     {
       cookies: {
         getAll() {
@@ -53,8 +53,8 @@ export function createPublicClient() {
   const env = serverEnv();
 
   return createServerClient<Database>(
-    env.NEXT_PUBLIC_SUPABASE_URL,
-    env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    env.supabaseUrl,
+    env.supabaseKey,
     {
       cookies: {
         getAll() {

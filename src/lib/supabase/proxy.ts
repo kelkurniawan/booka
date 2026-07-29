@@ -21,21 +21,23 @@ export async function updateSession(request: NextRequest) {
   // Env dibaca langsung, bukan lewat serverEnv(), karena modul ini ikut
   // ter-bundle ke Edge Runtime dan tidak boleh menarik `server-only`.
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseKey) {
     // Tanpa konfigurasi Supabase tidak ada sesi yang bisa diverifikasi, jadi
     // rute privat ditutup total daripada dibiarkan terbuka.
     if (isProtectedPath(request.nextUrl.pathname)) {
       throw new Error(
-        "NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_ANON_KEY belum diisi. " +
+        "NEXT_PUBLIC_SUPABASE_URL dan NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY belum diisi. " +
           "Salin .env.example ke .env.local dan lengkapi nilainya.",
       );
     }
     return response;
   }
 
-  const supabase = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+  const supabase = createServerClient<Database>(supabaseUrl, supabaseKey, {
     cookies: {
       getAll() {
         return request.cookies.getAll();

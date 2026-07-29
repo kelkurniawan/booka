@@ -42,3 +42,6 @@ next-env.d.ts
 
 # Template env boleh ikut ter-commit; nilainya kosong.
 !.env.example
+
+# Claude Code: config lokal per-user, jangan ikut ter-commit
+.claude/settings.local.json

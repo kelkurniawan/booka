@@ -9,17 +9,26 @@ import { z } from "zod";
  * `undefined` di browser.
  */
 const rawClientEnv = {
-  NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-  NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  appUrl: process.env.NEXT_PUBLIC_APP_URL,
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  // Supabase mengganti anon key JWT dengan publishable key (`sb_publishable_…`).
+  // Keduanya diterima: yang baru didahulukan, yang lama tetap jalan.
+  supabaseKey:
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 };
 
 const clientEnvSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.url("NEXT_PUBLIC_APP_URL harus berupa URL lengkap"),
-  NEXT_PUBLIC_SUPABASE_URL: z.url("NEXT_PUBLIC_SUPABASE_URL harus berupa URL lengkap"),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z
+  appUrl: z
+    .url("NEXT_PUBLIC_APP_URL harus berupa URL lengkap")
+    .default("http://localhost:3000"),
+  supabaseUrl: z.url("NEXT_PUBLIC_SUPABASE_URL harus berupa URL lengkap"),
+  supabaseKey: z
     .string()
-    .min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY wajib diisi"),
+    .min(
+      1,
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (atau NEXT_PUBLIC_SUPABASE_ANON_KEY) wajib diisi",
+    ),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
@@ -37,7 +46,7 @@ export function clientEnv(): ClientEnv {
   const parsed = clientEnvSchema.safeParse(rawClientEnv);
   if (!parsed.success) {
     const detail = parsed.error.issues
-      .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+      .map((issue) => `  - ${issue.message}`)
       .join("\n");
     throw new Error(
       `Environment variable publik tidak valid.\n${detail}\n\nSalin .env.example ke .env.local dan lengkapi nilainya.`,

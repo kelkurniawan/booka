@@ -46,9 +46,8 @@ Berjalan di http://localhost:3001, terpisah dari port dev.
 Perhatikan `--env-file .env.local` di dalam skrip itu: variabel
 `NEXT_PUBLIC_*` **di-inline ke bundle browser saat build**, bukan dibaca saat
 container jalan. Menyetelnya hanya lewat `env_file` tidak cukup — bundle-nya
-sudah terlanjur jadi. Kalau `NEXT_PUBLIC_SUPABASE_URL` atau
-`NEXT_PUBLIC_SUPABASE_ANON_KEY` kosong, build berhenti dengan pesan yang
-menjelaskan hal ini.
+sudah terlanjur jadi. Kalau URL atau publishable key kosong, build berhenti
+dengan pesan yang menjelaskan hal ini.
 
 Ganti URL produksi saat build image untuk deploy:
 
@@ -56,13 +55,13 @@ Ganti URL produksi saat build image untuk deploy:
 docker build \
   --build-arg NEXT_PUBLIC_APP_URL=https://booka.app \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co \
-  --build-arg NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ... \
+  --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
   --target runner -t booka:latest .
 ```
 
-`SUPABASE_SERVICE_ROLE_KEY` dan kredensial payment gateway **tidak** boleh
-masuk build arg — semuanya dibaca saat runtime, jadi pasok lewat environment
-variable container.
+`SUPABASE_SECRET_KEY` dan kredensial payment gateway **tidak** boleh masuk
+build arg — nilainya akan tersimpan permanen di layer image. Semuanya dibaca
+saat runtime, jadi pasok lewat environment variable container.
 
 Image produksi hanya berisi output standalone: tidak ada source code, tidak ada
 file `.env`, dan berjalan sebagai user non-root `nextjs`. Ukurannya ~311 MB,

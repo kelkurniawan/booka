@@ -4,20 +4,33 @@ import { z } from "zod";
 
 /**
  * Environment variables khusus server. `server-only` membuat build gagal
- * kalau modul ini pernah ter-import dari komponen client, sehingga service
- * role key dan kredensial payment tidak mungkin bocor ke bundle browser.
+ * kalau modul ini pernah ter-import dari komponen client, sehingga secret key
+ * dan kredensial payment gateway tidak mungkin bocor ke bundle browser.
  */
 const serverEnvSchema = z.object({
-  NEXT_PUBLIC_APP_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_URL: z.url(),
-  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  appUrl: z.url().default("http://localhost:3000"),
+  supabaseUrl: z.url("NEXT_PUBLIC_SUPABASE_URL harus berupa URL lengkap"),
+  supabaseKey: z
+    .string()
+    .min(
+      1,
+      "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (atau NEXT_PUBLIC_SUPABASE_ANON_KEY) wajib diisi",
+    ),
+
+  /**
+   * Secret key Supabase (`sb_secret_…`) atau service role key JWT lama.
+   *
+   * Opsional: sampai Phase 4 tidak ada satu pun jalur yang memakainya, dan
+   * memaksanya ada hanya akan memblokir onboarding tanpa alasan.
+   * `createAdminClient()` yang memeriksanya saat benar-benar dibutuhkan.
+   */
+  supabaseSecretKey: z.string().min(1).optional(),
 
   /**
    * Kunci AES-256-GCM (base64, 32 byte) untuk mengenkripsi token payment
-   * gateway milik merchant. Belum dipakai sampai Phase 3, jadi opsional.
+   * gateway milik merchant. Belum dipakai sampai Phase 3.
    */
-  TOKEN_ENCRYPTION_KEY: z
+  tokenEncryptionKey: z
     .string()
     .refine(
       (value) => Buffer.from(value, "base64").length === 32,
@@ -25,16 +38,16 @@ const serverEnvSchema = z.object({
     )
     .optional(),
 
-  MIDTRANS_CLIENT_ID: z.string().optional(),
-  MIDTRANS_CLIENT_SECRET: z.string().optional(),
-  MIDTRANS_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  midtransClientId: z.string().optional(),
+  midtransClientSecret: z.string().optional(),
+  midtransEnv: z.enum(["sandbox", "production"]).default("sandbox"),
 
-  XENDIT_CLIENT_ID: z.string().optional(),
-  XENDIT_CLIENT_SECRET: z.string().optional(),
-  XENDIT_SECRET_KEY: z.string().optional(),
-  XENDIT_ENV: z.enum(["sandbox", "production"]).default("sandbox"),
+  xenditClientId: z.string().optional(),
+  xenditClientSecret: z.string().optional(),
+  xenditSecretKey: z.string().optional(),
+  xenditEnv: z.enum(["sandbox", "production"]).default("sandbox"),
 
-  CRON_SECRET: z.string().optional(),
+  cronSecret: z.string().optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -50,24 +63,27 @@ export function serverEnv(): ServerEnv {
   if (cached) return cached;
 
   const parsed = serverEnvSchema.safeParse({
-    NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
-    TOKEN_ENCRYPTION_KEY: process.env.TOKEN_ENCRYPTION_KEY,
-    MIDTRANS_CLIENT_ID: process.env.MIDTRANS_CLIENT_ID,
-    MIDTRANS_CLIENT_SECRET: process.env.MIDTRANS_CLIENT_SECRET,
-    MIDTRANS_ENV: process.env.MIDTRANS_ENV,
-    XENDIT_CLIENT_ID: process.env.XENDIT_CLIENT_ID,
-    XENDIT_CLIENT_SECRET: process.env.XENDIT_CLIENT_SECRET,
-    XENDIT_SECRET_KEY: process.env.XENDIT_SECRET_KEY,
-    XENDIT_ENV: process.env.XENDIT_ENV,
-    CRON_SECRET: process.env.CRON_SECRET,
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    supabaseKey:
+      process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseSecretKey:
+      process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY,
+    tokenEncryptionKey: process.env.TOKEN_ENCRYPTION_KEY,
+    midtransClientId: process.env.MIDTRANS_CLIENT_ID,
+    midtransClientSecret: process.env.MIDTRANS_CLIENT_SECRET,
+    midtransEnv: process.env.MIDTRANS_ENV,
+    xenditClientId: process.env.XENDIT_CLIENT_ID,
+    xenditClientSecret: process.env.XENDIT_CLIENT_SECRET,
+    xenditSecretKey: process.env.XENDIT_SECRET_KEY,
+    xenditEnv: process.env.XENDIT_ENV,
+    cronSecret: process.env.CRON_SECRET,
   });
 
   if (!parsed.success) {
     const detail = parsed.error.issues
-      .map((issue) => `  - ${issue.path.join(".")}: ${issue.message}`)
+      .map((issue) => `  - ${issue.message}`)
       .join("\n");
     throw new Error(
       `Environment variable server tidak valid.\n${detail}\n\nSalin .env.example ke .env.local dan lengkapi nilainya.`,

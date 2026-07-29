@@ -39,7 +39,7 @@ export async function signInWithMagicLink(
     email: parsed.data.email,
     options: {
       // shouldCreateUser: true — signup dan login memakai satu alur yang sama.
-      emailRedirectTo: `${env.NEXT_PUBLIC_APP_URL}${ROUTES.authCallback}?next=${encodeURIComponent(next)}`,
+      emailRedirectTo: `${env.appUrl}${ROUTES.authCallback}?next=${encodeURIComponent(next)}`,
     },
   });
 
@@ -65,7 +65,7 @@ export async function signInWithGoogle(formData: FormData): Promise<void> {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${env.NEXT_PUBLIC_APP_URL}${ROUTES.authCallback}?next=${encodeURIComponent(next)}`,
+      redirectTo: `${env.appUrl}${ROUTES.authCallback}?next=${encodeURIComponent(next)}`,
     },
   });
 

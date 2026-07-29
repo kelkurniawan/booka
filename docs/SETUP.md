@@ -20,18 +20,28 @@ cp .env.example .env.local
 
 Isi nilainya:
 
-| Variabel | Dari mana | Wajib untuk Phase 1–2 |
+| Variabel | Dari mana | Wajib sejak |
 | --- | --- | --- |
-| `NEXT_PUBLIC_APP_URL` | `http://localhost:3000` saat development | ya |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | ya |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase → Project Settings → API | ya |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase → Project Settings → API | ya |
+| `NEXT_PUBLIC_SUPABASE_URL` | Supabase → Project Settings → API | Phase 1 |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase → Project Settings → API Keys | Phase 1 |
+| `NEXT_PUBLIC_APP_URL` | default `http://localhost:3000` | opsional |
+| `SUPABASE_SECRET_KEY` | Supabase → Project Settings → API Keys | Phase 4 |
 | `TOKEN_ENCRYPTION_KEY` | `openssl rand -base64 32` | Phase 3 |
 | `MIDTRANS_*` / `XENDIT_*` | akun platform/partner gateway | Phase 3 |
 | `CRON_SECRET` | `openssl rand -hex 32` | Phase 6 |
 
-`SUPABASE_SERVICE_ROLE_KEY` melewati seluruh RLS. Simpan hanya di `.env.local`
-dan di environment variable hosting — jangan pernah dikirim ke browser.
+### Format API key
+
+Supabase mengganti pasangan anon/service-role JWT dengan **publishable key**
+(`sb_publishable_…`) dan **secret key** (`sb_secret_…`). Project ini menerima
+keduanya: `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` didahulukan, dan
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` tetap dipakai kalau yang baru kosong. Begitu
+pula `SUPABASE_SECRET_KEY` dengan `SUPABASE_SERVICE_ROLE_KEY`.
+
+Publishable key aman berada di bundle browser — hak aksesnya ditentukan RLS.
+Secret key sebaliknya: **melewati seluruh RLS**. Simpan hanya di `.env.local`
+dan di environment variable hosting, jangan pernah jadi build arg Docker
+(nilainya akan tersimpan permanen di layer image).
 
 ## 3. Migration database
 

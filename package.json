@@ -13,7 +13,8 @@
     "docker:dev": "docker compose up --build",
     "docker:prod": "docker compose --env-file .env.local --profile prod up --build",
     "docker:test": "docker compose --profile test down -v && docker compose --profile test up db-test",
-    "docker:down": "docker compose --profile prod --profile test down -v"
+    "docker:down": "docker compose --profile prod --profile test down -v",
+    "db:print": "cat supabase/migrations/*.sql"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",

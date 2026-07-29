@@ -59,7 +59,7 @@ export default async function OnboardingPage() {
         </CardHeader>
         <CardContent>
           <OnboardingForm
-            appUrl={serverEnv().NEXT_PUBLIC_APP_URL}
+            appUrl={serverEnv().appUrl}
             defaultFullName={defaultFullName}
           />
         </CardContent>
