@@ -11,6 +11,8 @@ export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
 export type BookingStatus = "PENDING" | "PAID" | "CANCELLED";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
+export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
+export type PaymentEnvironment = "SANDBOX" | "PRODUCTION";
 
 /** ISO-8601: 1 = Senin ... 7 = Minggu. */
 export type DayOfWeek = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -87,6 +89,8 @@ export type PaymentConnection = {
   provider: PaymentProvider;
   provider_account_id: string | null;
   status: ConnectionStatus;
+  connection_mode: ConnectionMode;
+  environment: PaymentEnvironment;
   scope: string | null;
   token_expires_at: string | null;
   connected_at: string;
@@ -201,6 +205,8 @@ export type Database = {
       booking_status: BookingStatus;
       payment_provider: PaymentProvider;
       connection_status: ConnectionStatus;
+      connection_mode: ConnectionMode;
+      payment_environment: PaymentEnvironment;
     };
     CompositeTypes: { [_ in never]: never };
   };

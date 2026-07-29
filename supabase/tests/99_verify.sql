@@ -209,3 +209,36 @@ select relname, relrowsecurity
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname in ('public', 'private') and c.relkind = 'r'
 order by relname;
+
+-- 9. Kolom connection_mode / environment pada payment_connections
+insert into public.payment_connections (merchant_id, provider)
+values ('11111111-1111-1111-1111-111111111111', 'MIDTRANS');
+
+select
+  case when connection_mode = 'MANUAL_KEY' then 'OK   default connection_mode = MANUAL_KEY'
+       else 'FAIL default connection_mode = ' || connection_mode end as t9a,
+  case when environment = 'SANDBOX' then 'OK   default environment = SANDBOX'
+       else 'FAIL default environment = ' || environment end as t9b
+from public.payment_connections
+where merchant_id = '11111111-1111-1111-1111-111111111111' and provider = 'MIDTRANS';
+
+select pg_temp.expect_ok(
+  $q$update public.payment_connections set connection_mode = 'OAUTH', environment = 'PRODUCTION' where merchant_id = '11111111-1111-1111-1111-111111111111' and provider = 'MIDTRANS'$q$,
+  'connection_mode/environment menerima nilai enum valid lainnya');
+select pg_temp.expect_fail(
+  $q$update public.payment_connections set connection_mode = 'BOGUS' where merchant_id = '11111111-1111-1111-1111-111111111111' and provider = 'MIDTRANS'$q$,
+  'connection_mode menolak nilai di luar enum');
+
+select
+  case when has_column_privilege('authenticated', 'public.payment_connections', 'connection_mode', 'SELECT')
+       then 'OK   authenticated bisa membaca connection_mode'
+       else 'FAIL authenticated tidak bisa membaca connection_mode' end as t9c,
+  case when has_column_privilege('authenticated', 'public.payment_connections', 'environment', 'SELECT')
+       then 'OK   authenticated bisa membaca environment'
+       else 'FAIL authenticated tidak bisa membaca environment' end as t9d,
+  case when has_table_privilege('anon', 'public.payment_connections', 'SELECT')
+       then 'FAIL anon punya akses tabel payment_connections'
+       else 'OK   anon TIDAK punya akses tabel payment_connections' end as t9e,
+  case when has_column_privilege('anon', 'public.payment_connections', 'connection_mode', 'SELECT')
+       then 'FAIL anon bisa membaca connection_mode'
+       else 'OK   anon TIDAK bisa membaca connection_mode' end as t9f;
