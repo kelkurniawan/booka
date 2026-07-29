@@ -6,6 +6,12 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Seluruh dashboard bergantung pada sesi merchant, jadi tidak boleh ada
+ * satu pun segmennya yang di-prerender atau di-cache statis.
+ */
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {

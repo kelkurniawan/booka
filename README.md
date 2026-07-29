@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Booka
 
-## Getting Started
+Platform booking dan invoicing untuk usaha jasa kecil di Indonesia — MUA,
+fotografer, dan sejenisnya.
 
-First, run the development server:
+Merchant menyewa sistemnya bulanan dan menghubungkan akun payment gateway
+miliknya sendiri. DP pelanggan masuk langsung ke akun merchant; platform tidak
+pernah menahan dana.
+
+## Cara jalan
+
+Dengan Docker:
+
+```bash
+cp .env.example .env.local
+npm run docker:dev
+```
+
+Tanpa Docker:
+
+```bash
+npm install
+cp .env.example .env.local
+npm run dev
+```
+
+Keduanya melayani http://localhost:3000. Langkah lengkap termasuk migration dan
+konfigurasi Supabase Auth ada di [docs/SETUP.md](docs/SETUP.md); detail Docker
+di [docs/DOCKER.md](docs/DOCKER.md).
+
+## Status
+
+Mengikuti fase di PRD bagian 6.
+
+| Fase | Isi | Status |
+| --- | --- | --- |
+| 1 | Scaffold, skema database, RLS, middleware | selesai |
+| 2 | Auth, onboarding, shell dashboard | selesai |
+| 3 | Billing, OAuth payment, CRUD layanan & jam kerja | belum |
+| 4 | Halaman booking publik | belum |
+| 5 | Booking engine & anti double-booking | belum |
+| 6 | Webhook, polling, cron auto-cancel | belum |
+
+## Dokumen
+
+- [PRD](docs/PRD-Smart-Booking-Invoicing-SaaS-V3.md) — spesifikasi produk
+- [SETUP.md](docs/SETUP.md) — menjalankan dari nol
+- [DOCKER.md](docs/DOCKER.md) — dev, produksi, dan uji migration di Docker
+- [DECISIONS.md](docs/DECISIONS.md) — penyimpangan dari PRD dan alasannya
+- [AGENTS.md](AGENTS.md) — konvensi kode
+
+## Stack
+
+Next.js 16 (App Router) · Tailwind v4 · shadcn/ui · Supabase (Postgres, Auth,
+RLS) · Zod
+
+## Perintah
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run check   # typecheck + lint + build
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

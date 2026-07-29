@@ -1,0 +1,88 @@
+# ===========================================================================
+# Tiga cara pakai:
+#
+#   docker compose up                       -> dev server + hot reload
+#   docker compose --profile prod up --build -> image produksi (butuh --env-file, lihat docs/DOCKER.md)
+#   docker compose --profile test up         -> uji migration ke Postgres asli
+# ===========================================================================
+
+name: booka
+
+services:
+  # -------------------------------------------------------------------------
+  # Dev server. Kode di-mount dari host, jadi perubahan file langsung terbaca
+  # tanpa rebuild image.
+  # -------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      target: dev
+    ports:
+      - "3000:3000"
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      # Di dalam container, server mendengarkan semua interface supaya bisa
+      # dijangkau dari host.
+      HOSTNAME: 0.0.0.0
+      # Bind mount di macOS/Windows tidak memancarkan event inotify, jadi
+      # file watcher harus polling agar hot reload jalan.
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      # Volume anonim menutupi folder dari host: node_modules yang dipakai
+      # adalah hasil `npm ci` di dalam image (binary Linux), bukan milik macOS.
+      - /app/node_modules
+      - /app/.next
+    develop:
+      watch:
+        # Perubahan dependensi butuh install ulang, bukan sekadar reload.
+        - path: package-lock.json
+          action: rebuild
+
+  # -------------------------------------------------------------------------
+  # Image produksi — untuk memverifikasi hasil build sebelum deploy.
+  # -------------------------------------------------------------------------
+  app-prod:
+    profiles: ["prod"]
+    build:
+      context: .
+      target: runner
+      args:
+        # Diambil dari shell atau --env-file, BUKAN dari env_file di bawah:
+        # NEXT_PUBLIC_* di-inline saat build, bukan saat container jalan.
+        # Kalau kosong, tahap builder di Dockerfile yang menghentikan build
+        # dengan pesan jelas. Pengecekan tidak bisa ditaruh di sini: Compose
+        # menginterpolasi seluruh file, termasuk service yang profilnya
+        # sedang tidak aktif.
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}
+    ports:
+      - "3001:3000"
+    env_file:
+      - path: .env.local
+        required: false
+
+  # -------------------------------------------------------------------------
+  # Harness uji migration. BUKAN Supabase — hanya Postgres polos plus tiruan
+  # minimal (schema auth, peran anon/authenticated/service_role, default
+  # privileges). Cukup untuk memastikan skema, constraint, trigger, dan hak
+  # akses berperilaku benar; tidak bisa dipakai menjalankan aplikasi.
+  #
+  # Skrip init jalan sekali saat volume masih kosong. Untuk mengulang:
+  #   docker compose --profile test down -v
+  # -------------------------------------------------------------------------
+  db-test:
+    profiles: ["test"]
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "55432:5432"
+    volumes:
+      - ./supabase:/supabase:ro
+      - ./supabase/tests/run-tests.sh:/docker-entrypoint-initdb.d/01-run-tests.sh:ro

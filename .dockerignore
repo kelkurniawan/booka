@@ -1,0 +1,17 @@
+node_modules
+.next
+.git
+.github
+.vscode
+.claude
+npm-debug.log*
+*.tsbuildinfo
+
+# Rahasia tidak pernah masuk build context. Nilai runtime dipasok Compose
+# lewat env_file, nilai build-time lewat build args.
+.env
+.env.*
+!.env.example
+
+.DS_Store
+coverage

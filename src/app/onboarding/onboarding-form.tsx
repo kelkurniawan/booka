@@ -32,27 +32,32 @@ export function OnboardingForm({
   const [username, setUsername] = useState(() => suggestUsername(defaultFullName));
   // Selama merchant belum menyentuh kolom username, isinya mengikuti nama usaha.
   const [usernameTouched, setUsernameTouched] = useState(false);
-  const [check, setCheck] = useState<UsernameCheck | null>(null);
+  // Hasil disimpan bersama username yang diperiksa, supaya respons yang
+  // datang terlambat tidak dipakai untuk username yang sudah berganti.
+  const [lastCheck, setLastCheck] = useState<{
+    username: string;
+    result: UsernameCheck;
+  } | null>(null);
   const [checking, startChecking] = useTransition();
 
   const displayHost = appUrl.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
   useEffect(() => {
-    if (!username) {
-      setCheck(null);
-      return;
-    }
+    if (!username) return;
 
     const timer = setTimeout(() => {
       startChecking(async () => {
-        setCheck(await checkUsernameAvailability(username));
+        const result = await checkUsernameAvailability(username);
+        setLastCheck({ username, result });
       });
     }, 400);
 
     return () => clearTimeout(timer);
   }, [username]);
 
-  const usernameError = state.fieldErrors?.username ?? (check?.available === false ? check.reason : undefined);
+  const check = lastCheck?.username === username ? lastCheck.result : null;
+  const usernameError =
+    state.fieldErrors?.username ?? (check?.available === false ? check.reason : undefined);
 
   return (
     <form action={formAction} className="flex flex-col gap-6" noValidate>

@@ -12,8 +12,10 @@ import type { Database } from "@/types/database";
  * `authenticated` milik user yang sedang login dan tunduk pada RLS.
  */
 export async function createClient() {
-  const env = serverEnv();
+  // cookies() dipanggil lebih dulu supaya Next.js langsung menandai segmen ini
+  // dinamis, sebelum apa pun berpeluang melempar error.
   const cookieStore = await cookies();
+  const env = serverEnv();
 
   return createServerClient<Database>(
     env.NEXT_PUBLIC_SUPABASE_URL,

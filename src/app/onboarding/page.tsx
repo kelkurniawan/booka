@@ -18,6 +18,8 @@ export const metadata: Metadata = {
   title: "Lengkapi profil",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function OnboardingPage() {
   const supabase = await createClient();
   const {

@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Template env boleh ikut ter-commit; nilainya kosong.
+!.env.example
