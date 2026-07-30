@@ -422,3 +422,17 @@ select
   case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
+
+-- 11g. Slot yang sudah lewat -> harus ditolak errcode P0006 (migration
+-- 20260731000100_reject_past_slot_booking.sql), bukan lolos begitu saja
+-- karena kebetulan berada di dalam jam kerja Selasa 11:00-14:00. Tanggal di
+-- masa lalu jauh (2020) supaya tesnya tidak pernah kedaluwarsa mengejar
+-- "now()" saat CI berjalan.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Wisuda'),
+    '2020-01-07 11:00+07', 'Pelanggan Booking F', '+6281199997777'
+  )$q$,
+  'P0006',
+  'create_booking ditolak (P0006): slot 2020-01-07 11:00 WIB sudah lewat');

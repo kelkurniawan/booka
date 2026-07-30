@@ -33,6 +33,12 @@ test("P0005 (layanan tidak ditemukan/nonaktif) -> 404", () => {
   assert.match(result.message, /Layanan tidak ditemukan/);
 });
 
+test("P0006 (slot sudah lewat) -> 409, pesan jam sudah lewat", () => {
+  const result = mapBookingError("P0006");
+  assert.equal(result.status, 409);
+  assert.match(result.message, /sudah lewat/);
+});
+
 test("errcode tak dikenal -> 500, pesan generik (tidak membocorkan detail Postgres)", () => {
   const result = mapBookingError("42P01");
   assert.equal(result.status, 500);

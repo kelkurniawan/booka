@@ -54,19 +54,6 @@ function minutesToHHMM(totalMinutes: number): string {
   return `${h}:${m}`;
 }
 
-/**
- * end_datetime = start + duration_minutes, dalam ISO-8601 UTC. Fungsi murni
- * dipakai `POST /api/bookings` untuk validasi cepat (mis. menolak slot yang
- * sudah lewat) SEBELUM memanggil RPC `create_booking`. Nilai yang benar-benar
- * disimpan tetap dihitung ulang di dalam fungsi database itu sendiri (lihat
- * `supabase/migrations/20260730000700_create_booking.sql`) dari
- * `duration_minutes` layanan yang dibaca ulang di sana -- fungsi ini bukan
- * sumber kebenaran, hanya validasi cepat di sisi Next.js.
- */
-export function deriveEndDatetime(startUtc: string, durationMinutes: number): string {
-  return new Date(new Date(startUtc).getTime() + durationMinutes * 60_000).toISOString();
-}
-
 export type AvailabilityWindow = Pick<Availability, "day_of_week" | "start_time" | "end_time">;
 
 /** Bentuk minimal hasil `get_booked_ranges` yang dibutuhkan algoritma ini. */

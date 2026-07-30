@@ -7,7 +7,6 @@ import { test } from "node:test";
 
 import {
   computeFreeSlots,
-  deriveEndDatetime,
   isoDayOfWeek,
   jakartaWallClockToUtc,
   type AvailabilityWindow,
@@ -97,25 +96,4 @@ test("tanggal yang sudah lewat sama sekali tidak menghasilkan slot", () => {
   });
 
   assert.equal(slots.length, 0);
-});
-
-test("deriveEndDatetime: menambahkan duration_minutes ke start dalam UTC", () => {
-  assert.equal(
-    deriveEndDatetime("2026-08-03T02:00:00.000Z", 90),
-    "2026-08-03T03:30:00.000Z",
-  );
-});
-
-test("deriveEndDatetime: durasi yang melewati batas hari UTC tetap benar", () => {
-  assert.equal(
-    deriveEndDatetime("2026-08-03T23:30:00.000Z", 60),
-    "2026-08-04T00:30:00.000Z",
-  );
-});
-
-test("deriveEndDatetime: durasi 0 menit mengembalikan start yang sama", () => {
-  assert.equal(
-    deriveEndDatetime("2026-08-03T02:00:00.000Z", 0),
-    "2026-08-03T02:00:00.000Z",
-  );
 });

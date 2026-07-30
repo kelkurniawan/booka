@@ -35,6 +35,15 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 404,
     message: "Layanan tidak ditemukan atau sudah tidak aktif.",
   },
+  // create_booking: p_start_datetime <= now() -- slot sudah lewat.
+  // 409 (bukan 422/400) supaya konsisten dengan 23P01/P0002/P0004 di atas:
+  // keempatnya sama-sama "state slot ini berubah/tidak valid lagi sejak
+  // klien memuat daftar slot", bukan kesalahan bentuk input (400) maupun
+  // kesalahan semantik input yang independen dari waktu (422).
+  P0006: {
+    status: 409,
+    message: "Jam tersebut sudah lewat. Silakan pilih waktu lain.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {
