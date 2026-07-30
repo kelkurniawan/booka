@@ -37,14 +37,28 @@ type OnboardedMerchant = Omit<PublicMerchant, "username"> & { username: string }
 const getMerchantPageData = cache(async (username: string) => {
   const supabase = createPublicClient();
 
-  const { data: merchant } = await supabase
+  const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
     .select("id, username, full_name, bio, avatar_url, subscription_tier")
     .eq("username", username)
     .maybeSingle();
 
+  // Gagal ambil data (mis. koneksi database, atau grant kolom yang suatu saat
+  // berubah) HARUS beda dari "merchant ini memang tidak ada" — kalau
+  // ditelan jadi notFound(), pelanggan mengira usernamenya salah padahal
+  // sistemnya yang sedang gangguan. Dilempar supaya ditangani error boundary
+  // terdekat, bukan dikembalikan sebagai null.
+  if (merchantError) {
+    console.error("[booking-page] gagal memuat profil merchant", {
+      username,
+      error: merchantError,
+    });
+    throw new Error("Gagal memuat profil merchant.");
+  }
+
   // `username is null` mustahil lolos policy `merchants_public_read`, tapi
-  // dijaga juga di sini kalau suatu saat policy-nya berubah.
+  // dijaga juga di sini kalau suatu saat policy-nya berubah. Ini kondisi
+  // "baris memang tidak ada", bukan error — tetap jadi notFound() di caller.
   if (!merchant || !merchant.username) {
     return null;
   }
@@ -65,6 +79,24 @@ const getMerchantPageData = cache(async (username: string) => {
       .order("created_at", { ascending: true }),
     supabase.from("availability").select("*").eq("merchant_id", onboardedMerchant.id),
   ]);
+
+  // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
+  // "merchant belum atur layanan/jam kerja" — jangan sampai jatuh ke keadaan
+  // "belum menerima pesanan" seakan-akan itu pilihan merchant.
+  if (servicesResult.error) {
+    console.error("[booking-page] gagal memuat layanan", {
+      username,
+      error: servicesResult.error,
+    });
+    throw new Error("Gagal memuat layanan merchant.");
+  }
+  if (availabilityResult.error) {
+    console.error("[booking-page] gagal memuat jam kerja", {
+      username,
+      error: availabilityResult.error,
+    });
+    throw new Error("Gagal memuat jam kerja merchant.");
+  }
 
   return {
     merchant: onboardedMerchant,
