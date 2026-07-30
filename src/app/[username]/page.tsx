@@ -189,7 +189,12 @@ export default async function MerchantPublicPage({
             ))}
           </ul>
 
-          <BookingSeam merchantId={merchant.id} username={merchant.username} services={services} />
+          <BookingSeam
+            merchantId={merchant.id}
+            username={merchant.username}
+            services={services}
+            availability={availability}
+          />
         </section>
       ) : (
         <Empty className="border">

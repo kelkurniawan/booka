@@ -1,30 +1,33 @@
-import type { Service } from "@/types/database";
+import type { Availability, Service } from "@/types/database";
+
+import { BookingPicker } from "./booking-picker";
 
 /**
- * Props yang dibutuhkan Task 7 untuk memasang pemilih tanggal/jam dan form
- * checkout: id serta username merchant (dipakai memanggil RPC
- * `get_booked_ranges` dan endpoint `POST /api/bookings`), dan daftar layanan
- * aktif untuk dipilih pelanggan.
+ * Props yang dibutuhkan pemilih tanggal/jam dan form checkout: id serta
+ * username merchant (dipakai memanggil RPC `get_booked_ranges` lewat
+ * `GET /api/slots`, dan nantinya `POST /api/bookings` di Task 8), daftar
+ * layanan aktif untuk dipilih pelanggan, dan jam kerja (dipakai menentukan
+ * hari mana yang buka sebelum memanggil `/api/slots`).
  */
 export type BookingSeamProps = {
   merchantId: string;
   username: string;
   services: Service[];
+  availability: Pick<Availability, "day_of_week">[];
 };
 
-/**
- * Placeholder tempat komponen client date/time picker Task 7 akan mount.
- * Sengaja tidak dibuat interaktif — hanya menjaga struktur dan tipe props
- * supaya Task 7 tinggal menggantinya, bukan membangun ulang halaman ini.
- */
-export function BookingSeam({ services }: BookingSeamProps) {
+/** Memasang `BookingPicker` (client) — lihat booking-picker.tsx untuk Task 7. */
+export function BookingSeam({ merchantId, username, services, availability }: BookingSeamProps) {
   if (services.length === 0) {
     return null;
   }
 
   return (
-    <div className="border-border text-muted-foreground border border-dashed p-5 text-sm text-pretty">
-      Pemilihan tanggal dan jam akan tampil di sini.
-    </div>
+    <BookingPicker
+      merchantId={merchantId}
+      username={username}
+      services={services}
+      availability={availability}
+    />
   );
 }
