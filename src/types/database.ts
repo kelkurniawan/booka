@@ -169,8 +169,16 @@ export type Database = {
       };
       payment_connections: {
         Row: PaymentConnection;
-        Insert: Omit<PaymentConnection, "id" | "connected_at" | "updated_at"> &
-          Partial<Pick<PaymentConnection, "id" | "connected_at">>;
+        Insert: Omit<
+          PaymentConnection,
+          "id" | "connected_at" | "updated_at" | "connection_mode" | "environment"
+        > &
+          Partial<
+            Pick<
+              PaymentConnection,
+              "id" | "connected_at" | "connection_mode" | "environment"
+            >
+          >;
         Update: Partial<Omit<PaymentConnection, "id" | "merchant_id" | "updated_at">>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };

@@ -23,21 +23,32 @@ process.env.TOKEN_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 // Import dinamis di dalam `before` (bukan top-level await) supaya file ini
 // tetap kompatibel dengan output CJS yang dipakai tsx ketika package.json
 // project tidak mendeklarasikan "type": "module".
-let encryptSecret: (plaintext: string) => string;
-let decryptSecret: (payload: string) => string;
+type SecretContext = {
+  merchantId: string;
+  provider: "MIDTRANS" | "XENDIT";
+  field: "access_token" | "refresh_token";
+};
+let encryptSecret: (plaintext: string, context: SecretContext) => string;
+let decryptSecret: (payload: string, context: SecretContext) => string;
 
 before(async () => {
   ({ encryptSecret, decryptSecret } = await import("./secret-box"));
 });
 
+const CTX: SecretContext = {
+  merchantId: "11111111-1111-1111-1111-111111111111",
+  provider: "MIDTRANS",
+  field: "access_token",
+};
+
 test("round-trip: decryptSecret(encryptSecret(x)) === x", () => {
   const plaintext = "sk_live_rahasia_midtrans_12345";
-  const payload = encryptSecret(plaintext);
-  assert.equal(decryptSecret(payload), plaintext);
+  const payload = encryptSecret(plaintext, CTX);
+  assert.equal(decryptSecret(payload, CTX), plaintext);
 });
 
 test("format payload: prefiks versi v1 dan 4 bagian dipisah titik", () => {
-  const payload = encryptSecret("token-apa-saja");
+  const payload = encryptSecret("token-apa-saja", CTX);
   const parts = payload.split(".");
   assert.equal(parts.length, 4);
   assert.equal(parts[0], "v1");
@@ -45,18 +56,18 @@ test("format payload: prefiks versi v1 dan 4 bagian dipisah titik", () => {
 
 test("IV acak: dua enkripsi plaintext sama menghasilkan ciphertext berbeda", () => {
   const plaintext = "token-yang-sama-persis";
-  const payloadA = encryptSecret(plaintext);
-  const payloadB = encryptSecret(plaintext);
+  const payloadA = encryptSecret(plaintext, CTX);
+  const payloadB = encryptSecret(plaintext, CTX);
 
   assert.notEqual(payloadA, payloadB);
 
   // Tapi keduanya tetap harus balik ke plaintext yang sama.
-  assert.equal(decryptSecret(payloadA), plaintext);
-  assert.equal(decryptSecret(payloadB), plaintext);
+  assert.equal(decryptSecret(payloadA, CTX), plaintext);
+  assert.equal(decryptSecret(payloadB, CTX), plaintext);
 });
 
 test("payload rusak (ciphertext diutak-atik) ditolak", () => {
-  const payload = encryptSecret("token-rahasia");
+  const payload = encryptSecret("token-rahasia", CTX);
   const [version, iv, ciphertext, authTag] = payload.split(".");
 
   // Balik urutan karakter base64 ciphertext supaya isinya berubah tapi
@@ -64,30 +75,78 @@ test("payload rusak (ciphertext diutak-atik) ditolak", () => {
   const tamperedCiphertext = ciphertext.split("").reverse().join("");
   const tampered = [version, iv, tamperedCiphertext, authTag].join(".");
 
-  assert.throws(() => decryptSecret(tampered));
+  assert.throws(() => decryptSecret(tampered, CTX));
 });
 
-test("payload dengan authTag salah ditolak", () => {
-  const payload = encryptSecret("token-rahasia-lain");
+test("payload dengan authTag salah (tapi panjangnya tetap 16 byte) ditolak", () => {
+  const payload = encryptSecret("token-rahasia-lain", CTX);
   const [version, iv, ciphertext] = payload.split(".");
   const fakeAuthTag = Buffer.alloc(16, 9).toString("base64");
 
-  assert.throws(() => decryptSecret([version, iv, ciphertext, fakeAuthTag].join(".")));
+  assert.throws(() =>
+    decryptSecret([version, iv, ciphertext, fakeAuthTag].join("."), CTX),
+  );
+});
+
+test("authTag yang dipotong (4 byte) ditolak, bukan diterima diam-diam", () => {
+  // Node menerima authTag GCM yang dipotong (4/8/12/13/14/15/16 byte) kalau
+  // authTagLength tidak dipatok di createDecipheriv DAN panjangnya tidak
+  // diperiksa manual — itu menurunkan biaya forgery dari 2^128 ke 2^32.
+  // Tes ini memastikan authTag 4-byte yang valid secara base64 tetap ditolak.
+  const payload = encryptSecret("token-untuk-tes-truncation", CTX);
+  const [version, iv, ciphertext, authTag] = payload.split(".");
+  const truncatedAuthTag = Buffer.from(authTag, "base64")
+    .subarray(0, 4)
+    .toString("base64");
+
+  assert.throws(
+    () => decryptSecret([version, iv, ciphertext, truncatedAuthTag].join("."), CTX),
+    /panjang authTag harus 16 byte/,
+  );
 });
 
 test("payload asal-asalan (bukan hasil encryptSecret) ditolak", () => {
-  assert.throws(() => decryptSecret("bukan-payload-yang-valid"));
+  assert.throws(() => decryptSecret("bukan-payload-yang-valid", CTX));
 });
 
 test("prefiks versi asing (v2) ditolak", () => {
-  const payload = encryptSecret("token-untuk-tes-versi");
+  const payload = encryptSecret("token-untuk-tes-versi", CTX);
   const [, iv, ciphertext, authTag] = payload.split(".");
   const foreignVersion = ["v2", iv, ciphertext, authTag].join(".");
 
   assert.throws(
-    () => decryptSecret(foreignVersion),
+    () => decryptSecret(foreignVersion, CTX),
     /versi enkripsi/i,
   );
+});
+
+test("AAD: dekripsi dengan context yang sama persis berhasil", () => {
+  const payload = encryptSecret("token-context-cocok", CTX);
+  assert.equal(decryptSecret(payload, { ...CTX }), "token-context-cocok");
+});
+
+test("AAD: merchantId berbeda ditolak (ciphertext tidak bisa dipindah ke merchant lain)", () => {
+  const payload = encryptSecret("token-milik-merchant-a", CTX);
+  const wrongMerchant: SecretContext = {
+    ...CTX,
+    merchantId: "22222222-2222-2222-2222-222222222222",
+  };
+
+  assert.throws(() => decryptSecret(payload, wrongMerchant));
+});
+
+test("AAD: provider berbeda ditolak", () => {
+  const payload = encryptSecret("token-untuk-midtrans", CTX);
+  const wrongProvider: SecretContext = { ...CTX, provider: "XENDIT" };
+
+  assert.throws(() => decryptSecret(payload, wrongProvider));
+});
+
+test("AAD: field berbeda ditolak (access_token tidak bisa dibaca sebagai refresh_token)", () => {
+  const payload = encryptSecret("token-access", CTX);
+  const wrongField: SecretContext = { ...CTX, field: "refresh_token" };
+
+  assert.throws(() => decryptSecret(payload, wrongField));
 });
 
 test("tanpa TOKEN_ENCRYPTION_KEY, encryptSecret melempar error berbahasa Indonesia", () => {
@@ -108,7 +167,11 @@ test("tanpa TOKEN_ENCRYPTION_KEY, encryptSecret melempar error berbahasa Indones
       new URL("./secret-box.ts", import.meta.url).href,
     )});
     try {
-      encryptSecret("apa saja");
+      encryptSecret("apa saja", {
+        merchantId: "11111111-1111-1111-1111-111111111111",
+        provider: "MIDTRANS",
+        field: "access_token",
+      });
       console.error("EXPECTED_THROW_DID_NOT_HAPPEN");
       process.exit(1);
     } catch (err) {

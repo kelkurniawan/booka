@@ -46,6 +46,17 @@ terjangkau PostgREST; satu policy yang salah tulis langsung membocorkan token.
 Schema `private` tidak diekspos ke API sama sekali, jadi hanya kode server yang
 bisa menyentuhnya.
 
+`payment_connections` juga punya `connection_mode` (`OAUTH` / `MANUAL_KEY`,
+membedakan token hasil OAuth Connect dari Server Key yang di-paste manual) dan
+`environment` (`SANDBOX` / `PRODUCTION`, per-merchant, per-koneksi). Kolom
+`environment` tidak punya rujukan di PRD sama sekali — ini konsep produk baru
+dari fase kredensial-manual. Sumber kebenarannya adalah kolom ini di DB, bukan
+`MIDTRANS_ENV`/`XENDIT_ENV` di `src/lib/env/server.ts`: kedua env var itu
+hanya konfigurasi proses-level (mis. base URL API mana yang dipanggil server
+saat belum ada satu pun merchant terhubung), sedangkan `environment` per baris
+menentukan kredensial dan endpoint mana yang dipakai untuk merchant tertentu.
+Kalau keduanya berbeda, kolom `environment` merchant yang menang.
+
 ## 4. Exclusion constraint di samping pessimistic locking
 
 **PRD bagian 5A:** `SELECT ... FOR UPDATE` untuk mencegah double-booking.

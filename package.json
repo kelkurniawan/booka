@@ -9,7 +9,7 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run test:unit && npm run build",
     "test:unit": "tsx --conditions=react-server --test \"src/**/*.test.ts\"",
     "docker:dev": "docker compose up --build",
     "docker:prod": "docker compose --env-file .env.local --profile prod up --build",
