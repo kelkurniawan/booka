@@ -81,7 +81,7 @@ function ServiceForm({
         </DialogDescription>
       </DialogHeader>
 
-      {isEdit ? <input type="hidden" name="id" value={service!.id} /> : null}
+      {service ? <input type="hidden" name="id" value={service.id} /> : null}
 
       <Field data-invalid={Boolean(state.fieldErrors?.name)}>
         <FieldLabel htmlFor="name">Nama layanan</FieldLabel>
