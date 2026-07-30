@@ -7,11 +7,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { formatDuration, formatRupiah, formatTime } from "@/lib/format";
+import { formatDuration, formatRupiah } from "@/lib/format";
 import { isoDayOfWeek, jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
 import { checkoutSchema } from "@/lib/validations/booking";
 import type { Availability, DayOfWeek, Service } from "@/types/database";
 import { cn } from "@/lib/utils";
+
+import { PaymentStatus } from "./payment-status";
 
 /** Seberapa jauh ke depan dicari tanggal yang buka. */
 const DAYS_TO_SEARCH = 21;
@@ -140,6 +142,19 @@ export function BookingPicker({ merchantId, username, services, availability }: 
   const [checkoutResult, setCheckoutResult] = useState<CheckoutResult | null>(null);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
+
+  // "Coba lagi" dari layar gagal/kedaluwarsa PaymentStatus (Task 9): booking
+  // lama sudah tidak bisa dipakai lagi (dibatalkan/kedaluwarsa), jadi
+  // pengunjung diminta pilih tanggal & jam baru dari awal. Nama dan nomor
+  // WhatsApp yang sudah diisi TIDAK direset -- tidak ada alasan memaksa
+  // pengunjung mengetik ulang data yang sama.
+  function handleStartOver() {
+    setCheckoutResult(null);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSlots(null);
+    setSlotsError(null);
+  }
 
   // Slot diambil langsung dari event handler (klik layanan/tanggal), BUKAN
   // dari useEffect yang mengintip perubahan state. Ini interaksi pengunjung,
@@ -404,23 +419,12 @@ export function BookingPicker({ merchantId, username, services, availability }: 
       ) : null}
 
       {checkoutResult ? (
-        <div className="border-border flex flex-col gap-3 border p-4">
-          <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-            Menunggu pembayaran
-          </span>
-          <p className="text-sm text-pretty">
-            Booking berhasil dibuat. Selesaikan pembayaran QRIS sebelum{" "}
-            <span className="font-medium">{formatTime(checkoutResult.expires_at)} WIB</span> agar slot
-            ini tidak hangus.
-          </p>
-          <code className="bg-muted block overflow-x-auto p-2 text-xs break-all">
-            {checkoutResult.payment_url}
-          </code>
-          <p className="text-muted-foreground text-xs text-pretty">
-            Pembayaran otomatis terdeteksi lewat halaman ini di Task 9 -- untuk sekarang scan QRIS di
-            atas lalu tunggu konfirmasi dari merchant.
-          </p>
-        </div>
+        <PaymentStatus
+          bookingId={checkoutResult.bookingId}
+          paymentUrl={checkoutResult.payment_url}
+          expiresAt={checkoutResult.expires_at}
+          onStartOver={handleStartOver}
+        />
       ) : null}
     </div>
   );
