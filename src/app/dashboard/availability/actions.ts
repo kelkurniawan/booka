@@ -103,6 +103,12 @@ export async function removeSlot(id: string): Promise<{ ok: boolean; message?: s
  * secara atomik, jadi tiap hari target "semua rentang tersalin" atau "tidak
  * ada yang tersalin sama sekali" (23P01), tidak pernah tersalin sebagian.
  * Hari yang bentrok dilewati dan dilaporkan, sisanya tetap lanjut.
+ *
+ * Insert per hari ini TIDAK dibungkus satu transaksi lintas hari, jadi kalau
+ * ada error selain 23P01 di tengah loop (mis. koneksi terputus), hari-hari
+ * sebelumnya yang sudah berhasil TETAP tersimpan di database — fungsi ini
+ * selalu memanggil `revalidatePath` dan melaporkan hari mana yang sudah
+ * tersalin sebelum berhenti, bukan menyiratkan seluruh operasi gagal total.
  */
 export async function copyToWeekdays(sourceDay: DayOfWeek): Promise<CopyToWeekdaysResult> {
   const supabase = await createClient();
@@ -136,6 +142,7 @@ export async function copyToWeekdays(sourceDay: DayOfWeek): Promise<CopyToWeekda
 
   const targetDays = WEEKDAYS.filter((day) => day !== sourceDay);
   const skippedDays: DayOfWeek[] = [];
+  const copiedDays: DayOfWeek[] = [];
 
   for (const day of targetDays) {
     const rows = sourceSlots.map((slot) => ({
@@ -151,12 +158,27 @@ export async function copyToWeekdays(sourceDay: DayOfWeek): Promise<CopyToWeekda
         skippedDays.push(day);
         continue;
       }
+
+      // Error selain exclusion violation (mis. koneksi terputus di tengah
+      // jalan) — hari-hari di `copiedDays` sebelum titik ini SUDAH benar-benar
+      // tersimpan di database (tiap insert per hari sudah commit sendiri-sendiri,
+      // tidak ada transaksi lintas hari). revalidatePath wajib tetap dipanggil
+      // di sini juga, bukan hanya di jalur sukses di bawah, supaya halaman
+      // tidak menampilkan data basi. Pesannya juga harus mengakui hari yang
+      // sudah tersalin, bukan menyiratkan seluruh operasi gagal total.
+      if (copiedDays.length > 0) {
+        revalidatePath(ROUTES.availability);
+      }
       return {
-        ok: false,
+        ok: copiedDays.length > 0,
         skippedDays,
-        message: "Gagal menyalin jam kerja. Coba lagi.",
+        message:
+          copiedDays.length > 0
+            ? `Disalin ke ${copiedDays.map((d) => DAY_LABELS[d]).join(", ")}, tapi gagal menyalin ke ${DAY_LABELS[day]}. Coba lagi untuk hari yang tersisa.`
+            : "Gagal menyalin jam kerja. Coba lagi.",
       };
     }
+    copiedDays.push(day);
   }
 
   revalidatePath(ROUTES.availability);
