@@ -48,18 +48,42 @@ export const whatsappSchema = z
     "Nomor tidak valid. Contoh: 0812-3456-7890",
   );
 
+/** Harus sama dengan constraint `merchants_full_name_length`. */
+export const fullNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Nama usaha minimal 2 karakter")
+  .max(80, "Nama usaha maksimal 80 karakter");
+
+/** Harus sama dengan constraint `merchants_bio_length`. */
+export const BIO_MAX = 300;
+
+/** Textarea kosong dianggap "tanpa bio" (null), sama seperti description layanan. */
+export const bioSchema = z
+  .string()
+  .max(BIO_MAX, `Bio maksimal ${BIO_MAX} karakter`)
+  .transform((value) => value.trim())
+  .transform((value) => (value.length > 0 ? value : null));
+
 export const onboardingSchema = z.object({
-  full_name: z
-    .string()
-    .trim()
-    .min(2, "Nama usaha minimal 2 karakter")
-    .max(80, "Nama usaha maksimal 80 karakter"),
+  full_name: fullNameSchema,
   username: usernameSchema,
   whatsapp_number: whatsappSchema,
 });
 
 export type OnboardingInput = z.input<typeof onboardingSchema>;
 export type OnboardingValues = z.output<typeof onboardingSchema>;
+
+/** Dipakai halaman Pengaturan untuk mengubah profil merchant sekaligus. */
+export const settingsSchema = z.object({
+  full_name: fullNameSchema,
+  bio: bioSchema,
+  whatsapp_number: whatsappSchema,
+  username: usernameSchema,
+});
+
+export type SettingsInput = z.input<typeof settingsSchema>;
+export type SettingsValues = z.output<typeof settingsSchema>;
 
 /** Saran username dari nama usaha, misal "Studio Mawar!" -> "studio-mawar". */
 export function suggestUsername(fullName: string): string {
