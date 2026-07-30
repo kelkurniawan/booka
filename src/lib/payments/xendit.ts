@@ -88,6 +88,17 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
  * penyederhanaan yang disengaja untuk MVP — kalau ternyata merchant perlu
  * token verifikasi webhook yang berbeda dari Secret Key, Task 9 (webhook
  * handler) yang akan menambah kolom/field kredensial terpisah.
+ *
+ * KETERBATASAN (dicatat saat Task 9/webhook handler selesai, TIDAK
+ * diperbaiki di sini -- Midtrans adalah jalur utama, Xendit sekunder):
+ * asumsi di atas TIDAK berlaku untuk Xendit sungguhan. Callback token
+ * Xendit adalah nilai TERPISAH yang dikonfigurasi merchant sendiri lewat
+ * dashboard Xendit (Settings -> Webhooks), bukan turunan dari Secret Key
+ * API. Memakai Secret Key sebagai pengganti di sini berarti webhook Xendit
+ * asli akan SELALU gagal verifikasi (401) sampai field callback token
+ * terpisah ditambahkan ke skema kredensial dan dipakai di sini
+ * menggantikan `credential`/Secret Key. Jalur webhook Midtrans tidak
+ * terpengaruh -- keterbatasan ini murni di adapter Xendit.
  */
 function verifyWebhookSignature({ headers, credential }: VerifyWebhookSignatureParams): boolean {
   const token = headers["x-callback-token"];
