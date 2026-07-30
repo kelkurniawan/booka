@@ -227,6 +227,23 @@ export type Database = {
         };
         Returns: undefined;
       };
+      /**
+       * Membuat booking dalam satu transaksi (advisory lock per merchant +
+       * verifikasi jam kerja + insert yang dijaga bookings_no_overlap /
+       * bookings_enforce_quota). SECURITY DEFINER, hanya dipanggil
+       * service_role dari POST /api/bookings. Lihat
+       * supabase/migrations/20260730000700_create_booking.sql.
+       */
+      create_booking: {
+        Args: {
+          p_merchant_id: string;
+          p_service_id: string;
+          p_start_datetime: string;
+          p_customer_name: string;
+          p_customer_whatsapp: string;
+        };
+        Returns: Booking[];
+      };
     };
     Enums: {
       subscription_tier: SubscriptionTier;
