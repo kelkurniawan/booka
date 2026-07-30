@@ -1,0 +1,131 @@
+-- ===========================================================================
+-- Booking engine: POST /api/bookings (Task 8)
+--
+-- Fungsi create_booking(...) SECURITY DEFINER menjalankan seluruh alur
+-- pembuatan booking dalam SATU transaksi:
+--   a. pg_advisory_xact_lock per merchant -- menutup balapan kuota yang
+--      dijelaskan docs/DECISIONS.md bagian 12: dua request bersamaan bisa
+--      sama-sama lolos hitungan trigger bookings_enforce_quota sebelum
+--      salah satunya commit. Lock dilepas otomatis saat transaksi selesai
+--      (commit maupun rollback), tidak perlu unlock manual.
+--   b. verifikasi slot [start, end) berada di dalam salah satu jam kerja
+--      (availability) merchant, pada hari ISO yang sesuai.
+--   c. insert booking -- exclusion constraint bookings_no_overlap dan
+--      trigger bookings_enforce_quota tetap menjadi penjaga terakhir,
+--      persis seperti insert biasa.
+--   d. kembalikan baris booking yang baru dibuat.
+--
+-- service_name/service_price/duration_minutes SENGAJA dibaca ulang dari
+-- tabel services DI DALAM fungsi ini -- bukan diterima sebagai parameter
+-- dari Next.js -- supaya tidak ada celah TOCTOU antara pembacaan harga dan
+-- insert booking-nya: keduanya sekarang terjadi di transaksi yang sama, di
+-- bawah advisory lock yang sama. Ini penerapan literal aturan AGENTS.md
+-- "harga wajib dibaca ulang dari tabel services di server": di sini
+-- "server" adalah fungsi database itu sendiri, sumber kebenaran tunggal,
+-- bukan cuma kode Next.js yang memanggilnya.
+--
+-- Hanya service_role yang boleh memanggil fungsi ini -- lihat
+-- docs/DECISIONS.md bagian 1: anon sama sekali tidak punya hak ke tabel
+-- bookings, supaya seluruh transaksi ini (cek jam kerja + insert + nanti
+-- pemanggilan API payment gateway di src/app/api/bookings/route.ts) tidak
+-- bisa dilewati lewat jalur lain.
+-- ===========================================================================
+
+create or replace function public.create_booking(
+  p_merchant_id uuid,
+  p_service_id uuid,
+  p_start_datetime timestamptz,
+  p_customer_name text,
+  p_customer_whatsapp text
+)
+returns setof public.bookings
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_service record;
+  v_end_datetime timestamptz;
+  v_day_of_week integer;
+  v_start_time time;
+  v_end_time time;
+  v_within_availability boolean;
+begin
+  -- a. Advisory lock per merchant. hashtext(uuid text) -> integer, di-cast
+  -- implisit ke bigint oleh overload pg_advisory_xact_lock(bigint).
+  perform pg_advisory_xact_lock(hashtext(p_merchant_id::text));
+
+  -- Baca ulang layanan DI DALAM lock ini -- lihat komentar di atas fungsi.
+  -- merchant_id ikut difilter supaya service_id milik merchant lain tidak
+  -- bisa dipakai membuat booking di kalender merchant ini.
+  select s.name, s.price, s.duration_minutes, s.is_active
+    into v_service
+    from public.services s
+    where s.id = p_service_id
+      and s.merchant_id = p_merchant_id;
+
+  if not found then
+    raise exception 'Layanan tidak ditemukan' using errcode = 'P0005';
+  end if;
+
+  if not v_service.is_active then
+    raise exception 'Layanan sudah tidak aktif' using errcode = 'P0005';
+  end if;
+
+  v_end_datetime := p_start_datetime + (v_service.duration_minutes || ' minutes')::interval;
+
+  -- b. Slot wajib berada di dalam salah satu jam kerja merchant pada hari
+  -- ISO yang sesuai (1=Senin..7=Minggu, sama seperti day_of_week di tabel
+  -- availability / extract(isodow from ...)). Wall-clock Jakarta dipakai
+  -- supaya konsisten dengan src/lib/booking/slots.ts di sisi klien.
+  v_day_of_week := extract(isodow from (p_start_datetime at time zone 'Asia/Jakarta'));
+  v_start_time := (p_start_datetime at time zone 'Asia/Jakarta')::time;
+  v_end_time := (v_end_datetime at time zone 'Asia/Jakarta')::time;
+
+  select exists (
+    select 1
+    from public.availability a
+    where a.merchant_id = p_merchant_id
+      and a.day_of_week = v_day_of_week
+      and a.start_time <= v_start_time
+      and a.end_time >= v_end_time
+  ) into v_within_availability;
+
+  -- Booking yang melewati tengah malam Jakarta otomatis tertolak di sini:
+  -- v_end_time hasil wall-clock hari berikutnya jadi lebih kecil dari
+  -- v_start_time, dan tidak ada baris availability yang bisa mencakupnya
+  -- (constraint availability_time_order mewajibkan end_time > start_time
+  -- pada baris yang sama, jadi jam kerja tidak pernah melewati tengah malam).
+  if not v_within_availability then
+    raise exception 'Slot % - % (WIB) di luar jam kerja merchant', v_start_time, v_end_time
+      using errcode = 'P0004';
+  end if;
+
+  -- c. Insert. bookings_no_overlap (exclusion constraint GiST) dan
+  -- bookings_enforce_quota (trigger) tetap berlaku persis seperti insert
+  -- biasa -- keduanya penjaga terakhir yang membuat slot bentrok / kuota
+  -- terlampaui mustahil tersimpan, apa pun yang lolos dari pengecekan (b).
+  -- d. RETURN QUERY ... RETURNING * mengembalikan baris yang baru dibuat.
+  return query
+    insert into public.bookings (
+      merchant_id, service_id, service_name, service_price, duration_minutes,
+      start_datetime, end_datetime, customer_name, customer_whatsapp
+    ) values (
+      p_merchant_id, p_service_id, v_service.name, v_service.price, v_service.duration_minutes,
+      p_start_datetime, v_end_datetime, p_customer_name, p_customer_whatsapp
+    )
+    returning *;
+end;
+$$;
+
+-- ===========================================================================
+-- Grants
+--
+-- Tertutup secara default sejak 20260730000300_lock_down_function_execute.sql,
+-- tapi tetap direvoke dari PUBLIC eksplisit di sini (mengikuti pola
+-- get_booked_ranges / get_payment_credential) supaya tidak diam-diam
+-- bergantung pada urutan migration. anon/authenticated TIDAK pernah diberi
+-- EXECUTE -- pembuatan booking hanya lewat POST /api/bookings (service role).
+-- ===========================================================================
+revoke execute on function public.create_booking(uuid, uuid, timestamptz, text, text) from public;
+grant execute on function public.create_booking(uuid, uuid, timestamptz, text, text) to service_role;

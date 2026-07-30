@@ -299,3 +299,126 @@ select case when count(*) = 0
             then 'OK   get_payment_credential kosong untuk merchant_id yang tidak terkait'
             else 'FAIL get_payment_credential membocorkan baris untuk merchant tak terkait' end as t10i
 from public.get_payment_credential('99999999-9999-9999-9999-999999999999', 'MIDTRANS');
+
+-- 11. Booking engine create_booking(...) (Task 8)
+--
+-- Merchant sedang PRO (di-set balik pada blok 5b), jadi kuota tidak
+-- mengganggu tes bentrok/jam-kerja di bawah -- kuota diuji terpisah dengan
+-- menurunkan tier sebentar. Availability yang dipakai: Selasa (day_of_week=2)
+-- 11:00-14:00 WIB, sudah dibuat di blok 4. Tanggal 2026-08-04/11/18 semuanya
+-- Selasa dan belum dipakai booking manapun di blok-blok sebelumnya.
+
+-- Helper: seperti expect_fail, tapi juga memverifikasi SQLSTATE-nya persis
+-- sama dengan yang diharapkan. Dipakai di sini karena pemetaan errcode ->
+-- pesan Indonesia di src/lib/booking/errors.ts bergantung pada errcode yang
+-- BENAR, bukan cuma "ada error" -- 23P01 (bentrok), P0002 (kuota), dan P0004
+-- (di luar jam kerja) harus bisa dibedakan satu sama lain oleh route handler.
+create or replace function pg_temp.expect_fail_code(sql text, expected_code text, label text)
+returns text language plpgsql as $$
+begin
+  execute sql;
+  return 'FAIL (seharusnya ditolak): ' || label;
+exception when others then
+  if sqlstate = expected_code then
+    return 'OK   ditolak dengan errcode ' || expected_code || ' -> ' || label;
+  else
+    return 'FAIL errcode salah (dapat ' || sqlstate || ', harap ' || expected_code || ') -> '
+      || label || ' [' || sqlerrm || ']';
+  end if;
+end $$;
+
+-- 11a. Booking pertama sukses: Selasa 11:00-12:30 (Makeup Wisuda, 90 menit),
+-- di dalam jam kerja 11:00-14:00.
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Wisuda'),
+    '2026-08-18 11:00+07', 'Pelanggan Booking A', '+6281199991111'
+  )$q$,
+  'create_booking sukses: Selasa 11:00-12:30 di dalam jam kerja');
+
+-- Snapshot service_name/service_price/duration_minutes wajib berasal dari
+-- tabel services yang dibaca ulang di dalam fungsi, dan end_datetime wajib
+-- persis start_datetime + duration_minutes layanan tersebut (90 menit).
+select case when service_name = 'Makeup Wisuda'
+              and service_price = 350000
+              and duration_minutes = 90
+              and start_datetime = '2026-08-18 11:00+07'::timestamptz
+              and end_datetime = '2026-08-18 12:30+07'::timestamptz
+            then 'OK   create_booking menyimpan snapshot service + end_datetime = start + duration_minutes'
+            else 'FAIL snapshot booking A -> ' || service_name || ' ' || service_price || ' '
+              || duration_minutes || ' ' || start_datetime || ' - ' || end_datetime end as t11a
+from public.bookings
+where merchant_id = '11111111-1111-1111-1111-111111111111' and customer_whatsapp = '+6281199991111';
+
+-- 11b. Dua booking bentrok: 12:00-14:00 (Makeup Akad, 120 menit) beririsan
+-- dengan 11:00-12:30 di atas -> harus ditolak errcode 23P01
+-- (bookings_no_overlap), bukan errcode lain.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Akad'),
+    '2026-08-18 12:00+07', 'Pelanggan Booking B', '+6281199992222'
+  )$q$,
+  '23P01',
+  'create_booking ditolak (23P01): 12:00-14:00 bentrok dengan 11:00-12:30');
+
+-- 11c. Slot di luar jam kerja: Selasa 08:00 (jam kerja mulai 11:00) -> harus
+-- ditolak errcode P0004, bukan lolos begitu saja karena tidak ada booking
+-- lain yang bentrok pada jam itu.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Wisuda'),
+    '2026-08-18 08:00+07', 'Pelanggan Booking C', '+6281199993333'
+  )$q$,
+  'P0004',
+  'create_booking ditolak (P0004): 08:00 Selasa sebelum jam kerja mulai (11:00)');
+
+-- 11d. Layanan tidak aktif -> harus ditolak errcode P0005, bukan diam-diam
+-- membuat booking untuk layanan yang sudah merchant nonaktifkan.
+select pg_temp.expect_ok(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, is_active) values ('11111111-1111-1111-1111-111111111111', 'Layanan Nonaktif', 100000, 60, false)$q$,
+  'buat layanan nonaktif untuk tes 11d');
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Layanan Nonaktif'),
+    '2026-08-25 11:00+07', 'Pelanggan Booking D', '+6281199995555'
+  )$q$,
+  'P0005',
+  'create_booking ditolak (P0005): layanan sudah tidak aktif');
+
+-- 11e. Kuota bulanan habis -> P0002. Merchant sudah punya >= 10 booking
+-- aktif bulan ini dari blok 5b; turunkan tier ke STARTER sebentar supaya
+-- kuotanya berlaku, pakai slot yang jelas valid (Selasa 11:00-13:00, di
+-- dalam jam kerja, tidak bentrok apa pun) supaya satu-satunya sebab gagal
+-- adalah kuota, bukan sebab lain.
+update public.merchants set subscription_tier = 'STARTER'
+where id = '11111111-1111-1111-1111-111111111111';
+
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+    '11111111-1111-1111-1111-111111111111',
+    (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Akad'),
+    '2026-08-11 11:00+07', 'Pelanggan Booking E', '+6281199994444'
+  )$q$,
+  'P0002',
+  'create_booking ditolak (P0002): kuota bulanan STARTER sudah habis');
+
+update public.merchants set subscription_tier = 'PRO'
+where id = '11111111-1111-1111-1111-111111111111';
+
+-- 11f. Hak EXECUTE: hanya service_role yang boleh memanggil create_booking.
+-- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
+-- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
+select
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil create_booking'
+       else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+       then 'FAIL authenticated bisa memanggil create_booking'
+       else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+       then 'OK   service_role bisa memanggil create_booking'
+       else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { whatsappSchema } from "./merchant";
+import { usernameSchema, whatsappSchema } from "./merchant";
 
 /**
  * Sama persis dengan constraint `bookings_customer_name_length` di
@@ -40,3 +40,24 @@ export const checkoutSchema = z.object({
 
 export type CheckoutInput = z.input<typeof checkoutSchema>;
 export type CheckoutValues = z.output<typeof checkoutSchema>;
+
+/**
+ * Body `POST /api/bookings` (Task 8). Sama seperti `checkoutSchema` (dipakai
+ * `booking-picker.tsx` untuk validasi form sebelum submit), ditambah
+ * `username` -- route resolve `merchant_id` sendiri lewat username, sama
+ * seperti `GET /api/slots`, bukan memercayai `merchantId` yang dikirim
+ * klien meski nilainya sendiri bukan rahasia (halaman `/[username]` publik).
+ * `startUtc` sengaja tetap dipakai sebagai nama field (bukan `slotStartUtc`)
+ * supaya field-nya identik dengan `checkoutSchema` yang sudah dipakai
+ * `booking-picker.tsx` sejak Task 7 -- tidak ada alasan menduplikasi bentuk
+ * payload untuk field yang sama persis.
+ */
+export const createBookingRequestSchema = z.object({
+  username: usernameSchema,
+  serviceId: z.uuid("Layanan tidak valid"),
+  startUtc: z.iso.datetime({ message: "Slot tidak valid, silakan pilih ulang" }),
+  customer_name: customerNameSchema,
+  customer_whatsapp: customerWhatsappSchema,
+});
+
+export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;
