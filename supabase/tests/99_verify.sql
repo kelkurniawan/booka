@@ -242,3 +242,60 @@ select
   case when has_column_privilege('anon', 'public.payment_connections', 'connection_mode', 'SELECT')
        then 'FAIL anon bisa membaca connection_mode'
        else 'OK   anon TIDAK bisa membaca connection_mode' end as t9f;
+
+-- 10. RPC private.payment_credentials (Task 4)
+select
+  case when has_function_privilege('anon', 'public.get_payment_credential(uuid, public.payment_provider)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil get_payment_credential'
+       else 'OK   anon TIDAK bisa memanggil get_payment_credential' end as t10a,
+  case when has_function_privilege('authenticated', 'public.get_payment_credential(uuid, public.payment_provider)', 'EXECUTE')
+       then 'FAIL authenticated bisa memanggil get_payment_credential'
+       else 'OK   authenticated TIDAK bisa memanggil get_payment_credential' end as t10b,
+  case when has_function_privilege('service_role', 'public.get_payment_credential(uuid, public.payment_provider)', 'EXECUTE')
+       then 'OK   service_role bisa memanggil get_payment_credential'
+       else 'FAIL service_role TIDAK bisa memanggil get_payment_credential' end as t10c,
+  case when has_function_privilege('anon', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil upsert_payment_credential'
+       else 'OK   anon TIDAK bisa memanggil upsert_payment_credential' end as t10d,
+  case when has_function_privilege('authenticated', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+       then 'FAIL authenticated bisa memanggil upsert_payment_credential'
+       else 'OK   authenticated TIDAK bisa memanggil upsert_payment_credential' end as t10e,
+  case when has_function_privilege('service_role', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+       then 'OK   service_role bisa memanggil upsert_payment_credential'
+       else 'FAIL service_role TIDAK bisa memanggil upsert_payment_credential' end as t10f;
+
+-- 10b. upsert lalu get harus mengembalikan payload yang sama persis (fungsi
+-- dites lewat pemanggilan SQL langsung, bukan lewat PostgREST -- privilege
+-- EXECUTE sudah dites terpisah di atas).
+select public.upsert_payment_credential(
+  '11111111-1111-1111-1111-111111111111', 'MIDTRANS', 'ciphertext-percobaan-1', null
+);
+
+select case when access_token_encrypted = 'ciphertext-percobaan-1' and refresh_token_encrypted is null
+            then 'OK   get_payment_credential mengembalikan payload yang baru di-upsert'
+            else 'FAIL get_payment_credential -> ' || coalesce(access_token_encrypted, '<null>') end as t10g
+from public.get_payment_credential('11111111-1111-1111-1111-111111111111', 'MIDTRANS');
+
+-- Panggilan kedua ke merchant+provider yang sama harus UPDATE (timpa),
+-- bukan gagal karena connection_id sudah punya baris credentials (primary key).
+select public.upsert_payment_credential(
+  '11111111-1111-1111-1111-111111111111', 'MIDTRANS', 'ciphertext-percobaan-2', 'refresh-percobaan-2'
+);
+
+select case when access_token_encrypted = 'ciphertext-percobaan-2' and refresh_token_encrypted = 'refresh-percobaan-2'
+            then 'OK   upsert kedua menimpa (bukan menduplikasi) baris credentials'
+            else 'FAIL upsert kedua -> ' || coalesce(access_token_encrypted, '<null>') end as t10h
+from public.get_payment_credential('11111111-1111-1111-1111-111111111111', 'MIDTRANS');
+
+-- provider yang belum punya baris payment_connections harus ditolak, bukan
+-- diam-diam membuat baris credentials yatim.
+select pg_temp.expect_fail(
+  $q$select public.upsert_payment_credential('11111111-1111-1111-1111-111111111111', 'XENDIT', 'ciphertext-yatim', null)$q$,
+  'upsert_payment_credential untuk provider tanpa payment_connections');
+
+-- merchant lain (tidak punya baris payment_connections sama sekali) tidak
+-- boleh bisa "menebak" balik kredensial merchant di atas lewat merchant_id acak.
+select case when count(*) = 0
+            then 'OK   get_payment_credential kosong untuk merchant_id yang tidak terkait'
+            else 'FAIL get_payment_credential membocorkan baris untuk merchant tak terkait' end as t10i
+from public.get_payment_credential('99999999-9999-9999-9999-999999999999', 'MIDTRANS');

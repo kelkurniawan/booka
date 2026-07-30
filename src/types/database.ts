@@ -207,6 +207,26 @@ export type Database = {
         Args: never;
         Returns: { used: number; quota: number | null }[];
       };
+      /**
+       * Membaca kredensial terenkripsi milik merchant untuk satu provider.
+       * SECURITY DEFINER: memverifikasi kepemilikan connection_id lewat
+       * merchant_id + provider sendiri, tidak mempercayai input lain.
+       * Lihat supabase/migrations/20260730000600_payment_credential_rpc.sql.
+       */
+      get_payment_credential: {
+        Args: { p_merchant_id: string; p_provider: PaymentProvider };
+        Returns: { access_token_encrypted: string; refresh_token_encrypted: string | null }[];
+      };
+      /** Simpan/timpa kredensial merchant. Hanya dipanggil service_role. */
+      upsert_payment_credential: {
+        Args: {
+          p_merchant_id: string;
+          p_provider: PaymentProvider;
+          p_access_token_encrypted: string;
+          p_refresh_token_encrypted?: string | null;
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       subscription_tier: SubscriptionTier;

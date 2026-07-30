@@ -204,3 +204,33 @@ saat diganti hasil generate, perbedaan ini harus dipasang kembali.
 PRD menyebut Next.js 14/15. `create-next-app@latest` memasang 16.2.12. App
 Router tetap sama; perbedaan yang berdampak: konvensi `middleware.ts` berganti
 nama menjadi `proxy.ts` dengan named export `proxy` (lihat `src/proxy.ts`).
+
+## 16. RPC `get_payment_credential`/`upsert_payment_credential` untuk menembus schema `private`
+
+Task 4 (halaman Pembayaran) awalnya diinstruksikan tanpa migration baru,
+dengan asumsi `createAdminClient()` (klien service_role via PostgREST) bisa
+langsung membaca/menulis `private.payment_credentials` karena "melewati
+RLS". Itu keliru: RLS dan **exposed schema** PostgREST adalah dua lapis
+proteksi yang berbeda. Service role memang melewati RLS, tapi PostgREST
+menolak permintaan ke schema yang tidak ada di daftar "Exposed schemas"
+untuk **peran apa pun** — termasuk service_role — karena penyaringannya
+terjadi di level routing PostgREST, sebelum peran diperiksa sama sekali.
+`docs/SETUP.md` bagian 4 secara eksplisit melarang `private` masuk daftar
+itu, jadi tanpa jalan lain, `payment_credentials` sama sekali tidak bisa
+disentuh dari kode aplikasi manapun.
+
+Solusinya sama dengan pola yang sudah dipakai `get_booked_ranges` untuk
+menyembunyikan tabel `bookings` dari `anon`: dua fungsi `SECURITY DEFINER` di
+schema `public` (yang exposed) —`get_payment_credential` dan
+`upsert_payment_credential` — yang mengakses `private.payment_credentials`
+dengan hak pemilik fungsi, bukan hak pemanggil. Hanya `service_role` yang
+diberi `GRANT EXECUTE`; `anon`/`authenticated`/`PUBLIC` eksplisit direvoke.
+Keduanya menerima `merchant_id` + `provider` (bukan `connection_id` mentah)
+dan memverifikasi kepemilikan baris `payment_connections` sendiri lewat
+constraint unique `payment_connections_unique_provider`, supaya pemanggil
+tidak bisa membaca/menimpa kredensial connection_id milik merchant lain
+sekalipun connection_id itu tertebak.
+
+Ditambahkan di `20260730000600_payment_credential_rpc.sql`, diuji lewat
+`npm run docker:test` (hak EXECUTE per peran + round-trip upsert/get) di
+`supabase/tests/99_verify.sql` bagian 10.
