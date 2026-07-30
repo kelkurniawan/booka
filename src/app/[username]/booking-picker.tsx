@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { formatDuration, formatRupiah } from "@/lib/format";
+import { formatDuration, formatRupiah, formatTime } from "@/lib/format";
 import { isoDayOfWeek, jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
 import { checkoutSchema } from "@/lib/validations/booking";
 import type { Availability, DayOfWeek, Service } from "@/types/database";
@@ -66,19 +66,53 @@ type CheckoutSubmitPayload = {
   customer_whatsapp: string;
 };
 
+/** Respons sukses `POST /api/bookings` -- lihat src/app/api/bookings/route.ts. */
+type CheckoutResult = {
+  bookingId: string;
+  payment_url: string;
+  expires_at: string;
+};
+
+type CheckoutErrorBody = { error?: string; issues?: unknown };
+
 /**
- * Seam Task 8: tempat submit checkout akan memanggil `POST /api/bookings`.
- * Validasi form di atasnya sudah aktif sungguhan -- yang placeholder cuma
- * langkah terakhir ini (tidak ada network call ke booking engine, karena
- * belum ada). Task 8 tinggal mengganti isi fungsi ini dengan
- * `fetch("/api/bookings", ...)`; bentuk payload-nya sudah final lewat
- * `CheckoutSubmitPayload`.
+ * `POST /api/bookings` sungguhan (Task 8).
+ *
+ * `merchantId` di payload SENGAJA tidak dikirim -- route resolve
+ * `merchant_id` sendiri lewat `username` (lihat `createBookingRequestSchema`
+ * di src/lib/validations/booking.ts), sama seperti `GET /api/slots`.
+ * Mempercayai `merchantId` dari klien tidak menambah bahaya nyata (halaman
+ * ini publik, id-nya bukan rahasia) tapi tetap salah secara prinsip --
+ * AGENTS.md.
+ *
+ * Melempar `Error` berisi pesan Indonesia yang SUDAH dipetakan server (lihat
+ * `mapBookingError`) supaya pemanggil tinggal menampilkannya lewat toast --
+ * tidak ada teks error mentah yang perlu diterjemahkan lagi di sini.
  */
-function submitCheckoutPlaceholder(payload: CheckoutSubmitPayload) {
-  console.info("[booking-picker] checkout siap dikirim, menunggu Task 8 (POST /api/bookings)", payload);
-  toast.info("Booking engine dibangun di Task 8", {
-    description: "Form dan validasi sudah siap -- pengiriman sungguhan belum tersambung.",
+async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutResult> {
+  const response = await fetch("/api/bookings", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      username: payload.username,
+      serviceId: payload.serviceId,
+      startUtc: payload.startUtc,
+      customer_name: payload.customer_name,
+      customer_whatsapp: payload.customer_whatsapp,
+    }),
   });
+
+  const body: unknown = await response.json().catch(() => null);
+
+  if (!response.ok || !body || typeof body !== "object" || !("bookingId" in body)) {
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? ((body as CheckoutErrorBody).error ?? null)
+        : null;
+    throw new Error(message ?? "Gagal membuat booking, silakan coba lagi.");
+  }
+
+  return body as CheckoutResult;
 }
 
 export function BookingPicker({ merchantId, username, services, availability }: BookingPickerProps) {
@@ -101,6 +135,9 @@ export function BookingPicker({ merchantId, username, services, availability }: 
   const [customerName, setCustomerName] = useState("");
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  const [submitting, setSubmitting] = useState(false);
+  const [checkoutResult, setCheckoutResult] = useState<CheckoutResult | null>(null);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
 
@@ -155,9 +192,9 @@ export function BookingPicker({ merchantId, username, services, availability }: 
     }
   }
 
-  function handleCheckoutSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCheckoutSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedServiceId || !selectedSlot) return;
+    if (!selectedServiceId || !selectedSlot || submitting) return;
 
     const result = checkoutSchema.safeParse({
       serviceId: selectedServiceId,
@@ -179,14 +216,22 @@ export function BookingPicker({ merchantId, username, services, availability }: 
     }
 
     setFormErrors({});
-    submitCheckoutPlaceholder({
-      merchantId,
-      username,
-      serviceId: result.data.serviceId,
-      startUtc: result.data.startUtc,
-      customer_name: result.data.customer_name,
-      customer_whatsapp: result.data.customer_whatsapp,
-    });
+    setSubmitting(true);
+    try {
+      const checkout = await submitCheckout({
+        merchantId,
+        username,
+        serviceId: result.data.serviceId,
+        startUtc: result.data.startUtc,
+        customer_name: result.data.customer_name,
+        customer_whatsapp: result.data.customer_whatsapp,
+      });
+      setCheckoutResult(checkout);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Gagal membuat booking, silakan coba lagi.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -290,7 +335,7 @@ export function BookingPicker({ merchantId, username, services, availability }: 
         </div>
       ) : null}
 
-      {selectedService && selectedSlot ? (
+      {selectedService && selectedSlot && !checkoutResult ? (
         <form
           onSubmit={handleCheckoutSubmit}
           noValidate
@@ -344,15 +389,38 @@ export function BookingPicker({ merchantId, username, services, availability }: 
           </Field>
 
           <div className="flex flex-col gap-2">
-            <Button type="submit" disabled className="w-full">
-              Konfirmasi booking
+            <Button type="submit" disabled={submitting} className="w-full">
+              {submitting ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" aria-hidden />
+                  Memproses...
+                </>
+              ) : (
+                "Konfirmasi booking"
+              )}
             </Button>
-            <p className="text-muted-foreground text-center text-xs text-pretty">
-              Booking engine dibangun di Task 8. Validasi form di atas sudah aktif; tombol ini
-              akan menyala setelah <code>POST /api/bookings</code> tersedia.
-            </p>
           </div>
         </form>
+      ) : null}
+
+      {checkoutResult ? (
+        <div className="border-border flex flex-col gap-3 border p-4">
+          <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
+            Menunggu pembayaran
+          </span>
+          <p className="text-sm text-pretty">
+            Booking berhasil dibuat. Selesaikan pembayaran QRIS sebelum{" "}
+            <span className="font-medium">{formatTime(checkoutResult.expires_at)} WIB</span> agar slot
+            ini tidak hangus.
+          </p>
+          <code className="bg-muted block overflow-x-auto p-2 text-xs break-all">
+            {checkoutResult.payment_url}
+          </code>
+          <p className="text-muted-foreground text-xs text-pretty">
+            Pembayaran otomatis terdeteksi lewat halaman ini di Task 9 -- untuk sekarang scan QRIS di
+            atas lalu tunggu konfirmasi dari merchant.
+          </p>
+        </div>
       ) : null}
     </div>
   );
