@@ -82,15 +82,23 @@ export async function completeOnboarding(
     redirect(ROUTES.login);
   }
 
-  const { error } = await supabase
-    .from("merchants")
-    .update({
+  // Sengaja upsert, bukan update.
+  //
+  // Baris merchant normalnya dibuat trigger `handle_new_user` saat signup.
+  // Kalau baris itu tidak ada — user lama dari sebelum trigger dipasang, atau
+  // trigger sempat gagal — UPDATE akan mengenai 0 baris dan melapor berhasil,
+  // sehingga proxy memantulkan user kembali ke /onboarding tanpa henti.
+  // Upsert membuat kasus itu sembuh sendiri.
+  const { error } = await supabase.from("merchants").upsert(
+    {
+      id: user.id,
       full_name: parsed.data.full_name,
       username: parsed.data.username,
       whatsapp_number: parsed.data.whatsapp_number,
       onboarded_at: new Date().toISOString(),
-    })
-    .eq("id", user.id);
+    },
+    { onConflict: "id" },
+  );
 
   if (error) {
     // 23505 unique_violation — dua merchant mengirim username sama secara

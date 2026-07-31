@@ -11,6 +11,8 @@ export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
 export type BookingStatus = "PENDING" | "PAID" | "CANCELLED";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
+export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
+export type PaymentEnvironment = "SANDBOX" | "PRODUCTION";
 
 /** ISO-8601: 1 = Senin ... 7 = Minggu. */
 export type DayOfWeek = 1 | 2 | 3 | 4 | 5 | 6 | 7;
@@ -87,6 +89,8 @@ export type PaymentConnection = {
   provider: PaymentProvider;
   provider_account_id: string | null;
   status: ConnectionStatus;
+  connection_mode: ConnectionMode;
+  environment: PaymentEnvironment;
   scope: string | null;
   token_expires_at: string | null;
   connected_at: string;
@@ -108,6 +112,11 @@ type Relationship<Column extends string, ForeignTable extends string> = {
 };
 
 export type Database = {
+  // Memberi tahu postgrest-js versi PostgREST yang dipakai project, supaya
+  // createClient tidak perlu diberi parameter versi secara manual.
+  __InternalSupabase: {
+    PostgrestVersion: "14.5";
+  };
   public: {
     Tables: {
       merchants: {
@@ -160,8 +169,16 @@ export type Database = {
       };
       payment_connections: {
         Row: PaymentConnection;
-        Insert: Omit<PaymentConnection, "id" | "connected_at" | "updated_at"> &
-          Partial<Pick<PaymentConnection, "id" | "connected_at">>;
+        Insert: Omit<
+          PaymentConnection,
+          "id" | "connected_at" | "updated_at" | "connection_mode" | "environment"
+        > &
+          Partial<
+            Pick<
+              PaymentConnection,
+              "id" | "connected_at" | "connection_mode" | "environment"
+            >
+          >;
         Update: Partial<Omit<PaymentConnection, "id" | "merchant_id" | "updated_at">>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
@@ -178,12 +195,63 @@ export type Database = {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string }[];
       };
+      /**
+       * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
+       *
+       * Ditulis manual dan sengaja BERBEDA dari hasil `supabase gen types`,
+       * yang menuliskannya sebagai `number` non-null. Generator tidak bisa
+       * menyimpulkan nullability dari nilai balik fungsi SQL, jadi tipe
+       * hasil generate keliru di titik ini.
+       */
+      my_quota_usage: {
+        Args: never;
+        Returns: { used: number; quota: number | null }[];
+      };
+      /**
+       * Membaca kredensial terenkripsi milik merchant untuk satu provider.
+       * SECURITY DEFINER: memverifikasi kepemilikan connection_id lewat
+       * merchant_id + provider sendiri, tidak mempercayai input lain.
+       * Lihat supabase/migrations/20260730000600_payment_credential_rpc.sql.
+       */
+      get_payment_credential: {
+        Args: { p_merchant_id: string; p_provider: PaymentProvider };
+        Returns: { access_token_encrypted: string; refresh_token_encrypted: string | null }[];
+      };
+      /** Simpan/timpa kredensial merchant. Hanya dipanggil service_role. */
+      upsert_payment_credential: {
+        Args: {
+          p_merchant_id: string;
+          p_provider: PaymentProvider;
+          p_access_token_encrypted: string;
+          p_refresh_token_encrypted?: string | null;
+        };
+        Returns: undefined;
+      };
+      /**
+       * Membuat booking dalam satu transaksi (advisory lock per merchant +
+       * verifikasi jam kerja + insert yang dijaga bookings_no_overlap /
+       * bookings_enforce_quota). SECURITY DEFINER, hanya dipanggil
+       * service_role dari POST /api/bookings. Lihat
+       * supabase/migrations/20260730000700_create_booking.sql.
+       */
+      create_booking: {
+        Args: {
+          p_merchant_id: string;
+          p_service_id: string;
+          p_start_datetime: string;
+          p_customer_name: string;
+          p_customer_whatsapp: string;
+        };
+        Returns: Booking[];
+      };
     };
     Enums: {
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
       payment_provider: PaymentProvider;
       connection_status: ConnectionStatus;
+      connection_mode: ConnectionMode;
+      payment_environment: PaymentEnvironment;
     };
     CompositeTypes: { [_ in never]: never };
   };

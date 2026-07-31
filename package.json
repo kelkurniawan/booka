@@ -9,7 +9,8 @@
     "lint": "eslint",
     "lint:fix": "eslint --fix",
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck && npm run lint && npm run build",
+    "check": "npm run typecheck && npm run lint && npm run test:unit && npm run build",
+    "test:unit": "tsx --conditions=react-server --test \"src/**/*.test.ts\"",
     "docker:dev": "docker compose up --build",
     "docker:prod": "docker compose --env-file .env.local --profile prod up --build",
     "docker:test": "docker compose --profile test down -v && docker compose --profile test up db-test",
@@ -45,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
+    "tsx": "^4.23.1",
     "typescript": "^5"
   }
 }

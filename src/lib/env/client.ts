@@ -16,6 +16,9 @@ const rawClientEnv = {
   supabaseKey:
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  // Nomor WhatsApp tim Booka untuk permintaan upgrade/downgrade paket manual.
+  // Opsional -- halaman Langganan menyembunyikan tombol upgrade kalau kosong.
+  supportWhatsapp: process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP,
 };
 
 const clientEnvSchema = z.object({
@@ -29,6 +32,7 @@ const clientEnvSchema = z.object({
       1,
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (atau NEXT_PUBLIC_SUPABASE_ANON_KEY) wajib diisi",
     ),
+  supportWhatsapp: z.string().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;

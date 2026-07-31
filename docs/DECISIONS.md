@@ -46,6 +46,17 @@ terjangkau PostgREST; satu policy yang salah tulis langsung membocorkan token.
 Schema `private` tidak diekspos ke API sama sekali, jadi hanya kode server yang
 bisa menyentuhnya.
 
+`payment_connections` juga punya `connection_mode` (`OAUTH` / `MANUAL_KEY`,
+membedakan token hasil OAuth Connect dari Server Key yang di-paste manual) dan
+`environment` (`SANDBOX` / `PRODUCTION`, per-merchant, per-koneksi). Kolom
+`environment` tidak punya rujukan di PRD sama sekali — ini konsep produk baru
+dari fase kredensial-manual. Sumber kebenarannya adalah kolom ini di DB, bukan
+`MIDTRANS_ENV`/`XENDIT_ENV` di `src/lib/env/server.ts`: kedua env var itu
+hanya konfigurasi proses-level (mis. base URL API mana yang dipanggil server
+saat belum ada satu pun merchant terhubung), sedangkan `environment` per baris
+menentukan kredensial dan endpoint mana yang dipakai untuk merchant tertentu.
+Kalau keduanya berbeda, kolom `environment` merchant yang menang.
+
 ## 4. Exclusion constraint di samping pessimistic locking
 
 **PRD bagian 5A:** `SELECT ... FOR UPDATE` untuk mencegah double-booking.
@@ -103,8 +114,123 @@ peran `authenticated`.
 hanya dicek di UI, siapa pun yang memanggil PostgREST langsung dengan anon key
 bisa melewatinya — termasuk menaikkan tier-nya sendiri.
 
-## 10. Next.js 16, bukan 14/15
+## 10. Auth tetap Supabase, bukan Clerk
+
+Sempat dipertimbangkan memakai Clerk. Tidak jadi, karena seluruh model
+keamanan sudah terikat ke `auth.uid()`: 17 RLS policy, foreign key
+`merchants.id → auth.users(id)`, dan trigger `handle_new_user`.
+
+Memakai Clerk berarti memilih antara memasangnya sebagai third-party auth
+provider Supabase — dua sistem identitas untuk satu produk — atau membuang RLS
+dan memindahkan seluruh kontrol akses ke kode aplikasi. Yang kedua membuang
+properti keamanan terkuat dari desain ini.
+
+Ekonominya juga tidak cocok: paket Pro Rp79.000/bulan, sementara Clerk menagih
+biaya tetap bulanan plus per-MAU — termasuk untuk merchant Starter yang gratis
+dan mungkin tidak pernah konversi.
+
+Yang benar-benar hilang dengan tidak memakai Clerk adalah Organizations, yang
+baru relevan saat fitur multi-staff paket Studio dibangun. Sampai saat itu tiba,
+tabel `staff` biasa sudah cukup.
+
+## 11. Password sebagai jalur masuk utama
+
+Awalnya hanya Magic Link dan Google. Ditambahkan email + password, dengan
+Magic Link dipertahankan sebagai opsi "masuk tanpa password".
+
+Alasannya audiens: pemilik usaha kecil membuka Booka dari HP. Magic Link
+memaksa mereka keluar aplikasi, mencari email yang sering mendarat di tab
+Promosi, lalu kembali. Setiap perpindahan itu kehilangan sebagian orang.
+
+Pesan kegagalan sengaja tidak membedakan "email tidak terdaftar" dari "password
+salah", dan `resetPasswordForEmail` selalu melaporkan berhasil — supaya halaman
+masuk tidak bisa dipakai memetakan siapa saja yang punya akun.
+
+## 12. Kuota transaksi ditegakkan di database
+
+Batas 10 transaksi/bulan paket STARTER semula hanya ditampilkan di dashboard
+dan tidak ditegakkan di mana pun — merchant Starter bisa memakai Booka tanpa
+batas selamanya.
+
+Sekarang dijaga trigger `bookings_enforce_quota`. Yang dihitung adalah booking
+`PENDING` + `PAID` yang dibuat bulan berjalan menurut waktu Jakarta; booking
+`CANCELLED` mengembalikan kuotanya, supaya pesanan yang ditinggalkan pelanggan
+tidak menghanguskan jatah merchant.
+
+Angka di dashboard memanggil `my_quota_usage()`, yang memakai fungsi hitung
+yang sama dengan trigger — supaya yang ditampilkan tidak pernah berbeda dari
+yang diberlakukan.
+
+Sisa celah yang diketahui: dua insert bersamaan bisa sama-sama lolos dan
+melewati kuota satu baris. Advisory lock per merchant di dalam transaksi
+`POST /api/bookings` akan menutupnya di Phase 5.
+
+## 13. Grant EXECUTE fungsi harus dicabut eksplisit dari anon & authenticated
+
+Migration awal sudah benar menangani tabel: setiap tabel di-`REVOKE ALL` dulu
+dari `anon`/`authenticated`, karena Supabase memasang `ALTER DEFAULT
+PRIVILEGES` yang memberi `ALL` pada tabel baru di schema `public`.
+
+Yang terlewat: Supabase memasang default privileges yang sama untuk **fungsi**.
+`REVOKE EXECUTE ... FROM PUBLIC` yang ditulis di migration awal tidak menyentuh
+grant langsung ke `anon`/`authenticated` tersebut, sehingga setiap fungsi ikut
+terekspos di `/rest/v1/rpc/`.
+
+Yang paling serius: `count_bookings_this_month(uuid)` bisa dipanggil tanpa sesi
+sama sekali, membocorkan jumlah transaksi bulan berjalan milik merchant mana
+pun yang UUID-nya diketahui.
+
+Diperbaiki di `20260730000300_lock_down_function_execute.sql`, yang juga
+memasang `alter default privileges in schema public revoke execute on functions
+from anon, authenticated` supaya kelas bug ini tidak terulang — fungsi baru
+sekarang tertutup secara default, dan yang memang publik wajib di-`GRANT`
+eksplisit.
+
+Ditemukan lewat Supabase security advisor setelah migration diterapkan ke
+project cloud, lalu dikonfirmasi langsung dengan membaca `pg_proc.proacl` dan
+`pg_default_acl`. Regresinya sekarang dijaga tes di `supabase/tests/99_verify.sql`.
+
+## 14. Tipe `my_quota_usage` ditulis manual, berbeda dari hasil generate
+
+`supabase gen types` menuliskan `quota` sebagai `number` non-null, padahal
+`booking_quota_for_tier()` mengembalikan `NULL` untuk paket PRO dan STUDIO.
+Generator tidak bisa menyimpulkan nullability dari nilai balik fungsi SQL.
+
+`src/types/database.ts` memakai `quota: number | null`. Kalau file itu suatu
+saat diganti hasil generate, perbedaan ini harus dipasang kembali.
+
+## 15. Next.js 16, bukan 14/15
 
 PRD menyebut Next.js 14/15. `create-next-app@latest` memasang 16.2.12. App
 Router tetap sama; perbedaan yang berdampak: konvensi `middleware.ts` berganti
 nama menjadi `proxy.ts` dengan named export `proxy` (lihat `src/proxy.ts`).
+
+## 16. RPC `get_payment_credential`/`upsert_payment_credential` untuk menembus schema `private`
+
+Task 4 (halaman Pembayaran) awalnya diinstruksikan tanpa migration baru,
+dengan asumsi `createAdminClient()` (klien service_role via PostgREST) bisa
+langsung membaca/menulis `private.payment_credentials` karena "melewati
+RLS". Itu keliru: RLS dan **exposed schema** PostgREST adalah dua lapis
+proteksi yang berbeda. Service role memang melewati RLS, tapi PostgREST
+menolak permintaan ke schema yang tidak ada di daftar "Exposed schemas"
+untuk **peran apa pun** — termasuk service_role — karena penyaringannya
+terjadi di level routing PostgREST, sebelum peran diperiksa sama sekali.
+`docs/SETUP.md` bagian 4 secara eksplisit melarang `private` masuk daftar
+itu, jadi tanpa jalan lain, `payment_credentials` sama sekali tidak bisa
+disentuh dari kode aplikasi manapun.
+
+Solusinya sama dengan pola yang sudah dipakai `get_booked_ranges` untuk
+menyembunyikan tabel `bookings` dari `anon`: dua fungsi `SECURITY DEFINER` di
+schema `public` (yang exposed) —`get_payment_credential` dan
+`upsert_payment_credential` — yang mengakses `private.payment_credentials`
+dengan hak pemilik fungsi, bukan hak pemanggil. Hanya `service_role` yang
+diberi `GRANT EXECUTE`; `anon`/`authenticated`/`PUBLIC` eksplisit direvoke.
+Keduanya menerima `merchant_id` + `provider` (bukan `connection_id` mentah)
+dan memverifikasi kepemilikan baris `payment_connections` sendiri lewat
+constraint unique `payment_connections_unique_provider`, supaya pemanggil
+tidak bisa membaca/menimpa kredensial connection_id milik merchant lain
+sekalipun connection_id itu tertebak.
+
+Ditambahkan di `20260730000600_payment_credential_rpc.sql`, diuji lewat
+`npm run docker:test` (hak EXECUTE per peran + round-trip upsert/get) di
+`supabase/tests/99_verify.sql` bagian 10.
