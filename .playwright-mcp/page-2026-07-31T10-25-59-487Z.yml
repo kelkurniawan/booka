@@ -1,0 +1,26 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e3]:
+    - generic [ref=f1e4]:
+      - generic [ref=f1e5]: Satu langkah lagi
+      - generic [ref=f1e6]: Tentukan tautan booking Anda. Pelanggan cukup membuka tautan ini untuk memesan jadwal dan membayar DP.
+    - generic [ref=f1e8]:
+      - group [ref=f1e9]:
+        - generic [ref=f1e10]: Nama usaha
+        - textbox "Nama usaha" [ref=f1e11]:
+          - /placeholder: Studio Mawar
+        - paragraph [ref=f1e12]: Nama yang dilihat pelanggan di halaman booking.
+      - group [ref=f1e13]:
+        - generic [ref=f1e14]: Alamat halaman booking
+        - generic [ref=f1e15]:
+          - generic [ref=f1e16]: booka-azure.vercel.app/
+          - textbox "Alamat halaman booking" [ref=f1e17]:
+            - /placeholder: studio-mawar
+        - paragraph [ref=f1e18]: 3–30 karakter. Huruf kecil, angka, dan tanda hubung. Bisa diubah nanti di Pengaturan.
+      - group [ref=f1e19]:
+        - generic [ref=f1e20]: Nomor WhatsApp
+        - textbox "Nomor WhatsApp" [ref=f1e21]:
+          - /placeholder: 0812-3456-7890
+        - paragraph [ref=f1e22]: Dipakai untuk notifikasi booking masuk. Tidak ditampilkan ke publik.
+      - button "Mulai pakai Booka" [ref=f1e23]
+  - region "Notifications alt+T"
+  - alert [ref=f1e24]

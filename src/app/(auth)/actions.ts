@@ -54,13 +54,32 @@ export async function signUpWithPassword(
   });
 
   if (error) {
-    return {
-      status: "error",
-      message:
-        error.status === 429
-          ? "Terlalu banyak percobaan. Coba lagi beberapa menit lagi."
-          : "Gagal membuat akun. Coba lagi sebentar lagi.",
-    };
+    if (error.status === 429) {
+      return {
+        status: "error",
+        message: "Terlalu banyak percobaan. Coba lagi beberapa menit lagi.",
+      };
+    }
+
+    // Email sudah terdaftar (422 user_already_exists).
+    //
+    // Ini HANYA muncul saat konfirmasi email dimatikan. Dengan konfirmasi
+    // menyala, Supabase menyembunyikannya: sign-up untuk email yang sudah ada
+    // dijawab sukses palsu dengan `identities` kosong (ditangani di bawah),
+    // supaya halaman ini tidak bisa dipakai menebak siapa saja yang punya
+    // akun. Saat Supabase sendiri sudah membocorkannya lewat 422, menahan
+    // informasi itu di UI tidak menambah keamanan apa pun — yang tersisa cuma
+    // pengguna kebingungan disuruh "coba lagi sebentar lagi" untuk keadaan
+    // yang tidak akan pernah berubah dengan menunggu.
+    if (error.status === 422 || error.code === "user_already_exists") {
+      return {
+        status: "error",
+        message: "Email ini sudah terdaftar. Silakan masuk.",
+        fieldErrors: { email: "Email sudah terdaftar" },
+      };
+    }
+
+    return { status: "error", message: "Gagal membuat akun. Coba lagi sebentar lagi." };
   }
 
   // Ketika konfirmasi email aktif, Supabase mengembalikan user tanpa sesi.

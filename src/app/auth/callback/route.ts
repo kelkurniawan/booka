@@ -32,10 +32,31 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    return NextResponse.redirect(
-      `${origin}${ROUTES.authError}?reason=${encodeURIComponent(error.message)}`,
-    );
+    return NextResponse.redirect(`${origin}${ROUTES.authError}?reason=${reasonCode(error)}`);
   }
 
   return NextResponse.redirect(`${origin}${next}`);
+}
+
+/**
+ * Menerjemahkan kegagalan `exchangeCodeForSession` menjadi kode sebab yang
+ * stabil untuk halaman /auth/auth-code-error.
+ *
+ * Sengaja BUKAN meneruskan `error.message` mentah. Pesan supabase-js berupa
+ * kalimat bahasa Inggris yang bisa berubah sewaktu-waktu, dan halaman error
+ * mencocokkannya dengan tabel kode — teks bebas tidak pernah cocok, sehingga
+ * SEMUA kegagalan tampil sebagai "tautan kedaluwarsa". Itu menyembunyikan
+ * sebab yang paling sering terjadi dan paling bisa ditindaklanjuti pengguna:
+ * tautan PKCE dibuka di browser/perangkat yang berbeda dari yang memintanya
+ * (minta tautan di laptop, buka emailnya di HP), yang sama sekali bukan soal
+ * kedaluwarsa.
+ */
+function reasonCode(error: { message: string }): string {
+  const message = error.message.toLowerCase();
+
+  if (message.includes("code verifier")) return "pkce_verifier_missing";
+  if (message.includes("expired")) return "otp_expired";
+  if (message.includes("already used") || message.includes("invalid")) return "code_used";
+
+  return "exchange_failed";
 }
