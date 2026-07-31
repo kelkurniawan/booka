@@ -8,9 +8,22 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * GET /api/cron/cancel-unpaid
  *
  * Membatalkan semua booking PENDING yang sudah kedaluwarsa (expires_at < now).
- * Dijadwalkan Vercel Cron tiap 5 menit (lihat vercel.json). Vercel mengirim
- * header `Authorization: Bearer $CRON_SECRET` secara otomatis kalau CRON_SECRET
- * di-set sebagai env var project.
+ * Vercel mengirim header `Authorization: Bearer $CRON_SECRET` secara otomatis
+ * kalau CRON_SECRET di-set sebagai env var project.
+ *
+ * JADWAL: sekali sehari, 20:00 UTC / 03:00 WIB (lihat vercel.json).
+ *
+ * Idealnya tiap 5 menit, karena selama booking kedaluwarsa belum dibatalkan
+ * slot-nya tetap terkunci dan kuota bulanan merchant tetap terpakai. Tapi
+ * paket Vercel Hobby hanya mengizinkan cron sekali sehari — jadwal yang lebih
+ * sering membuat deployment DITOLAK sebelum build ("Hobby accounts are limited
+ * to daily cron jobs"), bukan sekadar diabaikan.
+ *
+ * Konsekuensinya: slot booking yang DP-nya tidak dibayar bisa tertahan sampai
+ * 24 jam sebelum dibebaskan. Untuk mengembalikannya ke 5 menit, pilih salah
+ * satu: naik ke paket Pro, atau panggil endpoint ini dari penjadwal eksternal
+ * (pg_cron + pg_net di Supabase, GitHub Actions, cron-job.org) dengan header
+ * Authorization yang sama.
  *
  * Membatalkan booking (PENDING -> CANCELLED) otomatis membebaskan:
  *   - slot-nya  (constraint bookings_no_overlap hanya mengunci PENDING/PAID)

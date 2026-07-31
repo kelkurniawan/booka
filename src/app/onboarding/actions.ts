@@ -82,23 +82,41 @@ export async function completeOnboarding(
     redirect(ROUTES.login);
   }
 
-  // Sengaja upsert, bukan update.
+  const profile = {
+    full_name: parsed.data.full_name,
+    username: parsed.data.username,
+    whatsapp_number: parsed.data.whatsapp_number,
+    onboarded_at: new Date().toISOString(),
+  };
+
+  // UPDATE dulu, INSERT hanya kalau tidak ada baris yang kena.
   //
-  // Baris merchant normalnya dibuat trigger `handle_new_user` saat signup.
-  // Kalau baris itu tidak ada — user lama dari sebelum trigger dipasang, atau
-  // trigger sempat gagal — UPDATE akan mengenai 0 baris dan melapor berhasil,
-  // sehingga proxy memantulkan user kembali ke /onboarding tanpa henti.
-  // Upsert membuat kasus itu sembuh sendiri.
-  const { error } = await supabase.from("merchants").upsert(
-    {
-      id: user.id,
-      full_name: parsed.data.full_name,
-      username: parsed.data.username,
-      whatsapp_number: parsed.data.whatsapp_number,
-      onboarded_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
+  // Sengaja BUKAN upsert. PostgREST menyusun `ON CONFLICT ... DO UPDATE SET`
+  // untuk SELURUH kolom di payload, termasuk `id`. Sementara `authenticated`
+  // tidak punya hak UPDATE pada kolom `id` — lihat grant per kolom di
+  // 20260729000100_init_schema.sql, yang memang sengaja membatasi kolom apa
+  // saja yang boleh diubah merchant dari browser. Karena trigger
+  // `handle_new_user` selalu membuat baris merchant saat signup, jalur yang
+  // terpakai SELALU DO UPDATE, jadi upsert gagal dengan 42501 (permission
+  // denied) untuk setiap merchant baru tanpa terkecuali.
+  //
+  // INSERT susulan menjaga kasus yang dulu jadi alasan memakai upsert: baris
+  // merchant tidak ada (user lama dari sebelum trigger dipasang, atau trigger
+  // sempat gagal). Tanpa itu, UPDATE mengenai 0 baris tapi melapor berhasil,
+  // dan proxy memantulkan user kembali ke /onboarding tanpa henti.
+  const updateResult = await supabase
+    .from("merchants")
+    .update(profile)
+    .eq("id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  const insertResult =
+    !updateResult.error && !updateResult.data
+      ? await supabase.from("merchants").insert({ id: user.id, ...profile })
+      : null;
+
+  const error = insertResult?.error ?? updateResult.error;
 
   if (error) {
     // 23505 unique_violation — dua merchant mengirim username sama secara
