@@ -21,8 +21,8 @@ test("P0002 (kuota bulanan) -> 409, pesan kuota", () => {
   assert.match(result.message, /tidak menerima pesanan baru/);
 });
 
-test("P0004 (di luar jam kerja) -> 409, pesan jam kerja", () => {
-  const result = mapBookingError("P0004");
+test("BK001 (di luar jam kerja) -> 409, pesan jam kerja", () => {
+  const result = mapBookingError("BK001");
   assert.equal(result.status, 409);
   assert.match(result.message, /di luar jam kerja/);
 });

@@ -26,7 +26,13 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     message: "Merchant sedang tidak menerima pesanan baru.",
   },
   // create_booking: slot di luar jam kerja (availability) merchant.
-  P0004: {
+  //
+  // Kodenya BK001, BUKAN P0004. P0004 adalah SQLSTATE bawaan PL/pgSQL
+  // `assert_failure`, dan PostgreSQL secara eksplisit tidak menangkapnya
+  // lewat `WHEN OTHERS` -- jadi pembungkus PL/pgSQL mana pun akan meledak
+  // alih-alih menangani kasus ini dengan rapi. Lihat migration
+  // 20260731000200_reap_expired_pending_inline.sql.
+  BK001: {
     status: 409,
     message: "Slot yang dipilih di luar jam kerja merchant, silakan pilih jadwal lain.",
   },
@@ -36,7 +42,7 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     message: "Layanan tidak ditemukan atau sudah tidak aktif.",
   },
   // create_booking: p_start_datetime <= now() -- slot sudah lewat.
-  // 409 (bukan 422/400) supaya konsisten dengan 23P01/P0002/P0004 di atas:
+  // 409 (bukan 422/400) supaya konsisten dengan 23P01/P0002/BK001 di atas:
   // keempatnya sama-sama "state slot ini berubah/tidak valid lagi sejak
   // klien memuat daftar slot", bukan kesalahan bentuk input (400) maupun
   // kesalahan semantik input yang independen dari waktu (422).
