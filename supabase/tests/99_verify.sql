@@ -436,3 +436,31 @@ select pg_temp.expect_fail_code(
   )$q$,
   'P0006',
   'create_booking ditolak (P0006): slot 2020-01-07 11:00 WIB sudah lewat');
+
+-- 11h. Hak UPDATE per kolom di merchants.
+--
+-- `id` TIDAK boleh bisa di-UPDATE oleh authenticated: sama seperti
+-- subscription_tier dan active_payment_provider, kolom itu di luar daftar
+-- "boleh diubah merchant dari browser" di 20260729000100_init_schema.sql.
+--
+-- Ini bukan detail sepele. Selama invariant ini berlaku, `upsert` PostgREST ke
+-- tabel merchants dari sesi merchant SELALU gagal 42501, karena PostgREST
+-- menyusun `ON CONFLICT ... DO UPDATE SET` untuk seluruh kolom di payload --
+-- termasuk `id`. Itulah yang dulu membuat onboarding mustahil selesai untuk
+-- setiap user baru. Perbaikannya ada di src/app/onboarding/actions.ts
+-- (UPDATE dulu, INSERT hanya kalau tidak ada baris yang kena), bukan dengan
+-- melonggarkan grant di sini. Kalau test ini suatu saat FAIL, artinya grant
+-- sudah dilonggarkan dan keputusan itu perlu ditinjau ulang.
+select
+  case when has_column_privilege('authenticated', 'public.merchants', 'id', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE merchants.id'
+       else 'OK   authenticated TIDAK bisa UPDATE merchants.id' end as t11h_id,
+  case when has_column_privilege('authenticated', 'public.merchants', 'subscription_tier', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE merchants.subscription_tier'
+       else 'OK   authenticated TIDAK bisa UPDATE merchants.subscription_tier' end as t11h_tier,
+  case when has_column_privilege('authenticated', 'public.merchants', 'username', 'UPDATE')
+       then 'OK   authenticated bisa UPDATE merchants.username'
+       else 'FAIL authenticated TIDAK bisa UPDATE merchants.username' end as t11h_username,
+  case when has_column_privilege('authenticated', 'public.merchants', 'onboarded_at', 'UPDATE')
+       then 'OK   authenticated bisa UPDATE merchants.onboarded_at'
+       else 'FAIL authenticated TIDAK bisa UPDATE merchants.onboarded_at' end as t11h_onboarded;
