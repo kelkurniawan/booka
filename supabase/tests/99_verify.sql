@@ -254,13 +254,13 @@ select
   case when has_function_privilege('service_role', 'public.get_payment_credential(uuid, public.payment_provider)', 'EXECUTE')
        then 'OK   service_role bisa memanggil get_payment_credential'
        else 'FAIL service_role TIDAK bisa memanggil get_payment_credential' end as t10c,
-  case when has_function_privilege('anon', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'FAIL anon bisa memanggil upsert_payment_credential'
        else 'OK   anon TIDAK bisa memanggil upsert_payment_credential' end as t10d,
-  case when has_function_privilege('authenticated', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil upsert_payment_credential'
        else 'OK   authenticated TIDAK bisa memanggil upsert_payment_credential' end as t10e,
-  case when has_function_privilege('service_role', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil upsert_payment_credential'
        else 'FAIL service_role TIDAK bisa memanggil upsert_payment_credential' end as t10f;
 
@@ -545,3 +545,69 @@ from public.bookings
 where merchant_id = '22222222-2222-2222-2222-222222222222'
   and status = 'CANCELLED'
   and cancel_reason = 'DP tidak dibayar dalam batas waktu';
+
+-- ===========================================================================
+-- 13. Rate limit booking + token webhook terpisah
+-- (migration 20260813120000 dan 20260813120100)
+-- ===========================================================================
+
+-- 13a. Tiga percobaan pertama lolos, yang keempat ditolak.
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 1 diizinkan'
+            else 'FAIL percobaan 1 seharusnya diizinkan' end as t13a1;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 2 diizinkan'
+            else 'FAIL percobaan 2 seharusnya diizinkan' end as t13a2;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 3 diizinkan'
+            else 'FAIL percobaan 3 seharusnya diizinkan' end as t13a3;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'FAIL percobaan 4 seharusnya DITOLAK'
+            else 'OK   rate limit: percobaan 4 ditolak' end as t13a4;
+
+-- 13b. Batasnya per (ip, merchant): IP lain pada merchant sama tetap lolos.
+select case when public.check_booking_rate_limit('hash-uji-2', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: IP berbeda tidak ikut terblokir'
+            else 'FAIL IP berbeda seharusnya masih diizinkan' end as t13b;
+
+-- 13c. anon/authenticated tidak boleh menyentuh tabel maupun fungsinya.
+select
+  case when has_table_privilege('anon', 'public.booking_attempts', 'SELECT')
+       then 'FAIL anon bisa membaca booking_attempts'
+       else 'OK   anon TIDAK punya akses booking_attempts' end as t13c_anon,
+  case when has_function_privilege('anon', 'public.check_booking_rate_limit(text, uuid)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil check_booking_rate_limit'
+       else 'OK   anon TIDAK bisa memanggil check_booking_rate_limit' end as t13c_fn,
+  case when has_function_privilege('service_role', 'public.check_booking_rate_limit(text, uuid)', 'EXECUTE')
+       then 'OK   service_role bisa memanggil check_booking_rate_limit'
+       else 'FAIL service_role TIDAK bisa memanggil check_booking_rate_limit' end as t13c_svc;
+
+-- 13d. reap_expired_bookings membatalkan PENDING kedaluwarsa lintas merchant.
+insert into public.bookings (
+  merchant_id, service_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, expires_at
+) values (
+  '22222222-2222-2222-2222-222222222222',
+  '33333333-3333-3333-3333-333333333333', 'Makeup', 100000, 60,
+  now() + interval '5 days', now() + interval '5 days 1 hour',
+  'Pelanggan Basi', '+6281200000009',
+  'PENDING', now() - interval '1 minute'
+);
+select case when public.reap_expired_bookings() >= 1
+            then 'OK   reap_expired_bookings membatalkan booking kedaluwarsa'
+            else 'FAIL reap_expired_bookings tidak membatalkan apa pun' end as t13d;
+
+-- 13e. Kolom webhook token ada, dan upsert versi lama (4 argumen) sudah hilang.
+select
+  case when exists (
+         select 1 from information_schema.columns
+         where table_schema = 'private' and table_name = 'payment_credentials'
+           and column_name = 'webhook_token_encrypted')
+       then 'OK   kolom webhook_token_encrypted ada'
+       else 'FAIL kolom webhook_token_encrypted tidak ada' end as t13e_col,
+  case when (select count(*) from pg_proc
+             where pronamespace = 'public'::regnamespace
+               and proname = 'upsert_payment_credential') = 1
+       then 'OK   hanya ada satu versi upsert_payment_credential'
+       else 'FAIL ada lebih dari satu versi upsert_payment_credential' end as t13e_fn;
