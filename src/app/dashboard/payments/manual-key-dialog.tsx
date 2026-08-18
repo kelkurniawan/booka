@@ -119,6 +119,31 @@ function ManualKeyForm({
         )}
       </Field>
 
+      {provider === "XENDIT" ? (
+        <Field data-invalid={Boolean(state.fieldErrors?.webhookToken)}>
+          <FieldLabel htmlFor="webhookToken">Callback Token (opsional)</FieldLabel>
+          <Input
+            id="webhookToken"
+            name="webhookToken"
+            type="password"
+            autoComplete="off"
+            placeholder="Callback Token dari dashboard Xendit"
+            aria-invalid={Boolean(state.fieldErrors?.webhookToken)}
+          />
+          {state.fieldErrors?.webhookToken ? (
+            <FieldError>{state.fieldErrors.webhookToken}</FieldError>
+          ) : (
+            <FieldDescription>
+              Ambil dari dashboard Xendit → Settings → Webhooks. Ini BUKAN Secret
+              Key di atas — token ini hanya dipakai untuk memverifikasi webhook
+              pembayaran, bukan membuat kode QRIS. Kalau dikosongkan, webhook
+              Xendit untuk merchant ini tidak akan bisa memverifikasi
+              pembayaran sampai diisi lewat form ini lagi.
+            </FieldDescription>
+          )}
+        </Field>
+      ) : null}
+
       {state.status === "error" && !state.fieldErrors ? (
         <Alert variant="destructive">
           <AlertTitle>Gagal menghubungkan</AlertTitle>

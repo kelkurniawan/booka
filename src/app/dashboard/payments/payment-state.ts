@@ -5,7 +5,7 @@
  * catatan yang sama di src/app/dashboard/services/service-state.ts.
  */
 
-type FieldName = "provider" | "serverKey" | "environment";
+type FieldName = "provider" | "serverKey" | "environment" | "webhookToken";
 
 export type ManualKeyFormState = {
   status: "idle" | "error" | "success";

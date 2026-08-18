@@ -208,24 +208,45 @@ export type Database = {
         Returns: { used: number; quota: number | null }[];
       };
       /**
-       * Membaca kredensial terenkripsi milik merchant untuk satu provider.
+       * Membaca kredensial terenkripsi milik merchant untuk satu provider,
+       * termasuk token verifikasi webhook (kolom terpisah dari access
+       * token -- lihat supabase/migrations/20260813120100_webhook_token_credential.sql).
        * SECURITY DEFINER: memverifikasi kepemilikan connection_id lewat
        * merchant_id + provider sendiri, tidak mempercayai input lain.
        * Lihat supabase/migrations/20260730000600_payment_credential_rpc.sql.
        */
       get_payment_credential: {
         Args: { p_merchant_id: string; p_provider: PaymentProvider };
-        Returns: { access_token_encrypted: string; refresh_token_encrypted: string | null }[];
+        Returns: {
+          access_token_encrypted: string;
+          refresh_token_encrypted: string | null;
+          webhook_token_encrypted: string | null;
+        }[];
       };
-      /** Simpan/timpa kredensial merchant. Hanya dipanggil service_role. */
+      /**
+       * Simpan/timpa kredensial merchant. Hanya dipanggil service_role.
+       * `p_webhook_token_encrypted`: NULL saat UPDATE berarti "jangan ubah
+       * nilai yang sudah ada" (bukan "hapus") -- lihat migration di atas.
+       */
       upsert_payment_credential: {
         Args: {
           p_merchant_id: string;
           p_provider: PaymentProvider;
           p_access_token_encrypted: string;
           p_refresh_token_encrypted?: string | null;
+          p_webhook_token_encrypted?: string | null;
         };
         Returns: undefined;
+      };
+      /**
+       * Mencatat satu percobaan booking publik dan melaporkan apakah masih
+       * di bawah batas (3 per ip+merchant per 15 menit). Hanya dipanggil
+       * service_role dari POST /api/bookings. Lihat
+       * supabase/migrations/20260813120000_harden_booking_abuse.sql.
+       */
+      check_booking_rate_limit: {
+        Args: { p_ip_hash: string; p_merchant_id: string };
+        Returns: boolean;
       };
       /**
        * Membuat booking dalam satu transaksi (advisory lock per merchant +

@@ -45,3 +45,8 @@ next-env.d.ts
 
 # Claude Code: config lokal per-user, jangan ikut ter-commit
 .claude/settings.local.json
+
+# Kredensial OAuth yang diunduh dari Google Cloud Console. File ini berisi
+# client_secret dan TIDAK boleh masuk repo — secretnya dipasang di Supabase
+# (Authentication > Providers > Google), bukan di kode.
+client_secret_*.json

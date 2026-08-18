@@ -134,6 +134,7 @@ export async function handleWebhook(
     body,
     headers,
     credential: credential.credential,
+    webhookToken: credential.webhookToken,
   });
 
   if (!validSignature) {

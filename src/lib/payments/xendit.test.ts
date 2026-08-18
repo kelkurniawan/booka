@@ -25,7 +25,8 @@ test("verifyWebhookSignature: x-callback-token yang cocok diterima", () => {
   const result = xenditAdapter.verifyWebhookSignature({
     body: {},
     headers: { "x-callback-token": "token-rahasia-webhook" },
-    credential: "token-rahasia-webhook",
+    credential: "secret-key-tidak-relevan",
+    webhookToken: "token-rahasia-webhook",
   });
 
   assert.equal(result, true);
@@ -35,7 +36,8 @@ test("verifyWebhookSignature: x-callback-token yang tidak cocok ditolak", () => 
   const result = xenditAdapter.verifyWebhookSignature({
     body: {},
     headers: { "x-callback-token": "token-palsu" },
-    credential: "token-rahasia-webhook",
+    credential: "secret-key-tidak-relevan",
+    webhookToken: "token-rahasia-webhook",
   });
 
   assert.equal(result, false);
@@ -46,8 +48,24 @@ test("verifyWebhookSignature: header x-callback-token hilang ditolak, bukan thro
     const result = xenditAdapter.verifyWebhookSignature({
       body: {},
       headers: {},
-      credential: "token-rahasia-webhook",
+      credential: "secret-key-tidak-relevan",
+      webhookToken: "token-rahasia-webhook",
     });
+    assert.equal(result, false);
+  });
+});
+
+test("verifyWebhookSignature: webhookToken belum diisi (null) ditolak, bukan jatuh balik ke Secret Key", () => {
+  assert.doesNotThrow(() => {
+    const result = xenditAdapter.verifyWebhookSignature({
+      body: {},
+      headers: { "x-callback-token": "secret-key-tidak-relevan" },
+      credential: "secret-key-tidak-relevan",
+      webhookToken: null,
+    });
+    // credential (Secret Key) SENGAJA sama persis dengan header di atas --
+    // ini menegaskan tidak ada jatuh balik diam-diam ke Secret Key saat
+    // webhookToken belum diisi merchant.
     assert.equal(result, false);
   });
 });
@@ -57,7 +75,8 @@ test("verifyWebhookSignature: panjang token beda ditolak, bukan throw (timingSaf
     const result = xenditAdapter.verifyWebhookSignature({
       body: {},
       headers: { "x-callback-token": "pendek" },
-      credential: "token-rahasia-webhook-yang-jauh-lebih-panjang",
+      credential: "secret-key-tidak-relevan",
+      webhookToken: "token-rahasia-webhook-yang-jauh-lebih-panjang",
     });
     assert.equal(result, false);
   });

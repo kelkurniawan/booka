@@ -47,7 +47,14 @@ const SUPPORTED_VERSIONS = new Set([CURRENT_VERSION]);
 export type SecretContext = {
   merchantId: string;
   provider: PaymentProvider;
-  field: "access_token" | "refresh_token";
+  /**
+   * "webhook_token" ditambahkan untuk menyimpan token verifikasi webhook
+   * Xendit (lihat supabase/migrations/20260813120100_webhook_token_credential.sql)
+   * terpisah dari Secret Key charge. Ciphertext lama untuk
+   * access_token/refresh_token tidak terpengaruh -- AAD hanya perlu cocok
+   * per field, bukan per versi enum.
+   */
+  field: "access_token" | "refresh_token" | "webhook_token";
 };
 
 function buildAad(context: SecretContext): Buffer {

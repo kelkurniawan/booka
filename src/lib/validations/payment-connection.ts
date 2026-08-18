@@ -8,7 +8,16 @@ export const PAYMENT_ENVIRONMENTS = [
   "PRODUCTION",
 ] as const satisfies readonly PaymentEnvironment[];
 
-/** Form "Hubungkan dengan Server Key manual" — jalur yang benar-benar aktif hari ini. */
+/**
+ * Form "Hubungkan dengan Server Key manual" — jalur yang benar-benar aktif
+ * hari ini.
+ *
+ * `webhookToken` opsional dan hanya relevan untuk XENDIT (Callback Token dari
+ * dashboard Xendit → Settings → Webhooks, terpisah dari Secret Key — lihat
+ * supabase/migrations/20260813120100_webhook_token_credential.sql). Tetap
+ * divalidasi di sini walau field-nya tidak dirender untuk MIDTRANS, supaya
+ * satu schema dipakai untuk kedua provider.
+ */
 export const manualKeySchema = z.object({
   provider: z.enum(PAYMENT_PROVIDERS, "Provider tidak dikenal"),
   serverKey: z
@@ -17,6 +26,11 @@ export const manualKeySchema = z.object({
     .min(10, "Server Key terlalu pendek — periksa lagi dari dashboard provider Anda")
     .max(500, "Server Key terlalu panjang"),
   environment: z.enum(PAYMENT_ENVIRONMENTS, "Pilih Sandbox atau Production"),
+  webhookToken: z
+    .string()
+    .trim()
+    .max(500, "Callback Token terlalu panjang")
+    .optional(),
 });
 
 export type ManualKeyInput = z.input<typeof manualKeySchema>;

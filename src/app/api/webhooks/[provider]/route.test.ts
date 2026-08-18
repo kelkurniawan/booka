@@ -86,7 +86,11 @@ function createFakeAdmin(booking: BookingLookupRow | null) {
   return { admin, updateCalls };
 }
 
-const VALID_CREDENTIAL: MerchantCredential = { environment: "SANDBOX", credential: "server-key-123" };
+const VALID_CREDENTIAL: MerchantCredential = {
+  environment: "SANDBOX",
+  credential: "server-key-123",
+  webhookToken: null,
+};
 
 function makeAdapter(verifyResult: boolean): PaymentProviderAdapter {
   return {

@@ -80,31 +80,32 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
 
 /**
  * Verifikasi webhook Xendit: bandingkan header `x-callback-token` terhadap
- * token verifikasi webhook merchant.
+ * token verifikasi webhook TERSENDIRI milik merchant (`webhookToken`) --
+ * nilai yang merchant atur sendiri lewat dashboard Xendit (Settings ->
+ * Webhooks), bukan turunan dari Secret Key API (`credential`). Kolomnya
+ * `private.payment_credentials.webhook_token_encrypted`, lihat
+ * supabase/migrations/20260813120100_webhook_token_credential.sql.
  *
- * Skema kredensial saat ini hanya menyimpan satu secret per koneksi
- * (`access_token_encrypted`), jadi untuk sementara token verifikasi webhook
- * dianggap sama dengan Secret Key yang dipakai untuk charge. Ini
- * penyederhanaan yang disengaja untuk MVP — kalau ternyata merchant perlu
- * token verifikasi webhook yang berbeda dari Secret Key, Task 9 (webhook
- * handler) yang akan menambah kolom/field kredensial terpisah.
- *
- * KETERBATASAN (dicatat saat Task 9/webhook handler selesai, TIDAK
- * diperbaiki di sini -- Midtrans adalah jalur utama, Xendit sekunder):
- * asumsi di atas TIDAK berlaku untuk Xendit sungguhan. Callback token
- * Xendit adalah nilai TERPISAH yang dikonfigurasi merchant sendiri lewat
- * dashboard Xendit (Settings -> Webhooks), bukan turunan dari Secret Key
- * API. Memakai Secret Key sebagai pengganti di sini berarti webhook Xendit
- * asli akan SELALU gagal verifikasi (401) sampai field callback token
- * terpisah ditambahkan ke skema kredensial dan dipakai di sini
- * menggantikan `credential`/Secret Key. Jalur webhook Midtrans tidak
- * terpengaruh -- keterbatasan ini murni di adapter Xendit.
+ * Kalau merchant belum mengisi token webhook, verifikasi TIDAK PERNAH jatuh
+ * balik diam-diam ke Secret Key -- itu yang membuat webhook Xendit asli
+ * sebelumnya selalu gagal (401), lihat riwayat di migration di atas. Di sini
+ * cukup ditolak dengan alasan yang jelas di log.
  */
-function verifyWebhookSignature({ headers, credential }: VerifyWebhookSignatureParams): boolean {
+function verifyWebhookSignature({
+  headers,
+  webhookToken,
+}: VerifyWebhookSignatureParams): boolean {
   const token = headers["x-callback-token"];
   if (!token) return false;
 
-  const expectedBuf = Buffer.from(credential, "utf8");
+  if (!webhookToken) {
+    console.warn(
+      "[xendit] verifyWebhookSignature: merchant belum mengisi Callback Token webhook, ditolak",
+    );
+    return false;
+  }
+
+  const expectedBuf = Buffer.from(webhookToken, "utf8");
   const actualBuf = Buffer.from(token, "utf8");
 
   if (expectedBuf.length !== actualBuf.length) return false;

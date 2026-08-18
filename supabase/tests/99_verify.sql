@@ -254,13 +254,13 @@ select
   case when has_function_privilege('service_role', 'public.get_payment_credential(uuid, public.payment_provider)', 'EXECUTE')
        then 'OK   service_role bisa memanggil get_payment_credential'
        else 'FAIL service_role TIDAK bisa memanggil get_payment_credential' end as t10c,
-  case when has_function_privilege('anon', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'FAIL anon bisa memanggil upsert_payment_credential'
        else 'OK   anon TIDAK bisa memanggil upsert_payment_credential' end as t10d,
-  case when has_function_privilege('authenticated', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil upsert_payment_credential'
        else 'OK   authenticated TIDAK bisa memanggil upsert_payment_credential' end as t10e,
-  case when has_function_privilege('service_role', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.upsert_payment_credential(uuid, public.payment_provider, text, text, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil upsert_payment_credential'
        else 'FAIL service_role TIDAK bisa memanggil upsert_payment_credential' end as t10f;
 
@@ -311,7 +311,7 @@ from public.get_payment_credential('99999999-9999-9999-9999-999999999999', 'MIDT
 -- Helper: seperti expect_fail, tapi juga memverifikasi SQLSTATE-nya persis
 -- sama dengan yang diharapkan. Dipakai di sini karena pemetaan errcode ->
 -- pesan Indonesia di src/lib/booking/errors.ts bergantung pada errcode yang
--- BENAR, bukan cuma "ada error" -- 23P01 (bentrok), P0002 (kuota), dan P0004
+-- BENAR, bukan cuma "ada error" -- 23P01 (bentrok), P0002 (kuota), dan BK001
 -- (di luar jam kerja) harus bisa dibedakan satu sama lain oleh route handler.
 create or replace function pg_temp.expect_fail_code(sql text, expected_code text, label text)
 returns text language plpgsql as $$
@@ -327,24 +327,45 @@ exception when others then
   end if;
 end $$;
 
+-- Tanggal untuk tes create_booking WAJIB relatif terhadap now(), bukan
+-- tanggal keras. Sejak create_booking menolak slot lampau (P0006, migration
+-- 20260731000100), setiap tanggal keras pasti berubah jadi masa lalu suatu
+-- saat dan membuat tes gagal dengan errcode yang salah -- persis yang terjadi
+-- pada 11e ketika hari nyata melewati 2026-08-11.
+--
+-- p_weeks minimal 1 supaya hasilnya selalu di masa depan, termasuk ketika
+-- hari ini kebetulan hari yang sama dengan p_dow.
+create or replace function pg_temp.jakarta_future(p_dow integer, p_weeks integer, p_time text)
+returns timestamptz language sql stable as $$
+  select (
+    date_trunc('day', (now() at time zone 'Asia/Jakarta'))
+    + (((p_dow - extract(isodow from (now() at time zone 'Asia/Jakarta'))::int) + 7) % 7) * interval '1 day'
+    + (p_weeks * interval '7 days')
+    + p_time::interval
+  ) at time zone 'Asia/Jakarta';
+$$;
+
 -- 11a. Booking pertama sukses: Selasa 11:00-12:30 (Makeup Wisuda, 90 menit),
 -- di dalam jam kerja 11:00-14:00.
 select pg_temp.expect_ok(
   $q$select * from public.create_booking(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Wisuda'),
-    '2026-08-18 11:00+07', 'Pelanggan Booking A', '+6281199991111'
+    pg_temp.jakarta_future(2, 1, '11:00'), 'Pelanggan Booking A', '+6281199991111'
   )$q$,
   'create_booking sukses: Selasa 11:00-12:30 di dalam jam kerja');
 
 -- Snapshot service_name/service_price/duration_minutes wajib berasal dari
 -- tabel services yang dibaca ulang di dalam fungsi, dan end_datetime wajib
 -- persis start_datetime + duration_minutes layanan tersebut (90 menit).
+-- Yang diuji adalah INVARIAN-nya (end = start + durasi layanan), bukan dua
+-- timestamp absolut. Selain tahan terhadap pergeseran tanggal, ini juga
+-- menguji hal yang sebenarnya penting: durasi diambil dari tabel services,
+-- bukan dari input pemanggil.
 select case when service_name = 'Makeup Wisuda'
               and service_price = 350000
               and duration_minutes = 90
-              and start_datetime = '2026-08-18 11:00+07'::timestamptz
-              and end_datetime = '2026-08-18 12:30+07'::timestamptz
+              and end_datetime = start_datetime + interval '90 minutes'
             then 'OK   create_booking menyimpan snapshot service + end_datetime = start + duration_minutes'
             else 'FAIL snapshot booking A -> ' || service_name || ' ' || service_price || ' '
               || duration_minutes || ' ' || start_datetime || ' - ' || end_datetime end as t11a
@@ -358,22 +379,22 @@ select pg_temp.expect_fail_code(
   $q$select * from public.create_booking(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Akad'),
-    '2026-08-18 12:00+07', 'Pelanggan Booking B', '+6281199992222'
+    pg_temp.jakarta_future(2, 1, '12:00'), 'Pelanggan Booking B', '+6281199992222'
   )$q$,
   '23P01',
   'create_booking ditolak (23P01): 12:00-14:00 bentrok dengan 11:00-12:30');
 
 -- 11c. Slot di luar jam kerja: Selasa 08:00 (jam kerja mulai 11:00) -> harus
--- ditolak errcode P0004, bukan lolos begitu saja karena tidak ada booking
+-- ditolak errcode BK001, bukan lolos begitu saja karena tidak ada booking
 -- lain yang bentrok pada jam itu.
 select pg_temp.expect_fail_code(
   $q$select * from public.create_booking(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Wisuda'),
-    '2026-08-18 08:00+07', 'Pelanggan Booking C', '+6281199993333'
+    pg_temp.jakarta_future(2, 1, '08:00'), 'Pelanggan Booking C', '+6281199993333'
   )$q$,
-  'P0004',
-  'create_booking ditolak (P0004): 08:00 Selasa sebelum jam kerja mulai (11:00)');
+  'BK001',
+  'create_booking ditolak (BK001): 08:00 Selasa sebelum jam kerja mulai (11:00)');
 
 -- 11d. Layanan tidak aktif -> harus ditolak errcode P0005, bukan diam-diam
 -- membuat booking untuk layanan yang sudah merchant nonaktifkan.
@@ -384,7 +405,7 @@ select pg_temp.expect_fail_code(
   $q$select * from public.create_booking(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Layanan Nonaktif'),
-    '2026-08-25 11:00+07', 'Pelanggan Booking D', '+6281199995555'
+    pg_temp.jakarta_future(2, 2, '11:00'), 'Pelanggan Booking D', '+6281199995555'
   )$q$,
   'P0005',
   'create_booking ditolak (P0005): layanan sudah tidak aktif');
@@ -401,7 +422,7 @@ select pg_temp.expect_fail_code(
   $q$select * from public.create_booking(
     '11111111-1111-1111-1111-111111111111',
     (select id from public.services where merchant_id = '11111111-1111-1111-1111-111111111111' and name = 'Makeup Akad'),
-    '2026-08-11 11:00+07', 'Pelanggan Booking E', '+6281199994444'
+    pg_temp.jakarta_future(2, 3, '11:00'), 'Pelanggan Booking E', '+6281199994444'
   )$q$,
   'P0002',
   'create_booking ditolak (P0002): kuota bulanan STARTER sudah habis');
@@ -464,3 +485,129 @@ select
   case when has_column_privilege('authenticated', 'public.merchants', 'onboarded_at', 'UPDATE')
        then 'OK   authenticated bisa UPDATE merchants.onboarded_at'
        else 'FAIL authenticated TIDAK bisa UPDATE merchants.onboarded_at' end as t11h_onboarded;
+
+-- ===========================================================================
+-- 12. Booking PENDING kedaluwarsa tidak boleh memakan kuota / mengunci slot
+-- (migration 20260731000200). Sebelumnya baris basi baru dibersihkan cron;
+-- sejak cron turun jadi harian, jendela itu sampai 24 jam.
+-- ===========================================================================
+
+-- Merchant terpisah supaya tidak mengganggu hitungan blok tes sebelumnya.
+insert into auth.users (id, email) values
+  ('22222222-2222-2222-2222-222222222222', 'expired@example.com');
+update public.merchants
+  set username = 'studio-expired', subscription_tier = 'STARTER', onboarded_at = now()
+  where id = '22222222-2222-2222-2222-222222222222';
+insert into public.services (id, merchant_id, name, price, duration_minutes)
+  values ('33333333-3333-3333-3333-333333333333',
+          '22222222-2222-2222-2222-222222222222', 'Makeup', 100000, 60);
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+  select '22222222-2222-2222-2222-222222222222', d, '09:00', '17:00'
+  from generate_series(1, 7) d;
+
+-- Satu booking PENDING yang batas bayarnya SUDAH lewat.
+insert into public.bookings (
+  merchant_id, service_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, expires_at
+) values (
+  '22222222-2222-2222-2222-222222222222',
+  '33333333-3333-3333-3333-333333333333', 'Makeup', 100000, 60,
+  now() + interval '3 days', now() + interval '3 days 1 hour',
+  'Pelanggan Kabur', '+6281200000001',
+  'PENDING', now() - interval '1 minute'
+);
+
+select case when public.count_bookings_this_month('22222222-2222-2222-2222-222222222222') = 0
+            then 'OK   PENDING kedaluwarsa TIDAK memakan kuota'
+            else 'FAIL PENDING kedaluwarsa masih dihitung kuota' end as t12a;
+
+select case when count(*) = 0
+            then 'OK   PENDING kedaluwarsa TIDAK menutup slot (get_booked_ranges)'
+            else 'FAIL PENDING kedaluwarsa masih menutup slot' end as t12b
+from public.get_booked_ranges('studio-expired', now(), now() + interval '7 days');
+
+-- Slot yang sama harus bisa dipesan ulang: create_booking membatalkan baris
+-- basi di dalam advisory lock, jadi bookings_no_overlap tidak lagi menolak.
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '22222222-2222-2222-2222-222222222222',
+       '33333333-3333-3333-3333-333333333333',
+       (date_trunc('day', now() at time zone 'Asia/Jakarta') + interval '3 days 10 hours')
+         at time zone 'Asia/Jakarta',
+       'Pelanggan Baru', '+6281200000002')$q$,
+  'slot bekas PENDING kedaluwarsa bisa dipesan ulang');
+
+select case when count(*) = 1
+            then 'OK   baris PENDING kedaluwarsa jadi CANCELLED oleh create_booking'
+            else 'FAIL pembersihan inline tidak terjadi (' || count(*) || ' baris)' end as t12d
+from public.bookings
+where merchant_id = '22222222-2222-2222-2222-222222222222'
+  and status = 'CANCELLED'
+  and cancel_reason = 'DP tidak dibayar dalam batas waktu';
+
+-- ===========================================================================
+-- 13. Rate limit booking + token webhook terpisah
+-- (migration 20260813120000 dan 20260813120100)
+-- ===========================================================================
+
+-- 13a. Tiga percobaan pertama lolos, yang keempat ditolak.
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 1 diizinkan'
+            else 'FAIL percobaan 1 seharusnya diizinkan' end as t13a1;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 2 diizinkan'
+            else 'FAIL percobaan 2 seharusnya diizinkan' end as t13a2;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: percobaan 3 diizinkan'
+            else 'FAIL percobaan 3 seharusnya diizinkan' end as t13a3;
+select case when public.check_booking_rate_limit('hash-uji-1', '22222222-2222-2222-2222-222222222222')
+            then 'FAIL percobaan 4 seharusnya DITOLAK'
+            else 'OK   rate limit: percobaan 4 ditolak' end as t13a4;
+
+-- 13b. Batasnya per (ip, merchant): IP lain pada merchant sama tetap lolos.
+select case when public.check_booking_rate_limit('hash-uji-2', '22222222-2222-2222-2222-222222222222')
+            then 'OK   rate limit: IP berbeda tidak ikut terblokir'
+            else 'FAIL IP berbeda seharusnya masih diizinkan' end as t13b;
+
+-- 13c. anon/authenticated tidak boleh menyentuh tabel maupun fungsinya.
+select
+  case when has_table_privilege('anon', 'public.booking_attempts', 'SELECT')
+       then 'FAIL anon bisa membaca booking_attempts'
+       else 'OK   anon TIDAK punya akses booking_attempts' end as t13c_anon,
+  case when has_function_privilege('anon', 'public.check_booking_rate_limit(text, uuid)', 'EXECUTE')
+       then 'FAIL anon bisa memanggil check_booking_rate_limit'
+       else 'OK   anon TIDAK bisa memanggil check_booking_rate_limit' end as t13c_fn,
+  case when has_function_privilege('service_role', 'public.check_booking_rate_limit(text, uuid)', 'EXECUTE')
+       then 'OK   service_role bisa memanggil check_booking_rate_limit'
+       else 'FAIL service_role TIDAK bisa memanggil check_booking_rate_limit' end as t13c_svc;
+
+-- 13d. reap_expired_bookings membatalkan PENDING kedaluwarsa lintas merchant.
+insert into public.bookings (
+  merchant_id, service_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, expires_at
+) values (
+  '22222222-2222-2222-2222-222222222222',
+  '33333333-3333-3333-3333-333333333333', 'Makeup', 100000, 60,
+  now() + interval '5 days', now() + interval '5 days 1 hour',
+  'Pelanggan Basi', '+6281200000009',
+  'PENDING', now() - interval '1 minute'
+);
+select case when public.reap_expired_bookings() >= 1
+            then 'OK   reap_expired_bookings membatalkan booking kedaluwarsa'
+            else 'FAIL reap_expired_bookings tidak membatalkan apa pun' end as t13d;
+
+-- 13e. Kolom webhook token ada, dan upsert versi lama (4 argumen) sudah hilang.
+select
+  case when exists (
+         select 1 from information_schema.columns
+         where table_schema = 'private' and table_name = 'payment_credentials'
+           and column_name = 'webhook_token_encrypted')
+       then 'OK   kolom webhook_token_encrypted ada'
+       else 'FAIL kolom webhook_token_encrypted tidak ada' end as t13e_col,
+  case when (select count(*) from pg_proc
+             where pronamespace = 'public'::regnamespace
+               and proname = 'upsert_payment_credential') = 1
+       then 'OK   hanya ada satu versi upsert_payment_credential'
+       else 'FAIL ada lebih dari satu versi upsert_payment_credential' end as t13e_fn;

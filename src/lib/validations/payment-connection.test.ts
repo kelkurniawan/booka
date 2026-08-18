@@ -49,3 +49,18 @@ test("maskCredential hanya menyisakan 4 karakter terakhir", () => {
 test("maskCredential pada string pendek tidak melempar", () => {
   assert.equal(maskCredential("abc"), "••••abc");
 });
+
+test("webhookToken opsional -- valid tanpa diisi sama sekali", () => {
+  const parsed = manualKeySchema.parse(VALID);
+  assert.equal(parsed.webhookToken, undefined);
+});
+
+test("webhookToken diisi dan di-trim", () => {
+  const parsed = manualKeySchema.parse({ ...VALID, webhookToken: "  callback-token-123  " });
+  assert.equal(parsed.webhookToken, "callback-token-123");
+});
+
+test("webhookToken lebih dari 500 karakter ditolak", () => {
+  const result = manualKeySchema.safeParse({ ...VALID, webhookToken: "A".repeat(501) });
+  assert.equal(result.success, false);
+});
