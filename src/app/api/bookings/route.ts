@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { mapBookingError } from "@/lib/booking/errors";
+import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
 import { getAdapter } from "@/lib/payments";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
+import { selectActiveConnection } from "@/lib/payments/select-connection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createBookingRequestSchema } from "@/lib/validations/booking";
 
@@ -20,12 +22,16 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  *      supaya satu-satunya sumber kebenaran identitas merchant konsisten
  *      dengan GET /api/slots) lalu layanan (difilter aktif + milik
  *      merchant itu).
- *   3. Pastikan merchant sudah punya koneksi payment ACTIVE -- booking yang
+ *   3. Cek rate limit lewat RPC `check_booking_rate_limit` (3 percobaan per
+ *      ip+merchant per 15 menit) -- IP pemanggil di-hash dulu, tidak pernah
+ *      dikirim/dicatat mentah. Lihat src/lib/booking/rate-limit.ts dan
+ *      supabase/migrations/20260813120000_harden_booking_abuse.sql.
+ *   4. Pastikan merchant sudah punya koneksi payment ACTIVE -- booking yang
  *      tidak bisa dibayar tidak boleh pernah tersimpan.
- *   4. Panggil RPC `create_booking` (SECURITY DEFINER) -- transaksi
+ *   5. Panggil RPC `create_booking` (SECURITY DEFINER) -- transaksi
  *      insert-nya sendiri yang membaca ulang harga dari `services` dan
  *      menjaga slot bentrok/kuota, lihat migration-nya.
- *   5. Buat charge QRIS lewat adapter provider merchant, simpan
+ *   6. Buat charge QRIS lewat adapter provider merchant, simpan
  *      payment_url/payment_reference/payment_provider ke baris booking.
  *      Kalau langkah ini gagal, booking yang SUDAH tersimpan (PENDING)
  *      dibatalkan di sini juga -- lihat komentar di catch block.
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest) {
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id")
+    .select("id, active_payment_provider")
     .eq("username", username)
     .maybeSingle();
 
@@ -91,22 +97,51 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Rate limit percobaan booking (3 per ip+merchant per 15 menit) -- lihat
+  // check_booking_rate_limit di supabase/migrations/20260813120000_harden_
+  // booking_abuse.sql. IP di-hash sebelum dikirim, TIDAK PERNAH mentah.
+  //
+  // Gagal MEMANGGIL rate limit (network/DB error) tidak memblokir booking --
+  // mengikuti filosofi yang sama dengan p_ip_hash kosong di fungsi SQL-nya
+  // ("membiarkan lewat lebih aman daripada memblokir semua orang"), cukup
+  // dicatat di log supaya kalau ini sering terjadi tetap terlihat.
+  const ipHash = hashClientIp(extractClientIp(request.headers));
+  const { data: rateLimitAllowed, error: rateLimitError } = await supabase.rpc(
+    "check_booking_rate_limit",
+    { p_ip_hash: ipHash, p_merchant_id: merchant.id },
+  );
+
+  if (rateLimitError) {
+    console.error("[api/bookings] gagal memeriksa rate limit, melanjutkan (fail-open)", {
+      merchantId: merchant.id,
+      error: rateLimitError,
+    });
+  } else if (!rateLimitAllowed) {
+    return NextResponse.json(
+      { error: "Terlalu banyak percobaan pemesanan. Coba lagi beberapa menit lagi." },
+      { status: 429 },
+    );
+  }
+
   // Booking yang tidak bisa dibayar tidak boleh pernah tersimpan -- cek
   // koneksi payment SEBELUM memanggil create_booking, bukan sesudahnya.
-  // Merchant bisa saja punya koneksi ACTIVE untuk kedua provider sekaligus
-  // (belum ada UI untuk memilih satu default -- `merchants.active_payment_
-  // provider` belum pernah di-set kode manapun, lihat docs/DECISIONS.md
-  // bagian 3); dipilih yang paling lama tersambung supaya hasilnya
-  // deterministik, bukan sekadar baris pertama yang kebetulan dikembalikan
-  // Postgres.
-  const { data: connection, error: connectionError } = await supabase
+  // Merchant bisa saja punya koneksi ACTIVE untuk kedua provider sekaligus.
+  // Kalau merchant sudah pernah memilih satu provider eksplisit lewat
+  // halaman Pembayaran (`merchants.active_payment_provider`, di-set di
+  // src/app/dashboard/payments/actions.ts) DAN koneksi itu masih ACTIVE,
+  // itu yang dipakai. Kalau belum pernah (merchant lama) atau koneksi
+  // pilihannya sudah dicabut/kedaluwarsa, jatuh balik ke koneksi ACTIVE yang
+  // paling lama tersambung supaya hasilnya tetap deterministik, bukan
+  // sekadar baris pertama yang kebetulan dikembalikan Postgres. Aturan
+  // pemilihannya sendiri ada di src/lib/payments/select-connection.ts,
+  // supaya endpoint ini dan halaman Pembayaran (badge "Dipakai untuk booking
+  // baru") tidak bisa diam-diam tidak sinkron.
+  const { data: activeConnections, error: connectionError } = await supabase
     .from("payment_connections")
     .select("provider")
     .eq("merchant_id", merchant.id)
     .eq("status", "ACTIVE")
-    .order("connected_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
+    .order("connected_at", { ascending: true });
 
   if (connectionError) {
     console.error("[api/bookings] gagal memuat koneksi payment", {
@@ -115,6 +150,11 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ error: "Gagal memuat data pembayaran merchant" }, { status: 500 });
   }
+
+  const connection = selectActiveConnection(
+    activeConnections ?? [],
+    merchant.active_payment_provider,
+  );
   if (!connection) {
     return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
   }
