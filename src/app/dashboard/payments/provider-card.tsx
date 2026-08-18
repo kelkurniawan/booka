@@ -45,11 +45,20 @@ export function ProviderCard({
   provider,
   connection,
   maskedCredential,
+  isUsedForBooking,
 }: {
   provider: PaymentProvider;
   connection: PaymentConnection | null;
   /** Maksimal 4 karakter terakhir Server Key/token -- lihat maskCredential(). TIDAK PERNAH kredensial penuh. */
   maskedCredential: string | null;
+  /**
+   * True kalau provider ini yang dipakai POST /api/bookings untuk booking
+   * baru -- lihat selectActiveConnection di
+   * src/lib/payments/select-connection.ts. Pemanggil (page.tsx) hanya
+   * menyalakannya kalau merchant punya lebih dari satu koneksi ACTIVE;
+   * kalau cuma satu, tidak ada ambiguitas yang perlu dijelaskan lewat badge.
+   */
+  isUsedForBooking: boolean;
 }) {
   const meta = PROVIDER_META[provider];
   const isActive = connection?.status === "ACTIVE";
@@ -76,7 +85,7 @@ export function ProviderCard({
         <CardHeader>
           <CardTitle>{meta.name}</CardTitle>
           <CardDescription>{meta.description}</CardDescription>
-          <CardAction>
+          <CardAction className="flex flex-col items-end gap-1">
             {isActive ? (
               <Badge variant="secondary">
                 <ShieldCheck /> Terhubung
@@ -86,6 +95,9 @@ export function ProviderCard({
             ) : (
               <Badge variant="outline">Belum terhubung</Badge>
             )}
+            {isActive && isUsedForBooking ? (
+              <Badge variant="default">Dipakai untuk booking baru</Badge>
+            ) : null}
           </CardAction>
         </CardHeader>
 

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
+import { selectActiveConnection } from "@/lib/payments/select-connection";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { maskCredential } from "@/lib/validations/payment-connection";
@@ -31,14 +32,29 @@ export default async function PaymentsPage({
 
   const { connected, oauth_error: oauthError, provider: errorProvider } = await searchParams;
 
-  const { data: connectionRows } = await supabase
-    .from("payment_connections")
-    .select("*")
-    .eq("merchant_id", user.id);
+  const [{ data: connectionRows }, { data: merchantRow }] = await Promise.all([
+    supabase.from("payment_connections").select("*").eq("merchant_id", user.id),
+    supabase.from("merchants").select("active_payment_provider").eq("id", user.id).maybeSingle(),
+  ]);
 
   const connectionByProvider = new Map<PaymentProvider, PaymentConnection>(
     (connectionRows ?? []).map((row) => [row.provider, row]),
   );
+
+  // Provider yang benar-benar dipakai POST /api/bookings untuk booking baru
+  // -- aturan yang SAMA PERSIS dengan route itu (selectActiveConnection),
+  // supaya badge di bawah tidak bisa diam-diam tidak sinkron dengan
+  // perilaku booking sungguhan. Badge hanya ditampilkan kalau merchant
+  // punya LEBIH DARI SATU koneksi ACTIVE -- kalau cuma satu, tidak ada
+  // ambiguitas untuk dijelaskan.
+  const activeConnections = (connectionRows ?? [])
+    .filter((row) => row.status === "ACTIVE")
+    .sort((a, b) => a.connected_at.localeCompare(b.connected_at));
+  const usedForBookingProvider: PaymentProvider | null =
+    activeConnections.length > 1
+      ? (selectActiveConnection(activeConnections, merchantRow?.active_payment_provider ?? null)
+          ?.provider ?? null)
+      : null;
 
   // Server Key/token TIDAK PERNAH dikirim penuh ke browser — didekripsi di
   // sini hanya untuk dipotong jadi 4 karakter terakhir sebelum dirender.
@@ -52,7 +68,12 @@ export default async function PaymentsPage({
         if (credential) maskedCredential = maskCredential(credential.credential);
       }
 
-      return { provider, connection, maskedCredential };
+      return {
+        provider,
+        connection,
+        maskedCredential,
+        isUsedForBooking: usedForBookingProvider === provider,
+      };
     }),
   );
 
@@ -65,12 +86,13 @@ export default async function PaymentsPage({
       <OAuthStatusToast connected={connected} oauthError={oauthError} provider={errorProvider} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        {cards.map(({ provider, connection, maskedCredential }) => (
+        {cards.map(({ provider, connection, maskedCredential, isUsedForBooking }) => (
           <ProviderCard
             key={provider}
             provider={provider}
             connection={connection}
             maskedCredential={maskedCredential}
+            isUsedForBooking={isUsedForBooking}
           />
         ))}
       </div>
