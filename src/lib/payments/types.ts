@@ -35,17 +35,25 @@ export type QrisCharge = {
 };
 
 /**
- * Parameter memverifikasi signature webhook. `credential` wajib diberikan
- * eksplisit oleh pemanggil (bukan dibaca ulang oleh adapter dari DB) supaya
- * adapter tetap murni: tidak menyentuh Supabase sama sekali.
+ * Parameter memverifikasi signature webhook. `credential`/`webhookToken`
+ * wajib diberikan eksplisit oleh pemanggil (bukan dibaca ulang oleh adapter
+ * dari DB) supaya adapter tetap murni: tidak menyentuh Supabase sama sekali.
+ *
+ * Keduanya dikirim TERPISAH karena artinya beda per provider (lihat
+ * supabase/migrations/20260813120100_webhook_token_credential.sql): Midtrans
+ * memverifikasi lewat signature yang dihitung dari Server Key (`credential`),
+ * sedangkan Xendit membandingkan header `x-callback-token` terhadap token
+ * webhook TERSENDIRI (`webhookToken`) yang bukan turunan Secret Key.
  */
 export type VerifyWebhookSignatureParams = {
   /** Body webhook, sudah di-parse JSON. */
   body: Record<string, unknown>;
   /** Header request webhook. Key TIDAK case-sensitive secara jaminan — pemanggil sebaiknya kirim lower-case. */
   headers: Record<string, string>;
-  /** Server Key / token verifikasi webhook merchant, plaintext. */
+  /** Server Key (Midtrans) / Secret Key (Xendit) merchant, plaintext. */
   credential: string;
+  /** Token verifikasi webhook merchant, plaintext. `null` kalau belum diisi. Dipakai Xendit; diabaikan Midtrans. */
+  webhookToken: string | null;
 };
 
 export interface PaymentProviderAdapter {

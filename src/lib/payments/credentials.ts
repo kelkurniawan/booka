@@ -8,6 +8,14 @@ export type MerchantCredential = {
   environment: PaymentEnvironment;
   /** Server Key / access token, plaintext — SUDAH didekripsi. Jangan pernah dikirim ke browser. */
   credential: string;
+  /**
+   * Token verifikasi webhook (callback token Xendit), plaintext — SUDAH
+   * didekripsi. `null` kalau merchant belum mengisinya (selalu `null` untuk
+   * Midtrans, yang memverifikasi lewat signature Server Key, bukan token
+   * terpisah — lihat verifyWebhookSignature di midtrans.ts). Jangan pernah
+   * dikirim ke browser atau ditampilkan balik di UI, sama seperti `credential`.
+   */
+  webhookToken: string | null;
 };
 
 /**
@@ -55,7 +63,15 @@ export async function loadMerchantCredential(
     field: "access_token",
   });
 
-  return { environment: connection.environment, credential };
+  const webhookToken = row.webhook_token_encrypted
+    ? decryptSecret(row.webhook_token_encrypted, {
+        merchantId,
+        provider,
+        field: "webhook_token",
+      })
+    : null;
+
+  return { environment: connection.environment, credential, webhookToken };
 }
 
 /**
@@ -67,15 +83,21 @@ export async function loadMerchantCredential(
  * OAuth callback) bertanggung jawab membuat/memastikan baris koneksinya
  * lebih dulu.
  *
- * `accessToken`/`refreshToken` di sini PLAINTEXT — dienkripsi di dalam
- * fungsi ini sebelum dikirim ke database, jadi pemanggil tidak perlu (dan
- * tidak boleh) mengenkripsi sendiri.
+ * `accessToken`/`refreshToken`/`webhookToken` di sini PLAINTEXT — dienkripsi
+ * di dalam fungsi ini sebelum dikirim ke database, jadi pemanggil tidak perlu
+ * (dan tidak boleh) mengenkripsi sendiri.
+ *
+ * `webhookToken` tidak diisi (undefined/null) berarti "jangan ubah" saat
+ * UPDATE — RPC `upsert_payment_credential` yang menegakkan semantik ini
+ * (coalesce ke nilai lama), supaya menyimpan ulang Server Key tidak diam-diam
+ * menghapus callback token Xendit yang sudah ada.
  */
 export async function storeMerchantCredential(params: {
   merchantId: string;
   provider: PaymentProvider;
   accessToken: string;
   refreshToken?: string | null;
+  webhookToken?: string | null;
 }): Promise<void> {
   const admin = createAdminClient();
 
@@ -93,11 +115,20 @@ export async function storeMerchantCredential(params: {
       })
     : null;
 
+  const webhookTokenEncrypted = params.webhookToken
+    ? encryptSecret(params.webhookToken, {
+        merchantId: params.merchantId,
+        provider: params.provider,
+        field: "webhook_token",
+      })
+    : null;
+
   const { error } = await admin.rpc("upsert_payment_credential", {
     p_merchant_id: params.merchantId,
     p_provider: params.provider,
     p_access_token_encrypted: accessTokenEncrypted,
     p_refresh_token_encrypted: refreshTokenEncrypted,
+    p_webhook_token_encrypted: webhookTokenEncrypted,
   });
 
   if (error) {

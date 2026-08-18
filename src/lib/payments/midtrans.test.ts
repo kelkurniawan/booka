@@ -44,6 +44,7 @@ test("verifyWebhookSignature: signature valid diterima", () => {
     body,
     headers: {},
     credential: serverKey,
+    webhookToken: null,
   });
 
   assert.equal(result, true);
@@ -56,6 +57,7 @@ test("verifyWebhookSignature: signature dari server key yang salah ditolak", () 
     body,
     headers: {},
     credential: "server-key-yang-salah",
+    webhookToken: null,
   });
 
   assert.equal(result, false);
@@ -70,6 +72,7 @@ test("verifyWebhookSignature: gross_amount diutak-atik (mismatch amount) ditolak
     body: tampered,
     headers: {},
     credential: serverKey,
+    webhookToken: null,
   });
 
   assert.equal(result, false);
@@ -85,6 +88,7 @@ test("verifyWebhookSignature: field wajib hilang (order_id) ditolak, bukan throw
     body: withoutOrderId,
     headers: {},
     credential: serverKey,
+    webhookToken: null,
   });
 
   assert.equal(result, false);
@@ -99,6 +103,7 @@ test("verifyWebhookSignature: signature_key panjangnya beda ditolak, bukan throw
       body,
       headers: {},
       credential: serverKey,
+      webhookToken: null,
     });
     assert.equal(result, false);
   });
