@@ -687,10 +687,12 @@ select case when has_column_privilege('anon', 'public.bookings', 'status', 'UPDA
             then 'FAIL anon bisa UPDATE bookings.status'
             else 'OK   anon TIDAK bisa UPDATE bookings.status' end as t15c;
 
--- 15d. Policy bookings_cancel_own ada untuk UPDATE, dan with_check memaksa
--- status baru SELALU 'CANCELLED' -- merchant tidak bisa memalsukan status
--- pembayaran (mis. set status='PAID') meski kolom status sudah ter-grant
--- UPDATE untuknya.
+-- 15d. Policy bookings_cancel_own ada untuk UPDATE, dan with_check menyebut
+-- 'CANCELLED'. CATATAN: ini cuma pengecekan BENTUK teks klausa lewat
+-- pg_policies -- klausa yang salah tapi kebetulan mengandung substring yang
+-- sama akan tetap lolos di sini. Bukti perilaku SUNGGUHAN (policy-nya benar-
+-- benar menolak/mengizinkan UPDATE yang tepat saat dieksekusi sebagai
+-- merchant) ada di blok 16 di bawah, bukan di sini.
 select case when exists (
          select 1 from pg_policies
          where schemaname = 'public'
@@ -699,5 +701,103 @@ select case when exists (
            and cmd = 'UPDATE'
            and with_check like '%CANCELLED%'
        )
-       then 'OK   policy bookings_cancel_own ada dan memaksa status baru jadi CANCELLED'
-       else 'FAIL policy bookings_cancel_own tidak ditemukan / with_check tidak memaksa CANCELLED' end as t15d;
+       then 'OK   policy bookings_cancel_own ada dan with_check menyebut CANCELLED (bentuk teks, lihat blok 16 untuk perilaku)'
+       else 'FAIL policy bookings_cancel_own tidak ditemukan / with_check tidak menyebut CANCELLED' end as t15d;
+
+-- 15e. Klausa USING policy bookings_cancel_own menyebut kedua status lama
+-- yang masih boleh diubah (PENDING, PAID) -- lagi-lagi cuma bentuk teks,
+-- perilakunya diuji sungguhan di blok 16.
+select case when exists (
+         select 1 from pg_policies
+         where schemaname = 'public'
+           and tablename = 'bookings'
+           and policyname = 'bookings_cancel_own'
+           and cmd = 'UPDATE'
+           and qual like '%PENDING%'
+           and qual like '%PAID%'
+       )
+       then 'OK   policy bookings_cancel_own USING menyebut status PENDING dan PAID (bentuk teks, lihat blok 16 untuk perilaku)'
+       else 'FAIL policy bookings_cancel_own USING tidak menyebut status PENDING/PAID' end as t15e;
+
+-- ===========================================================================
+-- 16. Perilaku SUNGGUHAN policy bookings_cancel_own -- dijalankan sebagai
+-- peran authenticated dengan sesi merchant disimulasikan lewat GUC
+-- request.jwt.claim.sub (dibaca auth.uid() di 00_supabase_stub.sql), bukan
+-- cuma dicek bentuk teksnya seperti 15d/15e. Dibungkus BEGIN/ROLLBACK
+-- supaya baik peran (SET LOCAL ROLE) maupun perubahan data yang mungkin
+-- berhasil di dalamnya sama sekali tidak membekas untuk tes-tes lain di
+-- file ini setelah blok ini selesai.
+-- ===========================================================================
+
+-- ID dua booking yang dipakai di bawah, diambil SEBAGAI SUPERUSER (koneksi
+-- psql harness ini, RLS tidak berlaku untuknya) SEBELUM berganti peran --
+-- supaya blok simulasi di bawah murni menguji UPDATE-nya sendiri, tidak
+-- tercampur dengan RLS SELECT (bookings_read_own) yang sudah pasti
+-- menyembunyikan baris merchant lain lebih dulu kalau di-query ulang di
+-- dalam sesi authenticated.
+select id as own_booking_id
+from public.bookings
+where merchant_id = '11111111-1111-1111-1111-111111111111'
+  and customer_whatsapp = '+6281199991111' \gset
+
+select id as other_booking_id
+from public.bookings
+where merchant_id = '22222222-2222-2222-2222-222222222222'
+  and customer_whatsapp = '+6281200000002' \gset
+
+begin;
+
+set local role authenticated;
+-- Stub auth.uid() di 00_supabase_stub.sql membaca GUC datar
+-- "request.jwt.claim.sub", BUKAN JSON request.jwt.claims seperti PostgREST
+-- sungguhan -- lihat definisi fungsinya.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+-- t16a. Merchant TIDAK BISA memalsukan status jadi 'PAID' pada booking
+-- MILIKNYA SENDIRI -- WITH CHECK menolak nilai status baru selain
+-- 'CANCELLED', meski kolom status sudah ter-grant UPDATE untuknya.
+-- expect_fail_code (bukan expect_fail biasa) dipakai supaya lolosnya tes ini
+-- BENAR-BENAR karena pelanggaran RLS (42501 -- insufficient_privilege,
+-- kode yang dipakai Postgres untuk "new row violates row-level security
+-- policy"), bukan kebetulan gagal karena sebab lain yang tidak terkait.
+select pg_temp.expect_fail_code(
+  format($q$update public.bookings set status = 'PAID' where id = %L$q$, :'own_booking_id'),
+  '42501',
+  'merchant memalsukan status jadi PAID pada booking miliknya sendiri (t16a)');
+
+-- t16b. Merchant TIDAK BISA mengubah booking MILIK MERCHANT LAIN -- USING
+-- memfilter baris berdasarkan merchant_id SEBELUM update dievaluasi, jadi
+-- hasilnya 0 baris berubah (bukan error), walau id booking target diketahui
+-- persis (id booking bukan rahasia -- dipakai sebagai orderId QRIS, lihat
+-- komentar di 20260819000100_booking_access_token.sql) dan tidak ada filter
+-- merchant_id di WHERE sama sekali -- membuktikan RLS-lah yang menahannya,
+-- bukan cuma filter aplikasi di actions.ts.
+with updated as (
+  update public.bookings
+  set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'percobaan tidak sah'
+  where id = :'other_booking_id'
+  returning id
+)
+select case when count(*) = 0
+            then 'OK   t16b merchant TIDAK bisa mengubah booking milik merchant lain (0 baris terpengaruh)'
+            else 'FAIL t16b merchant berhasil mengubah ' || count(*) || ' baris booking milik merchant lain' end as t16b
+from updated;
+
+-- t16c. Jalur legit: booking MILIK SENDIRI, status PENDING -> CANCELLED,
+-- BERHASIL DAN benar-benar mengubah barisnya (bukan cuma "tidak error" --
+-- expect_ok tidak menjamin ada baris yang berubah, karena UPDATE yang
+-- match 0 baris juga bukan error) -- membuktikan policy-nya benar-benar
+-- mengizinkan yang memang harus diizinkan, bukan cuma memblokir semuanya
+-- (yang juga akan "lolos" t16a dan t16b tapi salah).
+with updated as (
+  update public.bookings
+  set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'Dibatalkan oleh merchant'
+  where id = :'own_booking_id'
+  returning id, status
+)
+select case when count(*) = 1 and bool_and(status = 'CANCELLED')
+            then 'OK   t16c merchant berhasil membatalkan booking miliknya sendiri (PENDING -> CANCELLED, 1 baris)'
+            else 'FAIL t16c pembatalan booking sendiri tidak berhasil sebagaimana mestinya (' || count(*) || ' baris)' end as t16c
+from updated;
+
+rollback;
