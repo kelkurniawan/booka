@@ -14,17 +14,29 @@ import type { Database } from "@/types/database";
  *      ditegakkan dengan getUser() di bawah.
  *   2. Merchant yang sudah onboarding tidak bisa kembali ke /onboarding
  *      atau /login.
- *   3. Merchant yang belum mengisi username diarahkan ke /onboarding --
- *      TAPI proxy ini cuma menegakkannya untuk rute /onboarding sendiri
- *      (memantulkan merchant yang SUDAH onboarding keluar dari halaman
- *      itu). Untuk /dashboard/*, redirect "belum onboarding -> /onboarding"
- *      sepenuhnya jadi tanggung jawab src/app/dashboard/layout.tsx (lewat
- *      requireMerchant() di src/lib/auth/session.ts), yang membungkus SEMUA
- *      rute /dashboard/* tanpa kecuali. Ini BUKAN lubang keamanan: proxy
- *      dulu melakukan query merchants yang sama persis untuk /dashboard/*,
- *      murni duplikat dari yang sudah dilakukan layout satu request pass
- *      kemudian. Menghapusnya di sini menghapus satu query per navigasi
- *      dashboard tanpa mengubah ke mana user berakhir.
+ *   3. Merchant yang belum mengisi username diarahkan ke /onboarding.
+ *      Lookup `merchants` untuk aturan ini dijalankan di TIGA kondisi,
+ *      bukan untuk semua request privat -- lihat pembagiannya di dalam
+ *      `updateSession`:
+ *        a. GET ke /dashboard/* -- TIDAK di sini. src/app/dashboard/layout.tsx
+ *           (lewat requireMerchant() di src/lib/auth/session.ts) membungkus
+ *           SEMUA rute /dashboard/* tanpa kecuali dan menegakkan redirect
+ *           yang identik satu request pass kemudian, jadi query di sini
+ *           murni duplikat -- inilah optimasinya, satu query lebih sedikit
+ *           per navigasi halaman dashboard.
+ *        b. Non-GET ke /dashboard/* (Server Action) -- DI SINI, wajib.
+ *           Server Action dieksekusi sebagai POST langsung ke handler-nya;
+ *           Next.js TIDAK me-render layout.tsx dulu sebelum action-nya
+ *           jalan (render ulang RSC baru terjadi SETELAH action selesai),
+ *           jadi requireMerchant() di layout datang terlambat untuk
+ *           mencegah action itu sendiri. Proxy adalah satu-satunya titik
+ *           yang bisa mencegat mutasi dari merchant yang belum onboarding
+ *           sebelum handler-nya jalan.
+ *        c. /onboarding (semua method) -- DI SINI, karena tidak ada
+ *           dashboard/layout.tsx yang membungkusnya -- proxy satu-satunya
+ *           tempat yang bisa menegakkan aturan ini untuk rute tersebut,
+ *           termasuk memantulkan merchant yang SUDAH onboarding keluar
+ *           dari halaman ini.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -94,20 +106,37 @@ export async function updateSession(request: NextRequest) {
     return withCookies(NextResponse.redirect(url), response);
   }
 
-  if (pathname === ROUTES.onboarding) {
-    // Satu lookup primary key, hanya untuk /onboarding -- satu-satunya rute
-    // privat yang TIDAK dibungkus dashboard/layout.tsx, jadi proxy-lah
-    // satu-satunya tempat yang bisa memantulkan merchant yang sudah
-    // onboarding keluar dari halaman ini. (Redirect sebaliknya -- belum
-    // onboarding ke /onboarding -- untuk /dashboard/* ditangani layout,
-    // lihat komentar di atas fungsi ini.)
+  const onOnboarding = pathname === ROUTES.onboarding;
+
+  // Lookup merchants dijalankan untuk /onboarding (semua method) ATAU
+  // untuk /dashboard/* yang non-GET (Server Action) -- lihat kondisi (a),
+  // (b), (c) di komentar atas fungsi ini. GET ke /dashboard/* SENGAJA
+  // dilewati: itu tanggung jawab dashboard/layout.tsx satu request pass
+  // kemudian.
+  const needsOnboardingLookup =
+    onOnboarding || (protectedPath && request.method !== "GET");
+
+  if (needsOnboardingLookup) {
     const { data: merchant } = await supabase
       .from("merchants")
       .select("username")
       .eq("id", user.id)
       .maybeSingle();
 
-    if (merchant?.username) {
+    const onboarded = Boolean(merchant?.username);
+
+    // Non-GET ke /dashboard/* dari merchant yang belum onboarding --
+    // mencegat Server Action di sini karena layout.tsx datang terlambat
+    // (lihat poin b di komentar atas fungsi ini).
+    if (!onboarded && !onOnboarding) {
+      const url = request.nextUrl.clone();
+      url.pathname = ROUTES.onboarding;
+      url.search = "";
+      return withCookies(NextResponse.redirect(url), response);
+    }
+
+    // Merchant yang sudah onboarding tidak boleh balik ke /onboarding.
+    if (onboarded && onOnboarding) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.dashboard;
       url.search = "";
