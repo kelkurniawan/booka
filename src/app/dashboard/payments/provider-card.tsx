@@ -126,7 +126,7 @@ export function ProviderCard({
           {connection && chargeFailing ? (
             <Alert variant="destructive">
               <AlertTriangle />
-              <AlertTitle>Pembayaran sedang gagal -- pelanggan tidak bisa menyelesaikan booking</AlertTitle>
+              <AlertTitle>Pembayaran sedang gagal — pelanggan tidak bisa menyelesaikan booking</AlertTitle>
               <AlertDescription>
                 <p>
                   Setiap percobaan DP QRIS lewat {meta.name} ditolak gateway. Pelanggan Anda tidak
@@ -138,7 +138,7 @@ export function ProviderCard({
                 <p>Terakhir gagal: {formatDateTime(connection.last_charge_error_at!)}</p>
                 {connection.environment === "SANDBOX" ? (
                   <p>
-                    Koneksi ini memakai environment Sandbox {meta.name} -- environment untuk uji
+                    Koneksi ini memakai environment Sandbox {meta.name} — environment untuk uji
                     coba. Selama masih di Sandbox, pesanan pelanggan sungguhan tidak akan pernah
                     menghasilkan pembayaran sungguhan, terlepas dari masalah di atas sudah
                     diperbaiki atau belum.

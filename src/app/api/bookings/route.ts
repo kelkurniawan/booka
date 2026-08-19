@@ -294,7 +294,7 @@ export async function POST(request: NextRequest) {
     // kegagalan jaringan tetap memakai pesan "coba lagi" yang lama karena
     // itu satu-satunya kasus yang benar-benar bisa pulih sendiri.
     const customerMessage = isDefiniteRejection
-      ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara -- silakan hubungi merchant secara langsung, bukan mencoba lagi."
+      ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara — silakan hubungi merchant secara langsung, bukan mencoba lagi."
       : "Gagal membuat kode pembayaran, silakan coba lagi.";
 
     return NextResponse.json({ error: customerMessage }, { status: 502 });
