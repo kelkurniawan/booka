@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
+import { formatCountdown } from "@/lib/booking/countdown";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -23,13 +24,6 @@ export type BookingLiveStatusProps = {
   expiresAt: string;
 };
 
-function formatCountdown(remainingMs: number): string {
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 /**
  * Bagian "menunggu pembayaran" di /pesanan/[token] -- pola polling +
  * watchdog kedaluwarsa sisi klien DIPINDAH dari
@@ -37,12 +31,23 @@ function formatCountdown(remainingMs: number): string {
  * watchdog `setTimeout` terpisah, `useState` lazy initializer karena aturan
  * react-hooks/purity), bukan ditulis ulang.
  *
- * Bedanya dengan versi lama: begitu status jadi terminal (PAID/CANCELLED,
- * atau kedaluwarsa menurut jam klien), komponen ini TIDAK merender layar
+ * Bedanya dengan versi lama: begitu SERVER mengonfirmasi status terminal
+ * (PAID/CANCELLED lewat polling), komponen ini TIDAK merender layar
  * sukses/gagalnya sendiri -- itu tanggung jawab page.tsx (Server Component)
  * lewat `router.refresh()`, supaya tampilan PAID/kedaluwarsa/dibatalkan
  * SELALU berasal dari data database yang sebenarnya, bukan state klien yang
  * bisa diam-diam berbeda kalau mis. dua tab dibuka bersamaan.
+ *
+ * PENTING soal jam kedaluwarsa: `clientExpired` (watchdog sisi klien, lihat
+ * di bawah) HANYA mengubah TAMPILAN, TIDAK PERNAH menghentikan polling atau
+ * memicu router.refresh() sendirian. Kalau jam perangkat pelanggan lebih
+ * cepat dari jam server (atau pas kena race di detik yang sama), server
+ * yang jadi wasit satu-satunya soal "sudah benar-benar terminal atau
+ * belum" -- bukan jam klien yang tidak bisa dipercaya. Versi sebelumnya
+ * memakai `clientExpired` untuk MENGHENTIKAN polling juga, yang berarti
+ * kalau jam klien salah duga duluan, polling berhenti untuk selamanya dan
+ * layar ini macet di "Memperbarui status booking..." walau pelanggan sudah
+ * benar-benar membayar -- itu bug yang diperbaiki di sini.
  */
 export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusProps) {
   const router = useRouter();
@@ -53,11 +58,17 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
   // Lazy initializer (bukan dihitung langsung di body render, yang tidak
   // boleh memanggil Date.now() -- react-hooks/purity) supaya booking yang
   // dibuka lama setelah tenggatnya lewat (mis. tautan lama dibuka lagi)
-  // langsung dianggap kedaluwarsa sejak render pertama.
+  // langsung dianggap kedaluwarsa (secara TAMPILAN, lihat komentar di atas)
+  // sejak render pertama.
   const [clientExpired, setClientExpired] = useState(
     () => Date.now() >= new Date(expiresAt).getTime(),
   );
-  const isTerminal = status !== "PENDING" || clientExpired;
+
+  // Satu-satunya sumber kebenaran untuk "sudah terminal" -- HANYA dari
+  // status yang dikembalikan server lewat polling. `clientExpired` di atas
+  // SENGAJA tidak ikut menentukan ini (lihat komentar besar di atas
+  // komponen ini).
+  const isServerTerminal = status !== "PENDING";
 
   // Angka mm:ss yang berdetik. SENGAJA `null` sampai effect pertama jalan --
   // beda dari `clientExpired` di atas, nilai ini dirender jadi teks yang
@@ -72,10 +83,14 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
 
   const refreshTriggeredRef = useRef(false);
 
-  // Polling itu sendiri -- berhenti (tidak memasang interval baru) begitu
-  // status sudah terminal.
+  // Polling itu sendiri -- berhenti (tidak memasang interval baru) HANYA
+  // begitu SERVER sudah mengonfirmasi status terminal. Kalau cuma jam klien
+  // yang menduga sudah lewat tenggat (clientExpired), polling TETAP jalan --
+  // itu satu-satunya cara mendeteksi PAID yang sebenarnya kalau jam
+  // pelanggan meleset, atau kalau pembayarannya masuk tepat di detik-detik
+  // terakhir sebelum cron pembatalan sempat jalan.
   useEffect(() => {
-    if (isTerminal) return;
+    if (isServerTerminal) return;
 
     let cancelled = false;
 
@@ -105,32 +120,34 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
       cancelled = true;
       clearInterval(interval);
     };
-  }, [bookingId, isTerminal]);
+  }, [bookingId, isServerTerminal]);
 
-  // Watchdog kedaluwarsa sisi klien -- terpisah dari polling supaya
-  // transisi ke "waktu habis" terjadi tepat saat tenggat lewat, bukan
-  // menunggu tick 3 detik berikutnya (atau menunggu cron pembatalan
-  // benar-benar meng-update baris di database). Selalu lewat setTimeout
-  // (bukan setClientExpired langsung di body effect) meski sisa waktunya
-  // <= 0 -- react-hooks/set-state-in-effect melarang memanggil setState
-  // sinkron langsung di body effect.
+  // Watchdog kedaluwarsa sisi klien -- terpisah dari polling. HANYA
+  // mengubah tampilan (lihat `clientExpired` di JSX di bawah), TIDAK
+  // menghentikan polling ataupun memicu refresh -- itu tanggung jawab
+  // `isServerTerminal`. Selalu lewat setTimeout (bukan setClientExpired
+  // langsung di body effect) meski sisa waktunya <= 0 --
+  // react-hooks/set-state-in-effect melarang memanggil setState sinkron
+  // langsung di body effect.
   useEffect(() => {
-    if (isTerminal) return;
+    if (isServerTerminal || clientExpired) return;
 
     const msLeft = new Date(currentExpiresAt).getTime() - Date.now();
     const timeout = setTimeout(() => setClientExpired(true), Math.max(msLeft, 0));
     return () => clearTimeout(timeout);
-  }, [currentExpiresAt, isTerminal]);
+  }, [currentExpiresAt, isServerTerminal, clientExpired]);
 
   // Detak angka mm:ss yang ditampilkan -- terpisah lagi dari watchdog di
-  // atas. Watchdog itu presisi ke milidetik lewat satu setTimeout, ini murni
-  // kosmetik (angka yang dilihat pelanggan), jadi cukup interval 1 detik dan
-  // SELALU dihitung ulang dari selisih waktu asli (currentExpiresAt vs
-  // Date.now() saat itu juga) tiap tick -- bukan dikurangi 1 detik dari
-  // nilai sebelumnya -- supaya tidak drift kalau tab sempat di-throttle
-  // browser saat tidak aktif.
+  // atas. Berhenti begitu clientExpired (angkanya sudah mentok 0, tidak ada
+  // gunanya terus dihitung) ATAU server sudah terminal. Watchdog itu
+  // presisi ke milidetik lewat satu setTimeout, ini murni kosmetik (angka
+  // yang dilihat pelanggan), jadi cukup interval 1 detik dan SELALU
+  // dihitung ulang dari selisih waktu asli (currentExpiresAt vs Date.now()
+  // saat itu juga) tiap tick -- bukan dikurangi 1 detik dari nilai
+  // sebelumnya -- supaya tidak drift kalau tab sempat di-throttle browser
+  // saat tidak aktif.
   useEffect(() => {
-    if (isTerminal) return;
+    if (isServerTerminal || clientExpired) return;
 
     function tick() {
       setRemainingMs(Math.max(new Date(currentExpiresAt).getTime() - Date.now(), 0));
@@ -138,25 +155,38 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
     tick();
     const interval = setInterval(tick, TICK_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [currentExpiresAt, isTerminal]);
+  }, [currentExpiresAt, isServerTerminal, clientExpired]);
 
-  // Begitu terminal, minta SERVER merender ulang halaman -- page.tsx yang
-  // memutuskan tampilan PAID/kedaluwarsa/dibatalkan berdasarkan data
-  // database yang sebenarnya, bukan state klien di sini. refreshTriggeredRef
-  // mencegah router.refresh() dipanggil berkali-kali selama komponen ini
-  // masih terpasang menunggu refresh selesai (mis. render ulang karena
-  // currentExpiresAt berubah tidak memicu ini lagi).
+  // Begitu SERVER (bukan jam klien) mengonfirmasi terminal, minta server
+  // merender ulang halaman -- page.tsx yang memutuskan tampilan
+  // PAID/kedaluwarsa/dibatalkan berdasarkan data database yang sebenarnya.
+  // refreshTriggeredRef mencegah router.refresh() dipanggil berkali-kali
+  // otomatis selama komponen ini masih terpasang menunggu refresh selesai.
   useEffect(() => {
-    if (!isTerminal || refreshTriggeredRef.current) return;
+    if (!isServerTerminal || refreshTriggeredRef.current) return;
     refreshTriggeredRef.current = true;
     router.refresh();
-  }, [isTerminal, router]);
+  }, [isServerTerminal, router]);
 
-  if (isTerminal) {
+  if (isServerTerminal) {
     return (
-      <div className="text-muted-foreground flex items-center justify-center gap-2 text-xs">
-        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        Memperbarui status booking...
+      <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 text-xs">
+        <div className="flex items-center gap-2">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          Memperbarui status booking...
+        </div>
+        {/* Jaring pengaman -- router.refresh() di atas cuma dipicu SEKALI
+            (refreshTriggeredRef). Kalau panggilan itu gagal diam-diam (mis.
+            gangguan jaringan sesaat), pelanggan yang baru saja membayar
+            tidak boleh terjebak tanpa jalan keluar apa pun -- tombol ini
+            aman dipencet berkali-kali. */}
+        <button
+          type="button"
+          onClick={() => router.refresh()}
+          className="text-foreground underline underline-offset-4"
+        >
+          Muat ulang halaman
+        </button>
       </div>
     );
   }
@@ -166,24 +196,38 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
 
   return (
     <div className="border-border flex flex-col gap-3 border p-4">
-      <p className="text-sm text-pretty">
-        Selesaikan pembayaran QRIS sebelum{" "}
-        <span className="font-medium">{formatTime(currentExpiresAt)} WIB</span> agar slot ini tidak
-        hangus.
-        {countdownLabel ? (
-          <>
-            {" "}
-            <span
-              className={cn(
-                "font-mono font-medium tabular-nums",
-                isUrgent ? "text-destructive" : "text-foreground",
-              )}
-            >
-              (tersisa {countdownLabel})
-            </span>
-          </>
-        ) : null}
-      </p>
+      {clientExpired ? (
+        // Jam PERANGKAT PELANGGAN menduga tenggat sudah lewat, tapi server
+        // (lewat polling) belum mengonfirmasi status terminal apa pun --
+        // ini kondisi jam klien meleset (lebih cepat dari server) atau
+        // pembayaran masuk tepat di detik-detik terakhir. Polling TETAP
+        // jalan di latar belakang (lihat komentar besar di atas komponen),
+        // jadi pesan di sini menjelaskan itu, bukan menampilkan hitung
+        // mundur negatif yang membingungkan.
+        <p className="text-sm text-pretty">
+          Waktu pembayaran menurut perangkatmu sudah lewat. Kami masih memeriksa status pembayaran
+          terakhir -- kalau kamu sudah membayar, jangan tutup halaman ini dulu.
+        </p>
+      ) : (
+        <p className="text-sm text-pretty">
+          Selesaikan pembayaran QRIS sebelum{" "}
+          <span className="font-medium">{formatTime(currentExpiresAt)} WIB</span> agar slot ini
+          tidak hangus.
+          {countdownLabel ? (
+            <>
+              {" "}
+              <span
+                className={cn(
+                  "font-mono font-medium tabular-nums",
+                  isUrgent ? "text-destructive" : "text-foreground",
+                )}
+              >
+                (tersisa {countdownLabel})
+              </span>
+            </>
+          ) : null}
+        </p>
+      )}
       <div className="text-muted-foreground flex items-center gap-2 text-xs">
         <Loader2 className="size-3.5 animate-spin" aria-hidden />
         {pollError ? "Gagal memeriksa status, mencoba lagi..." : "Memeriksa status pembayaran..."}
