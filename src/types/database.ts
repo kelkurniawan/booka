@@ -210,6 +210,22 @@ export type Database = {
         Returns: { used: number; quota: number | null }[];
       };
       /**
+       * Ringkasan agregat dashboard merchant yang sedang login: jumlah
+       * booking bulan ini (definisi identik count_bookings_this_month --
+       * lihat 20260819000400_dashboard_perf.sql), pendapatan terkonfirmasi
+       * bulan ini (SUM service_price booking PAID, dihitung di Postgres,
+       * bukan di client), dan jumlah PENDING yang belum kedaluwarsa.
+       * Menggantikan 4 query terpisah di bookings/page.tsx.
+       */
+      dashboard_booking_summary: {
+        Args: never;
+        Returns: {
+          bookings_this_month: number;
+          confirmed_revenue: number;
+          pending_count: number;
+        }[];
+      };
+      /**
        * Membaca kredensial terenkripsi milik merchant untuk satu provider,
        * termasuk token verifikasi webhook (kolom terpisah dari access
        * token -- lihat supabase/migrations/20260813120100_webhook_token_credential.sql).

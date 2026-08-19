@@ -865,3 +865,154 @@ select case
          else 'FAIL sentinel blok 16: hanya ' || last_value || ' dari 3 pemeriksaan t16 yang tereksekusi -- transaksi kemungkinan gagal di tengah jalan (lihat pesan ERROR di atas)'
        end as t16_sentinel
 from t16_seen;
+
+-- ===========================================================================
+-- 17. dashboard_booking_summary() -- Task 1 rencana optimasi dashboard
+-- (migration 20260819000400_dashboard_perf.sql). Merchant terpisah lagi
+-- supaya fixture-nya tidak bercampur dengan hitungan kuota / ledger blok
+-- sebelumnya.
+-- ===========================================================================
+
+insert into auth.users (id, email) values
+  ('44444444-4444-4444-4444-444444444444', 'dashperf@example.com');
+
+-- Lima baris booking, masing-masing di hari berbeda (rentang tidak
+-- bertabrakan) supaya bookings_no_overlap tidak menangkap salah satu baris
+-- uji lebih dulu dan membuat labelnya menyesatkan (catatan wajib di brief).
+--
+-- A. PAID, paid_at bulan ini -> IKUT confirmed_revenue.
+insert into public.bookings (
+  merchant_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, paid_at
+) values (
+  '44444444-4444-4444-4444-444444444444', 'Paket A', 500000, 60,
+  now() + interval '10 days', now() + interval '10 days 1 hour',
+  'Pelanggan A', '+6281300000001', 'PAID', now()
+);
+
+-- B. PAID, tapi paid_at DUA BULAN LALU -> TIDAK ikut confirmed_revenue
+-- walau statusnya PAID (menguji filter paid_at, bukan cuma status).
+insert into public.bookings (
+  merchant_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, paid_at
+) values (
+  '44444444-4444-4444-4444-444444444444', 'Paket B', 300000, 60,
+  now() + interval '11 days', now() + interval '11 days 1 hour',
+  'Pelanggan B', '+6281300000002', 'PAID', now() - interval '2 months'
+);
+
+-- C. CANCELLED dengan paid_at bulan ini dan harga besar -> TIDAK ikut
+-- confirmed_revenue (bukan PAID), walau kalau tertangkap keliru akan
+-- langsung kelihatan di jumlahnya.
+insert into public.bookings (
+  merchant_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, paid_at, cancelled_at
+) values (
+  '44444444-4444-4444-4444-444444444444', 'Paket C', 999999, 60,
+  now() + interval '12 days', now() + interval '12 days 1 hour',
+  'Pelanggan C', '+6281300000003', 'CANCELLED', now(), now()
+);
+
+-- D. PENDING, expires_at MASIH di masa depan -> IKUT pending_count.
+insert into public.bookings (
+  merchant_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, expires_at
+) values (
+  '44444444-4444-4444-4444-444444444444', 'Paket D', 200000, 60,
+  now() + interval '13 days', now() + interval '13 days 1 hour',
+  'Pelanggan D', '+6281300000004', 'PENDING', now() + interval '10 minutes'
+);
+
+-- E. PENDING, expires_at SUDAH lewat -> TIDAK ikut pending_count (dan juga
+-- tidak ikut bookings_this_month, lihat count_bookings_this_month versi
+-- 20260813051417_reap_expired_pending_inline.sql).
+insert into public.bookings (
+  merchant_id, service_name, service_price, duration_minutes,
+  start_datetime, end_datetime, customer_name, customer_whatsapp,
+  status, expires_at
+) values (
+  '44444444-4444-4444-4444-444444444444', 'Paket E', 200000, 60,
+  now() + interval '14 days', now() + interval '14 days 1 hour',
+  'Pelanggan E', '+6281300000005', 'PENDING', now() - interval '1 minute'
+);
+
+-- 17a/17b. Hak EXECUTE: hanya authenticated yang boleh memanggil
+-- dashboard_booking_summary() -- tanpa parameter merchant_id, fungsinya
+-- SECURITY DEFINER dan mengambil merchant dari auth.uid(), jadi anon (tanpa
+-- sesi) tidak boleh bisa memanggilnya sama sekali.
+select
+  case when has_function_privilege('anon', 'public.dashboard_booking_summary()', 'EXECUTE')
+       then 'FAIL anon bisa memanggil dashboard_booking_summary'
+       else 'OK   anon TIDAK bisa memanggil dashboard_booking_summary' end as t17a,
+  case when has_function_privilege('authenticated', 'public.dashboard_booking_summary()', 'EXECUTE')
+       then 'OK   authenticated bisa memanggil dashboard_booking_summary'
+       else 'FAIL authenticated TIDAK bisa memanggil dashboard_booking_summary' end as t17b;
+
+-- Panggil sungguhan sebagai merchant D (peran authenticated + GUC
+-- request.jwt.claim.sub, sama seperti blok 16), dibungkus BEGIN/ROLLBACK
+-- supaya SET LOCAL ROLE tidak membekas untuk sisa file setelah blok ini.
+-- \gset menangkap hasilnya ke variabel psql SEBELUM rollback, jadi tetap
+-- bisa dipakai di pemeriksaan sesudahnya.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
+select * from public.dashboard_booking_summary() \gset t17_
+rollback;
+
+-- 17c. Pengaman anti-drift (Global Constraint 6): bookings_this_month dari
+-- RPC WAJIB persis sama dengan count_bookings_this_month() untuk merchant
+-- yang sama. count_bookings_this_month dipanggil di sini sebagai superuser
+-- koneksi harness (bukan lewat role authenticated -- fungsi itu memang
+-- tertutup dari authenticated, lihat t7g), jadi ini murni pembanding
+-- independen, bukan RPC memanggil dirinya sendiri dua kali.
+select case
+         when :t17_bookings_this_month = public.count_bookings_this_month('44444444-4444-4444-4444-444444444444')
+           then 'OK   t17c dashboard_booking_summary().bookings_this_month (' || :t17_bookings_this_month || ') == count_bookings_this_month() (' || public.count_bookings_this_month('44444444-4444-4444-4444-444444444444') || ')'
+         else 'FAIL t17c dashboard_booking_summary().bookings_this_month (' || :t17_bookings_this_month || ') != count_bookings_this_month() (' || public.count_bookings_this_month('44444444-4444-4444-4444-444444444444') || ')'
+       end as t17c;
+
+-- 17c bis. Nilai konkretnya juga diperiksa (bukan cuma "sama-sama benar
+-- dua kali dengan cara yang sama"): A + B (PAID) + D (PENDING belum
+-- kedaluwarsa) = 3. C (CANCELLED) dan E (PENDING kedaluwarsa) tidak ikut.
+select case when :t17_bookings_this_month = 3
+            then 'OK   t17c-bis bookings_this_month = 3 (A, B, D -- C dan E tidak ikut)'
+            else 'FAIL t17c-bis bookings_this_month = ' || :t17_bookings_this_month || ', seharusnya 3' end as t17c_bis;
+
+-- 17d. confirmed_revenue = harga A saja (500000). B tidak ikut walau PAID
+-- karena paid_at dua bulan lalu; C tidak ikut karena CANCELLED walau
+-- paid_at-nya bulan ini dan harganya sengaja besar (999999) supaya
+-- kebocoran langsung kelihatan di jumlahnya.
+select case when :t17_confirmed_revenue = 500000
+            then 'OK   t17d confirmed_revenue = 500000 (cuma A -- B bulan lalu & C CANCELLED tidak ikut)'
+            else 'FAIL t17d confirmed_revenue = ' || :t17_confirmed_revenue || ', seharusnya 500000' end as t17d;
+
+-- 17e. pending_count = 1 (D saja). E tidak ikut karena expires_at sudah
+-- lewat.
+select case when :t17_pending_count = 1
+            then 'OK   t17e pending_count = 1 (cuma D -- E sudah kedaluwarsa)'
+            else 'FAIL t17e pending_count = ' || :t17_pending_count || ', seharusnya 1' end as t17e;
+
+-- 17f. Bentuk baris: RPC WAJIB selalu mengembalikan tepat satu baris, bukan
+-- kosong, meski merchant tidak punya booking sama sekali. Diuji dengan
+-- merchant baru yang belum pernah membuat booking apa pun.
+insert into auth.users (id, email) values
+  ('55555555-5555-5555-5555-555555555555', 'dashperf-kosong@example.com');
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
+select count(*) as n,
+       coalesce(sum(bookings_this_month), -1) as btm,
+       coalesce(sum(confirmed_revenue), -1) as rev,
+       coalesce(sum(pending_count), -1) as pc
+from public.dashboard_booking_summary() \gset t17f_
+rollback;
+
+select case when :t17f_n = 1 and :t17f_btm = 0 and :t17f_rev = 0 and :t17f_pc = 0
+            then 'OK   t17f merchant tanpa booking tetap dapat 1 baris dengan semua nilai 0, bukan baris kosong'
+            else 'FAIL t17f merchant tanpa booking: n=' || :t17f_n || ' bookings_this_month=' || :t17f_btm || ' confirmed_revenue=' || :t17f_rev || ' pending_count=' || :t17f_pc
+       end as t17f;
