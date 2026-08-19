@@ -611,3 +611,43 @@ select
                and proname = 'upsert_payment_credential') = 1
        then 'OK   hanya ada satu versi upsert_payment_credential'
        else 'FAIL ada lebih dari satu versi upsert_payment_credential' end as t13e_fn;
+
+-- ===========================================================================
+-- 14. access_token booking (Task 1 fondasi Phase 5-6, migration
+-- 20260819000100_booking_access_token.sql) -- kunci rahasia /pesanan/[token].
+-- ===========================================================================
+
+-- 14a. Booking baru mendapat access_token non-null sepanjang 48 karakter
+-- (24 byte acak di-encode hex -> 192 bit entropi). Booking A dari 11a
+-- dipakai lagi -- customer_whatsapp '+6281199991111' cuma dipakai baris itu.
+select
+  case when access_token is not null and length(access_token) = 48
+       then 'OK   booking A mendapat access_token 48 karakter'
+       else 'FAIL access_token booking A -> ' || coalesce(access_token, 'NULL')
+         || ' (panjang ' || coalesce(length(access_token)::text, '0') || ')' end as t14a
+from public.bookings
+where merchant_id = '11111111-1111-1111-1111-111111111111'
+  and customer_whatsapp = '+6281199991111';
+
+-- 14b. Dua booking berbeda (merchant berbeda, keduanya dibuat lewat
+-- create_booking di 11a dan 12) mendapat access_token yang berbeda -- unique
+-- index bookings_access_token_key bekerja, bukan cuma dipasang tanpa efek.
+select case when (
+         select access_token from public.bookings
+         where merchant_id = '11111111-1111-1111-1111-111111111111'
+           and customer_whatsapp = '+6281199991111'
+       ) is distinct from (
+         select access_token from public.bookings
+         where merchant_id = '22222222-2222-2222-2222-222222222222'
+           and customer_whatsapp = '+6281200000002'
+       )
+       then 'OK   dua booking mendapat access_token berbeda'
+       else 'FAIL dua booking punya access_token sama (atau salah satu NULL)' end as t14b;
+
+-- 14c. Peran anon TIDAK BISA membaca kolom access_token. Tabelnya sendiri
+-- sudah tanpa akses sama sekali untuk anon (t7d) -- ini menegaskan kolom
+-- barunya secara spesifik, sesuai catatan TEMUAN di migration 1a soal grant
+-- tingkat tabel `authenticated` yang tidak bisa dipreteli per kolom.
+select case when has_column_privilege('anon', 'public.bookings', 'access_token', 'SELECT')
+            then 'FAIL anon bisa membaca bookings.access_token'
+            else 'OK   anon TIDAK bisa membaca bookings.access_token' end as t14c;
