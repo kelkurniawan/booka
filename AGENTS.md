@@ -18,8 +18,9 @@ Penyimpangan dari PRD dan alasannya: `docs/DECISIONS.md`
 
 Phase 1–2 dari PRD bagian 6 sudah selesai (scaffold, skema + RLS, auth,
 onboarding, shell dashboard), plus landing page dan penegakan kuota transaksi.
-Phase 3–6 belum: halaman dashboard di luar Ringkasan masih berupa
-`PhasePlaceholder`.
+Phase 3–6 juga sudah selesai: semua halaman dashboard (booking masuk,
+layanan, ketersediaan, pembayaran, pengaturan, billing) sudah jadi
+implementasi sungguhan, bukan lagi `PhasePlaceholder`.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

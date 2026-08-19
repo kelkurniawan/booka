@@ -95,7 +95,19 @@ export default async function BookingsPage({
 
       <Suspense
         key={`${statusFilter ?? ""}|${searchTerm}|${page}|${pageSize}`}
-        fallback={<TableSkeleton />}
+        // rows={pageSize}: fallback default TableSkeleton (8 baris) jauh
+        // lebih pendek dari tabel asli (sampai pageSize baris, lihat
+        // bookings-list.tsx) -- geser sebanyak itu tiap kali filter/halaman
+        // berubah adalah persis jank yang mau dihindari dengan memberi
+        // <Suspense> ini `key` yang berubah. pageSize di sini sudah
+        // divalidasi/di-default di atas, jadi selalu salah satu dari
+        // PAGE_SIZE_OPTIONS.
+        //
+        // columns={6}, firstColumnTwoLine: cocokkan header BookingsTable
+        // (Jadwal, Pelanggan, Layanan, Nilai, Status, kolom aksi) di
+        // bookings-table.tsx -- kolom Jadwal aslinya dua baris (tanggal di
+        // atas jam).
+        fallback={<TableSkeleton rows={pageSize} columns={6} firstColumnTwoLine />}
       >
         <BookingsList statusFilter={statusFilter} searchTerm={searchTerm} page={page} pageSize={pageSize} />
       </Suspense>

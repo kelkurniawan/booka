@@ -957,11 +957,44 @@ select
 -- supaya SET LOCAL ROLE tidak membekas untuk sisa file setelah blok ini.
 -- \gset menangkap hasilnya ke variabel psql SEBELUM rollback, jadi tetap
 -- bisa dipakai di pemeriksaan sesudahnya.
+--
+-- Sentinel M6 (pola SAMA PERSIS dengan sequence t16_seen di blok 16 di
+-- atas -- lihat catatan besar sebelum "begin;" pertama blok itu soal
+-- kenapa nextval() dipakai): tanpa ini, kalau \gset t17_ di bawah gagal
+-- (RPC error, grant regresi, auth.uid() null, dst.), variabel psql
+-- t17_bookings_this_month/t17_confirmed_revenue/t17_pending_count tidak
+-- pernah terisi, dan 17c/17c-bis/17d/17e di bawah meledak jadi ERROR
+-- sintaks psql ("current transaction is aborted" / variabel tak dikenal)
+-- -- bukan baris berawalan FAIL -- sehingga run-tests.sh (yang cuma
+-- mencari baris berawalan FAIL, lihat 00_ di atas) tetap melaporkan hijau
+-- padahal RPC-nya sendiri gagal total. Sequence dibuat DI LUAR transaksi
+-- supaya nextval()-nya TIDAK ikut ROLLBACK, jadi last_value setelah
+-- rollback adalah bukti independen bahwa SELECT \gset di bawah benar-benar
+-- selesai sampai baris terakhirnya.
+create temporary sequence t17_seen;
+grant usage, select on sequence t17_seen to authenticated;
+
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub = '44444444-4444-4444-4444-444444444444';
-select * from public.dashboard_booking_summary() \gset t17_
+-- nextval('t17_seen') dimasukkan ke SELECT list yang sama supaya cuma
+-- ter-tick kalau seluruh statement (termasuk panggilan RPC-nya) benar-benar
+-- selesai dieksekusi -- jadi variabel t17_tick TIDAK dipakai di bawah,
+-- keberadaannya di sini murni supaya nextval() ikut ke \gset yang sama.
+select *, nextval('t17_seen') as tick from public.dashboard_booking_summary() \gset t17_
 rollback;
+
+-- Sentinel M6 di atas, diperiksa SETELAH rollback, DI LUAR transaksinya --
+-- lihat catatan besar sebelum "begin;" di atas dan pola yang identik di
+-- sentinel blok 16 (t16_sentinel).
+select case
+         when not is_called
+           then 'FAIL sentinel blok 17 (RPC merchant D): dashboard_booking_summary() tidak benar-benar tereksekusi sampai akhir (lihat pesan ERROR di atas) -- abaikan ERROR sintaks pada t17c/t17c-bis/t17d/t17e setelah ini, itu AKIBAT dari kegagalan ini, bukan kegagalan terpisah'
+         when last_value = 1
+           then 'OK   sentinel blok 17 (RPC merchant D): dashboard_booking_summary() benar-benar tereksekusi sampai akhir'
+         else 'FAIL sentinel blok 17 (RPC merchant D): nextval terpanggil ' || last_value || ' kali, seharusnya 1'
+       end as t17_sentinel
+from t17_seen;
 
 -- 17c. Pengaman anti-drift (Global Constraint 6): bookings_this_month dari
 -- RPC WAJIB persis sama dengan count_bookings_this_month() untuk merchant
@@ -1002,15 +1035,34 @@ select case when :t17_pending_count = 1
 insert into auth.users (id, email) values
   ('55555555-5555-5555-5555-555555555555', 'dashperf-kosong@example.com');
 
+-- Sentinel M6 lagi (pola sama seperti t17_seen di atas dan t16_seen di
+-- blok 16) -- \gset t17f_ di bawah bisa gagal dengan cara yang sama persis,
+-- membuat t17f (yang mereferensikan :t17f_n dkk.) meledak jadi ERROR
+-- sintaks alih-alih FAIL kalau tidak dijaga.
+create temporary sequence t17f_seen;
+grant usage, select on sequence t17f_seen to authenticated;
+
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub = '55555555-5555-5555-5555-555555555555';
 select count(*) as n,
        coalesce(sum(bookings_this_month), -1) as btm,
        coalesce(sum(confirmed_revenue), -1) as rev,
-       coalesce(sum(pending_count), -1) as pc
+       coalesce(sum(pending_count), -1) as pc,
+       -- Lihat catatan nextval('t17_seen') di atas -- alasan yang sama,
+       -- t17f_tick sengaja tidak dipakai di bawah.
+       nextval('t17f_seen') as tick
 from public.dashboard_booking_summary() \gset t17f_
 rollback;
+
+select case
+         when not is_called
+           then 'FAIL sentinel blok 17 (RPC merchant kosong): dashboard_booking_summary() tidak benar-benar tereksekusi sampai akhir (lihat pesan ERROR di atas) -- abaikan ERROR sintaks pada t17f setelah ini, itu AKIBAT dari kegagalan ini, bukan kegagalan terpisah'
+         when last_value = 1
+           then 'OK   sentinel blok 17 (RPC merchant kosong): dashboard_booking_summary() benar-benar tereksekusi sampai akhir'
+         else 'FAIL sentinel blok 17 (RPC merchant kosong): nextval terpanggil ' || last_value || ' kali, seharusnya 1'
+       end as t17f_sentinel
+from t17f_seen;
 
 select case when :t17f_n = 1 and :t17f_btm = 0 and :t17f_rev = 0 and :t17f_pc = 0
             then 'OK   t17f merchant tanpa booking tetap dapat 1 baris dengan semua nilai 0, bukan baris kosong'

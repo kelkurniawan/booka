@@ -52,9 +52,15 @@ function StatCardsSkeleton({
 function TableSkeleton({
   rows = 8,
   columns = 5,
+  firstColumnTwoLine = false,
 }: {
   rows?: number
   columns?: number
+  /** Kolom pertama dirender dua baris skeleton (bukan satu) -- dipakai
+   * bookings-table.tsx, yang kolom pertamanya (Jadwal) sungguhan menumpuk
+   * tanggal di atas jam, jadi baris asli itu sedikit lebih tinggi daripada
+   * baris skeleton kolom lain yang cuma satu baris teks. */
+  firstColumnTwoLine?: boolean
 }) {
   return (
     <>
@@ -77,11 +83,18 @@ function TableSkeleton({
           <tbody>
             {Array.from({ length: rows }).map((_, rowIndex) => (
               <tr key={rowIndex} className="border-b last:border-0">
-                {Array.from({ length: columns }).map((_, columnIndex) => (
-                  <td key={columnIndex} className="p-2 align-middle">
-                    <Skeleton className="h-4 w-full" />
-                  </td>
-                ))}
+                {Array.from({ length: columns }).map((_, columnIndex) =>
+                  firstColumnTwoLine && columnIndex === 0 ? (
+                    <td key={columnIndex} className="space-y-1.5 p-2 align-middle">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
+                    </td>
+                  ) : (
+                    <td key={columnIndex} className="p-2 align-middle">
+                      <Skeleton className="h-4 w-full" />
+                    </td>
+                  ),
+                )}
               </tr>
             ))}
           </tbody>

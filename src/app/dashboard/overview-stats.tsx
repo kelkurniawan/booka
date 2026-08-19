@@ -84,7 +84,14 @@ function StatCard({
   hint: string;
 }) {
   return (
-    <Card>
+    // h-full: StatCard SELALU dibungkus <Reveal> (yang div-nya sudah
+    // h-full mengikuti stretch grid induk, lihat komentar di reveal.tsx),
+    // tapi Card sendiri (card.tsx) tidak punya h-full -- tanpa ini kartu
+    // yang hint-nya wrap dua baris (mis. "Kuota habis -- pesanan baru
+    // ditolak") jadi lebih tinggi dari tetangganya. Diberikan di sini, BUKAN
+    // di card.tsx, supaya perubahan tidak ikut memengaruhi pemakai <Card>
+    // lain yang tidak dibungkus Reveal.
+    <Card className="h-full">
       <CardHeader>
         <CardDescription className="flex items-center gap-2">
           {icon}

@@ -17,7 +17,12 @@ import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import type { BookingStatus } from "@/types/database";
 
-import { BOOKING_LIST_COLUMNS, buildBookingsHref, type BookingListItem } from "./booking-state";
+import {
+  BOOKING_LIST_COLUMNS,
+  buildBookingsHref,
+  PAGE_SIZE_OPTIONS,
+  type BookingListItem,
+} from "./booking-state";
 import { BookingsTable } from "./bookings-table";
 
 /**
@@ -193,6 +198,12 @@ export async function BookingsList({
       <DataTablePagination
         page={page}
         pageSize={pageSize}
+        // PAGE_SIZE_OPTIONS di sini SAMA PERSIS dengan yang dipakai
+        // memvalidasi `?size=` di page.tsx -- lihat catatan
+        // DEFAULT_PAGE_SIZE_OPTIONS di data-table-pagination.tsx soal
+        // kenapa ini WAJIB diteruskan eksplisit, bukan mengandalkan default
+        // komponennya.
+        pageSizeOptions={PAGE_SIZE_OPTIONS}
         totalCount={totalCount}
         buildHref={(next) =>
           buildBookingsHref({
