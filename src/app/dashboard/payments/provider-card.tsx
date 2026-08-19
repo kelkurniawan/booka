@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { KeyRound, Link2, ShieldCheck, Unlink } from "lucide-react";
+import { AlertTriangle, KeyRound, Link2, ShieldCheck, Unlink } from "lucide-react";
 import { toast } from "sonner";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,22 @@ export function ProviderCard({
   const meta = PROVIDER_META[provider];
   const isActive = connection?.status === "ACTIVE";
 
+  /**
+   * Peringatan "pembayaran sedang gagal" -- lihat insiden di komentar
+   * migration 20260819000300_payment_connection_charge_health.sql: koneksi
+   * ACTIVE tapi charge selalu ditolak gateway tidak boleh terus tampil
+   * seperti badge hijau biasa. Aktif kalau ada penolakan tercatat DAN belum
+   * ada charge sukses SESUDAH penolakan itu -- gagal lalu sukses lagi
+   * sesudahnya berarti sudah pulih (lihat komentar last_charge_success_at
+   * di src/types/database.ts).
+   */
+  const chargeFailing =
+    isActive &&
+    connection?.last_charge_error_at != null &&
+    (connection.last_charge_success_at == null ||
+      new Date(connection.last_charge_success_at).getTime() <=
+        new Date(connection.last_charge_error_at).getTime());
+
   const [manualKeyOpen, setManualKeyOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnectPending, startDisconnect] = useTransition();
@@ -86,7 +103,11 @@ export function ProviderCard({
           <CardTitle>{meta.name}</CardTitle>
           <CardDescription>{meta.description}</CardDescription>
           <CardAction className="flex flex-col items-end gap-1">
-            {isActive ? (
+            {isActive && chargeFailing ? (
+              <Badge variant="destructive">
+                <AlertTriangle /> Pembayaran gagal
+              </Badge>
+            ) : isActive ? (
               <Badge variant="secondary">
                 <ShieldCheck /> Terhubung
               </Badge>
@@ -102,6 +123,30 @@ export function ProviderCard({
         </CardHeader>
 
         <CardContent className="flex flex-col gap-2 text-sm">
+          {connection && chargeFailing ? (
+            <Alert variant="destructive">
+              <AlertTriangle />
+              <AlertTitle>Pembayaran sedang gagal — pelanggan tidak bisa menyelesaikan booking</AlertTitle>
+              <AlertDescription>
+                <p>
+                  Setiap percobaan DP QRIS lewat {meta.name} ditolak gateway. Pelanggan Anda tidak
+                  bisa menyelesaikan booking baru sampai ini diperbaiki.
+                </p>
+                <p>
+                  Pesan dari {meta.name}: &ldquo;{connection.last_charge_error}&rdquo;
+                </p>
+                <p>Terakhir gagal: {formatDateTime(connection.last_charge_error_at!)}</p>
+                {connection.environment === "SANDBOX" ? (
+                  <p>
+                    Koneksi ini memakai environment Sandbox {meta.name} — environment untuk uji
+                    coba. Selama masih di Sandbox, pesanan pelanggan sungguhan tidak akan pernah
+                    menghasilkan pembayaran sungguhan, terlepas dari masalah di atas sudah
+                    diperbaiki atau belum.
+                  </p>
+                ) : null}
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {connection ? (
             <>
               <div className="flex items-center justify-between">

@@ -1,0 +1,65 @@
+-- ===========================================================================
+-- Kesehatan charge payment_connections.
+--
+-- Insiden produksi yang memicu migration ini: merchant punya koneksi
+-- Midtrans SANDBOX berstatus ACTIVE, tapi channel QRIS akunnya belum
+-- diaktifkan. Setiap charge ditolak gateway (`status_code 402: Payment
+-- channel is not activated`), booking-nya sudah benar dibatalkan (POST
+-- /api/bookings), TAPI dashboard `/dashboard/payments` tetap menampilkan
+-- badge hijau "Aktif" dan pelanggan cuma disuruh "coba lagi" -- padahal
+-- kegagalan ini tidak akan pernah pulih sendiri. Lihat
+-- .superpowers/sdd/payment-charge-health/brief.md.
+--
+-- Tiga kolom baru murni metadata OBSERVABILITY -- BUKAN sumber kebenaran
+-- status koneksi (itu tetap kolom `status`, tidak disentuh migration ini).
+-- Diisi dari POST /api/bookings (src/lib/payments/health.ts) setiap kali
+-- charge QRIS sukses atau ditolak DEFINITIF oleh gateway (ChargeRejectedError,
+-- src/lib/payments/errors.ts). Kegagalan jaringan/timeout (Error biasa)
+-- SENGAJA tidak pernah menyentuh kolom ini -- gangguan sesaat bukan salah
+-- konfigurasi merchant yang perlu diperingatkan.
+-- ===========================================================================
+
+alter table public.payment_connections
+  add column last_charge_error text,
+  add column last_charge_error_at timestamptz,
+  add column last_charge_success_at timestamptz;
+
+-- ---------------------------------------------------------------------------
+-- Grant -- TEMUAN dari pengecekan model grant `payment_connections` yang
+-- lebih dulu, sesuai pola yang sama dengan migration 1a
+-- (20260819000100_booking_access_token.sql).
+--
+-- Beda dengan bookings.access_token (grant tabel yang TERLALU LUAS membuat
+-- kolom rahasia tidak bisa disembunyikan), di sini keadaannya justru pas
+-- dengan yang dibutuhkan tugas ini, TANPA perlu perubahan grant apa pun:
+--
+-- 1. SELECT -- payment_connections di-grant tingkat TABEL untuk
+--    `authenticated` sejak awal (20260729000100_init_schema.sql):
+--    `grant select on public.payment_connections to authenticated;`.
+--    Privilege SELECT tingkat tabel di Postgres mencakup SEMUA kolom,
+--    termasuk yang ditambahkan belakangan lewat ALTER TABLE -- jadi ketiga
+--    kolom baru di atas OTOMATIS ikut terbaca `authenticated` tanpa grant
+--    tambahan. (Migration lain, mis. 20260730000500_payment_connection_mode
+--    .sql, menambah grant SELECT per kolom eksplisit untuk connection_mode/
+--    environment -- grant itu ternyata REDUNDAN terhadap grant tabel yang
+--    sudah ada, tapi tidak salah/berbahaya, jadi tidak disentuh migration
+--    ini; di luar cakupan tugas ini untuk dibersihkan.)
+--
+-- 2. UPDATE -- payment_connections TIDAK PERNAH diberi grant UPDATE apa pun
+--    ke `authenticated`, baik tingkat tabel maupun per kolom (diperiksa:
+--    tidak ada satu pun `grant update ... on public.payment_connections to
+--    authenticated` di seluruh supabase/migrations/). Semua penulisan tabel
+--    ini -- Server Key manual, disconnect, dan sekarang kolom kesehatan
+--    charge -- berjalan lewat createAdminClient() (service role, melewati
+--    grant/RLS), lihat src/app/dashboard/payments/actions.ts dan
+--    src/app/api/bookings/route.ts. Jadi ketiga kolom baru ini OTOMATIS
+--    tidak bisa ditulis `authenticated`, tanpa perlu REVOKE tambahan.
+--
+-- `anon` tidak disentuh sama sekali oleh kolom baru ini -- tabelnya sudah
+-- di-REVOKE ALL dari anon sejak awal (20260729000100_init_schema.sql) dan
+-- tidak ada grant SELECT/UPDATE apa pun ke anon di tabel ini.
+--
+-- Kesimpulan: TIDAK ADA tindakan grant yang perlu diambil migration ini.
+-- Lihat blok 17 di supabase/tests/99_verify.sql untuk bukti perilaku
+-- (authenticated: SELECT ya, UPDATE tidak; anon: keduanya tidak).
+-- ---------------------------------------------------------------------------

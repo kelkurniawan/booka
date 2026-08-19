@@ -2,13 +2,16 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
+import type { ChargeRejectedError as ChargeRejectedErrorType } from "./errors";
 import type { PaymentProviderAdapter } from "./types";
 
 let getXenditBaseUrl: (environment: "SANDBOX" | "PRODUCTION") => string;
 let xenditAdapter: PaymentProviderAdapter;
+let ChargeRejectedError: typeof ChargeRejectedErrorType;
 
 before(async () => {
   ({ getXenditBaseUrl, xenditAdapter } = await import("./xendit"));
+  ({ ChargeRejectedError } = await import("./errors"));
 });
 
 test("getXenditBaseUrl: SANDBOX -> api.xendit.co (tidak ada base URL sandbox terpisah)", () => {
@@ -160,5 +163,56 @@ test("createQrisCharge: response non-2xx melempar error yang menyertakan pesan d
         credential: "secret-key-salah",
       }),
     /Secret Key tidak valid/,
+  );
+});
+
+// --- ChargeRejectedError vs Error biasa --------------------------------------
+// Sama seperti midtrans.test.ts: pemanggil (POST /api/bookings) butuh
+// membedakan penolakan DEFINITIF gateway dari gangguan jaringan/timeout.
+// Xendit tidak punya kuirk "HTTP 200 tapi body-nya gagal" seperti Midtrans,
+// jadi cuma satu kondisi (HTTP non-2xx) yang perlu diuji di sini.
+
+test("createQrisCharge: HTTP non-2xx melempar ChargeRejectedError dengan provider/providerMessage/providerStatusCode", async () => {
+  mockFetchOnce(401, { error_code: "INVALID_API_KEY", message: "Secret Key tidak valid" });
+
+  await assert.rejects(
+    () =>
+      xenditAdapter.createQrisCharge({
+        orderId: "booking-999",
+        amount: 10000,
+        environment: "PRODUCTION",
+        credential: "secret-key-salah",
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ChargeRejectedError, "seharusnya ChargeRejectedError");
+      assert.equal(error.provider, "XENDIT");
+      assert.equal(error.providerMessage, "Secret Key tidak valid");
+      assert.equal(error.providerStatusCode, "INVALID_API_KEY");
+      return true;
+    },
+  );
+});
+
+test("createQrisCharge: kegagalan jaringan (fetch melempar) tetap Error biasa, BUKAN ChargeRejectedError", async () => {
+  global.fetch = (async () => {
+    throw new Error("network hiccup, koneksi terputus");
+  }) as typeof fetch;
+
+  await assert.rejects(
+    () =>
+      xenditAdapter.createQrisCharge({
+        orderId: "order-network-fail",
+        amount: 10000,
+        environment: "PRODUCTION",
+        credential: "xnd_development_secret",
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(
+        !(error instanceof ChargeRejectedError),
+        "kegagalan jaringan tidak boleh diklasifikasikan sebagai penolakan gateway",
+      );
+      return true;
+    },
   );
 });

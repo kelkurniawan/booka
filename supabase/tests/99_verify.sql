@@ -865,3 +865,148 @@ select case
          else 'FAIL sentinel blok 16: hanya ' || last_value || ' dari 3 pemeriksaan t16 yang tereksekusi -- transaksi kemungkinan gagal di tengah jalan (lihat pesan ERROR di atas)'
        end as t16_sentinel
 from t16_seen;
+
+-- ===========================================================================
+-- 17. Kolom kesehatan charge payment_connections (last_charge_error/
+-- last_charge_error_at/last_charge_success_at, migration
+-- 20260819000300_payment_connection_charge_health.sql) -- bukti PERILAKU
+-- untuk kesimpulan grant yang ditulis di migration itu: authenticated boleh
+-- SELECT, TIDAK boleh UPDATE; anon tidak boleh keduanya.
+--
+-- Blok 9 di atas sudah memakai has_column_privilege untuk claim identik
+-- (connection_mode/environment) pada tabel yang sama -- itu memadai untuk
+-- anon di t17c/t17d di bawah, karena "tidak ada grant sama sekali" adalah
+-- pemeriksaan biner yang tidak butuh eksekusi sungguhan untuk dibuktikan.
+-- Tapi untuk authenticated dipakai bukti SUNGGUHAN (SELECT dan UPDATE
+-- benar-benar dieksekusi SEBAGAI peran authenticated, bukan cuma metadata
+-- privilege) -- tabel ini juga punya RLS aktif (payment_connections_read_
+-- own, migration 20260729000200), dan has_column_privilege sendiri tidak
+-- membuktikan RLS itu tidak diam-diam menyembunyikan/menolak baris di
+-- jalur baca sungguhan.
+-- ===========================================================================
+
+-- Baris baru untuk merchant 1, provider XENDIT -- provider ini SENGAJA
+-- belum punya baris payment_connections untuk merchant 1 sampai titik ini
+-- di file (lihat komentar t10h di atas, yang justru menguji provider XENDIT
+-- BELUM punya baris), jadi tidak bentrok dengan constraint
+-- payment_connections_unique_provider (merchant_id, provider).
+insert into public.payment_connections (
+  merchant_id, provider, last_charge_error, last_charge_error_at
+) values (
+  '11111111-1111-1111-1111-111111111111', 'XENDIT',
+  'status_code 402: Payment channel is not activated', now() - interval '1 hour'
+);
+
+-- Sequence sentinel M6, pola sama seperti blok 16 -- lihat catatan besar
+-- sebelum "begin;" di blok 16 untuk alasan lengkapnya. Ringkasnya: nextval()
+-- tidak ikut ROLLBACK, jadi dipakai untuk membuktikan t17a/t17b
+-- benar-benar tereksekusi sampai akhir, bukan cuma diam-diam gagal di
+-- tengah jalan dengan pesan generik "current transaction is aborted" yang
+-- tidak diawali "FAIL".
+create temporary sequence t17_seen;
+grant usage, select on sequence t17_seen to authenticated;
+
+begin;
+
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+-- t17a. authenticated BENAR-BENAR bisa membaca ketiga kolom baru pada
+-- baris miliknya sendiri -- bukan cuma "tidak error", tapi nilai yang
+-- terbaca memang nilai yang barusan di-insert. Ini pernyataan SQL mentah
+-- tanpa exception handler (seperti t16b/t16c) -- kalau baris ini gagal tak
+-- terduga (mis. asumsi grant/RLS di atas ternyata salah), transaksi
+-- ter-abort dan sentinel t17_sentinel di bawah yang menangkapnya.
+with row_read as (
+  select last_charge_error, last_charge_error_at, last_charge_success_at
+  from public.payment_connections
+  where merchant_id = '11111111-1111-1111-1111-111111111111' and provider = 'XENDIT'
+)
+select case
+         when last_charge_error = 'status_code 402: Payment channel is not activated'
+           and last_charge_error_at is not null
+           and last_charge_success_at is null
+           then 'OK   authenticated benar-benar membaca last_charge_error/last_charge_error_at/last_charge_success_at miliknya sendiri'
+         else 'FAIL authenticated tidak membaca nilai yang benar dari ketiga kolom baru (baris tidak ditemukan atau nilainya salah)'
+       end as t17a,
+       -- Tick sentinel M6 -- hanya tereksekusi kalau SELECT di atas benar-
+       -- benar menghasilkan baris (row_read tidak kosong) DAN tidak error.
+       nextval('t17_seen') as t17a_tick
+from row_read;
+
+-- t17b. authenticated TIDAK BISA menulis last_charge_error -- dipakai
+-- expect_fail_code (bukan expect_fail biasa) supaya lolosnya tes ini
+-- BENAR-BENAR karena kekurangan privilege kolom (42501 --
+-- insufficient_privilege), bukan kebetulan gagal karena sebab lain.
+-- expect_fail_code sudah punya exception handler sendiri di dalam definisi
+-- fungsinya (lihat sebelum blok 16), jadi statement ini sendiri aman dari
+-- risiko meng-abort transaksi -- KECUALI transaksi sudah ter-abort lebih
+-- dulu oleh t17a, dalam hal ini seluruh statement ini (termasuk
+-- nextval-nya) tidak akan tereksekusi sama sekali dan langsung ditangkap
+-- sentinel di bawah, bukan diam-diam lolos.
+select pg_temp.expect_fail_code(
+         $q$update public.payment_connections set last_charge_error = 'diubah paksa oleh authenticated'
+             where merchant_id = '11111111-1111-1111-1111-111111111111' and provider = 'XENDIT'$q$,
+         '42501',
+         'authenticated menulis last_charge_error (t17b)') as t17b,
+       nextval('t17_seen') as t17b_tick;
+
+rollback;
+
+-- Sentinel M6 -- dijalankan SETELAH rollback, DI LUAR transaksi blok 17,
+-- dengan sengaja, persis seperti sentinel blok 16.
+select case
+         when not is_called
+           then 'FAIL sentinel blok 17: tidak ada satu pun pemeriksaan t17 yang benar-benar tereksekusi (lihat pesan ERROR di atas)'
+         when last_value = 2
+           then 'OK   sentinel blok 17: kedua pemeriksaan t17a/t17b benar-benar tereksekusi sampai akhir'
+         else 'FAIL sentinel blok 17: hanya ' || last_value || ' dari 2 pemeriksaan t17 yang tereksekusi -- transaksi kemungkinan gagal di tengah jalan (lihat pesan ERROR di atas)'
+       end as t17_sentinel
+from t17_seen;
+
+-- t17c. anon tidak bisa membaca ketiga kolom baru -- metadata privilege
+-- check memadai di sini (grant yang ada-atau-tidak, sama seperti t9e/t9f
+-- pada connection_mode/environment di tabel yang sama), karena anon sudah
+-- di-REVOKE ALL dari tabel ini sejak awal (20260729000100_init_schema.sql)
+-- tanpa satu pun grant SELECT/UPDATE, dan migration 20260819000300 tidak
+-- menambah grant apa pun ke anon.
+select
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_error', 'SELECT')
+       then 'FAIL anon bisa membaca last_charge_error'
+       else 'OK   anon TIDAK bisa membaca last_charge_error' end as t17c_select_error,
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_error_at', 'SELECT')
+       then 'FAIL anon bisa membaca last_charge_error_at'
+       else 'OK   anon TIDAK bisa membaca last_charge_error_at' end as t17c_select_error_at,
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_success_at', 'SELECT')
+       then 'FAIL anon bisa membaca last_charge_success_at'
+       else 'OK   anon TIDAK bisa membaca last_charge_success_at' end as t17c_select_success_at;
+
+-- t17d. anon juga tidak bisa menulis ketiga kolom baru (tidak ada grant
+-- UPDATE apa pun ke anon di tabel ini, sejak awal maupun dari migration
+-- ini).
+select
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_error', 'UPDATE')
+       then 'FAIL anon bisa menulis last_charge_error'
+       else 'OK   anon TIDAK bisa menulis last_charge_error' end as t17d_error,
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_error_at', 'UPDATE')
+       then 'FAIL anon bisa menulis last_charge_error_at'
+       else 'OK   anon TIDAK bisa menulis last_charge_error_at' end as t17d_error_at,
+  case when has_column_privilege('anon', 'public.payment_connections', 'last_charge_success_at', 'UPDATE')
+       then 'FAIL anon bisa menulis last_charge_success_at'
+       else 'OK   anon TIDAK bisa menulis last_charge_success_at' end as t17d_success_at;
+
+-- t17e. Metadata privilege check untuk authenticated + UPDATE, menegaskan
+-- t17b dari sisi grant murni (bukan cuma perilaku RLS/eksekusi) -- kalau
+-- suatu saat ada yang menambah grant UPDATE tabel penuh ke authenticated
+-- tanpa sadar, ini gagal duluan sebelum sempat membutuhkan t17b untuk
+-- membuktikannya lewat eksekusi sungguhan.
+select
+  case when has_column_privilege('authenticated', 'public.payment_connections', 'last_charge_error', 'UPDATE')
+       then 'FAIL authenticated punya grant UPDATE last_charge_error'
+       else 'OK   authenticated TIDAK punya grant UPDATE last_charge_error' end as t17e_error,
+  case when has_column_privilege('authenticated', 'public.payment_connections', 'last_charge_error_at', 'UPDATE')
+       then 'FAIL authenticated punya grant UPDATE last_charge_error_at'
+       else 'OK   authenticated TIDAK punya grant UPDATE last_charge_error_at' end as t17e_error_at,
+  case when has_column_privilege('authenticated', 'public.payment_connections', 'last_charge_success_at', 'UPDATE')
+       then 'FAIL authenticated punya grant UPDATE last_charge_success_at'
+       else 'OK   authenticated TIDAK punya grant UPDATE last_charge_success_at' end as t17e_success_at;

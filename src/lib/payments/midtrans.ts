@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 
 import type { PaymentEnvironment } from "@/types/database";
 
+import { ChargeRejectedError } from "./errors";
 import type {
   PaymentProviderAdapter,
   QrisCharge,
@@ -60,9 +61,16 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
 
   const body = (await response.json()) as MidtransChargeResponse;
 
+  // HTTP non-2xx: gateway MENJAWAB dan MENOLAK secara definitif -- beda
+  // dengan fetch() yang melempar (jaringan putus/timeout), yang tetap Error
+  // biasa dan tidak pernah sampai baris ini. Lihat ChargeRejectedError.
   if (!response.ok) {
-    throw new Error(
-      `Midtrans charge gagal (HTTP ${response.status}): ${body.status_message ?? "tidak diketahui"}`,
+    const providerMessage = body.status_message ?? "tidak diketahui";
+    throw new ChargeRejectedError(
+      "MIDTRANS",
+      `Midtrans charge gagal (HTTP ${response.status}): ${providerMessage}`,
+      providerMessage,
+      body.status_code ?? String(response.status),
     );
   }
 
@@ -79,9 +87,12 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
   // 200 = sukses langsung. Selain itu error, apa pun kode HTTP-nya.
   const statusCode = body.status_code ?? "";
   if (statusCode !== "201" && statusCode !== "200") {
-    throw new Error(
-      `Midtrans charge gagal (status_code ${statusCode || "kosong"}): ` +
-        `${body.status_message ?? "tidak diketahui"}`,
+    const providerMessage = body.status_message ?? "tidak diketahui";
+    throw new ChargeRejectedError(
+      "MIDTRANS",
+      `Midtrans charge gagal (status_code ${statusCode || "kosong"}): ${providerMessage}`,
+      providerMessage,
+      statusCode || null,
     );
   }
 
@@ -92,9 +103,14 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
   // dengan booking yang tidak bisa dibayar. Lebih baik gagal keras di sini
   // supaya booking-nya dibatalkan, daripada pelanggan menatap panel kosong.
   if (!qrString) {
-    throw new Error(
-      "Midtrans charge berhasil tapi tidak mengembalikan QRIS " +
-        "(tidak ada qr_string maupun action generate-qr-code).",
+    const providerMessage =
+      "Charge berhasil tapi tidak mengembalikan QRIS (tidak ada qr_string maupun action generate-qr-code).";
+    throw new ChargeRejectedError(
+      "MIDTRANS",
+      `Midtrans charge berhasil tapi tidak mengembalikan QRIS ` +
+        `(tidak ada qr_string maupun action generate-qr-code).`,
+      providerMessage,
+      statusCode || null,
     );
   }
 
