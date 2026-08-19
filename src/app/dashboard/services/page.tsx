@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,6 +12,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -22,26 +22,22 @@ import { ServicesTable } from "./services-table";
 export const metadata: Metadata = { title: "Layanan" };
 
 export default async function ServicesPage() {
+  // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggilnya di render pass yang sama, jadi baris ini TIDAK menambah
+  // round-trip auth atau query merchants baru. subscription_tier sudah ada
+  // di hasilnya, jadi query merchants terpisah yang dulu ada di sini
+  // dihapus.
+  const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect(ROUTES.login);
-  }
+  const servicesResult = await supabase
+    .from("services")
+    .select("*")
+    .eq("merchant_id", user.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true });
 
-  const [merchantResult, servicesResult] = await Promise.all([
-    supabase.from("merchants").select("subscription_tier").eq("id", user.id).maybeSingle(),
-    supabase
-      .from("services")
-      .select("*")
-      .eq("merchant_id", user.id)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true }),
-  ]);
-
-  const tier = merchantResult.data?.subscription_tier ?? "STARTER";
+  const tier = merchant.subscription_tier;
   const services = servicesResult.data ?? [];
   // Sama dengan batas yang diberlakukan trigger enforce_service_limit —
   // ditampilkan lebih awal di sini supaya merchant tidak perlu mencoba dulu

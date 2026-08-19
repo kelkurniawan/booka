@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { getSessionUser } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,14 +12,15 @@ import { DayCard } from "./day-card";
 export const metadata: Metadata = { title: "Jam kerja" };
 
 export default async function AvailabilityPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  // getSessionUser() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggilnya (lewat requireMerchant()) di render pass yang sama, jadi
+  // baris ini TIDAK menambah round-trip auth baru. Halaman ini tidak butuh
+  // data merchant sama sekali, cuma user.id.
+  const user = await getSessionUser();
   if (!user) {
     redirect(ROUTES.login);
   }
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from("availability")

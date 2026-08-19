@@ -53,6 +53,18 @@ export type SessionMerchant = Pick<
  * belum ke-cache dan endpoint-nya sedang tidak terjangkau), jatuh ke
  * `getUser()` sebagai fallback supaya user yang sesungguhnya masih punya
  * sesi valid tidak ikut ter-logout gara-gara masalah di jalur cepatnya.
+ *
+ * Beda yang PENTING selain jalur jaringan: `getClaims()` verifikasi lokal
+ * TIDAK tahu kalau sesi sudah dicabut (sign-out, banned, akun dihapus) --
+ * token yang sudah dicabut tetap lolos verifikasi tanda tangan sampai
+ * `exp`-nya lewat. `getUser()` selalu bertanya ke server Auth sehingga
+ * pencabutan itu langsung ketahuan. Ini aman dipakai di sini KARENA
+ * `getUser()` di proxy (`src/lib/supabase/proxy.ts`) tetap jalan di SETIAP
+ * request yang cocok matcher-nya -- jadi delay pencabutan maksimal cuma
+ * senilai satu request. Jangan salin pola `getClaims()` ini ke Route
+ * Handler di `/api/*`: matcher proxy TIDAK mencakup `/api/*` (lihat
+ * `src/proxy.ts`), jadi di sana wajib `getUser()` sendiri atau verifikasi
+ * setara.
  */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   const supabase = await createClient();
@@ -96,11 +108,24 @@ export const requireMerchant = cache(
     }
 
     const supabase = await createClient();
-    const { data: merchant } = await supabase
+    const { data: merchant, error } = await supabase
       .from("merchants")
       .select("username, full_name, avatar_url, subscription_tier")
       .eq("id", user.id)
       .maybeSingle();
+
+    // Kegagalan query di sini SEBELUMNYA dicatat di masing-masing page yang
+    // melakukan query merchants-nya sendiri (mis. dashboard/bookings/page.tsx).
+    // Setelah query itu disatukan ke sini, log-nya wajib pindah kemari juga --
+    // tanpa ini, kegagalan transient (bukan "belum onboarding" sungguhan)
+    // diam-diam terlihat sama seperti belum onboarding: user dipentalkan ke
+    // /onboarding tanpa jejak apa pun di server kenapa.
+    if (error) {
+      console.error("[lib/auth/session] gagal memuat data merchant", {
+        merchantId: user.id,
+        error,
+      });
+    }
 
     if (!merchant?.username) {
       redirect(ROUTES.onboarding);

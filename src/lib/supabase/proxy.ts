@@ -24,14 +24,20 @@ import type { Database } from "@/types/database";
  *           yang identik satu request pass kemudian, jadi query di sini
  *           murni duplikat -- inilah optimasinya, satu query lebih sedikit
  *           per navigasi halaman dashboard.
- *        b. Non-GET ke /dashboard/* (Server Action) -- DI SINI, wajib.
- *           Server Action dieksekusi sebagai POST langsung ke handler-nya;
- *           Next.js TIDAK me-render layout.tsx dulu sebelum action-nya
- *           jalan (render ulang RSC baru terjadi SETELAH action selesai),
- *           jadi requireMerchant() di layout datang terlambat untuk
- *           mencegah action itu sendiri. Proxy adalah satu-satunya titik
- *           yang bisa mencegat mutasi dari merchant yang belum onboarding
- *           sebelum handler-nya jalan.
+ *        b. Non-GET ke /dashboard/* (Server Action) -- DI SINI. Server
+ *           Action dieksekusi sebagai handler POST langsung; Next.js TIDAK
+ *           me-render layout.tsx dulu sebelum action-nya jalan (render
+ *           ulang RSC baru terjadi SETELAH action selesai), jadi
+ *           requireMerchant() di layout datang terlambat untuk request
+ *           semacam ini. Proxy me-redirect request ini ke /onboarding
+ *           SEBELUM sampai ke handler action -- TAPI ini bukan hard-block:
+ *           `NextResponse.redirect` di sini default 307, yang
+ *           mempertahankan method dan body, dan action client Next.js
+ *           mengikuti redirect (mem-POST ulang ke /onboarding, rute yang
+ *           dikecualikan gate ini). Jadi mutasinya "dibelokkan", bukan
+ *           ditolak murni -- perilaku redirect yang SAMA seperti yang
+ *           sudah berlaku untuk request lain ke rute privat sebelum task
+ *           ini, bukan sesuatu yang baru diperkenalkan di sini.
  *        c. /onboarding (semua method) -- DI SINI, karena tidak ada
  *           dashboard/layout.tsx yang membungkusnya -- proxy satu-satunya
  *           tempat yang bisa menegakkan aturan ini untuk rute tersebut,
@@ -126,8 +132,9 @@ export async function updateSession(request: NextRequest) {
     const onboarded = Boolean(merchant?.username);
 
     // Non-GET ke /dashboard/* dari merchant yang belum onboarding --
-    // mencegat Server Action di sini karena layout.tsx datang terlambat
-    // (lihat poin b di komentar atas fungsi ini).
+    // dibelokkan (redirect 307, bukan hard-block) ke /onboarding di sini
+    // karena layout.tsx datang terlambat untuk Server Action (lihat poin b
+    // di komentar atas fungsi ini).
     if (!onboarded && !onOnboarding) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.onboarding;

@@ -51,12 +51,19 @@ dan `getClaims()` sama-sama MEMVERIFIKASI tanda tangan JWT sebelum
 mengembalikan identitas user, cuma jalurnya beda: `getUser()` selalu
 memanggil server Auth (round-trip jaringan tiap kali), sedangkan
 `getClaims()` memverifikasi lokal lewat JWKS project kalau signing key
-asimetris aktif (tanpa round-trip), jatuh ke server Auth kalau tidak. Di
-Server Component, pakai helper ber-`cache()` di `src/lib/auth/session.ts`
-(`getSessionUser()` / `requireMerchant()`) alih-alih memanggil
-`getUser()`/`getClaims()` langsung — supaya layout dan page dalam satu
-render pass berbagi satu hasil, bukan masing-masing melakukan round-trip
-sendiri.
+asimetris aktif (tanpa round-trip), jatuh ke server Auth kalau tidak.
+Bedanya bukan cuma jalur jaringan: verifikasi lokal `getClaims()` tidak
+tahu kalau sesi sudah dicabut (sign-out, banned, akun dihapus) sampai
+token itu `exp`, sedangkan `getUser()` selalu bertanya ke server Auth
+sehingga pencabutan langsung ketahuan. Di dashboard ini aman dipakai
+karena `getUser()` di `src/lib/supabase/proxy.ts` tetap jalan di setiap
+request yang cocok matcher-nya; jangan salin pola `getClaims()` ini ke
+Route Handler `/api/*` -- matcher proxy TIDAK mencakup `/api/*`, jadi di
+sana wajib verifikasi sendiri. Di Server Component, pakai helper
+ber-`cache()` di `src/lib/auth/session.ts` (`getSessionUser()` /
+`requireMerchant()`) alih-alih memanggil `getUser()`/`getClaims()`
+langsung — supaya layout dan page dalam satu render pass berbagi satu
+hasil, bukan masing-masing melakukan round-trip sendiri.
 
 **Perubahan skema butuh migration baru** di `supabase/migrations/`, bukan edit
 file lama. Setiap tabel baru di `public` harus di-`REVOKE ALL` dulu dari `anon`
