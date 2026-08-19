@@ -745,6 +745,34 @@ from public.bookings
 where merchant_id = '22222222-2222-2222-2222-222222222222'
   and customer_whatsapp = '+6281200000002' \gset
 
+-- Sentinel M6: ini file dijalankan TANPA ON_ERROR_STOP (lihat baris 1),
+-- persis supaya expect_fail/expect_ok bisa memicu constraint violation
+-- tanpa menghentikan skrip. Tapi t16a/t16b/t16c di bawah BUKAN semuanya
+-- lewat expect_fail_code -- t16b dan t16c adalah UPDATE mentah, tidak
+-- dibungkus exception handler apa pun. Kalau ADA yang tak terduga gagal di
+-- dalam blok BEGIN/ROLLBACK di bawah (mis. \gset di atas ternyata tidak
+-- menemukan baris karena data seed berubah, membuat :'own_booking_id' atau
+-- :'other_booking_id' tersubstitusi jadi sesuatu yang tidak valid), sisa
+-- statement di transaksi itu akan gagal dengan "current transaction is
+-- aborted" -- pesan generik yang TIDAK diawali "FAIL", jadi lolos begitu
+-- saja dari kontrak file ini ("baris diawali FAIL berarti ada masalah").
+--
+-- Sequence dipilih sebagai penanda karena nextval() SATU-SATUNYA efek
+-- samping SQL yang didesain Postgres untuk TIDAK PERNAH ikut di-ROLLBACK
+-- (supaya nomor urut tidak "mundur" akibat rollback) -- jadi dibuat di
+-- SINI, di luar BEGIN/ROLLBACK di bawah, lalu di-tick sekali di setiap
+-- t16a/t16b/t16c, dan diperiksa lagi setelah ROLLBACK (lihat sentinel
+-- t16_sentinel di akhir blok ini). Kalau salah satu dari ketiganya gagal
+-- dieksekusi sampai akhir, sentinel itu yang menangkapnya sebagai FAIL
+-- sungguhan -- bukan diam-diam lolos.
+create temporary sequence t16_seen;
+-- WAJIB: blok di bawah ini "set local role authenticated" (peran rendah,
+-- bukan superuser koneksi psql harness ini) -- tanpa GRANT eksplisit ini,
+-- nextval() di t16a/t16b/t16c akan gagal "permission denied for sequence"
+-- (default privilege sequence cuma untuk owner-nya), yang justru
+-- meniadakan gunanya sentinel ini sendiri.
+grant usage, select on sequence t16_seen to authenticated;
+
 begin;
 
 set local role authenticated;
@@ -761,9 +789,15 @@ set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 -- kode yang dipakai Postgres untuk "new row violates row-level security
 -- policy"), bukan kebetulan gagal karena sebab lain yang tidak terkait.
 select pg_temp.expect_fail_code(
-  format($q$update public.bookings set status = 'PAID' where id = %L$q$, :'own_booking_id'),
-  '42501',
-  'merchant memalsukan status jadi PAID pada booking miliknya sendiri (t16a)');
+         format($q$update public.bookings set status = 'PAID' where id = %L$q$, :'own_booking_id'),
+         '42501',
+         'merchant memalsukan status jadi PAID pada booking miliknya sendiri (t16a)') as t16a,
+       -- Tick sentinel M6 -- lihat catatan besar sebelum "begin;" di atas.
+       -- expect_fail_code menangkap errornya sendiri (exception handler di
+       -- dalam fungsinya), jadi statement SELECT ini sendiri tidak pernah
+       -- gagal karena t16a -- nextval() di sini murni membuktikan baris
+       -- select ini benar-benar selesai dieksekusi.
+       nextval('t16_seen') as t16a_tick;
 
 -- t16b. Merchant TIDAK BISA mengubah booking MILIK MERCHANT LAIN -- USING
 -- memfilter baris berdasarkan merchant_id SEBELUM update dievaluasi, jadi
@@ -780,7 +814,14 @@ with updated as (
 )
 select case when count(*) = 0
             then 'OK   t16b merchant TIDAK bisa mengubah booking milik merchant lain (0 baris terpengaruh)'
-            else 'FAIL t16b merchant berhasil mengubah ' || count(*) || ' baris booking milik merchant lain' end as t16b
+            else 'FAIL t16b merchant berhasil mengubah ' || count(*) || ' baris booking milik merchant lain' end as t16b,
+       -- Tick sentinel M6 (lihat catatan sebelum "begin;") -- beda dari
+       -- t16a, UPDATE di CTE "updated" di atas TIDAK dibungkus exception
+       -- handler apa pun. Kalau UPDATE itu sendiri gagal tak terduga
+       -- (bukan cuma "0 baris terpengaruh", tapi errcode sungguhan),
+       -- seluruh statement ini (termasuk nextval di sini) tidak pernah
+       -- selesai -- sentinel t16_sentinel di akhir blok yang menangkapnya.
+       nextval('t16_seen') as t16b_tick
 from updated;
 
 -- t16c. Jalur legit: booking MILIK SENDIRI, status PENDING -> CANCELLED,
@@ -797,7 +838,30 @@ with updated as (
 )
 select case when count(*) = 1 and bool_and(status = 'CANCELLED')
             then 'OK   t16c merchant berhasil membatalkan booking miliknya sendiri (PENDING -> CANCELLED, 1 baris)'
-            else 'FAIL t16c pembatalan booking sendiri tidak berhasil sebagaimana mestinya (' || count(*) || ' baris)' end as t16c
+            else 'FAIL t16c pembatalan booking sendiri tidak berhasil sebagaimana mestinya (' || count(*) || ' baris)' end as t16c,
+       -- Tick sentinel M6 (lihat catatan sebelum "begin;" di atas).
+       nextval('t16_seen') as t16c_tick
 from updated;
 
 rollback;
+
+-- Sentinel M6 -- dijalankan SETELAH rollback, DI LUAR transaksi blok 16,
+-- dengan sengaja. nextval() TIDAK PERNAH ikut di-ROLLBACK (lihat catatan
+-- besar sebelum "begin;" di atas blok ini), jadi last_value sequence ini
+-- adalah bukti independen berapa banyak dari t16a/t16b/t16c yang BENAR-
+-- BENAR selesai dieksekusi sampai baris nextval()-nya masing-masing --
+-- tidak peduli apakah hasil pemeriksaannya sendiri OK atau FAIL, ataupun
+-- apakah "rollback;" di atas membatalkan SEMUA perubahan data blok ini.
+-- Kalau salah satu dari ketiganya gagal di tengah jalan (transaksi
+-- ter-abort sebelum sempat memanggil nextval()-nya), last_value akan
+-- kurang dari 3 -- itulah yang ditangkap di sini sebagai FAIL sungguhan,
+-- bukan diam-diam lolos sebagai pesan "current transaction is aborted"
+-- generik yang tidak diawali "FAIL".
+select case
+         when not is_called
+           then 'FAIL sentinel blok 16: tidak ada satu pun pemeriksaan t16 yang benar-benar tereksekusi (lihat pesan ERROR di atas)'
+         when last_value = 3
+           then 'OK   sentinel blok 16: ketiga pemeriksaan t16a/t16b/t16c benar-benar tereksekusi sampai akhir'
+         else 'FAIL sentinel blok 16: hanya ' || last_value || ' dari 3 pemeriksaan t16 yang tereksekusi -- transaksi kemungkinan gagal di tengah jalan (lihat pesan ERROR di atas)'
+       end as t16_sentinel
+from t16_seen;

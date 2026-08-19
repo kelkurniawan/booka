@@ -22,6 +22,19 @@ export type BookingLiveStatusProps = {
   bookingId: string;
   /** `expires_at` booking pada saat page.tsx (server) merender halaman ini. */
   expiresAt: string;
+  /**
+   * Blok QR + nominal + instruksi pindai, dirender oleh PendingPayment
+   * (Server Component, page.tsx) dan diteruskan sebagai children -- BUKAN
+   * dirender ulang di sini. Alasannya dua: (1) QrisCode adalah Server
+   * Component async yang tidak bisa dipanggil dari komponen client seperti
+   * ini, dan (2) begitu SERVER mengonfirmasi status terminal, komponen ini
+   * WAJIB berhenti menampilkan children sama sekali -- lihat cabang
+   * isServerTerminal di bawah -- supaya kode QR yang sudah dibayar tidak
+   * terus terlihat mengundang dipindai lagi selama round-trip
+   * router.refresh() (atau lebih lama lagi kalau itu macet, lihat I3/I4 di
+   * catatan review).
+   */
+  children: React.ReactNode;
 };
 
 /**
@@ -49,7 +62,7 @@ export type BookingLiveStatusProps = {
  * layar ini macet di "Memperbarui status booking..." walau pelanggan sudah
  * benar-benar membayar -- itu bug yang diperbaiki di sini.
  */
-export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusProps) {
+export function BookingLiveStatus({ bookingId, expiresAt, children }: BookingLiveStatusProps) {
   const router = useRouter();
 
   const [status, setStatus] = useState<PollStatus>("PENDING");
@@ -82,6 +95,25 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
   const [remainingMs, setRemainingMs] = useState<number | null>(null);
 
   const refreshTriggeredRef = useRef(false);
+
+  // Jaring pengaman TERAKHIR kalau router.refresh() gagal diam-diam (I3) --
+  // beda dari refreshTriggeredRef di atas (menjaga router.refresh() otomatis
+  // di effect di bawah cuma terpanggil sekali), state ini murni menjaga
+  // TOMBOL manualnya sendiri tidak bisa dipencet dobel sambil reload
+  // sebelumnya masih berjalan.
+  const [reloading, setReloading] = useState(false);
+
+  function handleManualReload() {
+    if (reloading) return;
+    setReloading(true);
+    // window.location.reload() SENGAJA dipakai di sini, BUKAN
+    // router.refresh() lagi -- ini tombol jalan keluar untuk kasus
+    // router.refresh() (di effect bawah) sudah gagal/macet. Memanggil
+    // mekanisme yang sama yang baru saja gagal bukan jalan keluar
+    // sungguhan. Navigasi full-page ini melewati Next.js router sama
+    // sekali, jadi tidak bisa ikut macet dengan cara yang sama.
+    window.location.reload();
+  }
 
   // Polling itu sendiri -- berhenti (tidak memasang interval baru) HANYA
   // begitu SERVER sudah mengonfirmasi status terminal. Kalau cuma jam klien
@@ -169,23 +201,37 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
   }, [isServerTerminal, router]);
 
   if (isServerTerminal) {
+    // children (blok QR + nominal + instruksi pindai) SENGAJA TIDAK
+    // dirender di cabang ini -- lihat komentar children di
+    // BookingLiveStatusProps. Begitu server bilang statusnya sudah
+    // terminal, tidak ada alasan apa pun pelanggan masih perlu (atau
+    // boleh) memindai kode itu lagi -- entah statusnya berakhir PAID
+    // (sudah lunas, memindai lagi berisiko membayar dua kali karena
+    // payload QRIS tidak dijamin sekali-pakai dan sistem ini belum punya
+    // jalur refund) atau CANCELLED (kodenya sudah tidak valid).
     return (
       <div className="text-muted-foreground flex flex-col items-center justify-center gap-2 text-xs">
         <div className="flex items-center gap-2">
           <Loader2 className="size-3.5 animate-spin" aria-hidden />
           Memperbarui status booking...
         </div>
-        {/* Jaring pengaman -- router.refresh() di atas cuma dipicu SEKALI
-            (refreshTriggeredRef). Kalau panggilan itu gagal diam-diam (mis.
-            gangguan jaringan sesaat), pelanggan yang baru saja membayar
-            tidak boleh terjebak tanpa jalan keluar apa pun -- tombol ini
-            aman dipencet berkali-kali. */}
+        {/* Jaring pengaman SUNGGUHAN (I3) -- router.refresh() di atas cuma
+            dipicu SEKALI (refreshTriggeredRef), dan kalau panggilan itu
+            gagal diam-diam ATAU balik dengan tree yang masih basi (server
+            component tidak remount, refreshTriggeredRef tetap terpasang),
+            memanggil router.refresh() LAGI dari tombol ini tidak menolong --
+            itu mekanisme yang sama yang baru saja gagal. window.location.
+            reload() melewati Next.js router sama sekali (navigasi
+            full-page sungguhan), jadi tidak bisa macet dengan cara yang
+            sama. disabled+label berubah mencegah dobel klik menumpuk dua
+            reload sekaligus. */}
         <button
           type="button"
-          onClick={() => router.refresh()}
-          className="text-foreground underline underline-offset-4"
+          onClick={handleManualReload}
+          disabled={reloading}
+          className="text-foreground underline underline-offset-4 disabled:cursor-not-allowed disabled:opacity-50 disabled:no-underline"
         >
-          Muat ulang halaman
+          {reloading ? "Memuat ulang..." : "Muat ulang halaman"}
         </button>
       </div>
     );
@@ -195,42 +241,46 @@ export function BookingLiveStatus({ bookingId, expiresAt }: BookingLiveStatusPro
   const isUrgent = remainingMs !== null && remainingMs <= URGENT_THRESHOLD_MS;
 
   return (
-    <div className="border-border flex flex-col gap-3 border p-4">
-      {clientExpired ? (
-        // Jam PERANGKAT PELANGGAN menduga tenggat sudah lewat, tapi server
-        // (lewat polling) belum mengonfirmasi status terminal apa pun --
-        // ini kondisi jam klien meleset (lebih cepat dari server) atau
-        // pembayaran masuk tepat di detik-detik terakhir. Polling TETAP
-        // jalan di latar belakang (lihat komentar besar di atas komponen),
-        // jadi pesan di sini menjelaskan itu, bukan menampilkan hitung
-        // mundur negatif yang membingungkan.
-        <p className="text-sm text-pretty">
-          Waktu pembayaran menurut perangkatmu sudah lewat. Kami masih memeriksa status pembayaran
-          terakhir -- kalau kamu sudah membayar, jangan tutup halaman ini dulu.
-        </p>
-      ) : (
-        <p className="text-sm text-pretty">
-          Selesaikan pembayaran QRIS sebelum{" "}
-          <span className="font-medium">{formatTime(currentExpiresAt)} WIB</span> agar slot ini
-          tidak hangus.
-          {countdownLabel ? (
-            <>
-              {" "}
-              <span
-                className={cn(
-                  "font-mono font-medium tabular-nums",
-                  isUrgent ? "text-destructive" : "text-foreground",
-                )}
-              >
-                (tersisa {countdownLabel})
-              </span>
-            </>
-          ) : null}
-        </p>
-      )}
-      <div className="text-muted-foreground flex items-center gap-2 text-xs">
-        <Loader2 className="size-3.5 animate-spin" aria-hidden />
-        {pollError ? "Gagal memeriksa status, mencoba lagi..." : "Memeriksa status pembayaran..."}
+    <div className="flex flex-col gap-6">
+      {children}
+
+      <div className="border-border flex flex-col gap-3 border p-4">
+        {clientExpired ? (
+          // Jam PERANGKAT PELANGGAN menduga tenggat sudah lewat, tapi server
+          // (lewat polling) belum mengonfirmasi status terminal apa pun --
+          // ini kondisi jam klien meleset (lebih cepat dari server) atau
+          // pembayaran masuk tepat di detik-detik terakhir. Polling TETAP
+          // jalan di latar belakang (lihat komentar besar di atas komponen),
+          // jadi pesan di sini menjelaskan itu, bukan menampilkan hitung
+          // mundur negatif yang membingungkan.
+          <p className="text-sm text-pretty">
+            Waktu pembayaran menurut perangkatmu sudah lewat. Kami masih memeriksa status
+            pembayaran terakhir -- kalau kamu sudah membayar, jangan tutup halaman ini dulu.
+          </p>
+        ) : (
+          <p className="text-sm text-pretty">
+            Selesaikan pembayaran QRIS sebelum{" "}
+            <span className="font-medium">{formatTime(currentExpiresAt)} WIB</span> agar slot ini
+            tidak hangus.
+            {countdownLabel ? (
+              <>
+                {" "}
+                <span
+                  className={cn(
+                    "font-mono font-medium tabular-nums",
+                    isUrgent ? "text-destructive" : "text-foreground",
+                  )}
+                >
+                  (tersisa {countdownLabel})
+                </span>
+              </>
+            ) : null}
+          </p>
+        )}
+        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+          <Loader2 className="size-3.5 animate-spin" aria-hidden />
+          {pollError ? "Gagal memeriksa status, mencoba lagi..." : "Memeriksa status pembayaran..."}
+        </div>
       </div>
     </div>
   );

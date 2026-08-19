@@ -36,16 +36,21 @@ export function BookingDetailDialog({
   open,
   onOpenChange,
   booking,
+  nowMs,
   onCancelRequest,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   booking: BookingListItem;
+  /** Instant referensi "sekarang", diteruskan dari page.tsx lewat
+   * bookings-table.tsx -- lihat komentar nowMs di getDisplayStatus
+   * (booking-state.ts). */
+  nowMs: number;
   /** Diberikan hanya kalau booking ini masih boleh dibatalkan -- lihat
    * `cancellable` di bookings-table.tsx. */
   onCancelRequest?: () => void;
 }) {
-  const displayStatus = getDisplayStatus(booking);
+  const displayStatus = getDisplayStatus(booking, nowMs);
   const meta = STATUS_META[displayStatus];
 
   return (

@@ -35,7 +35,17 @@ import { cancelBooking } from "./actions";
 import { BookingDetailDialog } from "./booking-detail-dialog";
 import { type BookingListItem, getDisplayStatus, STATUS_META } from "./booking-state";
 
-export function BookingsTable({ bookings }: { bookings: BookingListItem[] }) {
+export function BookingsTable({
+  bookings,
+  nowMs,
+}: {
+  bookings: BookingListItem[];
+  /** Instant referensi "sekarang" dihitung SEKALI di page.tsx (Server
+   * Component) dan diteruskan turun -- lihat komentar nowMs di
+   * getDisplayStatus (booking-state.ts) soal kenapa ini tidak boleh dibaca
+   * lewat Date.now() di komponen ini, yang SSR. */
+  nowMs: number;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border">
       <Table>
@@ -51,7 +61,7 @@ export function BookingsTable({ bookings }: { bookings: BookingListItem[] }) {
         </TableHeader>
         <TableBody>
           {bookings.map((booking) => (
-            <BookingRow key={booking.id} booking={booking} />
+            <BookingRow key={booking.id} booking={booking} nowMs={nowMs} />
           ))}
         </TableBody>
       </Table>
@@ -59,12 +69,12 @@ export function BookingsTable({ bookings }: { bookings: BookingListItem[] }) {
   );
 }
 
-function BookingRow({ booking }: { booking: BookingListItem }) {
+function BookingRow({ booking, nowMs }: { booking: BookingListItem; nowMs: number }) {
   const [detailOpen, setDetailOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelPending, startCancel] = useTransition();
 
-  const displayStatus = getDisplayStatus(booking);
+  const displayStatus = getDisplayStatus(booking, nowMs);
   const meta = STATUS_META[displayStatus];
   // Booking yang sudah CANCELLED (atau EXPIRED, karena statusnya di database
   // masih PENDING sampai cron jalan -- lihat cancelBooking di actions.ts
@@ -136,6 +146,7 @@ function BookingRow({ booking }: { booking: BookingListItem }) {
         open={detailOpen}
         onOpenChange={setDetailOpen}
         booking={booking}
+        nowMs={nowMs}
         onCancelRequest={
           cancellable
             ? () => {
@@ -153,6 +164,14 @@ function BookingRow({ booking }: { booking: BookingListItem }) {
             <DialogDescription>
               Slot jadwal ini akan dilepas dan bisa dipesan pelanggan lain. Tindakan ini
               tidak bisa dibatalkan.
+              {booking.status === "PAID" ? (
+                <>
+                  {" "}
+                  DP pelanggan untuk booking ini sudah masuk ke akun payment gateway Anda --
+                  membatalkan di sini TIDAK mengembalikan dananya secara otomatis. Kalau perlu
+                  refund, lakukan manual lewat dashboard payment gateway Anda.
+                </>
+              ) : null}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

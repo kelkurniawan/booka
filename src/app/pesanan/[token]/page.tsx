@@ -12,6 +12,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 import { BookingLiveStatus } from "./booking-live-status";
 
+/**
+ * I3 -- halaman ini TIDAK PERNAH boleh disajikan dari full route cache
+ * Next.js. Uangnya sudah berpindah (DP masuk ke akun payment gateway
+ * merchant) begitu status booking jadi PAID -- kalau halaman ini kebetulan
+ * ter-cache dari render sebelum pembayaran masuk, pelanggan yang membuka
+ * tautannya lagi setelah membayar bisa melihat versi basi yang masih bilang
+ * "menunggu pembayaran" (atau lebih parah: kode QR yang mengundang
+ * dipindai lagi, lihat I4), dan itu bisa bertahan sampai revalidasi
+ * berikutnya alih-alih ikut router.refresh() pelanggan itu sendiri.
+ */
+export const dynamic = "force-dynamic";
+
 type BookingPageParams = { token: string };
 
 /**
@@ -262,31 +274,38 @@ function PendingPayment({
 }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-3">
-        <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-          Menunggu pembayaran
-        </span>
+      {/* Blok QR + nominal + instruksi diteruskan sebagai children ke
+          BookingLiveStatus (BUKAN dirender langsung di sini) -- I4:
+          begitu polling klien mengonfirmasi status terminal (PAID/
+          CANCELLED), BookingLiveStatus berhenti menampilkan children ini
+          sama sekali, supaya kode QR yang sudah lunas tidak terus terlihat
+          mengundang dipindai lagi selama round-trip router.refresh(). */}
+      <BookingLiveStatus bookingId={booking.id} expiresAt={booking.expires_at}>
+        <div className="flex flex-col items-center gap-3">
+          <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
+            Menunggu pembayaran
+          </span>
 
-        {booking.payment_url ? (
-          <QrisCode payload={booking.payment_url} />
-        ) : (
-          <div className="border-border flex w-full max-w-[320px] flex-col gap-2 border border-dashed p-6 text-center">
-            <p className="text-sm text-pretty">
-              Kode pembayaran belum tersedia. Coba muat ulang halaman ini.
-            </p>
-          </div>
-        )}
+          {booking.payment_url ? (
+            <QrisCode payload={booking.payment_url} />
+          ) : (
+            <div className="border-border flex w-full max-w-[320px] flex-col gap-2 border border-dashed p-6 text-center">
+              <p className="text-sm text-pretty">
+                Kode pembayaran belum tersedia. Coba muat ulang halaman ini.
+              </p>
+            </div>
+          )}
 
-        <span className="text-2xl font-semibold">
-          {formatRupiah(Number(booking.service_price))}
-        </span>
-        <p className="text-muted-foreground text-center text-xs text-pretty">
-          Buka aplikasi e-wallet atau m-banking, pilih menu &ldquo;Bayar&rdquo; atau &ldquo;Scan
-          QRIS&rdquo;, lalu pindai kode di atas sebelum {formatTime(booking.expires_at)} WIB.
-        </p>
-      </div>
-
-      <BookingLiveStatus bookingId={booking.id} expiresAt={booking.expires_at} />
+          <span className="text-2xl font-semibold">
+            {formatRupiah(Number(booking.service_price))}
+          </span>
+          <p className="text-muted-foreground text-center text-xs text-pretty">
+            Buka aplikasi e-wallet atau m-banking, pilih menu &ldquo;Bayar&rdquo; atau
+            &ldquo;Scan QRIS&rdquo;, lalu pindai kode di atas sebelum{" "}
+            {formatTime(booking.expires_at)} WIB.
+          </p>
+        </div>
+      </BookingLiveStatus>
 
       <dl className="border-border flex flex-col gap-3 border-t pt-4 text-sm">
         <div className="flex items-baseline justify-between gap-3">

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Banknote, CalendarClock, Hourglass, Inbox, SearchX } from "lucide-react";
+import { AlertTriangle, Banknote, CalendarClock, Hourglass, Inbox, SearchX } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -78,13 +78,24 @@ export default async function BookingsPage({
 
   // Pencarian yang gagal validasi (kepanjangan, atau mengandung karakter
   // yang berarti khusus di filter PostgREST) diperlakukan sebagai "tanpa
-  // filter pencarian", bukan error -- konsisten dengan penanganan `status`
-  // di atas. Nilai mentahnya (rawParams.q) tetap diteruskan ke
-  // BookingsFilters supaya kotak pencariannya tetap menampilkan apa yang
-  // diketik merchant.
+  // filter pencarian" UNTUK QUERY-nya (bukan error yang menghentikan
+  // halaman) -- konsisten dengan penanganan `status` di atas. Nilai
+  // mentahnya (rawParams.q) tetap diteruskan ke BookingsFilters supaya
+  // kotak pencariannya tetap menampilkan apa yang diketik merchant. Tapi
+  // beda dari status: kegagalan ini TETAP diberi tahu ke merchant lewat
+  // `searchError` di bawah (dirender di atas tabel) -- soalnya trigger-nya
+  // bukan cuma percobaan iseng, melainkan hal wajar seperti nama pelanggan
+  // yang mengandung tanda titik ("Ayu S. Lestari"). Tanpa notice ini,
+  // tabelnya diam-diam menampilkan daftar TIDAK terfilter padahal kotak
+  // pencarian masih menunjukkan kata kunci yang diketik -- terlihat seperti
+  // pencarian jalan padahal tidak.
   const rawQ = rawParams.q ?? "";
   const searchParsed = rawQ ? bookingSearchSchema.safeParse(rawQ) : null;
   const searchTerm = searchParsed?.success ? searchParsed.data : "";
+  const searchError =
+    searchParsed && !searchParsed.success
+      ? (searchParsed.error.issues[0]?.message ?? "Pencarian tidak valid.")
+      : null;
 
   const pageParam = Number(rawParams.page);
   const page = Number.isFinite(pageParam) && pageParam >= 1 ? Math.floor(pageParam) : 1;
@@ -116,33 +127,107 @@ export default async function BookingsPage({
   // Kartu ringkasan WAJIB dihitung dari seluruh data merchant, bukan dari
   // halaman yang sedang ditampilkan -- karena itu semuanya query terpisah
   // tanpa .range(), dijalankan paralel dengan query tabel yang dipaginasi.
-  const [merchantResult, monthCountResult, revenueResult, pendingResult, bookingsResult] =
-    await Promise.all([
-      supabase.from("merchants").select("username").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("merchant_id", user.id)
-        .gte("created_at", monthStartIso),
-      supabase
-        .from("bookings")
-        .select("service_price")
-        .eq("merchant_id", user.id)
-        .eq("status", "PAID")
-        .gte("paid_at", monthStartIso),
-      supabase
-        .from("bookings")
-        .select("id", { count: "exact", head: true })
-        .eq("merchant_id", user.id)
-        .eq("status", "PENDING")
-        .gt("expires_at", now.toISOString()),
-      bookingsQuery,
-    ]);
+  //
+  // "Booking bulan ini" (monthPaidResult + monthPendingResult) SENGAJA
+  // dipecah jadi dua query dan disatukan manual, bukan satu query yang
+  // menghitung semua status -- harus persis meniru definisi
+  // count_bookings_this_month (supabase/migrations/20260813051417_reap_expired_pending_inline.sql),
+  // yaitu PAID apa pun, ATAU PENDING yang BELUM kedaluwarsa. Kalau kartu ini
+  // menghitung status lain (termasuk CANCELLED/PENDING kedaluwarsa), angkanya
+  // tidak akan pernah cocok dengan kuota "X / Y transaksi" yang ditampilkan
+  // di Ringkasan untuk bulan yang sama -- merchant akan mengira salah satu
+  // angkanya salah, padahal cuma beda definisi.
+  const [
+    merchantResult,
+    monthPaidResult,
+    monthPendingResult,
+    revenueResult,
+    pendingResult,
+    bookingsResult,
+  ] = await Promise.all([
+    supabase.from("merchants").select("username").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", user.id)
+      .eq("status", "PAID")
+      .gte("created_at", monthStartIso),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", user.id)
+      .eq("status", "PENDING")
+      .gt("expires_at", now.toISOString())
+      .gte("created_at", monthStartIso),
+    supabase
+      .from("bookings")
+      .select("service_price")
+      .eq("merchant_id", user.id)
+      .eq("status", "PAID")
+      .gte("paid_at", monthStartIso),
+    supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", user.id)
+      .eq("status", "PENDING")
+      .gt("expires_at", now.toISOString()),
+    bookingsQuery,
+  ]);
+
+  // Kartu ringkasan boleh tetap degradasi ke 0 kalau query-nya gagal (angka
+  // 0 di samping tabel yang tetap berfungsi cuma terlihat aneh, tidak
+  // menyesatkan seperti kasus bookingsResult di bawah) -- tapi errornya
+  // tetap WAJIB dicatat, bukan ditelan diam-diam.
+  if (merchantResult.error) {
+    console.error("[dashboard/bookings] gagal memuat data merchant", {
+      merchantId: user.id,
+      error: merchantResult.error,
+    });
+  }
+  if (monthPaidResult.error) {
+    console.error("[dashboard/bookings] gagal menghitung booking PAID bulan ini", {
+      merchantId: user.id,
+      error: monthPaidResult.error,
+    });
+  }
+  if (monthPendingResult.error) {
+    console.error("[dashboard/bookings] gagal menghitung booking PENDING bulan ini", {
+      merchantId: user.id,
+      error: monthPendingResult.error,
+    });
+  }
+  if (revenueResult.error) {
+    console.error("[dashboard/bookings] gagal menghitung pendapatan terkonfirmasi", {
+      merchantId: user.id,
+      error: revenueResult.error,
+    });
+  }
+  if (pendingResult.error) {
+    console.error("[dashboard/bookings] gagal menghitung booking menunggu pembayaran", {
+      merchantId: user.id,
+      error: pendingResult.error,
+    });
+  }
+  // bookingsResult -- BEDA dari empat query di atas: ini sumber tabel
+  // (bukan kartu ringkasan), jadi errornya tidak boleh diam-diam
+  // terdegradasi jadi "[]" -- lihat cabang render "gagal memuat" di bawah,
+  // yang sengaja dibedakan dari cabang "belum ada booking".
+  if (bookingsResult.error) {
+    console.error("[dashboard/bookings] gagal memuat daftar booking", {
+      merchantId: user.id,
+      error: bookingsResult.error,
+    });
+  }
 
   const username = merchantResult.data?.username ?? "";
-  const bookingsThisMonth = monthCountResult.count ?? 0;
+  const bookingsThisMonth = (monthPaidResult.count ?? 0) + (monthPendingResult.count ?? 0);
   const confirmedRevenue = (revenueResult.data ?? []).reduce(
-    (sum, row) => sum + row.service_price,
+    // service_price adalah numeric(12,2) di Postgres -- Number() berjaga-jaga
+    // kalau suatu saat postgrest-js mengembalikannya sebagai string (sama
+    // seperti komentar di src/app/api/bookings/route.ts), supaya reduce ini
+    // tidak diam-diam menyambung string ("Rp NaN" di kartu) alih-alih
+    // menjumlahkan angka.
+    (sum, row) => sum + Number(row.service_price),
     0,
   );
   const pendingCount = pendingResult.count ?? 0;
@@ -154,6 +239,11 @@ export default async function BookingsPage({
   // sama menghitung total tanpa .range()) -- jadi kalau TIDAK ada filter
   // aktif dan totalCount tetap 0, itu memang berarti merchant belum punya
   // booking sama sekali. Tidak perlu query "hasAnyBookings" terpisah.
+  //
+  // Kecuali bookingsResult.error: totalCount juga jatuh ke 0 kalau query-nya
+  // gagal (bukan cuma kalau memang kosong) -- cabang render di bawah
+  // memeriksa bookingsResult.error LEBIH DULU supaya "gagal memuat" tidak
+  // pernah disalahartikan sebagai "belum ada booking".
   const hasFilters = statusFilter !== null || searchTerm !== "";
 
   // Halaman diminta di luar jangkauan (mis. merchant mengetik ?page=99
@@ -178,7 +268,13 @@ export default async function BookingsPage({
           icon={<CalendarClock className="size-4" />}
           label="Booking bulan ini"
           value={`${bookingsThisMonth}`}
-          hint="Semua pesanan yang masuk bulan ini, apa pun statusnya"
+          // Definisi ini SENGAJA sama persis dengan count_bookings_this_month
+          // (dipakai kuota "X / Y transaksi" di Ringkasan) -- PAID, atau
+          // PENDING yang belum kedaluwarsa. Bukan "semua status": CANCELLED
+          // dan PENDING kedaluwarsa TIDAK dihitung, supaya angka di kartu ini
+          // tidak pernah tampak berbeda dari kuota di halaman Ringkasan untuk
+          // bulan yang sama.
+          hint="Booking yang terhitung kuota bulan ini (dibayar atau menunggu pembayaran)"
         />
         <SummaryCard
           icon={<Banknote className="size-4" />}
@@ -200,7 +296,28 @@ export default async function BookingsPage({
           state (dilarang aturan react-hooks/set-state-in-effect). */}
       <BookingsFilters key={rawParams.q ?? ""} status={rawParams.status ?? ""} q={rawParams.q ?? ""} />
 
-      {totalCount === 0 ? (
+      {searchError ? (
+        <p className="text-destructive text-sm" role="alert">
+          {searchError}
+        </p>
+      ) : null}
+
+      {bookingsResult.error ? (
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <AlertTriangle />
+            </EmptyMedia>
+            <EmptyTitle>Gagal memuat daftar booking</EmptyTitle>
+            <EmptyDescription>Muat ulang halaman ini untuk mencoba lagi.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button asChild variant="outline">
+              <Link href={ROUTES.bookings}>Muat ulang halaman</Link>
+            </Button>
+          </EmptyContent>
+        </Empty>
+      ) : totalCount === 0 ? (
         hasFilters ? (
           <Empty>
             <EmptyHeader>
@@ -242,7 +359,7 @@ export default async function BookingsPage({
         )
       ) : (
         <>
-          <BookingsTable bookings={bookings} />
+          <BookingsTable bookings={bookings} nowMs={now.getTime()} />
 
           {totalPages > 1 ? (
             <div className="flex items-center justify-between">

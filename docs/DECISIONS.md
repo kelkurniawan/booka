@@ -234,3 +234,34 @@ sekalipun connection_id itu tertebak.
 Ditambahkan di `20260730000600_payment_credential_rpc.sql`, diuji lewat
 `npm run docker:test` (hak EXECUTE per peran + round-trip upsert/get) di
 `supabase/tests/99_verify.sql` bagian 10.
+
+## 17. Format tanggal/jam selalu Asia/Jakarta, tidak pernah zona waktu host
+
+`src/lib/format.ts` (`formatDateTime`, `formatDate`, `formatTime`) sengaja
+menghitung sendiri jam dinding WIB (geser instant UTC-nya +7 jam, baca lewat
+getter UTC) alih-alih memakai zona waktu proses yang merendernya. Sebelum
+perbaikan ini fungsi-fungsi itu memakai `date-fns/format` polos, yang selalu
+resolve ke `TZ` proses Node — tidak ada satu pun dari `Dockerfile`,
+`compose.yaml`, atau `next.config.ts` yang menyetel `TZ`, jadi server produksi
+(mis. Vercel) berjalan UTC dan setiap jam yang ditampilkan meleset 7 jam dari
+label "WIB" di sampingnya, termasuk jam kedaluwarsa QRIS dan bukti pembayaran
+di `/pesanan/[token]`.
+
+Asia/Jakarta dipilih sebagai satu-satunya zona tampilan (bukan opsional per
+pengguna) karena Booka hanya melayani merchant Indonesia dan WIB adalah
+UTC+7 tetap tanpa DST — aman dihitung manual tanpa data zona waktu IANA.
+
+## 18. `access_token` booking ada di path URL, bukan header/cookie
+
+`/pesanan/[token]` mengidentifikasi booking lewat token 192-bit di path URL
+(`ROUTES.bookingStatus`), bukan lewat header Authorization atau cookie sesi.
+Ini keputusan sadar — pelanggan tidak login, jadi tautan itu sendiri HARUS
+jadi satu-satunya bukti akses, dan token di path (bukan query string) tidak
+ikut ke server via header seperti cookie akan.
+
+Konsekuensinya: token ini otomatis tersimpan di riwayat browser pelanggan dan
+di access log platform (Vercel dsb, mana pun yang mencatat path request).
+Entropinya (192 bit) membuat tebakan brute-force tidak praktis, jadi ini
+diterima sebagai trade-off desain, BUKAN diabaikan begitu saja — dicatat di
+sini supaya tidak ada yang nanti menambah logging path request (mis. APM,
+analytics) tanpa sadar itu berarti mencatat token akses booking pelanggan.

@@ -71,18 +71,54 @@ export const BOOKING_LIST_COLUMN_LIST: readonly (keyof BookingListItem)[] = [
 
 export type CancelBookingResult = { ok: boolean; message?: string };
 
+/** Pesan cancel_reason yang ditulis saat merchant membatalkan booking secara
+ * manual lewat cancelBooking -- dibedakan dari pesan cron
+ * (EXPIRY_CANCEL_REASON di bawah) supaya merchant tahu ini keputusan
+ * mereka sendiri, bukan otomatis. */
+export const MERCHANT_CANCEL_REASON = "Dibatalkan oleh merchant";
+
+/**
+ * Pesan cancel_reason yang ditulis cron /api/cron/cancel-unpaid saat
+ * membatalkan booking PENDING yang kedaluwarsa -- SATU sumber kebenaran,
+ * diimpor persis di sini (dipakai getDisplayStatus di bawah) dan di
+ * src/app/api/cron/cancel-unpaid/route.ts, supaya string literalnya tidak
+ * bisa diam-diam berbeda antara kedua tempat kalau salah satu diubah.
+ */
+export const EXPIRY_CANCEL_REASON = "DP tidak dibayar dalam batas waktu";
+
 /**
  * Status yang ditampilkan ke merchant -- PENDING yang expires_at-nya sudah
  * lewat ditampilkan "Kedaluwarsa", bukan "Menunggu pembayaran": cron baru
  * membatalkannya beberapa saat kemudian (lihat src/app/api/cron/cancel-unpaid),
  * dan merchant tidak boleh mengira slot itu masih hidup di antara waktu itu.
+ *
+ * Begitu cron benar-benar jalan, baris yang sama berubah status jadi
+ * CANCELLED di database -- tanpa penanganan lebih lanjut, tampilannya akan
+ * "flip" dari "Kedaluwarsa" ke "Dibatalkan" semata-mata karena timing cron,
+ * padahal fakta sebenarnya (DP tidak pernah dibayar) tidak berubah. Baris
+ * CANCELLED yang cancel_reason-nya persis EXPIRY_CANCEL_REASON karena itu
+ * tetap ditampilkan "Kedaluwarsa", supaya merchant melihat presentasi yang
+ * konsisten tidak peduli cron sudah sempat jalan atau belum.
  */
 export type DisplayStatus = BookingStatus | "EXPIRED";
 
 export function getDisplayStatus(
-  booking: Pick<BookingListItem, "status" | "expires_at">,
+  booking: Pick<BookingListItem, "status" | "expires_at" | "cancel_reason">,
+  /**
+   * Instant referensi "sekarang", WAJIB dihitung di server dan diteruskan
+   * turun -- bukan dibaca lewat Date.now() di sini. Fungsi ini dipanggil
+   * dari body render bookings-table.tsx/booking-detail-dialog.tsx, yang
+   * SSR (dirender di server dulu, lalu di-hydrate di klien); memanggil
+   * Date.now() langsung di jalur itu membuat hasil SSR dan hydration bisa
+   * berbeda (aturan react-hooks/purity yang sama dengan yang dipatuhi di
+   * getBookingPageData src/app/pesanan/[token]/page.tsx).
+   */
+  nowMs: number,
 ): DisplayStatus {
-  if (booking.status === "PENDING" && new Date(booking.expires_at).getTime() < Date.now()) {
+  if (booking.status === "CANCELLED" && booking.cancel_reason === EXPIRY_CANCEL_REASON) {
+    return "EXPIRED";
+  }
+  if (booking.status === "PENDING" && new Date(booking.expires_at).getTime() < nowMs) {
     return "EXPIRED";
   }
   return booking.status;
@@ -90,24 +126,25 @@ export function getDisplayStatus(
 
 /** Satu sumber kebenaran label + varian Badge per status tampilan, dipakai
  * bookings-table.tsx dan booking-detail-dialog.tsx supaya keduanya tidak
- * bisa diam-diam berbeda. */
+ * bisa diam-diam berbeda.
+ *
+ * badgeVariant urut dari tingkat keparahan: EXPIRED masih sementara (cron
+ * belum tentu jalan, baris ini bisa saja masih dibayar tepat sebelum cron
+ * membatalkannya) jadi "outline" (muted) -- CANCELLED sudah final (baik
+ * dibatalkan merchant maupun cron) jadi "destructive" (merah), supaya baris
+ * yang statusnya sudah benar-benar selesai tidak kalah mencolok dari baris
+ * yang cuma "akan segera" dibatalkan. */
 export const STATUS_META: Record<
   DisplayStatus,
   { label: string; badgeVariant: "default" | "secondary" | "destructive" | "outline" }
 > = {
   PENDING: { label: "Menunggu pembayaran", badgeVariant: "secondary" },
   PAID: { label: "Dibayar", badgeVariant: "default" },
-  CANCELLED: { label: "Dibatalkan", badgeVariant: "outline" },
-  EXPIRED: { label: "Kedaluwarsa", badgeVariant: "destructive" },
+  CANCELLED: { label: "Dibatalkan", badgeVariant: "destructive" },
+  EXPIRED: { label: "Kedaluwarsa", badgeVariant: "outline" },
 };
 
 export const PROVIDER_LABELS: Record<string, string> = {
   MIDTRANS: "Midtrans",
   XENDIT: "Xendit",
 };
-
-/** Pesan cancel_reason yang ditulis saat merchant membatalkan booking secara
- * manual lewat cancelBooking -- dibedakan dari pesan cron
- * ("DP tidak dibayar dalam batas waktu") supaya merchant tahu ini keputusan
- * mereka sendiri, bukan otomatis. */
-export const MERCHANT_CANCEL_REASON = "Dibatalkan oleh merchant";
