@@ -265,3 +265,64 @@ Entropinya (192 bit) membuat tebakan brute-force tidak praktis, jadi ini
 diterima sebagai trade-off desain, BUKAN diabaikan begitu saja — dicatat di
 sini supaya tidak ada yang nanti menambah logging path request (mis. APM,
 analytics) tanpa sadar itu berarti mencatat token akses booking pelanggan.
+
+## 19. Tidak ada load balancer terpisah di depan aplikasi
+
+PRD tidak menyebutkan load balancer secara eksplisit, tapi topik ini muncul
+saat mengoptimalkan performa dashboard — wajar untuk ditanyakan kenapa tidak
+ada nginx/HAProxy di depan Next.js.
+
+**Implementasi:** tidak ada. Produksi berjalan langsung di Vercel tanpa
+reverse proxy tambahan.
+
+**Alasan:** di Vercel, distribusi request sudah inheren pada platform itu
+sendiri — Anycast edge network yang merutekan tiap request ke titik terdekat,
+lalu Fluid Compute yang me-reuse instance function yang sudah hangat dan
+menskalakannya otomatis sesuai beban. Menaruh nginx/HAProxy di depannya
+menambah satu hop jaringan tanpa manfaat: tidak ada beberapa server asal yang
+perlu diseimbangkan bebannya, karena Vercel sendiri sudah menjadi lapisan itu.
+
+`app-prod` di `compose.yaml` (port 3001, profil `prod`) bisa terlihat seperti
+cikal-bakal topologi produksi self-hosted, tapi bukan — itu alat verifikasi
+lokal untuk memastikan image produksi berhasil dibangun dan berjalan sebelum
+deploy, dijalankan satu instance, tanpa proxy di depannya, dan tidak pernah
+dipakai melayani traffic sungguhan.
+
+Trade-off yang sadar diambil: keputusan ini terikat pada Vercel sebagai
+platform hosting. Kalau self-hosting (mis. VM sendiri atau Kubernetes) suatu
+saat menjadi jalur produksi, premis "distribusi request sudah inheren" tidak
+lagi berlaku, dan reverse proxy plus beberapa replika aplikasi harus
+dipertimbangkan ulang dari awal — bukan diasumsikan sudah beres karena
+pernah tidak dibutuhkan di Vercel.
+
+## 20. `regions: ["sin1"]` di `vercel.json`, dan keterikatannya ke region Supabase
+
+**Implementasi:** `vercel.json` menetapkan `"regions": ["sin1"]` (Singapura)
+untuk seluruh Vercel Functions proyek ini — termasuk Route Handler, Server
+Action, dan cron `/api/cron/cancel-unpaid`.
+
+**Alasan:** project Supabase Booka dikonfirmasi berjalan di `ap-southeast-1`
+(Singapura). Tanpa `regions` disetel, Vercel Functions default ke `iad1`
+(Washington, D.C.) untuk semua project baru. Karena hampir setiap route di
+dashboard melakukan query ke Supabase, tiap request akan menyeberangi
+Pasifik dua kali — sekali dari browser pengguna ke `iad1`, lalu function di
+`iad1` menyeberang lagi ke Supabase di Singapura untuk tiap query — sebelum
+responsnya bisa dikirim balik. Memindahkan function ke `sin1` menghilangkan
+separuh perjalanan itu: hanya hop pengguna-ke-Singapura yang tersisa, dan
+function berada tepat di sebelah database-nya.
+
+Trade-off: pengguna Booka memang merchant Indonesia (lihat keputusan #17,
+zona tampilan WIB), jadi `sin1` juga dekat dengan mereka. Tapi ini tetap
+pin satu region, bukan multi-region — pengguna yang mengakses dari jauh dari
+Asia Tenggara (kalaupun ada) akan mendapat latensi lebih tinggi ke `sin1`
+dibanding kalau function-nya tersebar. Untuk profil pengguna Booka saat ini
+trade-off ini jelas menguntungkan; pin ini bukan keputusan yang otomatis
+benar untuk aplikasi lain.
+
+Kaitan yang wajib diingat: dua setelan ini — region Supabase dan
+`regions` di `vercel.json` — harus selalu bergerak bersama. Kalau project
+Supabase suatu saat dipindahkan keluar dari `ap-southeast-1` (migrasi
+region, pindah organisasi, dsb.), `regions` di sini wajib diikutkan
+berubah, atau performa yang tadinya diperbaiki di sini justru mundur diam-
+diam — setiap query kembali membayar round-trip lintas benua tanpa ada
+error atau warning yang menandainya.
