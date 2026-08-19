@@ -8,12 +8,23 @@ import type { Database } from "@/types/database";
  * Menyegarkan sesi Supabase dan menegakkan aturan akses rute.
  *
  * Dipanggil dari src/proxy.ts pada setiap request halaman. Selain merefresh
- * token, di sinilah tiga aturan navigasi ditegakkan:
+ * token, di sinilah aturan navigasi ditegakkan:
  *
- *   1. /dashboard dan /onboarding butuh sesi.
- *   2. Merchant yang belum mengisi username selalu diarahkan ke /onboarding.
- *   3. Merchant yang sudah onboarding tidak bisa kembali ke /onboarding
+ *   1. /dashboard dan /onboarding butuh sesi -- ini batas keamanannya,
+ *      ditegakkan dengan getUser() di bawah.
+ *   2. Merchant yang sudah onboarding tidak bisa kembali ke /onboarding
  *      atau /login.
+ *   3. Merchant yang belum mengisi username diarahkan ke /onboarding --
+ *      TAPI proxy ini cuma menegakkannya untuk rute /onboarding sendiri
+ *      (memantulkan merchant yang SUDAH onboarding keluar dari halaman
+ *      itu). Untuk /dashboard/*, redirect "belum onboarding -> /onboarding"
+ *      sepenuhnya jadi tanggung jawab src/app/dashboard/layout.tsx (lewat
+ *      requireMerchant() di src/lib/auth/session.ts), yang membungkus SEMUA
+ *      rute /dashboard/* tanpa kecuali. Ini BUKAN lubang keamanan: proxy
+ *      dulu melakukan query merchants yang sama persis untuk /dashboard/*,
+ *      murni duplikat dari yang sudah dilakukan layout satu request pass
+ *      kemudian. Menghapusnya di sini menghapus satu query per navigasi
+ *      dashboard tanpa mengubah ke mana user berakhir.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -83,25 +94,20 @@ export async function updateSession(request: NextRequest) {
     return withCookies(NextResponse.redirect(url), response);
   }
 
-  if (protectedPath) {
-    // Satu lookup primary key, hanya untuk rute privat.
+  if (pathname === ROUTES.onboarding) {
+    // Satu lookup primary key, hanya untuk /onboarding -- satu-satunya rute
+    // privat yang TIDAK dibungkus dashboard/layout.tsx, jadi proxy-lah
+    // satu-satunya tempat yang bisa memantulkan merchant yang sudah
+    // onboarding keluar dari halaman ini. (Redirect sebaliknya -- belum
+    // onboarding ke /onboarding -- untuk /dashboard/* ditangani layout,
+    // lihat komentar di atas fungsi ini.)
     const { data: merchant } = await supabase
       .from("merchants")
       .select("username")
       .eq("id", user.id)
       .maybeSingle();
 
-    const onboarded = Boolean(merchant?.username);
-    const onOnboarding = pathname === ROUTES.onboarding;
-
-    if (!onboarded && !onOnboarding) {
-      const url = request.nextUrl.clone();
-      url.pathname = ROUTES.onboarding;
-      url.search = "";
-      return withCookies(NextResponse.redirect(url), response);
-    }
-
-    if (onboarded && onOnboarding) {
+    if (merchant?.username) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.dashboard;
       url.search = "";

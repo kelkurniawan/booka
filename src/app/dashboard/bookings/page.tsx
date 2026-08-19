@@ -14,6 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { requireMerchant } from "@/lib/auth/session";
 import { formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -61,14 +62,13 @@ export default async function BookingsPage({
 }: {
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
+  // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggilnya di render pass yang sama, jadi baris ini TIDAK menambah
+  // round-trip auth atau query merchants baru, cuma mengambil hasil yang
+  // sudah ada (termasuk username, dipakai di bawah untuk link halaman
+  // booking publik).
+  const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(ROUTES.login);
-  }
 
   const rawParams = await searchParams;
 
@@ -138,14 +138,12 @@ export default async function BookingsPage({
   // di Ringkasan untuk bulan yang sama -- merchant akan mengira salah satu
   // angkanya salah, padahal cuma beda definisi.
   const [
-    merchantResult,
     monthPaidResult,
     monthPendingResult,
     revenueResult,
     pendingResult,
     bookingsResult,
   ] = await Promise.all([
-    supabase.from("merchants").select("username").eq("id", user.id).maybeSingle(),
     supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
@@ -178,12 +176,6 @@ export default async function BookingsPage({
   // 0 di samping tabel yang tetap berfungsi cuma terlihat aneh, tidak
   // menyesatkan seperti kasus bookingsResult di bawah) -- tapi errornya
   // tetap WAJIB dicatat, bukan ditelan diam-diam.
-  if (merchantResult.error) {
-    console.error("[dashboard/bookings] gagal memuat data merchant", {
-      merchantId: user.id,
-      error: merchantResult.error,
-    });
-  }
   if (monthPaidResult.error) {
     console.error("[dashboard/bookings] gagal menghitung booking PAID bulan ini", {
       merchantId: user.id,
@@ -219,7 +211,10 @@ export default async function BookingsPage({
     });
   }
 
-  const username = merchantResult.data?.username ?? "";
+  // requireMerchant() sudah menjamin username terisi (kalau tidak, sudah
+  // di-redirect ke /onboarding sebelum sampai di sini) -- lihat komentar di
+  // pemanggilannya di atas.
+  const username = merchant.username;
   const bookingsThisMonth = (monthPaidResult.count ?? 0) + (monthPendingResult.count ?? 0);
   const confirmedRevenue = (revenueResult.data ?? []).reduce(
     // service_price adalah numeric(12,2) di Postgres -- Number() berjaga-jaga

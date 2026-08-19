@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { CalendarClock, Sparkles, Wallet } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { requireMerchant } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -22,24 +22,17 @@ export const metadata: Metadata = {
 };
 
 export default async function DashboardPage() {
+  // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggilnya di render pass yang sama, jadi baris ini TIDAK menambah
+  // round-trip auth atau query merchants baru, cuma mengambil hasil yang
+  // sudah ada.
+  const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(ROUTES.login);
-  }
 
   const now = new Date();
 
-  const [merchantResult, quotaResult, upcoming, serviceCount, availabilityCount, connections] =
+  const [quotaResult, upcoming, serviceCount, availabilityCount, connections] =
     await Promise.all([
-      supabase
-        .from("merchants")
-        .select("username, subscription_tier")
-        .eq("id", user.id)
-        .maybeSingle(),
       // Angka kuota diambil dari fungsi yang sama dengan yang dipakai trigger
       // penegak batas, supaya yang ditampilkan di sini persis sama dengan yang
       // benar-benar diberlakukan saat booking masuk.
@@ -67,7 +60,7 @@ export default async function DashboardPage() {
         .eq("status", "ACTIVE"),
     ]);
 
-  const tier = merchantResult.data?.subscription_tier ?? "STARTER";
+  const tier = merchant.subscription_tier;
   const quotaRow = quotaResult.data?.[0];
   const used = quotaRow?.used ?? 0;
   const limit = quotaRow?.quota ?? null;

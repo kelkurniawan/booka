@@ -44,8 +44,19 @@ Supabase (Postgres + Auth + RLS) · Zod
 `createAdminClient()` tidak punya jaring pengaman. Setiap query dengannya wajib
 memfilter `merchant_id` secara eksplisit.
 
-**Selalu `getUser()`, jangan `getSession()`.** `getSession()` hanya membaca
-cookie tanpa memverifikasi ke server Auth.
+**`getSession()` terlarang, `getUser()` dan `getClaims()` boleh.**
+`getSession()` hanya membaca cookie mentah TANPA verifikasi apa pun —
+payload-nya bisa dipalsukan siapa pun yang bisa menulis cookie. `getUser()`
+dan `getClaims()` sama-sama MEMVERIFIKASI tanda tangan JWT sebelum
+mengembalikan identitas user, cuma jalurnya beda: `getUser()` selalu
+memanggil server Auth (round-trip jaringan tiap kali), sedangkan
+`getClaims()` memverifikasi lokal lewat JWKS project kalau signing key
+asimetris aktif (tanpa round-trip), jatuh ke server Auth kalau tidak. Di
+Server Component, pakai helper ber-`cache()` di `src/lib/auth/session.ts`
+(`getSessionUser()` / `requireMerchant()`) alih-alih memanggil
+`getUser()`/`getClaims()` langsung — supaya layout dan page dalam satu
+render pass berbagi satu hasil, bukan masing-masing melakukan round-trip
+sendiri.
 
 **Perubahan skema butuh migration baru** di `supabase/migrations/`, bukan edit
 file lama. Setiap tabel baru di `public` harus di-`REVOKE ALL` dulu dari `anon`
