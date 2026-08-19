@@ -1,11 +1,28 @@
 import QRCode from "qrcode";
 
 export type QrisCodeProps = {
-  /** Payload QRIS mentah dari `bookings.payment_url` -- BUKAN url http. */
+  /**
+   * Isi `bookings.payment_url`. Dua bentuk yang mungkin, tergantung apa yang
+   * dikembalikan provider:
+   *
+   *   1. Payload QRIS mentah (EMV) -- dirender jadi QR di sini.
+   *   2. URL http ke gambar QR milik provider (Midtrans mengembalikan ini
+   *      lewat action `generate-qr-code`) -- ditampilkan apa adanya sebagai
+   *      gambar.
+   *
+   * Membedakan keduanya WAJIB: mengubah URL menjadi QR akan menghasilkan kode
+   * yang berisi tautan, bukan instruksi pembayaran, dan aplikasi e-wallet
+   * pelanggan akan menolaknya.
+   */
   payload: string;
 };
 
 const ARIA_LABEL = "Kode QR QRIS untuk membayar deposit booking ini";
+
+/** URL gambar QR dari provider, bukan payload EMV yang perlu dirender sendiri. */
+function isProviderQrImageUrl(payload: string): boolean {
+  return payload.startsWith("https://") || payload.startsWith("http://");
+}
 
 /**
  * Merender payload QRIS mentah menjadi SVG -- di server, lewat library
@@ -26,6 +43,19 @@ const ARIA_LABEL = "Kode QR QRIS untuk membayar deposit booking ini";
  * ditampilkan pesan gagal + payload mentah yang bisa disalin manual.
  */
 export async function QrisCode({ payload }: QrisCodeProps) {
+  // Provider sudah menyiapkan gambarnya sendiri -- tampilkan langsung. Tidak
+  // dilewatkan next/image karena host-nya milik provider pembayaran dan bisa
+  // berbeda per merchant/environment, jadi tidak bisa didaftarkan sebagai
+  // remote pattern yang tetap.
+  if (isProviderQrImageUrl(payload)) {
+    return (
+      <div className="w-full max-w-[320px]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={payload} alt={ARIA_LABEL} className="h-auto w-full" />
+      </div>
+    );
+  }
+
   // JSX-nya SENGAJA dikonstruksi di LUAR try/catch di bawah (react-hooks/
   // error-boundaries) -- JSX tidak langsung dirender saat dibuat, jadi error
   // dari situ tidak akan pernah tertangkap try/catch ini. Blok ini hanya
