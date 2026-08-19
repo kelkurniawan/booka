@@ -651,3 +651,53 @@ select case when (
 select case when has_column_privilege('anon', 'public.bookings', 'access_token', 'SELECT')
             then 'FAIL anon bisa membaca bookings.access_token'
             else 'OK   anon TIDAK bisa membaca bookings.access_token' end as t14c;
+
+-- ===========================================================================
+-- 15. Pembatalan booking oleh merchant (Task 2 Phase 5-6, migration
+-- 20260819000200_bookings_merchant_cancel.sql) -- src/app/dashboard/bookings/actions.ts.
+-- ===========================================================================
+
+-- 15a. authenticated boleh UPDATE ketiga kolom yang benar-benar diubah
+-- pembatalan: status, cancelled_at, cancel_reason.
+select
+  case when has_column_privilege('authenticated', 'public.bookings', 'status', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.status'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.status' end as t15a_status,
+  case when has_column_privilege('authenticated', 'public.bookings', 'cancelled_at', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.cancelled_at'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.cancelled_at' end as t15a_cancelled_at,
+  case when has_column_privilege('authenticated', 'public.bookings', 'cancel_reason', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.cancel_reason'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.cancel_reason' end as t15a_cancel_reason;
+
+-- 15b. Kolom lain TIDAK ikut ter-grant UPDATE -- terutama customer_name/
+-- customer_whatsapp (merchant tidak boleh menulis ulang PII pelanggan lewat
+-- jalur ini) dan merchant_id (tidak boleh memindahkan kepemilikan baris).
+select
+  case when has_column_privilege('authenticated', 'public.bookings', 'customer_name', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE bookings.customer_name'
+       else 'OK   authenticated TIDAK bisa UPDATE bookings.customer_name' end as t15b_customer_name,
+  case when has_column_privilege('authenticated', 'public.bookings', 'merchant_id', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE bookings.merchant_id'
+       else 'OK   authenticated TIDAK bisa UPDATE bookings.merchant_id' end as t15b_merchant_id;
+
+-- 15c. anon tetap tidak dapat hak apa pun ke bookings (tidak berubah oleh
+-- migration ini -- grant UPDATE di atas hanya menyebut "to authenticated").
+select case when has_column_privilege('anon', 'public.bookings', 'status', 'UPDATE')
+            then 'FAIL anon bisa UPDATE bookings.status'
+            else 'OK   anon TIDAK bisa UPDATE bookings.status' end as t15c;
+
+-- 15d. Policy bookings_cancel_own ada untuk UPDATE, dan with_check memaksa
+-- status baru SELALU 'CANCELLED' -- merchant tidak bisa memalsukan status
+-- pembayaran (mis. set status='PAID') meski kolom status sudah ter-grant
+-- UPDATE untuknya.
+select case when exists (
+         select 1 from pg_policies
+         where schemaname = 'public'
+           and tablename = 'bookings'
+           and policyname = 'bookings_cancel_own'
+           and cmd = 'UPDATE'
+           and with_check like '%CANCELLED%'
+       )
+       then 'OK   policy bookings_cancel_own ada dan memaksa status baru jadi CANCELLED'
+       else 'FAIL policy bookings_cancel_own tidak ditemukan / with_check tidak memaksa CANCELLED' end as t15d;
