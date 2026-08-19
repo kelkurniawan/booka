@@ -16,6 +16,8 @@ export function getAdapter(provider: PaymentProvider): PaymentProviderAdapter {
   return ADAPTERS[provider];
 }
 
+export { ChargeRejectedError } from "./errors";
+export { recordChargeRejection, recordChargeSuccess } from "./health";
 export type {
   PaymentProviderAdapter,
   QrisCharge,

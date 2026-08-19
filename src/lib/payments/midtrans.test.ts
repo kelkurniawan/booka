@@ -8,13 +8,16 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { after, before, test } from "node:test";
 
+import type { ChargeRejectedError as ChargeRejectedErrorType } from "./errors";
 import type { PaymentProviderAdapter } from "./types";
 
 let getMidtransBaseUrl: (environment: "SANDBOX" | "PRODUCTION") => string;
 let midtransAdapter: PaymentProviderAdapter;
+let ChargeRejectedError: typeof ChargeRejectedErrorType;
 
 before(async () => {
   ({ getMidtransBaseUrl, midtransAdapter } = await import("./midtrans"));
+  ({ ChargeRejectedError } = await import("./errors"));
 });
 
 test("getMidtransBaseUrl: SANDBOX -> api.sandbox.midtrans.com", () => {
@@ -251,4 +254,103 @@ test("createQrisCharge: memakai action generate-qr-code kalau qr_string tidak ad
   });
 
   assert.equal(charge.qrString, "https://api.sandbox.midtrans.com/v2/qris/trx-2/qr-code");
+});
+
+// --- ChargeRejectedError vs Error biasa --------------------------------------
+// Task "Peringatan koneksi pembayaran yang ditolak gateway": pemanggil (POST
+// /api/bookings) butuh membedakan penolakan DEFINITIF gateway dari gangguan
+// jaringan/timeout supaya tidak salah menandai koneksi merchant bermasalah
+// akibat hiccup sesaat. Lihat src/lib/payments/errors.ts.
+
+test("createQrisCharge: HTTP non-2xx melempar ChargeRejectedError dengan provider/providerMessage/providerStatusCode", async () => {
+  mockFetchOnce(402, { status_code: "402", status_message: "Server Key tidak valid" });
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        orderId: "booking-999",
+        amount: 10000,
+        environment: "PRODUCTION",
+        credential: "server-key-salah",
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ChargeRejectedError, "seharusnya ChargeRejectedError");
+      assert.equal(error.provider, "MIDTRANS");
+      assert.equal(error.providerMessage, "Server Key tidak valid");
+      assert.equal(error.providerStatusCode, "402");
+      return true;
+    },
+  );
+});
+
+test("createQrisCharge: HTTP 200 dengan status_code error melempar ChargeRejectedError", async () => {
+  mockFetchOnce(200, {
+    status_code: "402",
+    status_message: "Payment channel is not activated.",
+  });
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        credential: "Mid-server-uji",
+        environment: "SANDBOX",
+        orderId: "order-402",
+        amount: 15000,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ChargeRejectedError, "seharusnya ChargeRejectedError");
+      assert.equal(error.provider, "MIDTRANS");
+      assert.equal(error.providerMessage, "Payment channel is not activated.");
+      assert.equal(error.providerStatusCode, "402");
+      return true;
+    },
+  );
+});
+
+test("createQrisCharge: sukses tanpa QR melempar ChargeRejectedError", async () => {
+  mockFetchOnce(200, {
+    status_code: "201",
+    transaction_id: "trx-1",
+    order_id: "order-tanpa-qr",
+  });
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        credential: "Mid-server-uji",
+        environment: "SANDBOX",
+        orderId: "order-tanpa-qr",
+        amount: 15000,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof ChargeRejectedError, "seharusnya ChargeRejectedError");
+      assert.equal(error.provider, "MIDTRANS");
+      assert.equal(error.providerStatusCode, "201");
+      return true;
+    },
+  );
+});
+
+test("createQrisCharge: kegagalan jaringan (fetch melempar) tetap Error biasa, BUKAN ChargeRejectedError", async () => {
+  global.fetch = (async () => {
+    throw new Error("network hiccup, koneksi terputus");
+  }) as typeof fetch;
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        credential: "Mid-server-uji",
+        environment: "SANDBOX",
+        orderId: "order-network-fail",
+        amount: 15000,
+      }),
+    (error: unknown) => {
+      assert.ok(error instanceof Error);
+      assert.ok(
+        !(error instanceof ChargeRejectedError),
+        "kegagalan jaringan tidak boleh diklasifikasikan sebagai penolakan gateway",
+      );
+      return true;
+    },
+  );
 });

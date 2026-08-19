@@ -95,6 +95,24 @@ export type PaymentConnection = {
   scope: string | null;
   token_expires_at: string | null;
   connected_at: string;
+  /**
+   * Pesan penolakan gateway TERAKHIR (ChargeRejectedError.providerMessage,
+   * sudah dirangkai adapter -- tidak pernah body/header mentah), dipotong ke
+   * 300 karakter. `null` kalau belum pernah ada penolakan tercatat, ATAU
+   * sudah dibersihkan oleh charge sukses berikutnya. Diisi/dikosongkan HANYA
+   * dari POST /api/bookings lewat src/lib/payments/health.ts (admin client
+   * -- lihat migration 20260819000300_payment_connection_charge_health.sql
+   * untuk kenapa kolom ini otomatis tidak bisa ditulis `authenticated`).
+   */
+  last_charge_error: string | null;
+  last_charge_error_at: string | null;
+  /**
+   * Kapan charge TERAKHIR sukses. Dibandingkan dengan `last_charge_error_at`
+   * di /dashboard/payments (provider-card.tsx) untuk menentukan apakah
+   * peringatan "pembayaran sedang gagal" masih relevan -- gagal lalu sukses
+   * lagi sesudahnya berarti sudah pulih, tidak perlu diperingatkan lagi.
+   */
+  last_charge_success_at: string | null;
   updated_at: string;
 };
 
@@ -173,14 +191,38 @@ export type Database = {
         Row: PaymentConnection;
         Insert: Omit<
           PaymentConnection,
-          "id" | "connected_at" | "updated_at" | "connection_mode" | "environment"
+          | "id"
+          | "connected_at"
+          | "updated_at"
+          | "connection_mode"
+          | "environment"
+          | "last_charge_error"
+          | "last_charge_error_at"
+          | "last_charge_success_at"
         > &
           Partial<
             Pick<
               PaymentConnection,
-              "id" | "connected_at" | "connection_mode" | "environment"
+              | "id"
+              | "connected_at"
+              | "connection_mode"
+              | "environment"
+              | "last_charge_error"
+              | "last_charge_error_at"
+              | "last_charge_success_at"
             >
           >;
+        // `last_charge_error`/`last_charge_error_at`/`last_charge_success_at`
+        // SENGAJA TETAP ada di Update -- ini tipe BERSAMA yang dipakai admin
+        // client (createAdminClient(), service role) MAUPUN authenticated
+        // client, dan admin WAJIB bisa menulis ketiga kolom ini dari POST
+        // /api/bookings (src/lib/payments/health.ts). Yang benar-benar
+        // mencegah `authenticated` (klien browser) menulisnya BUKAN tipe ini
+        // -- payment_connections tidak pernah diberi grant UPDATE apa pun ke
+        // authenticated sama sekali (lihat migration
+        // 20260819000300_payment_connection_charge_health.sql), jadi
+        // percobaan update dari browser gagal di Postgres terlepas dari apa
+        // yang diizinkan tipe TypeScript ini.
         Update: Partial<Omit<PaymentConnection, "id" | "merchant_id" | "updated_at">>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };

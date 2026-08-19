@@ -4,6 +4,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import type { PaymentEnvironment } from "@/types/database";
 
+import { ChargeRejectedError } from "./errors";
 import type {
   PaymentProviderAdapter,
   QrisCharge,
@@ -63,9 +64,18 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
 
   const body = (await response.json()) as XenditQrCodeResponse;
 
+  // HTTP non-2xx: gateway MENJAWAB dan MENOLAK secara definitif. Beda dengan
+  // Midtrans, Xendit tidak punya kuirk "HTTP 200 tapi body-nya gagal" --
+  // response.ok sudah cukup jadi satu-satunya sinyal penolakan definitif di
+  // sini. Kegagalan jaringan/timeout (fetch() melempar) tidak pernah sampai
+  // baris ini, tetap Error biasa. Lihat ChargeRejectedError.
   if (!response.ok) {
-    throw new Error(
-      `Xendit QR charge gagal (HTTP ${response.status}): ${body.message ?? body.error_code ?? "tidak diketahui"}`,
+    const providerMessage = body.message ?? body.error_code ?? "tidak diketahui";
+    throw new ChargeRejectedError(
+      "XENDIT",
+      `Xendit QR charge gagal (HTTP ${response.status}): ${providerMessage}`,
+      providerMessage,
+      body.error_code ?? String(response.status),
     );
   }
 

@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 
 import { mapBookingError } from "@/lib/booking/errors";
 import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
-import { getAdapter } from "@/lib/payments";
+import { ChargeRejectedError, getAdapter, recordChargeRejection, recordChargeSuccess } from "@/lib/payments";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
 import { ROUTES } from "@/lib/routes";
@@ -228,6 +228,13 @@ export async function POST(request: NextRequest) {
       throw updateError;
     }
 
+    // Charge sukses -- catat ke kolom kesehatan payment_connections supaya
+    // /dashboard/payments bisa membersihkan peringatan "pembayaran sedang
+    // gagal" kalau koneksi ini sebelumnya pernah ditolak gateway (lihat
+    // src/lib/payments/health.ts). Kegagalan menulis di sini TIDAK PERNAH
+    // menggagalkan response booking yang sudah sukses.
+    await recordChargeSuccess(supabase, merchant.id, connection.provider);
+
     return NextResponse.json(
       {
         bookingId: booking.id,
@@ -269,9 +276,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(
-      { error: "Gagal membuat kode pembayaran, silakan coba lagi." },
-      { status: 502 },
-    );
+    // Hanya penolakan DEFINITIF gateway (ChargeRejectedError) yang menandai
+    // koneksi bermasalah -- kegagalan jaringan/timeout (Error biasa) TIDAK
+    // pernah menyentuh payment_connections di sini, karena gangguan sesaat
+    // bukan salah konfigurasi merchant dan bisa jadi pulih sendiri di
+    // percobaan berikutnya (lihat src/lib/payments/errors.ts). Ini juga
+    // TIDAK PERNAH mengubah status HTTP yang dibalas ke pelanggan di bawah.
+    const isDefiniteRejection = chargeError instanceof ChargeRejectedError;
+    if (isDefiniteRejection) {
+      await recordChargeRejection(supabase, merchant.id, chargeError);
+    }
+
+    // Pesan provider mentah (chargeError.providerMessage) TIDAK PERNAH
+    // diteruskan ke pelanggan -- itu bocoran detail internal merchant, hanya
+    // untuk merchant (dashboard) dan log. Penolakan definitif mendapat pesan
+    // yang jujur ("coba lagi" TIDAK akan pernah membantu di kondisi ini);
+    // kegagalan jaringan tetap memakai pesan "coba lagi" yang lama karena
+    // itu satu-satunya kasus yang benar-benar bisa pulih sendiri.
+    const customerMessage = isDefiniteRejection
+      ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara -- silakan hubungi merchant secara langsung, bukan mencoba lagi."
+      : "Gagal membuat kode pembayaran, silakan coba lagi.";
+
+    return NextResponse.json({ error: customerMessage }, { status: 502 });
   }
 }
