@@ -184,3 +184,71 @@ test("createQrisCharge: response non-2xx melempar error yang menyertakan status_
     /Server Key tidak valid/,
   );
 });
+
+// --- Regresi: Midtrans membalas HTTP 200 walau charge-nya gagal -------------
+// Kasus nyata yang sempat lolos ke produksi: channel QRIS belum diaktifkan di
+// akun merchant, Midtrans membalas HTTP 200 dengan status_code 402. Karena
+// dulu hanya `response.ok` yang diperiksa, kegagalan itu dianggap sukses dan
+// booking tersimpan dengan payment_url kosong -- mustahil dibayar, dan tanpa
+// pembatalan kompensasi karena tidak ada yang dilempar.
+test("createQrisCharge: HTTP 200 dengan status_code error tetap melempar", async () => {
+  mockFetchOnce(200, {
+    status_code: "402",
+    status_message: "Payment channel is not activated.",
+  });
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        credential: "Mid-server-uji",
+        environment: "SANDBOX",
+        orderId: "order-402",
+        amount: 15000,
+      }),
+    /402|Payment channel is not activated/,
+  );
+});
+
+test("createQrisCharge: sukses tanpa QR sama sekali tetap melempar", async () => {
+  // status_code sukses, tapi tidak ada qr_string maupun action generate-qr-code.
+  mockFetchOnce(200, {
+    status_code: "201",
+    transaction_id: "trx-1",
+    order_id: "order-tanpa-qr",
+  });
+
+  await assert.rejects(
+    () =>
+      midtransAdapter.createQrisCharge({
+        credential: "Mid-server-uji",
+        environment: "SANDBOX",
+        orderId: "order-tanpa-qr",
+        amount: 15000,
+      }),
+    /tidak mengembalikan QRIS/,
+  );
+});
+
+test("createQrisCharge: memakai action generate-qr-code kalau qr_string tidak ada", async () => {
+  mockFetchOnce(200, {
+    status_code: "201",
+    transaction_id: "trx-2",
+    order_id: "order-action",
+    actions: [
+      {
+        name: "generate-qr-code",
+        method: "GET",
+        url: "https://api.sandbox.midtrans.com/v2/qris/trx-2/qr-code",
+      },
+    ],
+  });
+
+  const charge = await midtransAdapter.createQrisCharge({
+    credential: "Mid-server-uji",
+    environment: "SANDBOX",
+    orderId: "order-action",
+    amount: 15000,
+  });
+
+  assert.equal(charge.qrString, "https://api.sandbox.midtrans.com/v2/qris/trx-2/qr-code");
+});

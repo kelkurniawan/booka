@@ -28,6 +28,7 @@ export const ROUTES = {
   settings: "/dashboard/settings",
 
   merchantPage: (username: string) => `/${username}`,
+  bookingStatus: (token: string) => `/pesanan/${token}`,
 } as const;
 
 /** Rute yang mensyaratkan sesi login. */

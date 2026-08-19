@@ -71,6 +71,7 @@ export type Booking = {
   end_datetime: string;
   customer_name: string;
   customer_whatsapp: string;
+  access_token: string;
   status: BookingStatus;
   payment_provider: PaymentProvider | null;
   payment_url: string | null;
@@ -149,6 +150,7 @@ export type Database = {
           | "paid_at"
           | "cancelled_at"
           | "cancel_reason"
+          | "access_token"
         > &
           Partial<
             Pick<
@@ -161,7 +163,7 @@ export type Database = {
               | "cancel_reason"
             >
           >;
-        Update: Partial<Omit<Booking, "id" | "merchant_id" | Timestamps>>;
+        Update: Partial<Omit<Booking, "id" | "merchant_id" | "access_token" | Timestamps>>;
         Relationships: [
           Relationship<"merchant_id", "merchants">,
           Relationship<"service_id", "services">,

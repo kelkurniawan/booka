@@ -66,13 +66,43 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
     );
   }
 
+  // Midtrans MEMBALAS HTTP 200 walau charge-nya gagal -- status sebenarnya
+  // ada di `status_code` dalam body. Contoh nyata yang sempat lolos ke
+  // produksi: `{"status_code":"402","status_message":"Payment channel is not
+  // activated."}` dengan HTTP 200. Karena dulu hanya `response.ok` yang
+  // diperiksa, kegagalan itu dianggap sukses, `qrString` jatuh ke string
+  // kosong, dan booking tersimpan dalam keadaan MUSTAHIL DIBAYAR -- tanpa
+  // memicu pembatalan kompensasi di POST /api/bookings, karena tidak ada
+  // yang dilempar.
+  //
+  // 201 = transaksi dibuat, menunggu pembayaran (jalur normal QRIS).
+  // 200 = sukses langsung. Selain itu error, apa pun kode HTTP-nya.
+  const statusCode = body.status_code ?? "";
+  if (statusCode !== "201" && statusCode !== "200") {
+    throw new Error(
+      `Midtrans charge gagal (status_code ${statusCode || "kosong"}): ` +
+        `${body.status_message ?? "tidak diketahui"}`,
+    );
+  }
+
   const qrAction = body.actions?.find((action) => action.name === "generate-qr-code");
+  const qrString = body.qr_string ?? qrAction?.url ?? "";
+
+  // Penjaga terakhir: charge yang "sukses" tapi tidak membawa QR sama saja
+  // dengan booking yang tidak bisa dibayar. Lebih baik gagal keras di sini
+  // supaya booking-nya dibatalkan, daripada pelanggan menatap panel kosong.
+  if (!qrString) {
+    throw new Error(
+      "Midtrans charge berhasil tapi tidak mengembalikan QRIS " +
+        "(tidak ada qr_string maupun action generate-qr-code).",
+    );
+  }
 
   return {
     provider: "MIDTRANS",
     transactionId: body.transaction_id,
     orderId: body.order_id,
-    qrString: body.qr_string ?? qrAction?.url ?? "",
+    qrString,
     expiresAt: body.expiry_time ?? null,
   };
 }

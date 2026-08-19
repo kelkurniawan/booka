@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -12,8 +13,6 @@ import { isoDayOfWeek, jakartaDateISO, type FreeSlot } from "@/lib/booking/slots
 import { checkoutSchema } from "@/lib/validations/booking";
 import type { Availability, DayOfWeek, Service } from "@/types/database";
 import { cn } from "@/lib/utils";
-
-import { PaymentStatus } from "./payment-status";
 
 /** Seberapa jauh ke depan dicari tanggal yang buka. */
 const DAYS_TO_SEARCH = 21;
@@ -73,6 +72,7 @@ type CheckoutResult = {
   bookingId: string;
   payment_url: string;
   expires_at: string;
+  bookingUrl: string;
 };
 
 type CheckoutErrorBody = { error?: string; issues?: unknown };
@@ -118,6 +118,8 @@ async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutR
 }
 
 export function BookingPicker({ merchantId, username, services, availability }: BookingPickerProps) {
+  const router = useRouter();
+
   const openDays = useMemo(
     () => new Set(availability.map((row) => row.day_of_week)),
     [availability],
@@ -139,22 +141,8 @@ export function BookingPicker({ merchantId, username, services, availability }: 
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [submitting, setSubmitting] = useState(false);
-  const [checkoutResult, setCheckoutResult] = useState<CheckoutResult | null>(null);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
-
-  // "Coba lagi" dari layar gagal/kedaluwarsa PaymentStatus (Task 9): booking
-  // lama sudah tidak bisa dipakai lagi (dibatalkan/kedaluwarsa), jadi
-  // pengunjung diminta pilih tanggal & jam baru dari awal. Nama dan nomor
-  // WhatsApp yang sudah diisi TIDAK direset -- tidak ada alasan memaksa
-  // pengunjung mengetik ulang data yang sama.
-  function handleStartOver() {
-    setCheckoutResult(null);
-    setSelectedDate(null);
-    setSelectedSlot(null);
-    setSlots(null);
-    setSlotsError(null);
-  }
 
   // Slot diambil langsung dari event handler (klik layanan/tanggal), BUKAN
   // dari useEffect yang mengintip perubahan state. Ini interaksi pengunjung,
@@ -241,10 +229,16 @@ export function BookingPicker({ merchantId, username, services, availability }: 
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
       });
-      setCheckoutResult(checkout);
+      // Booking sudah permanen di database (access_token-nya sudah ada) --
+      // arahkan pelanggan ke /pesanan/[token] alih-alih merender status
+      // pembayaran di tempat. Ini satu-satunya tempat QRIS ditampilkan
+      // sebagai QR asli (src/components/qris-code.tsx), dan booking-nya
+      // tetap bisa dibuka lagi walau tab ini ditutup. `submitting` SENGAJA
+      // tidak direset di sini -- halaman akan segera berpindah, tombol
+      // tidak perlu kembali aktif sesaat sebelum itu.
+      router.push(checkout.bookingUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal membuat booking, silakan coba lagi.");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -350,7 +344,7 @@ export function BookingPicker({ merchantId, username, services, availability }: 
         </div>
       ) : null}
 
-      {selectedService && selectedSlot && !checkoutResult ? (
+      {selectedService && selectedSlot ? (
         <form
           onSubmit={handleCheckoutSubmit}
           noValidate
@@ -416,15 +410,6 @@ export function BookingPicker({ merchantId, username, services, availability }: 
             </Button>
           </div>
         </form>
-      ) : null}
-
-      {checkoutResult ? (
-        <PaymentStatus
-          bookingId={checkoutResult.bookingId}
-          paymentUrl={checkoutResult.payment_url}
-          expiresAt={checkoutResult.expires_at}
-          onStartOver={handleStartOver}
-        />
       ) : null}
     </div>
   );

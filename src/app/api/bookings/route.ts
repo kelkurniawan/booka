@@ -6,6 +6,7 @@ import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
 import { getAdapter } from "@/lib/payments";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
+import { ROUTES } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createBookingRequestSchema } from "@/lib/validations/booking";
 
@@ -228,7 +229,16 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { bookingId: booking.id, payment_url: charge.qrString, expires_at: booking.expires_at },
+      {
+        bookingId: booking.id,
+        payment_url: charge.qrString,
+        expires_at: booking.expires_at,
+        // Token mentahnya sendiri TIDAK dikirim -- hanya path yang sudah
+        // menyematkannya, konsisten dengan cara semua rute lain dibangun
+        // lewat ROUTES (src/lib/routes.ts). Halaman /pesanan/[token] (task
+        // berikutnya) membaca token dari path ini, bukan dari field lain.
+        bookingUrl: ROUTES.bookingStatus(booking.access_token),
+      },
       { status: 201 },
     );
   } catch (chargeError) {

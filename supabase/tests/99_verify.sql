@@ -611,3 +611,257 @@ select
                and proname = 'upsert_payment_credential') = 1
        then 'OK   hanya ada satu versi upsert_payment_credential'
        else 'FAIL ada lebih dari satu versi upsert_payment_credential' end as t13e_fn;
+
+-- ===========================================================================
+-- 14. access_token booking (Task 1 fondasi Phase 5-6, migration
+-- 20260819000100_booking_access_token.sql) -- kunci rahasia /pesanan/[token].
+-- ===========================================================================
+
+-- 14a. Booking baru mendapat access_token non-null sepanjang 48 karakter
+-- (24 byte acak di-encode hex -> 192 bit entropi). Booking A dari 11a
+-- dipakai lagi -- customer_whatsapp '+6281199991111' cuma dipakai baris itu.
+select
+  case when access_token is not null and length(access_token) = 48
+       then 'OK   booking A mendapat access_token 48 karakter'
+       else 'FAIL access_token booking A -> ' || coalesce(access_token, 'NULL')
+         || ' (panjang ' || coalesce(length(access_token)::text, '0') || ')' end as t14a
+from public.bookings
+where merchant_id = '11111111-1111-1111-1111-111111111111'
+  and customer_whatsapp = '+6281199991111';
+
+-- 14b. Dua booking berbeda (merchant berbeda, keduanya dibuat lewat
+-- create_booking di 11a dan 12) mendapat access_token yang berbeda -- unique
+-- index bookings_access_token_key bekerja, bukan cuma dipasang tanpa efek.
+select case when (
+         select access_token from public.bookings
+         where merchant_id = '11111111-1111-1111-1111-111111111111'
+           and customer_whatsapp = '+6281199991111'
+       ) is distinct from (
+         select access_token from public.bookings
+         where merchant_id = '22222222-2222-2222-2222-222222222222'
+           and customer_whatsapp = '+6281200000002'
+       )
+       then 'OK   dua booking mendapat access_token berbeda'
+       else 'FAIL dua booking punya access_token sama (atau salah satu NULL)' end as t14b;
+
+-- 14c. Peran anon TIDAK BISA membaca kolom access_token. Tabelnya sendiri
+-- sudah tanpa akses sama sekali untuk anon (t7d) -- ini menegaskan kolom
+-- barunya secara spesifik, sesuai catatan TEMUAN di migration 1a soal grant
+-- tingkat tabel `authenticated` yang tidak bisa dipreteli per kolom.
+select case when has_column_privilege('anon', 'public.bookings', 'access_token', 'SELECT')
+            then 'FAIL anon bisa membaca bookings.access_token'
+            else 'OK   anon TIDAK bisa membaca bookings.access_token' end as t14c;
+
+-- ===========================================================================
+-- 15. Pembatalan booking oleh merchant (Task 2 Phase 5-6, migration
+-- 20260819000200_bookings_merchant_cancel.sql) -- src/app/dashboard/bookings/actions.ts.
+-- ===========================================================================
+
+-- 15a. authenticated boleh UPDATE ketiga kolom yang benar-benar diubah
+-- pembatalan: status, cancelled_at, cancel_reason.
+select
+  case when has_column_privilege('authenticated', 'public.bookings', 'status', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.status'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.status' end as t15a_status,
+  case when has_column_privilege('authenticated', 'public.bookings', 'cancelled_at', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.cancelled_at'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.cancelled_at' end as t15a_cancelled_at,
+  case when has_column_privilege('authenticated', 'public.bookings', 'cancel_reason', 'UPDATE')
+       then 'OK   authenticated boleh UPDATE bookings.cancel_reason'
+       else 'FAIL authenticated tidak boleh UPDATE bookings.cancel_reason' end as t15a_cancel_reason;
+
+-- 15b. Kolom lain TIDAK ikut ter-grant UPDATE -- terutama customer_name/
+-- customer_whatsapp (merchant tidak boleh menulis ulang PII pelanggan lewat
+-- jalur ini) dan merchant_id (tidak boleh memindahkan kepemilikan baris).
+select
+  case when has_column_privilege('authenticated', 'public.bookings', 'customer_name', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE bookings.customer_name'
+       else 'OK   authenticated TIDAK bisa UPDATE bookings.customer_name' end as t15b_customer_name,
+  case when has_column_privilege('authenticated', 'public.bookings', 'merchant_id', 'UPDATE')
+       then 'FAIL authenticated bisa UPDATE bookings.merchant_id'
+       else 'OK   authenticated TIDAK bisa UPDATE bookings.merchant_id' end as t15b_merchant_id;
+
+-- 15c. anon tetap tidak dapat hak apa pun ke bookings (tidak berubah oleh
+-- migration ini -- grant UPDATE di atas hanya menyebut "to authenticated").
+select case when has_column_privilege('anon', 'public.bookings', 'status', 'UPDATE')
+            then 'FAIL anon bisa UPDATE bookings.status'
+            else 'OK   anon TIDAK bisa UPDATE bookings.status' end as t15c;
+
+-- 15d. Policy bookings_cancel_own ada untuk UPDATE, dan with_check menyebut
+-- 'CANCELLED'. CATATAN: ini cuma pengecekan BENTUK teks klausa lewat
+-- pg_policies -- klausa yang salah tapi kebetulan mengandung substring yang
+-- sama akan tetap lolos di sini. Bukti perilaku SUNGGUHAN (policy-nya benar-
+-- benar menolak/mengizinkan UPDATE yang tepat saat dieksekusi sebagai
+-- merchant) ada di blok 16 di bawah, bukan di sini.
+select case when exists (
+         select 1 from pg_policies
+         where schemaname = 'public'
+           and tablename = 'bookings'
+           and policyname = 'bookings_cancel_own'
+           and cmd = 'UPDATE'
+           and with_check like '%CANCELLED%'
+       )
+       then 'OK   policy bookings_cancel_own ada dan with_check menyebut CANCELLED (bentuk teks, lihat blok 16 untuk perilaku)'
+       else 'FAIL policy bookings_cancel_own tidak ditemukan / with_check tidak menyebut CANCELLED' end as t15d;
+
+-- 15e. Klausa USING policy bookings_cancel_own menyebut kedua status lama
+-- yang masih boleh diubah (PENDING, PAID) -- lagi-lagi cuma bentuk teks,
+-- perilakunya diuji sungguhan di blok 16.
+select case when exists (
+         select 1 from pg_policies
+         where schemaname = 'public'
+           and tablename = 'bookings'
+           and policyname = 'bookings_cancel_own'
+           and cmd = 'UPDATE'
+           and qual like '%PENDING%'
+           and qual like '%PAID%'
+       )
+       then 'OK   policy bookings_cancel_own USING menyebut status PENDING dan PAID (bentuk teks, lihat blok 16 untuk perilaku)'
+       else 'FAIL policy bookings_cancel_own USING tidak menyebut status PENDING/PAID' end as t15e;
+
+-- ===========================================================================
+-- 16. Perilaku SUNGGUHAN policy bookings_cancel_own -- dijalankan sebagai
+-- peran authenticated dengan sesi merchant disimulasikan lewat GUC
+-- request.jwt.claim.sub (dibaca auth.uid() di 00_supabase_stub.sql), bukan
+-- cuma dicek bentuk teksnya seperti 15d/15e. Dibungkus BEGIN/ROLLBACK
+-- supaya baik peran (SET LOCAL ROLE) maupun perubahan data yang mungkin
+-- berhasil di dalamnya sama sekali tidak membekas untuk tes-tes lain di
+-- file ini setelah blok ini selesai.
+-- ===========================================================================
+
+-- ID dua booking yang dipakai di bawah, diambil SEBAGAI SUPERUSER (koneksi
+-- psql harness ini, RLS tidak berlaku untuknya) SEBELUM berganti peran --
+-- supaya blok simulasi di bawah murni menguji UPDATE-nya sendiri, tidak
+-- tercampur dengan RLS SELECT (bookings_read_own) yang sudah pasti
+-- menyembunyikan baris merchant lain lebih dulu kalau di-query ulang di
+-- dalam sesi authenticated.
+select id as own_booking_id
+from public.bookings
+where merchant_id = '11111111-1111-1111-1111-111111111111'
+  and customer_whatsapp = '+6281199991111' \gset
+
+select id as other_booking_id
+from public.bookings
+where merchant_id = '22222222-2222-2222-2222-222222222222'
+  and customer_whatsapp = '+6281200000002' \gset
+
+-- Sentinel M6: ini file dijalankan TANPA ON_ERROR_STOP (lihat baris 1),
+-- persis supaya expect_fail/expect_ok bisa memicu constraint violation
+-- tanpa menghentikan skrip. Tapi t16a/t16b/t16c di bawah BUKAN semuanya
+-- lewat expect_fail_code -- t16b dan t16c adalah UPDATE mentah, tidak
+-- dibungkus exception handler apa pun. Kalau ADA yang tak terduga gagal di
+-- dalam blok BEGIN/ROLLBACK di bawah (mis. \gset di atas ternyata tidak
+-- menemukan baris karena data seed berubah, membuat :'own_booking_id' atau
+-- :'other_booking_id' tersubstitusi jadi sesuatu yang tidak valid), sisa
+-- statement di transaksi itu akan gagal dengan "current transaction is
+-- aborted" -- pesan generik yang TIDAK diawali "FAIL", jadi lolos begitu
+-- saja dari kontrak file ini ("baris diawali FAIL berarti ada masalah").
+--
+-- Sequence dipilih sebagai penanda karena nextval() SATU-SATUNYA efek
+-- samping SQL yang didesain Postgres untuk TIDAK PERNAH ikut di-ROLLBACK
+-- (supaya nomor urut tidak "mundur" akibat rollback) -- jadi dibuat di
+-- SINI, di luar BEGIN/ROLLBACK di bawah, lalu di-tick sekali di setiap
+-- t16a/t16b/t16c, dan diperiksa lagi setelah ROLLBACK (lihat sentinel
+-- t16_sentinel di akhir blok ini). Kalau salah satu dari ketiganya gagal
+-- dieksekusi sampai akhir, sentinel itu yang menangkapnya sebagai FAIL
+-- sungguhan -- bukan diam-diam lolos.
+create temporary sequence t16_seen;
+-- WAJIB: blok di bawah ini "set local role authenticated" (peran rendah,
+-- bukan superuser koneksi psql harness ini) -- tanpa GRANT eksplisit ini,
+-- nextval() di t16a/t16b/t16c akan gagal "permission denied for sequence"
+-- (default privilege sequence cuma untuk owner-nya), yang justru
+-- meniadakan gunanya sentinel ini sendiri.
+grant usage, select on sequence t16_seen to authenticated;
+
+begin;
+
+set local role authenticated;
+-- Stub auth.uid() di 00_supabase_stub.sql membaca GUC datar
+-- "request.jwt.claim.sub", BUKAN JSON request.jwt.claims seperti PostgREST
+-- sungguhan -- lihat definisi fungsinya.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
+-- t16a. Merchant TIDAK BISA memalsukan status jadi 'PAID' pada booking
+-- MILIKNYA SENDIRI -- WITH CHECK menolak nilai status baru selain
+-- 'CANCELLED', meski kolom status sudah ter-grant UPDATE untuknya.
+-- expect_fail_code (bukan expect_fail biasa) dipakai supaya lolosnya tes ini
+-- BENAR-BENAR karena pelanggaran RLS (42501 -- insufficient_privilege,
+-- kode yang dipakai Postgres untuk "new row violates row-level security
+-- policy"), bukan kebetulan gagal karena sebab lain yang tidak terkait.
+select pg_temp.expect_fail_code(
+         format($q$update public.bookings set status = 'PAID' where id = %L$q$, :'own_booking_id'),
+         '42501',
+         'merchant memalsukan status jadi PAID pada booking miliknya sendiri (t16a)') as t16a,
+       -- Tick sentinel M6 -- lihat catatan besar sebelum "begin;" di atas.
+       -- expect_fail_code menangkap errornya sendiri (exception handler di
+       -- dalam fungsinya), jadi statement SELECT ini sendiri tidak pernah
+       -- gagal karena t16a -- nextval() di sini murni membuktikan baris
+       -- select ini benar-benar selesai dieksekusi.
+       nextval('t16_seen') as t16a_tick;
+
+-- t16b. Merchant TIDAK BISA mengubah booking MILIK MERCHANT LAIN -- USING
+-- memfilter baris berdasarkan merchant_id SEBELUM update dievaluasi, jadi
+-- hasilnya 0 baris berubah (bukan error), walau id booking target diketahui
+-- persis (id booking bukan rahasia -- dipakai sebagai orderId QRIS, lihat
+-- komentar di 20260819000100_booking_access_token.sql) dan tidak ada filter
+-- merchant_id di WHERE sama sekali -- membuktikan RLS-lah yang menahannya,
+-- bukan cuma filter aplikasi di actions.ts.
+with updated as (
+  update public.bookings
+  set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'percobaan tidak sah'
+  where id = :'other_booking_id'
+  returning id
+)
+select case when count(*) = 0
+            then 'OK   t16b merchant TIDAK bisa mengubah booking milik merchant lain (0 baris terpengaruh)'
+            else 'FAIL t16b merchant berhasil mengubah ' || count(*) || ' baris booking milik merchant lain' end as t16b,
+       -- Tick sentinel M6 (lihat catatan sebelum "begin;") -- beda dari
+       -- t16a, UPDATE di CTE "updated" di atas TIDAK dibungkus exception
+       -- handler apa pun. Kalau UPDATE itu sendiri gagal tak terduga
+       -- (bukan cuma "0 baris terpengaruh", tapi errcode sungguhan),
+       -- seluruh statement ini (termasuk nextval di sini) tidak pernah
+       -- selesai -- sentinel t16_sentinel di akhir blok yang menangkapnya.
+       nextval('t16_seen') as t16b_tick
+from updated;
+
+-- t16c. Jalur legit: booking MILIK SENDIRI, status PENDING -> CANCELLED,
+-- BERHASIL DAN benar-benar mengubah barisnya (bukan cuma "tidak error" --
+-- expect_ok tidak menjamin ada baris yang berubah, karena UPDATE yang
+-- match 0 baris juga bukan error) -- membuktikan policy-nya benar-benar
+-- mengizinkan yang memang harus diizinkan, bukan cuma memblokir semuanya
+-- (yang juga akan "lolos" t16a dan t16b tapi salah).
+with updated as (
+  update public.bookings
+  set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'Dibatalkan oleh merchant'
+  where id = :'own_booking_id'
+  returning id, status
+)
+select case when count(*) = 1 and bool_and(status = 'CANCELLED')
+            then 'OK   t16c merchant berhasil membatalkan booking miliknya sendiri (PENDING -> CANCELLED, 1 baris)'
+            else 'FAIL t16c pembatalan booking sendiri tidak berhasil sebagaimana mestinya (' || count(*) || ' baris)' end as t16c,
+       -- Tick sentinel M6 (lihat catatan sebelum "begin;" di atas).
+       nextval('t16_seen') as t16c_tick
+from updated;
+
+rollback;
+
+-- Sentinel M6 -- dijalankan SETELAH rollback, DI LUAR transaksi blok 16,
+-- dengan sengaja. nextval() TIDAK PERNAH ikut di-ROLLBACK (lihat catatan
+-- besar sebelum "begin;" di atas blok ini), jadi last_value sequence ini
+-- adalah bukti independen berapa banyak dari t16a/t16b/t16c yang BENAR-
+-- BENAR selesai dieksekusi sampai baris nextval()-nya masing-masing --
+-- tidak peduli apakah hasil pemeriksaannya sendiri OK atau FAIL, ataupun
+-- apakah "rollback;" di atas membatalkan SEMUA perubahan data blok ini.
+-- Kalau salah satu dari ketiganya gagal di tengah jalan (transaksi
+-- ter-abort sebelum sempat memanggil nextval()-nya), last_value akan
+-- kurang dari 3 -- itulah yang ditangkap di sini sebagai FAIL sungguhan,
+-- bukan diam-diam lolos sebagai pesan "current transaction is aborted"
+-- generik yang tidak diawali "FAIL".
+select case
+         when not is_called
+           then 'FAIL sentinel blok 16: tidak ada satu pun pemeriksaan t16 yang benar-benar tereksekusi (lihat pesan ERROR di atas)'
+         when last_value = 3
+           then 'OK   sentinel blok 16: ketiga pemeriksaan t16a/t16b/t16c benar-benar tereksekusi sampai akhir'
+         else 'FAIL sentinel blok 16: hanya ' || last_value || ' dari 3 pemeriksaan t16 yang tereksekusi -- transaksi kemungkinan gagal di tengah jalan (lihat pesan ERROR di atas)'
+       end as t16_sentinel
+from t16_seen;

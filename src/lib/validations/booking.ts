@@ -61,3 +61,35 @@ export const createBookingRequestSchema = z.object({
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;
+
+// --- /dashboard/bookings (Task 2, Phase 5-6) --------------------------------
+
+/**
+ * Kolom pencarian ledger merchant (`?q=`) -- nama pelanggan atau nomor
+ * WhatsApp, dicocokkan lewat `.or()` + `ilike` PostgREST. Karakter di bawah
+ * ini punya arti khusus dalam sintaks filter PostgREST -- koma memisahkan
+ * beberapa kondisi `.or()`, titik memisahkan `kolom.operator.nilai`, kurung
+ * mengelompokkan kondisi (termasuk `and()`/`or()` bersarang), persen adalah
+ * wildcard `ilike`, dan backslash dipakai untuk escape. MENOLAK karakter ini
+ * (bukan mencoba meng-escape-nya) jauh lebih aman daripada menulis ulang
+ * aturan escaping PostgREST sendiri -- nama pelanggan atau nomor WhatsApp
+ * sungguhan hampir tidak pernah butuh karakter-karakter ini, jadi menolaknya
+ * tidak mengorbankan kegunaan pencarian.
+ */
+export const bookingSearchSchema = z
+  .string()
+  .trim()
+  .max(80, "Pencarian maksimal 80 karakter")
+  .refine(
+    (value) => !/[,.()%\\]/.test(value),
+    "Pencarian tidak boleh mengandung karakter , . ( ) % atau \\",
+  );
+
+/** Filter status ledger (`?status=`). Nilai tak dikenal ditangani di page.tsx
+ * lewat `safeParse` -- diperlakukan sebagai "semua status", bukan error. */
+export const bookingStatusFilterSchema = z.enum(["PENDING", "PAID", "CANCELLED"]);
+
+/** Body Server Action `cancelBooking` di src/app/dashboard/bookings/actions.ts. */
+export const cancelBookingSchema = z.object({
+  id: z.uuid("Booking tidak valid"),
+});

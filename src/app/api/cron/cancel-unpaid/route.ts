@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { EXPIRY_CANCEL_REASON } from "@/app/dashboard/bookings/booking-state";
 import { isAuthorizedCron } from "@/lib/cron/auth";
 import { serverEnv } from "@/lib/env/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     .update({
       status: "CANCELLED",
       cancelled_at: nowISO,
-      cancel_reason: "DP tidak dibayar dalam batas waktu",
+      cancel_reason: EXPIRY_CANCEL_REASON,
     })
     .eq("status", "PENDING")
     .lt("expires_at", nowISO)
