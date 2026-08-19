@@ -4,12 +4,12 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { ListSkeleton, StatCardsSkeleton } from "@/components/ui/skeletons";
+import { StatCardsSkeleton } from "@/components/ui/skeletons";
 import { ROUTES } from "@/lib/routes";
 
 import { OverviewStats } from "./overview-stats";
 import { SetupAlerts } from "./setup-alerts";
-import { UpcomingBookings } from "./upcoming-bookings";
+import { UpcomingBookings, UpcomingBookingsSkeleton } from "./upcoming-bookings";
 
 export const metadata: Metadata = {
   title: "Ringkasan",
@@ -29,6 +29,13 @@ export const metadata: Metadata = {
  * atau memicu layout shift begitu alert sungguhan muncul. Query-nya sendiri
  * berbagi cache() dengan OverviewStats (lihat queries.ts) jadi biasanya
  * selesai bersamaan dengan kartu statistik.
+ *
+ * UpcomingBookings SEBALIKNYA punya bentuk box tetap (satu Card dengan
+ * judul + deskripsi + area list), jadi fallback-nya UpcomingBookingsSkeleton
+ * (co-located di upcoming-bookings.tsx) sengaja meniru Card/CardHeader/
+ * CardContent yang sama persis -- supaya saat konten asli streaming masuk,
+ * tinggi kotaknya tidak berubah dan tombol "Lihat semua booking" di
+ * bawahnya tidak ikut bergeser.
  */
 export default function DashboardPage() {
   return (
@@ -46,7 +53,7 @@ export default function DashboardPage() {
         <OverviewStats />
       </Suspense>
 
-      <Suspense fallback={<ListSkeleton />}>
+      <Suspense fallback={<UpcomingBookingsSkeleton />}>
         <UpcomingBookings />
       </Suspense>
 

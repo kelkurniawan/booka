@@ -5,6 +5,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ListSkeleton } from "@/components/ui/skeletons";
 import { requireMerchant } from "@/lib/auth/session";
 import { formatDateTime } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
@@ -50,6 +52,33 @@ export async function UpcomingBookings() {
             ))}
           </ul>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Fallback <Suspense> untuk UpcomingBookings -- dibungkus Card/CardHeader/
+ * CardContent yang SAMA persis dengan konten asli di atas (judul + deskripsi
+ * + area list), supaya saat data sungguhan streaming masuk, tinggi kotaknya
+ * tidak berubah dan elemen di bawahnya (tombol "Lihat semua booking") tidak
+ * ikut bergeser. Ditaruh di sini, bukan di components/ui/skeletons.tsx, agar
+ * co-located dengan komponen yang ditirunya -- kalau UpcomingBookings
+ * berubah bentuk, skeleton ini jadi jelas siapa yang harus ikut disesuaikan.
+ */
+export function UpcomingBookingsSkeleton() {
+  return (
+    <Card>
+      {/* aria-hidden di CardHeader saja, BUKAN di <Card>: ListSkeleton di
+          bawah punya <span className="sr-only"> sendiri yang harus tetap
+          terjangkau pembaca layar -- membungkusnya dalam ancestor
+          aria-hidden akan ikut membisukannya. */}
+      <CardHeader aria-hidden="true">
+        <Skeleton className="h-5 w-32" />
+        <Skeleton className="h-4 w-56" />
+      </CardHeader>
+      <CardContent>
+        <ListSkeleton />
       </CardContent>
     </Card>
   );
