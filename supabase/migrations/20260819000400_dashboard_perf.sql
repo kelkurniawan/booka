@@ -3,9 +3,12 @@
 --
 -- Dua index menutup sequential scan yang sampai sekarang tidak terhindarkan
 -- untuk query pendapatan bulanan dan ledger yang difilter status. RPC-nya
--- menggantikan 4 query terpisah di bookings/page.tsx (bulan ini, pendapatan
--- terkonfirmasi, jumlah pending, ledger) dengan satu round-trip -- SUM
--- dipindah ke Postgres, bukan dihitung di client setelah fetch semua baris.
+-- menggantikan 4 query kartu ringkasan terpisah di bookings/page.tsx (PAID
+-- bulan ini, PENDING bulan ini, pendapatan terkonfirmasi, jumlah pending)
+-- dengan satu round-trip -- SUM dipindah ke Postgres, bukan dihitung di
+-- client setelah fetch semua baris. Query ledger (tabel booking yang
+-- dipaginasi) TIDAK termasuk di sini -- itu tetap query tersendiri, lihat
+-- bookings-list.tsx.
 -- ===========================================================================
 
 -- ---------------------------------------------------------------------------
@@ -61,6 +64,22 @@ as $$
   select
     public.count_bookings_this_month((select auth.uid())),
     (
+      -- Batas awal bulan berjalan di Asia/Jakarta (UTC+7, TETAP, tanpa DST
+      -- -- Indonesia tidak pernah menerapkan pergantian musim untuk WIB).
+      -- `now() at time zone 'Asia/Jakarta'` menggeser instant now() ke jam
+      -- dinding Jakarta (dibaca sebagai timestamp TANPA zona), date_trunc
+      -- memotongnya ke awal bulan pada jam dinding itu, lalu `at time zone
+      -- 'Asia/Jakarta'` yang kedua menafsirkan hasilnya SEBAGAI jam dinding
+      -- Jakarta dan mengembalikannya ke timestamptz UTC untuk dibandingkan
+      -- dengan paid_at. Sebelum RPC ini ada, perhitungan yang setara
+      -- dilakukan di TypeScript oleh startOfMonthJakartaIso di
+      -- src/app/dashboard/bookings/page.tsx -- dipindah ke sini begitu
+      -- query pendapatan pindah ke RPC, supaya tidak ada dua sumber
+      -- kebenaran soal "awal bulan ini" di codebase. SENGAJA memakai cara
+      -- yang sama (geser +7 jam / date_trunc di zona Jakarta) seperti
+      -- count_bookings_this_month (20260813051417_reap_expired_pending_inline.sql)
+      -- supaya "bulan ini" untuk kartu pendapatan dan kartu booking bulan
+      -- ini konsisten satu sama lain.
       select coalesce(sum(b.service_price), 0)
       from public.bookings b
       where b.merchant_id = (select auth.uid())
@@ -70,9 +89,10 @@ as $$
         )
     ),
     (
-      -- Tanpa batas bulan, meniru pendingResult yang sekarang di
-      -- bookings/page.tsx: PENDING yang belum kedaluwarsa, apa pun bulan
-      -- pembuatannya.
+      -- Tanpa batas bulan -- sebelum RPC ini ada, ini adalah query
+      -- pendingResult terpisah di bookings/page.tsx (kini digantikan
+      -- RPC ini sepenuhnya, lihat bookings-summary.tsx): PENDING yang
+      -- belum kedaluwarsa, apa pun bulan pembuatannya.
       select count(*)::integer
       from public.bookings b
       where b.merchant_id = (select auth.uid())
