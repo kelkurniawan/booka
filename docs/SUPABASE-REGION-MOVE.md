@@ -1,6 +1,27 @@
 # Runbook: memindahkan project Supabase ke `ap-southeast-1` (Singapura)
 
-Status: **belum dijalankan.** Dokumen ini rencana, bukan catatan sesudah.
+Status: **sudah dijalankan 2026-08-20.** Project tujuan: `booka-sg`
+(`fsloouakiaagdrcchzfc`, `ap-southeast-1`).
+
+Catatan pelaksanaan, yang berbeda dari rencana awal:
+
+- Data jauh lebih kecil dari yang diasumsikan runbook (4 merchant, 2 layanan,
+  4 baris jam kerja, 3 booking, 1 koneksi pembayaran), jadi tidak perlu
+  pembekuan tulis maupun jendela downtime khusus.
+- Ditemukan tabel yang TIDAK ada di inventaris awal: `private.payment_credentials`.
+  Ikut dipindahkan.
+- Tabel sesi (`auth.sessions`, `refresh_tokens`, `one_time_tokens`,
+  `flow_state`) SENGAJA tidak dipindahkan — project baru punya JWT secret
+  berbeda sehingga baris-baris itu tidak akan pernah valid. Konsekuensinya
+  seluruh merchant harus login ulang sekali.
+- `reserved_usernames` sengaja tidak di-restore; isinya datang dari
+  migration (68 baris), persis seperti yang diantisipasi jebakan #3.
+- Verifikasi setelah pindah: seluruh jumlah baris cocok dengan sumber,
+  kedua index baru ada, dan `dashboard_booking_summary` punya grant yang
+  benar (`anon=false`, `authenticated=true`).
+- Project lama (`ydhllxeeymvthgfsqmkb`, Tokyo) sengaja DIBIARKAN HIDUP
+  sebagai jaring pengaman. Jangan dihapus sampai project baru terbukti
+  stabil beberapa hari.
 
 ## Kenapa
 
