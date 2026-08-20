@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarOff } from "lucide-react";
 
+import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
 import { BookingServiceCard } from "@/components/booking-page/service-card";
@@ -17,7 +18,12 @@ import {
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
-import type { MerchantTheme, PublicMerchant } from "@/types/database";
+import type {
+  MerchantTheme,
+  PublicMerchant,
+  Service,
+  ServiceMedia,
+} from "@/types/database";
 
 import { BookingSeam } from "./booking-seam";
 
@@ -80,15 +86,20 @@ const getMerchantPageData = cache(async (username: string) => {
     .merchant_themes;
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
-  const [servicesResult, availabilityResult] = await Promise.all([
+  const [servicesResult, availabilityResult, faqsResult] = await Promise.all([
     supabase
       .from("services")
-      .select("*")
+      .select("*, service_media(*)")
       .eq("merchant_id", onboardedMerchant.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase.from("availability").select("*").eq("merchant_id", onboardedMerchant.id),
+    supabase
+      .from("merchant_faqs")
+      .select("*")
+      .eq("merchant_id", onboardedMerchant.id)
+      .order("sort_order", { ascending: true }),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -108,12 +119,38 @@ const getMerchantPageData = cache(async (username: string) => {
     });
     throw new Error("Gagal memuat jam kerja merchant.");
   }
+  // FAQ yang hilang karena gangguan database tidak boleh terlihat sama dengan
+  // merchant yang memang belum mengisi FAQ -- yang pertama menyembunyikan
+  // masalah, yang kedua memang pilihan merchant.
+  if (faqsResult.error) {
+    console.error("[booking-page] gagal memuat FAQ", {
+      username,
+      error: faqsResult.error,
+    });
+    throw new Error("Gagal memuat FAQ merchant.");
+  }
+
+  // `service_media` datang menempel di tiap baris layanan lewat embedding.
+  // Dipisah di sini supaya BookingSeam tetap menerima Service[] polos dan
+  // tanda tangannya tidak ikut berubah.
+  const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
+    service_media?: ServiceMedia[] | null;
+  })[];
+  const mediaByService: Record<string, ServiceMedia[]> = {};
+  const services: Service[] = servicesWithMedia.map(
+    ({ service_media, ...service }) => {
+      mediaByService[service.id] = service_media ?? [];
+      return service;
+    },
+  );
 
   return {
     merchant: onboardedMerchant,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
-    services: servicesResult.data ?? [],
+    services,
+    mediaByService,
     availability: availabilityResult.data ?? [],
+    faqs: faqsResult.data ?? [],
   };
 });
 
@@ -150,7 +187,7 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, theme, services, availability } = data;
+  const { merchant, theme, services, mediaByService, availability, faqs } = data;
   const name = merchant.full_name ?? merchant.username;
   const canAcceptBookings = services.length > 0 && availability.length > 0;
 
@@ -172,8 +209,13 @@ export default async function MerchantPublicPage({
           </h2>
 
           <ul className="flex flex-col gap-3">
-            {services.map((service) => (
-              <BookingServiceCard key={service.id} service={service} />
+            {services.map((service, index) => (
+              <BookingServiceCard
+                key={service.id}
+                service={service}
+                media={mediaByService[service.id] ?? []}
+                eager={index === 0}
+              />
             ))}
           </ul>
 
@@ -197,6 +239,29 @@ export default async function MerchantPublicPage({
           </EmptyHeader>
         </Empty>
       )}
+
+      <BookingFaqSection faqs={faqs} />
+
+      {faqs.length > 0 ? (
+        <script
+          type="application/ld+json"
+          // Isinya milik merchant sendiri dan panjangnya sudah dibatasi
+          // constraint database. JSON.stringify menutup tanda kutip; kurung
+          // sudut di-escape supaya string "</script>" di dalam jawaban tidak
+          // bisa menutup tag ini lebih awal.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: { "@type": "Answer", text: faq.answer },
+              })),
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
+      ) : null}
 
       {merchant.subscription_tier === "STARTER" ? (
         <Link
