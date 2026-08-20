@@ -295,34 +295,68 @@ lagi berlaku, dan reverse proxy plus beberapa replika aplikasi harus
 dipertimbangkan ulang dari awal — bukan diasumsikan sudah beres karena
 pernah tidak dibutuhkan di Vercel.
 
-## 20. `regions: ["sin1"]` di `vercel.json`, dan keterikatannya ke region Supabase
+## 20. `regions: ["sin1"]` di `vercel.json` — disetel untuk keadaan SETELAH pemindahan Supabase
+
+> ⚠️ **JANGAN deploy `main` ke production sebelum pemindahan Supabase
+> selesai.** Setelan region di `vercel.json` sengaja disetel untuk keadaan
+> yang belum terjadi. Lihat "Bahaya urutan" di bawah.
+
+**Fakta yang diverifikasi (2026-08-20):** project Supabase Booka
+(`ydhllxeeymvthgfsqmkb`, ref yang sama dengan `NEXT_PUBLIC_SUPABASE_URL`)
+berjalan di **`ap-northeast-1` (Tokyo)**, bukan `ap-southeast-1`.
+Diperiksa lewat `npx supabase projects list`.
+
+Catatan kejujuran: revisi pertama entri ini menyatakan project ada di
+`ap-southeast-1` dan membangun seluruh alasannya di atas itu. Itu keliru.
+Entri ini menggantinya, bukan menutupinya — karena keputusan region yang
+dibangun di atas premis salah akan diwarisi orang berikutnya sebagai
+"sudah dipikirkan".
 
 **Implementasi:** `vercel.json` menetapkan `"regions": ["sin1"]` (Singapura)
-untuk seluruh Vercel Functions proyek ini — termasuk Route Handler, Server
-Action, dan cron `/api/cron/cancel-unpaid`.
+untuk seluruh Vercel Functions — termasuk Route Handler, Server Action, dan
+cron `/api/cron/cancel-unpaid`. Tanpa `regions` disetel, Vercel default ke
+`iad1` (Washington, D.C.), yang lebih jauh dari Tokyo maupun Singapura.
 
-**Alasan:** project Supabase Booka dikonfirmasi berjalan di `ap-southeast-1`
-(Singapura). Tanpa `regions` disetel, Vercel Functions default ke `iad1`
-(Washington, D.C.) untuk semua project baru. Karena hampir setiap route di
-dashboard melakukan query ke Supabase, tiap request akan menyeberangi
-Pasifik dua kali — sekali dari browser pengguna ke `iad1`, lalu function di
-`iad1` menyeberang lagi ke Supabase di Singapura untuk tiap query — sebelum
-responsnya bisa dikirim balik. Memindahkan function ke `sin1` menghilangkan
-separuh perjalanan itu: hanya hop pengguna-ke-Singapura yang tersisa, dan
-function berada tepat di sebelah database-nya.
+**Alasan `sin1` dan bukan `hnd1`:** keputusan yang diambil adalah
+memindahkan project Supabase ke Singapura (runbook lengkap:
+`docs/SUPABASE-REGION-MOVE.md`), supaya database dan function sama-sama
+dekat dengan merchant Indonesia yang jadi pengguna Booka. `sin1` adalah
+tujuan akhir itu, sudah ditulis lebih dulu supaya tidak perlu diubah dua
+kali.
 
-Trade-off: pengguna Booka memang merchant Indonesia (lihat keputusan #17,
-zona tampilan WIB), jadi `sin1` juga dekat dengan mereka. Tapi ini tetap
-pin satu region, bukan multi-region — pengguna yang mengakses dari jauh dari
-Asia Tenggara (kalaupun ada) akan mendapat latensi lebih tinggi ke `sin1`
-dibanding kalau function-nya tersebar. Untuk profil pengguna Booka saat ini
-trade-off ini jelas menguntungkan; pin ini bukan keputusan yang otomatis
-benar untuk aplikasi lain.
+**Bahaya urutan.** Sampai pemindahan benar-benar selesai, kombinasi yang
+ada di `main` adalah function di Singapura + database di Tokyo — tiap query
+membayar ~70 ms menyeberang, dan satu navigasi dashboard masih melakukan
+sekitar tiga round-trip berurutan. Itu lebih lambat daripada `hnd1`
+(menyatu dengan database) MAUPUN daripada keadaan sebelum perubahan ini.
+Kegagalannya senyap: tidak ada error, tidak ada warning, halaman tetap
+jalan — cuma lebih lambat. Karena itu deploy ditahan, bukan sekadar
+dijadwalkan belakangan.
 
-Kaitan yang wajib diingat: dua setelan ini — region Supabase dan
-`regions` di `vercel.json` — harus selalu bergerak bersama. Kalau project
-Supabase suatu saat dipindahkan keluar dari `ap-southeast-1` (migrasi
-region, pindah organisasi, dsb.), `regions` di sini wajib diikutkan
-berubah, atau performa yang tadinya diperbaiki di sini justru mundur diam-
-diam — setiap query kembali membayar round-trip lintas benua tanpa ada
-error atau warning yang menandainya.
+Kalau suatu saat diputuskan untuk deploy LEBIH DULU sebelum pemindahan,
+ubah nilainya ke `["hnd1"]` (Tokyo) supaya menyatu dengan database yang
+masih di sana, lalu balikkan ke `["sin1"]` pada langkah 8 runbook.
+
+**Kenapa menyatukan function dengan database, bukan dengan pengguna.**
+Vercel menuntaskan TLS di edge PoP terdekat dengan pengguna, lalu meneruskan
+ke region function lewat backbone-nya. Hop pengguna→function praktis dibayar
+sekali per request, sedangkan hop function→database dibayar pada SETIAP
+round-trip berurutan. Round-trip database berlipat; hop pengguna tidak.
+Karena itu, selama database dan pengguna tidak bisa berada di region yang
+sama, mendekatkan function ke database menang. Setelah pemindahan, keduanya
+sama-sama di Singapura dan pertanyaan ini hilang.
+
+Trade-off yang tetap ada: ini pin satu region, bukan multi-region. Pengguna
+yang mengakses dari jauh dari Asia Tenggara akan mendapat latensi lebih
+tinggi dibanding kalau function-nya tersebar. Untuk profil pengguna Booka
+(merchant Indonesia, lihat keputusan #17 soal zona tampilan WIB) trade-off
+ini menguntungkan; pin ini bukan keputusan yang otomatis benar untuk
+aplikasi lain.
+
+**Kaitan yang wajib diingat:** region Supabase dan `regions` di
+`vercel.json` harus selalu bergerak bersama. Kalau project Supabase
+dipindahkan lagi (migrasi region, pindah organisasi, dsb.), `regions` di
+sini wajib ikut berubah — kalau tidak, performa yang diperbaiki di sini
+mundur diam-diam tanpa satu pun error yang menandainya. Entri ini sendiri
+adalah bukti bahwa asumsi soal region bisa salah dan tidak ketahuan:
+verifikasi ulang lewat `npx supabase projects list`, jangan diingat-ingat.
