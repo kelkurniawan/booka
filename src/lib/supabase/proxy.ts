@@ -8,12 +8,41 @@ import type { Database } from "@/types/database";
  * Menyegarkan sesi Supabase dan menegakkan aturan akses rute.
  *
  * Dipanggil dari src/proxy.ts pada setiap request halaman. Selain merefresh
- * token, di sinilah tiga aturan navigasi ditegakkan:
+ * token, di sinilah aturan navigasi ditegakkan:
  *
- *   1. /dashboard dan /onboarding butuh sesi.
- *   2. Merchant yang belum mengisi username selalu diarahkan ke /onboarding.
- *   3. Merchant yang sudah onboarding tidak bisa kembali ke /onboarding
+ *   1. /dashboard dan /onboarding butuh sesi -- ini batas keamanannya,
+ *      ditegakkan dengan getUser() di bawah.
+ *   2. Merchant yang sudah onboarding tidak bisa kembali ke /onboarding
  *      atau /login.
+ *   3. Merchant yang belum mengisi username diarahkan ke /onboarding.
+ *      Lookup `merchants` untuk aturan ini dijalankan di TIGA kondisi,
+ *      bukan untuk semua request privat -- lihat pembagiannya di dalam
+ *      `updateSession`:
+ *        a. GET ke /dashboard/* -- TIDAK di sini. src/app/dashboard/layout.tsx
+ *           (lewat requireMerchant() di src/lib/auth/session.ts) membungkus
+ *           SEMUA rute /dashboard/* tanpa kecuali dan menegakkan redirect
+ *           yang identik satu request pass kemudian, jadi query di sini
+ *           murni duplikat -- inilah optimasinya, satu query lebih sedikit
+ *           per navigasi halaman dashboard.
+ *        b. Non-GET ke /dashboard/* (Server Action) -- DI SINI. Server
+ *           Action dieksekusi sebagai handler POST langsung; Next.js TIDAK
+ *           me-render layout.tsx dulu sebelum action-nya jalan (render
+ *           ulang RSC baru terjadi SETELAH action selesai), jadi
+ *           requireMerchant() di layout datang terlambat untuk request
+ *           semacam ini. Proxy me-redirect request ini ke /onboarding
+ *           SEBELUM sampai ke handler action -- TAPI ini bukan hard-block:
+ *           `NextResponse.redirect` di sini default 307, yang
+ *           mempertahankan method dan body, dan action client Next.js
+ *           mengikuti redirect (mem-POST ulang ke /onboarding, rute yang
+ *           dikecualikan gate ini). Jadi mutasinya "dibelokkan", bukan
+ *           ditolak murni -- perilaku redirect yang SAMA seperti yang
+ *           sudah berlaku untuk request lain ke rute privat sebelum task
+ *           ini, bukan sesuatu yang baru diperkenalkan di sini.
+ *        c. /onboarding (semua method) -- DI SINI, karena tidak ada
+ *           dashboard/layout.tsx yang membungkusnya -- proxy satu-satunya
+ *           tempat yang bisa menegakkan aturan ini untuk rute tersebut,
+ *           termasuk memantulkan merchant yang SUDAH onboarding keluar
+ *           dari halaman ini.
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -83,8 +112,17 @@ export async function updateSession(request: NextRequest) {
     return withCookies(NextResponse.redirect(url), response);
   }
 
-  if (protectedPath) {
-    // Satu lookup primary key, hanya untuk rute privat.
+  const onOnboarding = pathname === ROUTES.onboarding;
+
+  // Lookup merchants dijalankan untuk /onboarding (semua method) ATAU
+  // untuk /dashboard/* yang non-GET (Server Action) -- lihat kondisi (a),
+  // (b), (c) di komentar atas fungsi ini. GET ke /dashboard/* SENGAJA
+  // dilewati: itu tanggung jawab dashboard/layout.tsx satu request pass
+  // kemudian.
+  const needsOnboardingLookup =
+    onOnboarding || (protectedPath && request.method !== "GET");
+
+  if (needsOnboardingLookup) {
     const { data: merchant } = await supabase
       .from("merchants")
       .select("username")
@@ -92,8 +130,11 @@ export async function updateSession(request: NextRequest) {
       .maybeSingle();
 
     const onboarded = Boolean(merchant?.username);
-    const onOnboarding = pathname === ROUTES.onboarding;
 
+    // Non-GET ke /dashboard/* dari merchant yang belum onboarding --
+    // dibelokkan (redirect 307, bukan hard-block) ke /onboarding di sini
+    // karena layout.tsx datang terlambat untuk Server Action (lihat poin b
+    // di komentar atas fungsi ini).
     if (!onboarded && !onOnboarding) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.onboarding;
@@ -101,6 +142,7 @@ export async function updateSession(request: NextRequest) {
       return withCookies(NextResponse.redirect(url), response);
     }
 
+    // Merchant yang sudah onboarding tidak boleh balik ke /onboarding.
     if (onboarded && onOnboarding) {
       const url = request.nextUrl.clone();
       url.pathname = ROUTES.dashboard;

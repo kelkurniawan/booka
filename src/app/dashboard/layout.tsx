@@ -1,10 +1,7 @@
-import { redirect } from "next/navigation";
-
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import { ROUTES } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/server";
+import { requireMerchant } from "@/lib/auth/session";
 
 /**
  * Seluruh dashboard bergantung pada sesi merchant, jadi tidak boleh ada
@@ -17,26 +14,13 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect(ROUTES.login);
-  }
-
-  const { data: merchant } = await supabase
-    .from("merchants")
-    .select("username, full_name, avatar_url, subscription_tier")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  // Proxy sudah menangani ini, tapi layout tetap memeriksa sendiri agar
-  // sidebar tidak pernah dirender tanpa username.
-  if (!merchant?.username) {
-    redirect(ROUTES.onboarding);
-  }
+  // requireMerchant() (lib/auth/session.ts) menangani redirect ke /masuk
+  // atau /onboarding -- perilakunya persis sama dengan blok getUser() +
+  // query merchants yang dulu ada di sini. Proxy juga menegakkan redirect
+  // belum-onboarding untuk /dashboard/* (lihat komentar di proxy.ts), tapi
+  // layout tetap memeriksa sendiri agar sidebar tidak pernah dirender tanpa
+  // merchant yang valid.
+  const { user, merchant } = await requireMerchant();
 
   return (
     <SidebarProvider>

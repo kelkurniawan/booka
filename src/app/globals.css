@@ -128,3 +128,30 @@
     @apply font-sans;
   }
 }
+
+/* Animasi "reveal" untuk kartu/baris yang baru selesai dimuat -- lihat
+   src/components/ui/reveal.tsx. Sengaja singkat (180ms) dan halus (geser
+   4px) supaya terasa seperti respons cepat, bukan dekorasi. */
+@keyframes booka-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.booka-reveal {
+  animation: booka-reveal 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .booka-reveal {
+    animation: none;
+  }
+  [data-slot="skeleton"] {
+    animation: none;
+  }
+}

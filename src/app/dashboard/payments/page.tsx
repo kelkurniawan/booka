@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
+import { getSessionUser } from "@/lib/auth/session";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
 import { ROUTES } from "@/lib/routes";
@@ -21,14 +22,18 @@ export default async function PaymentsPage({
 }: {
   searchParams: Promise<{ connected?: string; oauth_error?: string; provider?: string }>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  // getSessionUser() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggil requireMerchant() (yang memanggil getSessionUser() di
+  // dalamnya) di render pass yang sama, jadi baris ini TIDAK menambah
+  // round-trip auth baru. Halaman ini tidak butuh field SessionMerchant
+  // (cuma active_payment_provider, yang tidak ada di sana), jadi
+  // getSessionUser() saja cukup -- query merchants di bawah tetap perlu
+  // jalan sendiri untuk kolom itu.
+  const user = await getSessionUser();
   if (!user) {
     redirect(ROUTES.login);
   }
+  const supabase = await createClient();
 
   const { connected, oauth_error: oauthError, provider: errorProvider } = await searchParams;
 

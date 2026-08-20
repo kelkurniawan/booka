@@ -6,6 +6,7 @@
  * catatan yang sama di service-state.ts).
  */
 
+import { ROUTES } from "@/lib/routes";
 import type { Booking, BookingStatus } from "@/types/database";
 
 /**
@@ -148,3 +149,30 @@ export const PROVIDER_LABELS: Record<string, string> = {
   MIDTRANS: "Midtrans",
   XENDIT: "Xendit",
 };
+
+// --- Paginasi (dipakai page.tsx DAN bookings-list.tsx) ----------------------
+
+/** Pilihan ukuran halaman yang valid untuk pemilih di DataTablePagination. */
+export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+export const DEFAULT_PAGE_SIZE = 20;
+
+/** Bangun query string ledger dari nilai yang SUDAH divalidasi -- dipakai
+ * tautan Sebelumnya/Berikutnya, pemilih ukuran halaman di
+ * DataTablePagination, dan redirect "halaman di luar jangkauan" di
+ * bookings-list.tsx. `size` disertakan di sini (bukan cuma `status` dan `q`)
+ * supaya berpindah halaman/mengubah ukuran halaman tidak diam-diam
+ * menjatuhkan filter atau ukuran halaman yang sedang dipakai. */
+export function buildBookingsHref(params: {
+  status: string;
+  q: string;
+  page: number;
+  size: number;
+}): string {
+  const usp = new URLSearchParams();
+  if (params.status) usp.set("status", params.status);
+  if (params.q) usp.set("q", params.q);
+  if (params.page > 1) usp.set("page", String(params.page));
+  if (params.size !== DEFAULT_PAGE_SIZE) usp.set("size", String(params.size));
+  const qs = usp.toString();
+  return qs ? `${ROUTES.bookings}?${qs}` : ROUTES.bookings;
+}

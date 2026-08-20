@@ -18,8 +18,9 @@ Penyimpangan dari PRD dan alasannya: `docs/DECISIONS.md`
 
 Phase 1–2 dari PRD bagian 6 sudah selesai (scaffold, skema + RLS, auth,
 onboarding, shell dashboard), plus landing page dan penegakan kuota transaksi.
-Phase 3–6 belum: halaman dashboard di luar Ringkasan masih berupa
-`PhasePlaceholder`.
+Phase 3–6 juga sudah selesai: semua halaman dashboard (booking masuk,
+layanan, ketersediaan, pembayaran, pengaturan, billing) sudah jadi
+implementasi sungguhan, bukan lagi `PhasePlaceholder`.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
@@ -44,8 +45,26 @@ Supabase (Postgres + Auth + RLS) · Zod
 `createAdminClient()` tidak punya jaring pengaman. Setiap query dengannya wajib
 memfilter `merchant_id` secara eksplisit.
 
-**Selalu `getUser()`, jangan `getSession()`.** `getSession()` hanya membaca
-cookie tanpa memverifikasi ke server Auth.
+**`getSession()` terlarang, `getUser()` dan `getClaims()` boleh.**
+`getSession()` hanya membaca cookie mentah TANPA verifikasi apa pun —
+payload-nya bisa dipalsukan siapa pun yang bisa menulis cookie. `getUser()`
+dan `getClaims()` sama-sama MEMVERIFIKASI tanda tangan JWT sebelum
+mengembalikan identitas user, cuma jalurnya beda: `getUser()` selalu
+memanggil server Auth (round-trip jaringan tiap kali), sedangkan
+`getClaims()` memverifikasi lokal lewat JWKS project kalau signing key
+asimetris aktif (tanpa round-trip), jatuh ke server Auth kalau tidak.
+Bedanya bukan cuma jalur jaringan: verifikasi lokal `getClaims()` tidak
+tahu kalau sesi sudah dicabut (sign-out, banned, akun dihapus) sampai
+token itu `exp`, sedangkan `getUser()` selalu bertanya ke server Auth
+sehingga pencabutan langsung ketahuan. Di dashboard ini aman dipakai
+karena `getUser()` di `src/lib/supabase/proxy.ts` tetap jalan di setiap
+request yang cocok matcher-nya; jangan salin pola `getClaims()` ini ke
+Route Handler `/api/*` -- matcher proxy TIDAK mencakup `/api/*`, jadi di
+sana wajib verifikasi sendiri. Di Server Component, pakai helper
+ber-`cache()` di `src/lib/auth/session.ts` (`getSessionUser()` /
+`requireMerchant()`) alih-alih memanggil `getUser()`/`getClaims()`
+langsung — supaya layout dan page dalam satu render pass berbagi satu
+hasil, bukan masing-masing melakukan round-trip sendiri.
 
 **Perubahan skema butuh migration baru** di `supabase/migrations/`, bukan edit
 file lama. Setiap tabel baru di `public` harus di-`REVOKE ALL` dulu dari `anon`

@@ -23,8 +23,10 @@ export function formatRupiah(value: number): string {
  * menerapkan pergantian musim untuk WIB) -- jadi menggeser instant UTC-nya
  * 7 jam lalu membaca komponen kalender lewat getter UTC sudah presisi untuk
  * semua tanggal yang relevan di aplikasi ini (booking, bukan arsip
- * historis). Pola yang sama (geser +7 jam, baca lewat getter UTC) sudah
+ * historis). Pola yang sama (geser +7 jam, baca lewat getter UTC) sebelumnya
  * dipakai `startOfMonthJakartaIso` di src/app/dashboard/bookings/page.tsx --
+ * sekarang perhitungan setaranya pindah ke RPC dashboard_booking_summary
+ * (supabase/migrations/20260819000400_dashboard_perf.sql), tapi caranya
  * dipertahankan konsisten di sini, bukan ditulis ulang dengan cara lain
  * (mis. Intl.DateTimeFormat + timeZone) supaya tidak ada dua sumber
  * kebenaran soal "bagaimana caranya menghitung waktu Jakarta" di codebase

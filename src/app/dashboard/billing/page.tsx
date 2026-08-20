@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
 import { Check, MessageCircle } from "lucide-react";
 
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,8 +12,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { requireMerchant } from "@/lib/auth/session";
 import { clientEnv } from "@/lib/env/client";
-import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import type { SubscriptionTier } from "@/types/database";
 
@@ -67,23 +66,19 @@ const PLANS: {
 ];
 
 export default async function BillingPage() {
+  // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
+  // memanggilnya di render pass yang sama, jadi baris ini TIDAK menambah
+  // round-trip auth atau query merchants baru. subscription_tier sudah ada
+  // di hasilnya, jadi query merchants terpisah yang dulu ada di sini
+  // dihapus.
+  const { merchant } = await requireMerchant();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  if (!user) {
-    redirect(ROUTES.login);
-  }
+  // Angka kuota diambil dari fungsi yang sama dengan yang dipakai trigger
+  // penegak batas -- lihat src/app/dashboard/page.tsx.
+  const quotaResult = await supabase.rpc("my_quota_usage");
 
-  const [merchantResult, quotaResult] = await Promise.all([
-    supabase.from("merchants").select("subscription_tier").eq("id", user.id).maybeSingle(),
-    // Angka kuota diambil dari fungsi yang sama dengan yang dipakai trigger
-    // penegak batas -- lihat src/app/dashboard/page.tsx.
-    supabase.rpc("my_quota_usage"),
-  ]);
-
-  const tier = merchantResult.data?.subscription_tier ?? "STARTER";
+  const tier = merchant.subscription_tier;
   const quotaRow = quotaResult.data?.[0];
   const used = quotaRow?.used ?? 0;
   const quota = quotaRow?.quota ?? null;

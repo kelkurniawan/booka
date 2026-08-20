@@ -40,10 +40,10 @@ export function BookingsTable({
   nowMs,
 }: {
   bookings: BookingListItem[];
-  /** Instant referensi "sekarang" dihitung SEKALI di page.tsx (Server
-   * Component) dan diteruskan turun -- lihat komentar nowMs di
-   * getDisplayStatus (booking-state.ts) soal kenapa ini tidak boleh dibaca
-   * lewat Date.now() di komponen ini, yang SSR. */
+  /** Instant referensi "sekarang" dihitung SEKALI di bookings-list.tsx
+   * (Server Component async) dan diteruskan turun -- lihat komentar nowMs
+   * di getDisplayStatus (booking-state.ts) soal kenapa ini tidak boleh
+   * dibaca lewat Date.now() di komponen ini, yang SSR. */
   nowMs: number;
 }) {
   return (
