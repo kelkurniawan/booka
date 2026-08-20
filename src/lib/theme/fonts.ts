@@ -7,9 +7,18 @@ import {
   Space_Grotesk,
 } from "next/font/google";
 
-import { FONT_VARS } from "./font-pairs";
+import type { FONT_VARS } from "./font-pairs";
 
 /**
+ * Pemuat enam keluarga font tema.
+ *
+ * Seluruh argumen ditulis sebagai literal, TIDAK di-spread dan tidak mengambil
+ * nilai dari konstanta: next/font menolaknya dengan "Font loader values must be
+ * explicitly written literals" karena nilainya dibaca saat build oleh plugin
+ * SWC, bukan saat program berjalan. Konsekuensinya nama variabel CSS di sini
+ * terduplikasi dari font-pairs.ts -- `PeriksaNamaFontVar` di bawah yang menjaga
+ * keduanya tidak bisa berbeda diam-diam.
+ *
  * `preload: false` disengaja. Tanpa itu, Next menyisipkan <link rel=preload>
  * untuk keenam keluarga di setiap halaman publik, padahal tema mana pun cuma
  * memakai satu atau dua. Dengan preload dimatikan, hanya aturan @font-face yang
@@ -20,24 +29,65 @@ import { FONT_VARS } from "./font-pairs";
  * jadi seluruh rentang beratnya ikut dalam satu berkas.
  *
  * Modul ini hanya boleh diimpor komponen. Jangan mengimpornya dari kode murni
- * -- `next/font/google` cuma berfungsi di dalam pipeline build Next, dan
- * mengimpornya membuat modul itu gagal di `npm run test:unit`. Data pasangan
- * fontnya ada di `font-pairs.ts`.
+ * -- next/font/google cuma berfungsi di dalam pipeline build Next, dan
+ * mengimpornya membuat modul itu gagal di `npm run test:unit`.
  */
-// `subsets` sengaja BUKAN `as const`: next/font menuntut array yang bisa
-// diubah, dan `as const` membuatnya readonly sehingga tipenya ditolak.
-const opsi = {
-  subsets: ["latin"] as ["latin"],
-  display: "swap" as const,
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  display: "swap",
   preload: false,
-};
+  variable: "--font-plus-jakarta",
+});
 
-const plusJakarta = Plus_Jakarta_Sans({ ...opsi, variable: FONT_VARS.plusJakarta });
-const inter = Inter({ ...opsi, variable: FONT_VARS.inter });
-const dmSans = DM_Sans({ ...opsi, variable: FONT_VARS.dmSans });
-const spaceGrotesk = Space_Grotesk({ ...opsi, variable: FONT_VARS.spaceGrotesk });
-const playfair = Playfair_Display({ ...opsi, variable: FONT_VARS.playfair });
-const fraunces = Fraunces({ ...opsi, variable: FONT_VARS.fraunces });
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-inter",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-dm-sans",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-space-grotesk",
+});
+
+const playfair = Playfair_Display({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-playfair",
+});
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  preload: false,
+  variable: "--font-fraunces",
+});
+
+/**
+ * Gagal typecheck kalau salah satu literal `variable:` di atas menyimpang dari
+ * FONT_VARS di font-pairs.ts. `A extends B` pada dua tipe literal hanya benar
+ * kalau keduanya persis sama.
+ */
+type SamaDengan<A extends B, B extends string> = A;
+export type PeriksaNamaFontVar = [
+  SamaDengan<"--font-plus-jakarta", typeof FONT_VARS.plusJakarta>,
+  SamaDengan<"--font-inter", typeof FONT_VARS.inter>,
+  SamaDengan<"--font-dm-sans", typeof FONT_VARS.dmSans>,
+  SamaDengan<"--font-space-grotesk", typeof FONT_VARS.spaceGrotesk>,
+  SamaDengan<"--font-playfair", typeof FONT_VARS.playfair>,
+  SamaDengan<"--font-fraunces", typeof FONT_VARS.fraunces>,
+];
 
 /**
  * Dipasang BookingPageShell, bukan root layout, supaya dashboard dan landing

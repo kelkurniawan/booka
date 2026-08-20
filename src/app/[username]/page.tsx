@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarOff } from "lucide-react";
 
+import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
 import { BookingServiceCard } from "@/components/booking-page/service-card";
 import {
@@ -15,7 +16,8 @@ import {
 } from "@/components/ui/empty";
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
-import type { PublicMerchant } from "@/types/database";
+import { resolveTheme } from "@/lib/theme/resolve";
+import type { MerchantTheme, PublicMerchant } from "@/types/database";
 
 import { BookingSeam } from "./booking-seam";
 
@@ -39,7 +41,9 @@ const getMerchantPageData = cache(async (username: string) => {
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id, username, full_name, bio, avatar_url, subscription_tier")
+    .select(
+      "id, username, full_name, bio, avatar_url, subscription_tier, merchant_themes(*)",
+    )
     .eq("username", username)
     .maybeSingle();
 
@@ -68,6 +72,13 @@ const getMerchantPageData = cache(async (username: string) => {
   // dipastikan bukan null, jadi konsumen di bawah tidak perlu non-null
   // assertion.
   const onboardedMerchant: OnboardedMerchant = { ...merchant, username: merchant.username };
+
+  // Relasi satu-ke-satu: PostgREST mengembalikan objek atau null, tapi sebagian
+  // versi mengembalikan array satu elemen. Keduanya dinormalkan sekali di sini
+  // supaya konsumen di bawah tidak perlu tahu bedanya.
+  const themeRaw = (merchant as { merchant_themes?: MerchantTheme | MerchantTheme[] | null })
+    .merchant_themes;
+  const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
   const [servicesResult, availabilityResult] = await Promise.all([
     supabase
@@ -100,6 +111,7 @@ const getMerchantPageData = cache(async (username: string) => {
 
   return {
     merchant: onboardedMerchant,
+    theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
     services: servicesResult.data ?? [],
     availability: availabilityResult.data ?? [],
   };
@@ -138,12 +150,12 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, services, availability } = data;
+  const { merchant, theme, services, availability } = data;
   const name = merchant.full_name ?? merchant.username;
   const canAcceptBookings = services.length > 0 && availability.length > 0;
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-8 px-4 py-10">
+    <BookingPageShell theme={theme}>
       <BookingProfileHeader
         name={name}
         bio={merchant.bio}
@@ -194,6 +206,6 @@ export default async function MerchantPublicPage({
           Dibuat dengan Booka
         </Link>
       ) : null}
-    </div>
+    </BookingPageShell>
   );
 }
