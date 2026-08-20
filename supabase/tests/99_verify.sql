@@ -1441,3 +1441,45 @@ select pg_temp.expect_fail(
              '66666666-6666-6666-6666-666666666666/svc/x/anon.webp', 800, 600)$q$,
   't22h anon menulis service_media');
 rollback;
+
+-- 23. merchant_faqs
+insert into public.merchant_faqs (merchant_id, question, answer, sort_order)
+select '66666666-6666-6666-6666-666666666666',
+       'Pertanyaan nomor ' || i,
+       'Jawaban nomor ' || i,
+       i
+from generate_series(1, 10) as i;
+
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('66666666-6666-6666-6666-666666666666',
+             'Pertanyaan kesebelas', 'Jawaban kesebelas')$q$,
+  't23a FAQ kesebelas');
+
+-- Panjang minimum diuji pada merchant lain supaya batas jumlah di atas tidak
+-- menangkap baris ini lebih dulu dan membuat labelnya menyesatkan.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777', 'ab', 'Jawaban')$q$,
+  't23b pertanyaan lebih pendek dari 3 karakter');
+
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777', 'Pertanyaan valid', '   ')$q$,
+  't23c jawaban hanya berisi spasi');
+
+-- FAQ sengaja TIDAK dikunci paket -- kalau ini gagal, berarti ada yang
+-- menambahkan pembatasan tier yang tidak diminta.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777',
+             'Apakah bisa reschedule?', 'Bisa, hubungi kami lewat WhatsApp.')$q$,
+  't23d FAQ merchant STARTER diterima');
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('66666666-6666-6666-6666-666666666666', 'Anon', 'Anon')$q$,
+  't23e anon menulis merchant_faqs');
+rollback;

@@ -121,6 +121,17 @@ export type Availability = {
   updated_at: string;
 };
 
+/** Satu baris FAQ halaman publik. Terbuka untuk semua paket, maksimal 10. */
+export type MerchantFaq = {
+  id: string;
+  merchant_id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Booking = {
   id: string;
   merchant_id: string;
@@ -236,6 +247,13 @@ export type Database = {
         Row: Availability;
         Insert: Omit<Availability, "id" | Timestamps> & Partial<Pick<Availability, "id">>;
         Update: Partial<Omit<Availability, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_faqs: {
+        Row: MerchantFaq;
+        Insert: Omit<MerchantFaq, "id" | Timestamps | "sort_order"> &
+          Partial<Pick<MerchantFaq, "id" | "sort_order">>;
+        Update: Partial<Omit<MerchantFaq, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       bookings: {
