@@ -25,6 +25,7 @@ export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE";
 export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RAPI";
 export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
+export type MediaKind = "IMAGE" | "VIDEO";
 
 /**
  * Diturunkan resolveTheme() dari luminansi background, BUKAN kolom database.
@@ -86,6 +87,28 @@ export type Service = {
   sort_order: number;
   created_at: string;
   updated_at: string;
+};
+
+/**
+ * Satu berkas galeri milik sebuah layanan.
+ *
+ * `merchant_id` diduplikasi dari `services` dan dikunci foreign key gabungan,
+ * jadi baris di sini mustahil menempel pada layanan milik merchant lain.
+ * `width` dan `height` disimpan supaya halaman publik bisa memasang atribut
+ * ukuran dan tata letaknya tidak melompat saat gambar datang.
+ */
+export type ServiceMedia = {
+  id: string;
+  service_id: string;
+  merchant_id: string;
+  kind: MediaKind;
+  path: string;
+  poster_path: string | null;
+  alt: string | null;
+  width: number;
+  height: number;
+  sort_order: number;
+  created_at: string;
 };
 
 export type Availability = {
@@ -196,6 +219,18 @@ export type Database = {
           Partial<Pick<Service, "id" | "is_active" | "sort_order">>;
         Update: Partial<Omit<Service, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      service_media: {
+        Row: ServiceMedia;
+        Insert: Omit<ServiceMedia, "id" | "created_at" | "sort_order"> &
+          Partial<Pick<ServiceMedia, "id" | "sort_order">>;
+        Update: Partial<
+          Omit<ServiceMedia, "id" | "service_id" | "merchant_id" | "created_at">
+        >;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"merchant_id", "merchants">,
+        ];
       };
       availability: {
         Row: Availability;

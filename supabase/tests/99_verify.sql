@@ -1349,3 +1349,95 @@ select pg_temp.expect_fail(
      values ('merchant-media', 'anon/x.webp')$q$,
   't21e anon mengunggah berkas');
 rollback;
+
+-- 22. service_media
+-- Merchant STARTER-nya 7777... (lihat catatan di blok 20); 6666... bertier PRO.
+insert into public.services (id, merchant_id, name, price, duration_minutes)
+values
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   '77777777-7777-7777-7777-777777777777', 'Layanan Starter', 100000, 60),
+  ('aaaaaaaa-0000-0000-0000-000000000002',
+   '66666666-6666-6666-6666-666666666666', 'Layanan Pro', 250000, 90);
+
+-- Foreign key gabungan: media tidak boleh menunjuk layanan merchant lain.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/x/a.webp', 800, 600)$q$,
+  't22a media menunjuk layanan milik merchant lain');
+
+-- Batas lima gambar per layanan.
+insert into public.service_media (service_id, merchant_id, kind, path, width, height)
+select 'aaaaaaaa-0000-0000-0000-000000000002',
+       '66666666-6666-6666-6666-666666666666', 'IMAGE',
+       '66666666-6666-6666-6666-666666666666/svc/x/' || i || '.webp', 800, 600
+from generate_series(1, 5) as i;
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/6.webp', 800, 600)$q$,
+  't22b gambar keenam pada satu layanan');
+
+-- Video: poster wajib, maksimal satu, dan tertutup untuk STARTER.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v.mp4', 1280, 720)$q$,
+  't22c video tanpa poster_path');
+
+select pg_temp.expect_ok(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v.mp4',
+             '66666666-6666-6666-6666-666666666666/svc/x/v-poster.webp',
+             1280, 720)$q$,
+  't22d video pertama milik merchant PRO');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v2.mp4',
+             '66666666-6666-6666-6666-666666666666/svc/x/v2-poster.webp',
+             1280, 720)$q$,
+  't22e video kedua pada satu layanan');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'VIDEO',
+             '77777777-7777-7777-7777-777777777777/svc/y/v.mp4',
+             '77777777-7777-7777-7777-777777777777/svc/y/v-poster.webp',
+             1280, 720)$q$,
+  't22f video milik merchant STARTER');
+
+-- Dimensi nol akan merusak atribut width/height di halaman publik.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/y/a.webp', 0, 600)$q$,
+  't22g dimensi gambar nol');
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/anon.webp', 800, 600)$q$,
+  't22h anon menulis service_media');
+rollback;
