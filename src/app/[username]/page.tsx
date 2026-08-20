@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarOff } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BookingProfileHeader } from "@/components/booking-page/profile-header";
+import { BookingServiceCard } from "@/components/booking-page/service-card";
 import {
   Empty,
   EmptyDescription,
@@ -12,7 +13,6 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { formatDuration, formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
 import type { PublicMerchant } from "@/types/database";
@@ -144,20 +144,11 @@ export default async function MerchantPublicPage({
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-8 px-4 py-10">
-      <header className="flex flex-col items-center gap-3 text-center">
-        <Avatar size="lg" className="size-16">
-          <AvatarImage src={merchant.avatar_url ?? undefined} alt={name ?? ""} />
-          <AvatarFallback className="text-lg">
-            {(name ?? "?").charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-balance">{name}</h1>
-          {merchant.bio ? (
-            <p className="text-muted-foreground text-sm text-pretty">{merchant.bio}</p>
-          ) : null}
-        </div>
-      </header>
+      <BookingProfileHeader
+        name={name}
+        bio={merchant.bio}
+        avatarUrl={merchant.avatar_url}
+      />
 
       {canAcceptBookings ? (
         <section aria-labelledby="layanan-heading" className="flex flex-col gap-4">
@@ -170,22 +161,7 @@ export default async function MerchantPublicPage({
 
           <ul className="flex flex-col gap-3">
             {services.map((service) => (
-              <li key={service.id} className="border-border flex flex-col gap-1 border p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-medium text-balance">{service.name}</span>
-                  <span className="shrink-0 text-sm font-medium">
-                    {formatRupiah(service.price)}
-                  </span>
-                </div>
-                {service.description ? (
-                  <p className="text-muted-foreground text-sm text-pretty">
-                    {service.description}
-                  </p>
-                ) : null}
-                <span className="text-muted-foreground text-xs">
-                  {formatDuration(service.duration_minutes)}
-                </span>
-              </li>
+              <BookingServiceCard key={service.id} service={service} />
             ))}
           </ul>
 
