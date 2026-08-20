@@ -1315,3 +1315,37 @@ select pg_temp.expect_fail(
      values ('66666666-6666-6666-6666-666666666666', 'BERSIH')$q$,
   't20j anon menulis merchant_themes');
 rollback;
+
+-- 21. Policy storage.objects
+select case when exists (
+         select 1 from storage.buckets
+         where id = 'merchant-media' and public and file_size_limit = 20971520
+       ) then 'OK   t21a bucket merchant-media terpasang dengan batas 20MB'
+         else 'FAIL t21a bucket merchant-media' end as t21a;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_ok(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media',
+             '66666666-6666-6666-6666-666666666666/avatar-a1.webp')$q$,
+  't21b merchant menulis ke foldernya sendiri');
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media',
+             '77777777-7777-7777-7777-777777777777/avatar-a2.webp')$q$,
+  't21c merchant menulis ke folder merchant lain');
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media', 'avatar-tanpa-folder.webp')$q$,
+  't21d berkas di akar bucket tanpa folder merchant');
+rollback;
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media', 'anon/x.webp')$q$,
+  't21e anon mengunggah berkas');
+rollback;
