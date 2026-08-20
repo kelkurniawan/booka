@@ -55,7 +55,6 @@ background_style SOLID | GRADIENT | IMAGE
 font_pair        NETRAL | KLASIK | MODERN | HANGAT | TEGAS | RAPI
 text_scale       KECIL | SEDANG | BESAR
 corner_style     TAJAM | LEMBUT | BULAT
-color_mode       TERANG | GELAP
 media_kind       IMAGE | VIDEO
 ```
 
@@ -76,7 +75,6 @@ Satu baris per merchant, `merchant_id` sebagai PK sekaligus FK ke `merchants`
 | `font_pair` | `font_pair` not null default `NETRAL` | |
 | `text_scale` | `text_scale` not null default `SEDANG` | |
 | `corner_style` | `corner_style` not null default `LEMBUT` | |
-| `color_mode` | `color_mode` not null default `TERANG` | |
 | `created_at`, `updated_at` | timestamptz | trigger `set_updated_at` |
 
 Foto profil tetap memakai `merchants.avatar_url` yang sudah ada dan sudah punya
@@ -197,9 +195,14 @@ menjadikan policy keamanan satu-satunya bagian sistem yang tidak pernah diuji.
 
 ### 6.1 `presets.ts`
 
-Enam preset, masing-masing mendefinisikan nilai lengkap: `color_mode`,
-`background_color`, `foreground`, `accent`, `border`, `corner_style`, dan
-`font_pair`. Tiga preset gratis dipilih agar menutup tiga kutub berbeda —
+Enam preset, masing-masing mendefinisikan nilai lengkap: `background_color`,
+`foreground`, `muted_foreground`, `card`, `border`, `accent`, `corner_style`,
+dan `font_pair`.
+
+Terang/gelap **bukan pilihan terpisah**. Menyetel mode gelap di atas preset
+berlatar putih akan memasang kelas `dark` di atas background terang dan
+membuat halaman tidak terbaca. `resolveTheme()` menurunkannya dari luminansi
+background yang sudah jadi, sehingga mustahil tidak sinkron. Tiga preset gratis dipilih agar menutup tiga kutub berbeda —
 terang-netral (`BERSIH`), terang-hangat (`HANGAT`), dan gelap (`MALAM`) —
 sehingga merchant Starter mana pun menemukan yang cocok, sementara batasnya tetap
 terasa jelas.
@@ -266,8 +269,8 @@ ini wajib diverifikasi di implementasi sebelum dijadikan sandaran; kalau tidak
 berlaku, jatuh ke rencana cadangan berupa token eksplisit `--fs-*` yang dipakai
 komponen `booking-page` lewat `text-[length:var(--fs-body)]`.
 
-Mode gelap: pembungkus mendapat kelas `dark` berdampingan dengan style inline,
-karena `@custom-variant dark (&:is(.dark *))` di `globals.css` menyasar
+Mode gelap: pembungkus mendapat kelas `dark` berdampingan dengan style inline
+bila luminansi background yang sudah diresolusi berada di bawah ambang, karena `@custom-variant dark (&:is(.dark *))` di `globals.css` menyasar
 keturunan, bukan elemen itu sendiri.
 
 ### 6.5 `fonts.ts`
