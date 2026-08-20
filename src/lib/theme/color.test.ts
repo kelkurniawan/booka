@@ -6,6 +6,7 @@ import {
   ensureContrast,
   hexToRgb,
   isDark,
+  mixHex,
   readableOn,
   relativeLuminance,
   rgbToHex,
@@ -48,4 +49,10 @@ test("ensureContrast membiarkan warna yang kontrasnya sudah cukup", () => {
 test("readableOn memilih teks gelap di atas latar terang dan sebaliknya", () => {
   assert.equal(readableOn("#ffe600"), "#111111");
   assert.equal(readableOn("#1a1a1c"), "#ffffff");
+});
+
+test("mixHex bergerak dari warna pertama ke warna kedua", () => {
+  assert.equal(mixHex("#000000", "#ffffff", 0), "#000000");
+  assert.equal(mixHex("#000000", "#ffffff", 1), "#ffffff");
+  assert.equal(mixHex("#000000", "#ffffff", 0.5), "#808080");
 });

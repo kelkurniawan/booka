@@ -59,6 +59,11 @@ export function readableOn(background: string): "#ffffff" | "#111111" {
     : "#111111";
 }
 
+/** Mencampur dua warna hex; `rasio` 0 = seluruhnya `a`, 1 = seluruhnya `b`. */
+export function mixHex(a: string, b: string, rasio: number): string {
+  return rgbToHex(campur(hexToRgb(a), hexToRgb(b), Math.max(0, Math.min(1, rasio))));
+}
+
 function campur(dari: Rgb, ke: Rgb, rasio: number): Rgb {
   return {
     r: dari.r + (ke.r - dari.r) * rasio,

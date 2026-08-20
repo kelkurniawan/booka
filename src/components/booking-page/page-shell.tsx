@@ -48,6 +48,17 @@ export function BookingPageShell({
         fontFamily: "var(--font-sans)",
       }}
     >
+      {theme.backgroundStyle === "GRADIENT" ? (
+        <div
+          aria-hidden
+          className="absolute inset-0 -z-10"
+          style={{
+            backgroundImage:
+              "linear-gradient(180deg, var(--background) 0%, var(--gradient-to) 100%)",
+          }}
+        />
+      ) : null}
+
       {gambarLatar ? (
         <>
           <div

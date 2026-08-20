@@ -57,6 +57,10 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     ...ukuran,
   };
 
+  if (theme.backgroundStyle === "GRADIENT") {
+    vars["--gradient-to"] = theme.gradientTo;
+  }
+
   if (theme.backgroundStyle === "IMAGE") {
     vars["--page-overlay"] = String(theme.backgroundOverlay / 100);
   }

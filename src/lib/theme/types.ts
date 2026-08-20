@@ -34,6 +34,8 @@ export type ResolvedTheme = {
   /** Pengali ukuran teks yang diturunkan dari `textScale`. */
   scale: number;
   backgroundStyle: BackgroundStyle;
+  /** Ujung bawah gradien saat `backgroundStyle` GRADIENT. */
+  gradientTo: string;
   backgroundImagePath: string | null;
   backgroundOverlay: number;
 };

@@ -111,6 +111,17 @@ test("background bergambar tanpa path jatuh kembali ke SOLID", () => {
   assert.equal(tema.backgroundStyle, "SOLID");
 });
 
+test("gradien digeser dari background ke arah aksen, bukan warna bebas", () => {
+  const tema = resolveTheme(
+    "PRO",
+    baris({ preset: "BERSIH", background_style: "GRADIENT", accent: "#2f8f76" }),
+  );
+  assert.equal(tema.backgroundStyle, "GRADIENT");
+  assert.notEqual(tema.gradientTo, tema.background);
+  // Masih jauh lebih dekat ke background daripada ke aksen penuh.
+  assert.ok(contrastRatio(tema.foreground, tema.gradientTo) >= 4.5);
+});
+
 test("skala teks dipetakan ke pengali", () => {
   assert.equal(resolveTheme("PRO", baris({ text_scale: "KECIL" })).scale, 0.9375);
   assert.equal(resolveTheme("PRO", baris({ text_scale: "SEDANG" })).scale, 1);

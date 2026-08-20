@@ -1,6 +1,6 @@
 import type { MerchantTheme, SubscriptionTier, TextScale } from "@/types/database";
 
-import { ensureContrast, isDark, readableOn } from "./color";
+import { ensureContrast, isDark, mixHex, readableOn } from "./color";
 import { CORNER_RADIUS, isFreePreset, THEME_PRESETS } from "./presets";
 import type { ResolvedTheme } from "./types";
 
@@ -77,6 +77,10 @@ export function resolveTheme(
     textScale,
     scale: SKALA_TEKS[textScale],
     backgroundStyle,
+    // Gradien sengaja dibuat dari warna background itu sendiri, digeser tipis
+    // ke arah aksen. Membiarkan merchant memilih dua warna bebas berarti
+    // membiarkan kombinasi yang tidak ada warna teksnya bisa menyelamatkan.
+    gradientTo: mixHex(background, accentFill, 0.14),
     backgroundImagePath: backgroundStyle === "IMAGE" ? pathGambar : null,
     backgroundOverlay:
       backgroundStyle === "IMAGE"
