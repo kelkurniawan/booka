@@ -15,6 +15,7 @@ import {
 import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
+import type { Service, ServiceMedia } from "@/types/database";
 
 import { AddServiceButton } from "./add-service-button";
 import { ServicesTable } from "./services-table";
@@ -32,13 +33,23 @@ export default async function ServicesPage() {
 
   const servicesResult = await supabase
     .from("services")
-    .select("*")
+    .select("*, service_media(*)")
     .eq("merchant_id", user.id)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true });
 
   const tier = merchant.subscription_tier;
-  const services = servicesResult.data ?? [];
+
+  // `service_media` datang menempel di tiap baris lewat embedding; dipisah di
+  // sini supaya komponen di bawah tetap menerima Service[] polos.
+  const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
+    service_media?: ServiceMedia[] | null;
+  })[];
+  const mediaByService: Record<string, ServiceMedia[]> = {};
+  const services: Service[] = servicesWithMedia.map(({ service_media, ...service }) => {
+    mediaByService[service.id] = service_media ?? [];
+    return service;
+  });
   // Sama dengan batas yang diberlakukan trigger enforce_service_limit —
   // ditampilkan lebih awal di sini supaya merchant tidak perlu mencoba dulu
   // baru tahu kuotanya habis.
@@ -49,7 +60,7 @@ export default async function ServicesPage() {
       <PageHeader
         title="Layanan"
         description="Daftar layanan yang bisa dipesan pelanggan beserta harga dan durasinya."
-        action={<AddServiceButton />}
+        action={<AddServiceButton merchantId={user.id} tier={tier} />}
       />
 
       {limitReached ? (
@@ -77,11 +88,16 @@ export default async function ServicesPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <AddServiceButton />
+            <AddServiceButton merchantId={user.id} tier={tier} />
           </EmptyContent>
         </Empty>
       ) : (
-        <ServicesTable services={services} />
+        <ServicesTable
+          services={services}
+          merchantId={user.id}
+          tier={tier}
+          mediaByService={mediaByService}
+        />
       )}
     </>
   );
