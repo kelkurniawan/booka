@@ -40,6 +40,7 @@ const PLANS: {
       "10 transaksi per bulan",
       "1 jenis layanan",
       "Halaman booking + QRIS",
+      "3 tema halaman + FAQ",
       "Ada watermark Booka",
     ],
   },
@@ -53,7 +54,8 @@ const PLANS: {
       "Layanan tanpa batas",
       "Reminder WhatsApp otomatis",
       "Tanpa watermark",
-      "Warna dan tampilan sendiri",
+      "Semua tema, warna, dan font sendiri",
+      "Video pada layanan",
     ],
   },
   {
