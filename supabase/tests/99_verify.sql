@@ -1213,3 +1213,12 @@ select case when :t18f_n = 1 and :t18f_btm = 0 and :t18f_rev = 0 and :t18f_pc = 
             then 'OK   t18f merchant tanpa booking tetap dapat 1 baris dengan semua nilai 0, bukan baris kosong'
             else 'FAIL t18f merchant tanpa booking: n=' || :t18f_n || ' bookings_this_month=' || :t18f_btm || ' confirmed_revenue=' || :t18f_rev || ' pending_count=' || :t18f_pc
        end as t18f;
+
+-- 19. Tiruan storage.foldername (lihat 00_supabase_stub.sql)
+select case
+         when storage.foldername('abc/svc/def/x.webp') = array['abc','svc','def']
+              and storage.foldername('abc/avatar.webp') = array['abc']
+           then 'OK   t19 storage.foldername memisahkan folder dari nama berkas'
+         else 'FAIL t19 storage.foldername: '
+              || array_to_string(storage.foldername('abc/svc/def/x.webp'), ',')
+       end as t19;
