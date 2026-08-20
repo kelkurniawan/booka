@@ -1222,3 +1222,96 @@ select case
          else 'FAIL t19 storage.foldername: '
               || array_to_string(storage.foldername('abc/svc/def/x.webp'), ',')
        end as t19;
+
+-- 20. merchant_themes
+--
+-- Merchant STARTER-nya dibuat baru, BUKAN memakai 1111... : baris itu sudah
+-- dinaikkan ke PRO di blok 11 untuk menguji kuota booking dan tidak pernah
+-- dikembalikan. Memakainya di sini membuat keempat uji penolakan paket lolos
+-- diam-diam dengan label yang menyesatkan.
+insert into auth.users (id, email) values
+  ('66666666-6666-6666-6666-666666666666', 'tema-pro@example.com'),
+  ('77777777-7777-7777-7777-777777777777', 'tema-starter@example.com');
+update public.merchants set subscription_tier = 'PRO'
+where id = '66666666-6666-6666-6666-666666666666';
+
+select case
+         when (select subscription_tier
+               from public.merchants
+               where id = '77777777-7777-7777-7777-777777777777') = 'STARTER'
+           then 'OK   t20-pra merchant uji tema benar-benar bertier STARTER'
+         else 'FAIL t20-pra merchant uji tema bukan STARTER -- seluruh t20b..t20e di bawah tidak bermakna'
+       end as t20_pra;
+
+-- STARTER: tiga preset gratis diterima, sisanya ditolak.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_themes (merchant_id, preset)
+     values ('77777777-7777-7777-7777-777777777777', 'MALAM')$q$,
+  't20a STARTER memakai preset gratis MALAM');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set preset = 'ELEGAN'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20b STARTER memakai preset premium ELEGAN');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set accent = '#ff8800'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20c STARTER menyetel warna aksen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set font_pair = 'KLASIK'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20d STARTER memilih font');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set text_scale = 'BESAR'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20e STARTER mengatur ukuran teks');
+
+-- Gaya sudut sengaja TIDAK dikunci paket: satu variabel CSS, tidak bisa
+-- merusak keterbacaan, dan memberi merchant gratis knop kedua supaya editornya
+-- tidak terasa mati.
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes set corner_style = 'BULAT'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20e2 STARTER mengubah gaya sudut');
+
+-- PRO: nilai yang sama diterima.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_themes
+       (merchant_id, preset, accent, font_pair, text_scale)
+     values ('66666666-6666-6666-6666-666666666666', 'ELEGAN', '#c9a961',
+             'KLASIK', 'BESAR')$q$,
+  't20f PRO memakai preset premium, aksen, font, dan ukuran teks');
+
+-- Null pada font_pair berarti "ikut preset", dan harus tetap diterima untuk
+-- paket STARTER.
+select case
+         when (select font_pair is null
+               from public.merchant_themes
+               where merchant_id = '77777777-7777-7777-7777-777777777777')
+           then 'OK   t20f2 baris STARTER menyimpan font_pair sebagai null (ikut preset)'
+         else 'FAIL t20f2 font_pair STARTER tidak null'
+       end as t20f2;
+
+-- Constraint yang tidak bergantung pada paket. Dipakai merchant PRO supaya
+-- yang menangkap baris ini benar-benar constraint yang dimaksud, bukan trigger
+-- paket yang kebetulan menyala lebih dulu.
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set background_overlay = 90
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20g overlay di luar 0-80');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set accent = 'merah'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20h accent bukan hex enam digit');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set background_style = 'IMAGE'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20i background IMAGE tanpa background_image_path');
+
+-- Hak akses peran anon.
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_themes (merchant_id, preset)
+     values ('66666666-6666-6666-6666-666666666666', 'BERSIH')$q$,
+  't20j anon menulis merchant_themes');
+rollback;

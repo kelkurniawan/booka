@@ -14,6 +14,25 @@ export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
 export type PaymentEnvironment = "SANDBOX" | "PRODUCTION";
 
+export type ThemePreset =
+  | "BERSIH"
+  | "HANGAT"
+  | "MALAM"
+  | "PASTEL"
+  | "BERANI"
+  | "ELEGAN";
+export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE";
+export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RAPI";
+export type TextScale = "KECIL" | "SEDANG" | "BESAR";
+export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
+
+/**
+ * Diturunkan resolveTheme() dari luminansi background, BUKAN kolom database.
+ * Terang/gelap tidak boleh dipilih terpisah dari warna: mode gelap di atas
+ * preset berlatar putih membuat halaman tidak terbaca.
+ */
+export type ColorMode = "TERANG" | "GELAP";
+
 /** ISO-8601: 1 = Senin ... 7 = Minggu. */
 export type DayOfWeek = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -36,6 +55,25 @@ export type PublicMerchant = Pick<
   Merchant,
   "id" | "username" | "full_name" | "bio" | "avatar_url" | "subscription_tier"
 >;
+
+/**
+ * Tema halaman publik. Barisnya OPSIONAL -- merchant tanpa baris memakai tema
+ * default. `font_pair` dan `corner_style` null berarti "ikut preset".
+ */
+export type MerchantTheme = {
+  merchant_id: string;
+  preset: ThemePreset;
+  accent: string | null;
+  background_style: BackgroundStyle;
+  background_color: string | null;
+  background_image_path: string | null;
+  background_overlay: number;
+  font_pair: FontPair | null;
+  text_scale: TextScale;
+  corner_style: CornerStyle | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Service = {
   id: string;
@@ -143,6 +181,14 @@ export type Database = {
         Insert: Partial<Omit<Merchant, "id" | Timestamps>> & { id: string };
         Update: Partial<Omit<Merchant, "id" | Timestamps>>;
         Relationships: [];
+      };
+      merchant_themes: {
+        Row: MerchantTheme;
+        Insert: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>> & {
+          merchant_id: string;
+        };
+        Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
       };
       services: {
         Row: Service;
