@@ -338,3 +338,103 @@ lihat keputusan #17 soal zona tampilan WIB) trade-off ini menguntungkan.
 `vercel.json` harus selalu bergerak bersama. Kalau project Supabase
 dipindahkan lagi, `regions` di sini wajib ikut berubah — kalau tidak,
 performa mundur diam-diam tanpa error apa pun.
+
+## 21. Paket Starter mendapat sebagian kustomisasi tampilan
+
+PRD bagian 1 menempatkan "Custom Theme" sepenuhnya di paket Pro. Implementasi
+memberi paket Starter tiga preset gratis (Bersih, Hangat, Malam), pilihan gaya
+sudut, foto profil, dan FAQ.
+
+Alasannya: halaman merchant Starter justru halaman yang memasang watermark
+"Dibuat dengan Booka". Halaman itu etalase platform, dan etalase yang seragam
+dan hambar merugikan kami sendiri. Batas yang terasa — tiga preset premium,
+warna sendiri, background foto, pilihan font, ukuran teks, dan video layanan
+masih terkunci — mendorong upgrade lebih baik daripada tembok penuh yang
+membuat merchant tidak pernah tahu ada yang bisa dibeli.
+
+FAQ sengaja terbuka untuk semua paket: manfaatnya adalah berkurangnya
+pertanyaan berulang yang masuk ke WhatsApp merchant, dan itu manfaat yang
+membuat merchant bertahan cukup lama untuk akhirnya upgrade.
+
+Penegakannya berlapis dua, dan lapisannya tidak saling menggantikan. Trigger
+`merchant_themes_enforce_tier` menolak nilai premium saat ditulis. Fungsi
+`resolveTheme()` di `src/lib/theme/resolve.ts` memangkasnya lagi saat dibaca,
+karena trigger TIDAK pernah menyala saat merchant Pro **turun** ke Starter —
+barisnya sudah terlanjur premium dan tidak ada UPDATE yang terjadi.
+
+## 22. Terang/gelap diturunkan, bukan dipilih
+
+Tema halaman publik tidak punya kolom `color_mode`. Kalau merchant bisa
+menyetel mode gelap terpisah dari warna, ia bisa memasang kelas `dark` di atas
+preset berlatar putih dan halamannya jadi tidak terbaca. `resolveTheme()`
+menurunkannya dari luminansi permukaan yang sudah jadi, sehingga keduanya
+mustahil tidak sinkron.
+
+Alasan yang sama membuat `font_pair` dan `corner_style` nullable dengan null
+berarti "ikut preset". Sebagai kolom `not null` bernilai default, memilih preset
+Elegan tidak akan pernah memakai sudut tajam dan font Playfair miliknya — nilai
+default kolom selalu menang atas nilai preset.
+
+## 23. Warna aksen dipecah jadi isian dan teks
+
+`accent` menghasilkan dua token berbeda: `--accent-fill` memakai warna mentah
+pilihan merchant untuk latar tombol, sedangkan `--accent-text` sudah digeser ke
+arah hitam atau putih sampai kontrasnya terhadap latar mencapai 4.5:1.
+
+Dengan begitu merchant tetap mendapat kuning cerah yang dia inginkan untuk
+tombol, tanpa pernah bisa menghasilkan tulisan yang hilang. Menolak warnanya
+mentah-mentah akan terasa seperti aplikasi yang rewel; membiarkannya apa adanya
+menghasilkan halaman booking yang tidak terbaca.
+
+## 24. Path berkas dibatasi ke folder merchant di level database
+
+`service_media.path`, `service_media.poster_path`, dan
+`merchant_themes.background_image_path` datang dari browser. Ketiganya
+sekarang terikat constraint `check` yang mewajibkan path diawali
+`{merchant_id}/` dengan charset `[A-Za-z0-9._/-]` dan tanpa `..`.
+
+Charsetnya sempit karena `background_image_path` berakhir di dalam
+`url("...")` pada CSS halaman publik. Tanpa pembatasan, nilai seperti
+
+    x.webp"), url("https://pihak-ketiga/beacon.png
+
+menghasilkan daftar `background-image` yang SAH menurut CSS — halaman yang
+berjalan di domain kita memuat URL pihak ketiga dan membocorkan IP pengunjung.
+Tanda kutip, kurung, koma, dan spasi mustahil masuk, jadi tidak ada lagi cara
+keluar dari `url()`.
+
+Ditegakkan di database, bukan hanya di Zod: policy Storage sudah membatasi ke
+folder siapa merchant boleh MENULIS berkas, tapi tidak membatasi path apa yang
+boleh DIRUJUK sebuah baris. Aturan yang sama diulang di
+`src/lib/media/path.ts` semata untuk memberi pesan yang bisa dibaca sebelum
+requestnya sampai ke Postgres.
+
+`merchants.avatar_url` menyimpan URL penuh dan bisa berisi tautan Google dari
+proses signup, jadi tidak bisa diberi constraint yang sama. Server Action
+`updateProfileMedia` yang membatasinya: hanya URL dari bucket kita sendiri yang
+diterima saat DITULIS. Nilai lama dari Google tetap berfungsi karena tidak
+pernah divalidasi ulang saat dibaca.
+
+## 25. FAQ disimpan lewat satu fungsi, bukan delete lalu insert
+
+Penyimpanan FAQ mengganti seluruh daftar. Sebagai dua panggilan terpisah dari
+Server Action, insert yang ditolak — oleh constraint panjang atau trigger batas
+sepuluh — meninggalkan penghapusan yang sudah commit, dan merchant kehilangan
+seluruh FAQ-nya justru pada saat menekan Simpan.
+
+`public.replace_merchant_faqs(jsonb)` membungkus keduanya. Satu pemanggilan
+fungsi adalah satu statement, jadi delete dan insert berhasil bersama atau
+gagal bersama. Fungsinya `security invoker` supaya RLS tetap berlaku;
+`authenticated` bisa memanggil `auth.uid()` dari dalamnya karena Supabase
+memberi `usage` pada schema `auth` ke peran itu — sudah diverifikasi lewat
+`supabase db dump --schema auth` pada project ini. Tiruannya sekarang ada di
+`supabase/tests/00_supabase_stub.sql`; tanpa tiruan itu, uji yang mengharapkan
+penolakan lulus karena alasan yang salah.
+
+## 26. Berkas Storage dibersihkan saat layanan dihapus
+
+`ON DELETE CASCADE` menghapus baris `service_media`, tapi tidak tahu apa-apa
+soal berkas di bucket. `deleteService` mengumpulkan path media sebelum
+penghapusan dan mengembalikannya, lalu kliennya menghapus berkasnya. Tanpa ini
+setiap layanan yang dihapus meninggalkan gambar dan video yang dibayar
+selamanya tanpa pernah dirujuk apa pun.

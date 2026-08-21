@@ -1213,3 +1213,386 @@ select case when :t18f_n = 1 and :t18f_btm = 0 and :t18f_rev = 0 and :t18f_pc = 
             then 'OK   t18f merchant tanpa booking tetap dapat 1 baris dengan semua nilai 0, bukan baris kosong'
             else 'FAIL t18f merchant tanpa booking: n=' || :t18f_n || ' bookings_this_month=' || :t18f_btm || ' confirmed_revenue=' || :t18f_rev || ' pending_count=' || :t18f_pc
        end as t18f;
+
+-- 19. Tiruan storage.foldername (lihat 00_supabase_stub.sql)
+select case
+         when storage.foldername('abc/svc/def/x.webp') = array['abc','svc','def']
+              and storage.foldername('abc/avatar.webp') = array['abc']
+           then 'OK   t19 storage.foldername memisahkan folder dari nama berkas'
+         else 'FAIL t19 storage.foldername: '
+              || array_to_string(storage.foldername('abc/svc/def/x.webp'), ',')
+       end as t19;
+
+-- 20. merchant_themes
+--
+-- Merchant STARTER-nya dibuat baru, BUKAN memakai 1111... : baris itu sudah
+-- dinaikkan ke PRO di blok 11 untuk menguji kuota booking dan tidak pernah
+-- dikembalikan. Memakainya di sini membuat keempat uji penolakan paket lolos
+-- diam-diam dengan label yang menyesatkan.
+insert into auth.users (id, email) values
+  ('66666666-6666-6666-6666-666666666666', 'tema-pro@example.com'),
+  ('77777777-7777-7777-7777-777777777777', 'tema-starter@example.com');
+update public.merchants set subscription_tier = 'PRO'
+where id = '66666666-6666-6666-6666-666666666666';
+
+select case
+         when (select subscription_tier
+               from public.merchants
+               where id = '77777777-7777-7777-7777-777777777777') = 'STARTER'
+           then 'OK   t20-pra merchant uji tema benar-benar bertier STARTER'
+         else 'FAIL t20-pra merchant uji tema bukan STARTER -- seluruh t20b..t20e di bawah tidak bermakna'
+       end as t20_pra;
+
+-- STARTER: tiga preset gratis diterima, sisanya ditolak.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_themes (merchant_id, preset)
+     values ('77777777-7777-7777-7777-777777777777', 'MALAM')$q$,
+  't20a STARTER memakai preset gratis MALAM');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set preset = 'ELEGAN'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20b STARTER memakai preset premium ELEGAN');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set accent = '#ff8800'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20c STARTER menyetel warna aksen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set font_pair = 'KLASIK'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20d STARTER memilih font');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set text_scale = 'BESAR'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20e STARTER mengatur ukuran teks');
+
+-- Gaya sudut sengaja TIDAK dikunci paket: satu variabel CSS, tidak bisa
+-- merusak keterbacaan, dan memberi merchant gratis knop kedua supaya editornya
+-- tidak terasa mati.
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes set corner_style = 'BULAT'
+     where merchant_id = '77777777-7777-7777-7777-777777777777'$q$,
+  't20e2 STARTER mengubah gaya sudut');
+
+-- PRO: nilai yang sama diterima.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_themes
+       (merchant_id, preset, accent, font_pair, text_scale)
+     values ('66666666-6666-6666-6666-666666666666', 'ELEGAN', '#c9a961',
+             'KLASIK', 'BESAR')$q$,
+  't20f PRO memakai preset premium, aksen, font, dan ukuran teks');
+
+-- Null pada font_pair berarti "ikut preset", dan harus tetap diterima untuk
+-- paket STARTER.
+select case
+         when (select font_pair is null
+               from public.merchant_themes
+               where merchant_id = '77777777-7777-7777-7777-777777777777')
+           then 'OK   t20f2 baris STARTER menyimpan font_pair sebagai null (ikut preset)'
+         else 'FAIL t20f2 font_pair STARTER tidak null'
+       end as t20f2;
+
+-- Constraint yang tidak bergantung pada paket. Dipakai merchant PRO supaya
+-- yang menangkap baris ini benar-benar constraint yang dimaksud, bukan trigger
+-- paket yang kebetulan menyala lebih dulu.
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set background_overlay = 90
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20g overlay di luar 0-80');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set accent = 'merah'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20h accent bukan hex enam digit');
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes set background_style = 'IMAGE'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't20i background IMAGE tanpa background_image_path');
+
+-- Hak akses peran anon.
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_themes (merchant_id, preset)
+     values ('66666666-6666-6666-6666-666666666666', 'BERSIH')$q$,
+  't20j anon menulis merchant_themes');
+rollback;
+
+-- 21. Policy storage.objects
+select case when exists (
+         select 1 from storage.buckets
+         where id = 'merchant-media' and public and file_size_limit = 20971520
+       ) then 'OK   t21a bucket merchant-media terpasang dengan batas 20MB'
+         else 'FAIL t21a bucket merchant-media' end as t21a;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_ok(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media',
+             '66666666-6666-6666-6666-666666666666/avatar-a1.webp')$q$,
+  't21b merchant menulis ke foldernya sendiri');
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media',
+             '77777777-7777-7777-7777-777777777777/avatar-a2.webp')$q$,
+  't21c merchant menulis ke folder merchant lain');
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media', 'avatar-tanpa-folder.webp')$q$,
+  't21d berkas di akar bucket tanpa folder merchant');
+rollback;
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into storage.objects (bucket_id, name)
+     values ('merchant-media', 'anon/x.webp')$q$,
+  't21e anon mengunggah berkas');
+rollback;
+
+-- 22. service_media
+-- Merchant STARTER-nya 7777... (lihat catatan di blok 20); 6666... bertier PRO.
+insert into public.services (id, merchant_id, name, price, duration_minutes)
+values
+  ('aaaaaaaa-0000-0000-0000-000000000001',
+   '77777777-7777-7777-7777-777777777777', 'Layanan Starter', 100000, 60),
+  ('aaaaaaaa-0000-0000-0000-000000000002',
+   '66666666-6666-6666-6666-666666666666', 'Layanan Pro', 250000, 90);
+
+-- Foreign key gabungan: media tidak boleh menunjuk layanan merchant lain.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/x/a.webp', 800, 600)$q$,
+  't22a media menunjuk layanan milik merchant lain');
+
+-- Batas lima gambar per layanan.
+insert into public.service_media (service_id, merchant_id, kind, path, width, height)
+select 'aaaaaaaa-0000-0000-0000-000000000002',
+       '66666666-6666-6666-6666-666666666666', 'IMAGE',
+       '66666666-6666-6666-6666-666666666666/svc/x/' || i || '.webp', 800, 600
+from generate_series(1, 5) as i;
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/6.webp', 800, 600)$q$,
+  't22b gambar keenam pada satu layanan');
+
+-- Video: poster wajib, maksimal satu, dan tertutup untuk STARTER.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v.mp4', 1280, 720)$q$,
+  't22c video tanpa poster_path');
+
+select pg_temp.expect_ok(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v.mp4',
+             '66666666-6666-6666-6666-666666666666/svc/x/v-poster.webp',
+             1280, 720)$q$,
+  't22d video pertama milik merchant PRO');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'VIDEO',
+             '66666666-6666-6666-6666-666666666666/svc/x/v2.mp4',
+             '66666666-6666-6666-6666-666666666666/svc/x/v2-poster.webp',
+             1280, 720)$q$,
+  't22e video kedua pada satu layanan');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'VIDEO',
+             '77777777-7777-7777-7777-777777777777/svc/y/v.mp4',
+             '77777777-7777-7777-7777-777777777777/svc/y/v-poster.webp',
+             1280, 720)$q$,
+  't22f video milik merchant STARTER');
+
+-- Dimensi nol akan merusak atribut width/height di halaman publik.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/y/a.webp', 0, 600)$q$,
+  't22g dimensi gambar nol');
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000002',
+             '66666666-6666-6666-6666-666666666666', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/anon.webp', 800, 600)$q$,
+  't22h anon menulis service_media');
+rollback;
+
+-- 23. merchant_faqs
+insert into public.merchant_faqs (merchant_id, question, answer, sort_order)
+select '66666666-6666-6666-6666-666666666666',
+       'Pertanyaan nomor ' || i,
+       'Jawaban nomor ' || i,
+       i
+from generate_series(1, 10) as i;
+
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('66666666-6666-6666-6666-666666666666',
+             'Pertanyaan kesebelas', 'Jawaban kesebelas')$q$,
+  't23a FAQ kesebelas');
+
+-- Panjang minimum diuji pada merchant lain supaya batas jumlah di atas tidak
+-- menangkap baris ini lebih dulu dan membuat labelnya menyesatkan.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777', 'ab', 'Jawaban')$q$,
+  't23b pertanyaan lebih pendek dari 3 karakter');
+
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777', 'Pertanyaan valid', '   ')$q$,
+  't23c jawaban hanya berisi spasi');
+
+-- FAQ sengaja TIDAK dikunci paket -- kalau ini gagal, berarti ada yang
+-- menambahkan pembatasan tier yang tidak diminta.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('77777777-7777-7777-7777-777777777777',
+             'Apakah bisa reschedule?', 'Bisa, hubungi kami lewat WhatsApp.')$q$,
+  't23d FAQ merchant STARTER diterima');
+
+begin;
+set local role anon;
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_faqs (merchant_id, question, answer)
+     values ('66666666-6666-6666-6666-666666666666', 'Anon', 'Anon')$q$,
+  't23e anon menulis merchant_faqs');
+rollback;
+
+-- 24. Path media wajib berada di folder merchant sendiri
+-- Layanan uji milik merchant PRO 6666... sudah dibuat di blok 22, tapi kuota
+-- gambarnya sudah penuh di sana. Dipakai layanan milik STARTER 7777... untuk
+-- gambar, supaya yang menangkap baris uji di bawah benar-benar constraint path,
+-- bukan batas lima gambar.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/curi.webp', 800, 600)$q$,
+  't24a path menunjuk folder merchant lain');
+
+-- Inilah muatan yang memecah url("...") di CSS halaman publik.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/a.webp"), url("https://jahat/x.png',
+             800, 600)$q$,
+  't24b path memuat kutip dan kurung (pemecah url() di CSS)');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/../avatars/rahasia.png',
+             800, 600)$q$,
+  't24c path memanjat keluar folder dengan ..');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/a.webp',
+             '66666666-6666-6666-6666-666666666666/poster.webp', 800, 600)$q$,
+  't24d poster_path menunjuk folder merchant lain');
+
+select pg_temp.expect_ok(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/y/img-a1b2c3d4.webp',
+             800, 600)$q$,
+  't24e path wajar di folder sendiri tetap diterima');
+
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes
+     set background_style = 'IMAGE',
+         background_image_path = '77777777-7777-7777-7777-777777777777/bg.webp'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't24f background_image_path menunjuk folder merchant lain');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes
+     set background_style = 'IMAGE',
+         background_image_path = '66666666-6666-6666-6666-666666666666/bg-a1b2c3d4.webp'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't24g background_image_path di folder sendiri tetap diterima');
+
+-- 25. replace_merchant_faqs atomik
+-- Merchant 6666... sudah punya 10 FAQ dari blok 23. Mengganti dengan 11 baris
+-- harus ditolak DAN meninggalkan kesepuluh baris lama utuh -- bukan menghapus
+-- semuanya lalu gagal menyisipkan.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_fail(
+  $q$select public.replace_merchant_faqs(
+       (select jsonb_agg(jsonb_build_object('question', 'Tanya ' || i,
+                                            'answer', 'Jawab ' || i))
+        from generate_series(1, 11) as i))$q$,
+  't25a mengganti FAQ dengan 11 baris');
+rollback;
+
+select case
+         when (select count(*) from public.merchant_faqs
+               where merchant_id = '66666666-6666-6666-6666-666666666666') = 10
+           then 'OK   t25b FAQ lama utuh setelah penggantian gagal (tidak terhapus separuh jalan)'
+         else 'FAIL t25b FAQ hilang setelah penggantian gagal: sisa '
+              || (select count(*) from public.merchant_faqs
+                  where merchant_id = '66666666-6666-6666-6666-666666666666')
+       end as t25b;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_ok(
+  $q$select public.replace_merchant_faqs(
+       '[{"question":"Bisa reschedule?","answer":"Bisa, hubungi WhatsApp."},
+         {"question":"Ada DP?","answer":"Ada, 30 persen."}]'::jsonb)$q$,
+  't25c mengganti FAQ dengan dua baris');
+select case
+         when (select count(*) from public.merchant_faqs
+               where merchant_id = '66666666-6666-6666-6666-666666666666') = 2
+              and (select sort_order from public.merchant_faqs
+                   where merchant_id = '66666666-6666-6666-6666-666666666666'
+                     and question = 'Ada DP?') = 1
+           then 'OK   t25d penggantian berhasil menyisakan 2 baris dengan urutan benar'
+         else 'FAIL t25d hasil penggantian FAQ tidak sesuai'
+       end as t25d;
+rollback;
+
+select case
+         when has_function_privilege('anon', 'public.replace_merchant_faqs(jsonb)', 'EXECUTE')
+           then 'FAIL t25e anon bisa memanggil replace_merchant_faqs'
+         else 'OK   t25e anon TIDAK bisa memanggil replace_merchant_faqs'
+       end as t25e;

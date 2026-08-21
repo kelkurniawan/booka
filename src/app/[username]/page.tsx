@@ -4,7 +4,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CalendarOff } from "lucide-react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { BookingFaqSection } from "@/components/booking-page/faq-section";
+import { BookingPageShell } from "@/components/booking-page/page-shell";
+import { BookingProfileHeader } from "@/components/booking-page/profile-header";
+import { BookingServiceCard } from "@/components/booking-page/service-card";
 import {
   Empty,
   EmptyDescription,
@@ -12,10 +15,15 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { formatDuration, formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
-import type { PublicMerchant } from "@/types/database";
+import { resolveTheme } from "@/lib/theme/resolve";
+import type {
+  MerchantTheme,
+  PublicMerchant,
+  Service,
+  ServiceMedia,
+} from "@/types/database";
 
 import { BookingSeam } from "./booking-seam";
 
@@ -39,7 +47,9 @@ const getMerchantPageData = cache(async (username: string) => {
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id, username, full_name, bio, avatar_url, subscription_tier")
+    .select(
+      "id, username, full_name, bio, avatar_url, subscription_tier, merchant_themes(*)",
+    )
     .eq("username", username)
     .maybeSingle();
 
@@ -69,15 +79,27 @@ const getMerchantPageData = cache(async (username: string) => {
   // assertion.
   const onboardedMerchant: OnboardedMerchant = { ...merchant, username: merchant.username };
 
-  const [servicesResult, availabilityResult] = await Promise.all([
+  // Relasi satu-ke-satu: PostgREST mengembalikan objek atau null, tapi sebagian
+  // versi mengembalikan array satu elemen. Keduanya dinormalkan sekali di sini
+  // supaya konsumen di bawah tidak perlu tahu bedanya.
+  const themeRaw = (merchant as { merchant_themes?: MerchantTheme | MerchantTheme[] | null })
+    .merchant_themes;
+  const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
+
+  const [servicesResult, availabilityResult, faqsResult] = await Promise.all([
     supabase
       .from("services")
-      .select("*")
+      .select("*, service_media(*)")
       .eq("merchant_id", onboardedMerchant.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase.from("availability").select("*").eq("merchant_id", onboardedMerchant.id),
+    supabase
+      .from("merchant_faqs")
+      .select("*")
+      .eq("merchant_id", onboardedMerchant.id)
+      .order("sort_order", { ascending: true }),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -97,11 +119,38 @@ const getMerchantPageData = cache(async (username: string) => {
     });
     throw new Error("Gagal memuat jam kerja merchant.");
   }
+  // FAQ yang hilang karena gangguan database tidak boleh terlihat sama dengan
+  // merchant yang memang belum mengisi FAQ -- yang pertama menyembunyikan
+  // masalah, yang kedua memang pilihan merchant.
+  if (faqsResult.error) {
+    console.error("[booking-page] gagal memuat FAQ", {
+      username,
+      error: faqsResult.error,
+    });
+    throw new Error("Gagal memuat FAQ merchant.");
+  }
+
+  // `service_media` datang menempel di tiap baris layanan lewat embedding.
+  // Dipisah di sini supaya BookingSeam tetap menerima Service[] polos dan
+  // tanda tangannya tidak ikut berubah.
+  const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
+    service_media?: ServiceMedia[] | null;
+  })[];
+  const mediaByService: Record<string, ServiceMedia[]> = {};
+  const services: Service[] = servicesWithMedia.map(
+    ({ service_media, ...service }) => {
+      mediaByService[service.id] = service_media ?? [];
+      return service;
+    },
+  );
 
   return {
     merchant: onboardedMerchant,
-    services: servicesResult.data ?? [],
+    theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
+    services,
+    mediaByService,
     availability: availabilityResult.data ?? [],
+    faqs: faqsResult.data ?? [],
   };
 });
 
@@ -138,26 +187,17 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, services, availability } = data;
+  const { merchant, theme, services, mediaByService, availability, faqs } = data;
   const name = merchant.full_name ?? merchant.username;
   const canAcceptBookings = services.length > 0 && availability.length > 0;
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-8 px-4 py-10">
-      <header className="flex flex-col items-center gap-3 text-center">
-        <Avatar size="lg" className="size-16">
-          <AvatarImage src={merchant.avatar_url ?? undefined} alt={name ?? ""} />
-          <AvatarFallback className="text-lg">
-            {(name ?? "?").charAt(0).toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold tracking-tight text-balance">{name}</h1>
-          {merchant.bio ? (
-            <p className="text-muted-foreground text-sm text-pretty">{merchant.bio}</p>
-          ) : null}
-        </div>
-      </header>
+    <BookingPageShell theme={theme}>
+      <BookingProfileHeader
+        name={name}
+        bio={merchant.bio}
+        avatarUrl={merchant.avatar_url}
+      />
 
       {canAcceptBookings ? (
         <section aria-labelledby="layanan-heading" className="flex flex-col gap-4">
@@ -169,23 +209,13 @@ export default async function MerchantPublicPage({
           </h2>
 
           <ul className="flex flex-col gap-3">
-            {services.map((service) => (
-              <li key={service.id} className="border-border flex flex-col gap-1 border p-4">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="font-medium text-balance">{service.name}</span>
-                  <span className="shrink-0 text-sm font-medium">
-                    {formatRupiah(service.price)}
-                  </span>
-                </div>
-                {service.description ? (
-                  <p className="text-muted-foreground text-sm text-pretty">
-                    {service.description}
-                  </p>
-                ) : null}
-                <span className="text-muted-foreground text-xs">
-                  {formatDuration(service.duration_minutes)}
-                </span>
-              </li>
+            {services.map((service, index) => (
+              <BookingServiceCard
+                key={service.id}
+                service={service}
+                media={mediaByService[service.id] ?? []}
+                eager={index === 0}
+              />
             ))}
           </ul>
 
@@ -210,6 +240,29 @@ export default async function MerchantPublicPage({
         </Empty>
       )}
 
+      <BookingFaqSection faqs={faqs} />
+
+      {faqs.length > 0 ? (
+        <script
+          type="application/ld+json"
+          // Isinya milik merchant sendiri dan panjangnya sudah dibatasi
+          // constraint database. JSON.stringify menutup tanda kutip; kurung
+          // sudut di-escape supaya string "</script>" di dalam jawaban tidak
+          // bisa menutup tag ini lebih awal.
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "FAQPage",
+              mainEntity: faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: { "@type": "Answer", text: faq.answer },
+              })),
+            }).replace(/</g, "\\u003c"),
+          }}
+        />
+      ) : null}
+
       {merchant.subscription_tier === "STARTER" ? (
         <Link
           href={ROUTES.home}
@@ -218,6 +271,6 @@ export default async function MerchantPublicPage({
           Dibuat dengan Booka
         </Link>
       ) : null}
-    </div>
+    </BookingPageShell>
   );
 }

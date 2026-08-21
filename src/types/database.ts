@@ -14,6 +14,26 @@ export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
 export type PaymentEnvironment = "SANDBOX" | "PRODUCTION";
 
+export type ThemePreset =
+  | "BERSIH"
+  | "HANGAT"
+  | "MALAM"
+  | "PASTEL"
+  | "BERANI"
+  | "ELEGAN";
+export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE";
+export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RAPI";
+export type TextScale = "KECIL" | "SEDANG" | "BESAR";
+export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
+export type MediaKind = "IMAGE" | "VIDEO";
+
+/**
+ * Diturunkan resolveTheme() dari luminansi background, BUKAN kolom database.
+ * Terang/gelap tidak boleh dipilih terpisah dari warna: mode gelap di atas
+ * preset berlatar putih membuat halaman tidak terbaca.
+ */
+export type ColorMode = "TERANG" | "GELAP";
+
 /** ISO-8601: 1 = Senin ... 7 = Minggu. */
 export type DayOfWeek = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -37,6 +57,25 @@ export type PublicMerchant = Pick<
   "id" | "username" | "full_name" | "bio" | "avatar_url" | "subscription_tier"
 >;
 
+/**
+ * Tema halaman publik. Barisnya OPSIONAL -- merchant tanpa baris memakai tema
+ * default. `font_pair` dan `corner_style` null berarti "ikut preset".
+ */
+export type MerchantTheme = {
+  merchant_id: string;
+  preset: ThemePreset;
+  accent: string | null;
+  background_style: BackgroundStyle;
+  background_color: string | null;
+  background_image_path: string | null;
+  background_overlay: number;
+  font_pair: FontPair | null;
+  text_scale: TextScale;
+  corner_style: CornerStyle | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Service = {
   id: string;
   merchant_id: string;
@@ -50,12 +89,45 @@ export type Service = {
   updated_at: string;
 };
 
+/**
+ * Satu berkas galeri milik sebuah layanan.
+ *
+ * `merchant_id` diduplikasi dari `services` dan dikunci foreign key gabungan,
+ * jadi baris di sini mustahil menempel pada layanan milik merchant lain.
+ * `width` dan `height` disimpan supaya halaman publik bisa memasang atribut
+ * ukuran dan tata letaknya tidak melompat saat gambar datang.
+ */
+export type ServiceMedia = {
+  id: string;
+  service_id: string;
+  merchant_id: string;
+  kind: MediaKind;
+  path: string;
+  poster_path: string | null;
+  alt: string | null;
+  width: number;
+  height: number;
+  sort_order: number;
+  created_at: string;
+};
+
 export type Availability = {
   id: string;
   merchant_id: string;
   day_of_week: DayOfWeek;
   start_time: string;
   end_time: string;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Satu baris FAQ halaman publik. Terbuka untuk semua paket, maksimal 10. */
+export type MerchantFaq = {
+  id: string;
+  merchant_id: string;
+  question: string;
+  answer: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -144,6 +216,14 @@ export type Database = {
         Update: Partial<Omit<Merchant, "id" | Timestamps>>;
         Relationships: [];
       };
+      merchant_themes: {
+        Row: MerchantTheme;
+        Insert: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>> & {
+          merchant_id: string;
+        };
+        Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       services: {
         Row: Service;
         Insert: Omit<Service, "id" | Timestamps | "is_active" | "sort_order"> &
@@ -151,10 +231,29 @@ export type Database = {
         Update: Partial<Omit<Service, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      service_media: {
+        Row: ServiceMedia;
+        Insert: Omit<ServiceMedia, "id" | "created_at" | "sort_order"> &
+          Partial<Pick<ServiceMedia, "id" | "sort_order">>;
+        Update: Partial<
+          Omit<ServiceMedia, "id" | "service_id" | "merchant_id" | "created_at">
+        >;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
       availability: {
         Row: Availability;
         Insert: Omit<Availability, "id" | Timestamps> & Partial<Pick<Availability, "id">>;
         Update: Partial<Omit<Availability, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_faqs: {
+        Row: MerchantFaq;
+        Insert: Omit<MerchantFaq, "id" | Timestamps | "sort_order"> &
+          Partial<Pick<MerchantFaq, "id" | "sort_order">>;
+        Update: Partial<Omit<MerchantFaq, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       bookings: {
@@ -235,6 +334,17 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /**
+       * Mengganti seluruh FAQ merchant yang sedang login dalam satu
+       * statement, sehingga penghapusan lama dan penyisipan baru berhasil
+       * bersama atau gagal bersama. Sebagai dua panggilan terpisah, insert
+       * yang ditolak akan meninggalkan penghapusan yang sudah commit dan
+       * merchant kehilangan seluruh FAQ-nya.
+       */
+      replace_merchant_faqs: {
+        Args: { p_faqs: { question: string; answer: string }[] };
+        Returns: undefined;
+      };
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string }[];

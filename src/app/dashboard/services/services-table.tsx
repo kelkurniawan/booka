@@ -32,12 +32,23 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDuration, formatRupiah } from "@/lib/format";
-import type { Service } from "@/types/database";
+import { removeMedia } from "@/lib/media/upload";
+import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
 
 import { deleteService, toggleServiceActive } from "./actions";
 import { ServiceFormDialog } from "./service-form-dialog";
 
-export function ServicesTable({ services }: { services: Service[] }) {
+export function ServicesTable({
+  services,
+  merchantId,
+  tier,
+  mediaByService,
+}: {
+  services: Service[];
+  merchantId: string;
+  tier: SubscriptionTier;
+  mediaByService: Record<string, ServiceMedia[]>;
+}) {
   return (
     <div className="overflow-hidden rounded-xl border">
       <Table>
@@ -52,7 +63,13 @@ export function ServicesTable({ services }: { services: Service[] }) {
         </TableHeader>
         <TableBody>
           {services.map((service) => (
-            <ServiceRow key={service.id} service={service} />
+            <ServiceRow
+              key={service.id}
+              service={service}
+              merchantId={merchantId}
+              tier={tier}
+              media={mediaByService[service.id] ?? []}
+            />
           ))}
         </TableBody>
       </Table>
@@ -60,7 +77,17 @@ export function ServicesTable({ services }: { services: Service[] }) {
   );
 }
 
-function ServiceRow({ service }: { service: Service }) {
+function ServiceRow({
+  service,
+  merchantId,
+  tier,
+  media,
+}: {
+  service: Service;
+  merchantId: string;
+  tier: SubscriptionTier;
+  media: ServiceMedia[];
+}) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [togglePending, startToggle] = useTransition();
@@ -79,6 +106,12 @@ function ServiceRow({ service }: { service: Service }) {
     startDelete(async () => {
       const result = await deleteService(service.id);
       if (result.ok) {
+        // Baris service_media ikut terhapus lewat cascade, tapi berkasnya di
+        // Storage tidak. Dibersihkan di sini supaya bucket tidak terisi berkas
+        // yang tidak dirujuk apa pun.
+        if (result.paths && result.paths.length > 0) {
+          await removeMedia(result.paths);
+        }
         toast.success("Layanan dihapus");
         setDeleteOpen(false);
       } else {
@@ -148,7 +181,14 @@ function ServiceRow({ service }: { service: Service }) {
         </TableCell>
       </TableRow>
 
-      <ServiceFormDialog open={editOpen} onOpenChange={setEditOpen} service={service} />
+      <ServiceFormDialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        service={service}
+        merchantId={merchantId}
+        tier={tier}
+        media={media}
+      />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>

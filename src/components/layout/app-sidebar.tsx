@@ -7,6 +7,7 @@ import {
   CreditCard,
   ExternalLink,
   LayoutList,
+  Palette,
   Settings,
   Sparkles,
   Wallet,
@@ -36,6 +37,9 @@ const NAV_GROUPS = [
     label: "Operasional",
     items: [
       { title: "Booking masuk", href: ROUTES.bookings, icon: LayoutList },
+      // Sebelum "Layanan": merchant memikirkan halamannya sebelum memikirkan
+      // isinya.
+      { title: "Halaman saya", href: ROUTES.appearance, icon: Palette },
       { title: "Layanan", href: ROUTES.services, icon: Sparkles },
       { title: "Jam kerja", href: ROUTES.availability, icon: CalendarClock },
     ],

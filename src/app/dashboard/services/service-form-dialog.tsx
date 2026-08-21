@@ -19,9 +19,10 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ROUTES } from "@/lib/routes";
-import type { Service } from "@/types/database";
+import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
 
 import { createService, updateService } from "./actions";
+import { ServiceMediaField } from "./service-media-field";
 import { INITIAL_SERVICE_FORM_STATE } from "./service-state";
 
 /**
@@ -36,15 +37,41 @@ export function ServiceFormDialog({
   open,
   onOpenChange,
   service,
+  merchantId,
+  tier,
+  media = [],
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   service?: Service;
+  merchantId: string;
+  tier: SubscriptionTier;
+  media?: ServiceMedia[];
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <ServiceForm service={service} onSuccess={() => onOpenChange(false)} />
+
+        {/* Media butuh service_id, yang baru ada setelah layanannya tersimpan.
+            Karena itu bagian ini hanya muncul saat mengubah, dan diletakkan DI
+            LUAR <form> supaya berkasnya tidak ikut terkirim bersama isian
+            layanan. */}
+        {service ? (
+          <div className="border-border mt-2 border-t pt-4">
+            <ServiceMediaField
+              serviceId={service.id}
+              merchantId={merchantId}
+              tier={tier}
+              media={media}
+            />
+          </div>
+        ) : (
+          <p className="text-muted-foreground border-border mt-2 border-t pt-4 text-sm text-pretty">
+            Simpan dulu layanannya, lalu buka lagi lewat menu Ubah untuk menambahkan
+            foto dan video.
+          </p>
+        )}
       </DialogContent>
     </Dialog>
   );

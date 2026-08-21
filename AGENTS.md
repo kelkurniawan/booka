@@ -22,6 +22,11 @@ Phase 3–6 juga sudah selesai: semua halaman dashboard (booking masuk,
 layanan, ketersediaan, pembayaran, pengaturan, billing) sudah jadi
 implementasi sungguhan, bukan lagi `PhasePlaceholder`.
 
+Kustomisasi halaman publik sudah selesai: tema preset plus penyetelan token,
+foto profil dan background lewat Supabase Storage, tipografi kurasi, galeri
+gambar/video per layanan, dan FAQ yang hilang sepenuhnya saat kosong. Editornya
+di `/dashboard/halaman`. Spek dan rencananya di `docs/superpowers/`.
+
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
 tetap tersedia.
@@ -87,6 +92,16 @@ sehingga tipe hasil query diam-diam jadi `never`.
 **Setiap segmen tingkat atas baru** (misal `/pricing`) harus ditambahkan ke
 `ROUTES` di `src/lib/routes.ts` **dan** ke tabel `reserved_usernames`, karena
 berbagi ruang nama dengan `/[username]`.
+
+**Tampilan halaman publik hanya boleh datang dari `resolveTheme()`.** Jangan
+menulis warna, ukuran, atau font langsung di komponen
+`src/components/booking-page/*` — semuanya lewat CSS custom property dari
+`themeToCssVars()`. Komponen di sana dipakai halaman publik DAN preview di
+`/dashboard/halaman`; nilai yang ditulis langsung akan membuat keduanya
+diam-diam berbeda. `src/lib/theme/fonts.ts` juga tidak boleh diimpor dari kode
+murni — `next/font/google` hanya berfungsi di dalam pipeline build Next dan
+membuat modul pengimpornya gagal di `npm run test:unit`; data pasangan fontnya
+ada di `font-pairs.ts`.
 
 **Bahasa UI: Indonesia.** Komentar kode juga Indonesia. Nama variabel, tabel,
 dan kolom tetap Inggris.
