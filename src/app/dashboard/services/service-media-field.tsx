@@ -198,6 +198,10 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
         if (path) await removeMedia([path]);
         toast.error(error instanceof Error ? error.message : "Gambar gagal diunggah.");
       }
+    } catch (error) {
+      // Menangkap galat dari siapkanGambar (validasi/kompresi) -- try/catch
+      // di atas hanya menangani galat unggah, bukan galat pemrosesan berkas.
+      toast.error(error instanceof Error ? error.message : "Gambar gagal diproses.");
     } finally {
       setSibuk(null);
     }
@@ -276,6 +280,10 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
         if (berkas.length > 0) await removeMedia(berkas);
         toast.error(error instanceof Error ? error.message : "Video gagal diunggah.");
       }
+    } catch (error) {
+      // Menangkap galat dari siapkanVideo (poster/validasi) -- try/catch di
+      // atas hanya menangani galat unggah, bukan galat pemrosesan berkas.
+      toast.error(error instanceof Error ? error.message : "Video gagal diproses.");
     } finally {
       setSibuk(null);
     }
@@ -300,12 +308,22 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
         key: item.id,
         kind: item.kind,
         src: publicMediaUrl(item.poster_path ?? item.path),
+        // Mode terlampir memakai updater fungsional (setMedia), jadi aman
+        // dihapus kapan pun -- tidak perlu dikunci saat sibuk.
+        disabled: false,
         onHapus: () => hapus(item),
       }))
     : props.draft.map((item) => ({
         key: item.key,
         kind: item.kind,
         src: item.previewUrl,
+        // Dikunci selama sibuk !== null: tambahGambar/tambahVideo memanggil
+        // onDraftChange([...props.draft, hasil]) dengan props.draft yang
+        // ditangkap di awal proses. Kalau item lain dihapus di tengah
+        // pemrosesan (kompresi gambar/poster video bisa makan waktu), hasil
+        // hapus itu tertimpa begitu penambahan selesai -- item yang sudah
+        // dihapus (dan previewUrl-nya sudah dicabut) muncul lagi.
+        disabled: sibuk !== null,
         onHapus: () => {
           URL.revokeObjectURL(item.previewUrl);
           props.onDraftChange(props.draft.filter((d) => d.key !== item.key));
@@ -338,6 +356,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
                 size="icon-xs"
                 className="absolute top-1 right-1 bg-black/60 text-white hover:bg-black/80"
                 onClick={item.onHapus}
+                disabled={item.disabled}
                 aria-label="Hapus media"
               >
                 <Trash2 className="size-3" />
