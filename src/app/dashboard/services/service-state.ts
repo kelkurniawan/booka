@@ -15,6 +15,8 @@ export type ServiceFormState = {
   fieldErrors?: Partial<Record<FieldName, string>>;
   /** Error P0001 dari trigger enforce_service_limit — tampilkan ajakan upgrade. */
   limitReached?: boolean;
+  /** Id layanan yang baru dibuat. Dipakai klien untuk melampirkan media. */
+  serviceId?: string;
 };
 
 export const INITIAL_SERVICE_FORM_STATE: ServiceFormState = { status: "idle" };

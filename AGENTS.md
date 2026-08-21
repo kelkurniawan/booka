@@ -24,8 +24,10 @@ implementasi sungguhan, bukan lagi `PhasePlaceholder`.
 
 Kustomisasi halaman publik sudah selesai: tema preset plus penyetelan token,
 foto profil dan background lewat Supabase Storage, tipografi kurasi, galeri
-gambar/video per layanan, dan FAQ yang hilang sepenuhnya saat kosong. Editornya
-di `/dashboard/halaman`. Spek dan rencananya di `docs/superpowers/`.
+gambar/video per layanan (bisa dilampirkan sejak layanan pertama kali dibuat,
+tidak harus lewat Ubah setelah tersimpan), dan FAQ yang hilang sepenuhnya saat
+kosong. Editornya di `/dashboard/halaman`. Spek dan rencananya di
+`docs/superpowers/`.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
