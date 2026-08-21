@@ -16,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { compressImage } from "@/lib/media/compress";
 import { MEDIA_LIMITS, validateImageFile } from "@/lib/media/limits";
 import { mediaFileName, mediaPathFromUrl, removeMedia, uploadMedia } from "@/lib/media/upload";
@@ -138,6 +137,7 @@ export function AppearanceEditor({
     faqsAwal.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer })),
   );
   const [mengunggah, setMengunggah] = useState<"avatar" | "background" | null>(null);
+  const [tampilan, setTampilan] = useState<"atur" | "preview">("atur");
   const [, mulaiTransisi] = useTransition();
 
   const [temaPending, mulaiSimpanTema] = useTransition();
@@ -722,22 +722,38 @@ export function AppearanceEditor({
   );
 
   return (
-    <>
-      {/* Di layar sempit, preview jadi tab kedua -- bukan ditumpuk di bawah
-          panel, yang membuatnya tidak pernah terlihat sambil menyetel. */}
-      <Tabs defaultValue="atur" className="lg:hidden">
-        <TabsList>
-          <TabsTrigger value="atur">Atur</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-        </TabsList>
-        <TabsContent value="atur">{panel}</TabsContent>
-        <TabsContent value="preview">{preview}</TabsContent>
-      </Tabs>
-
-      <div className="hidden gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_auto]">
-        {panel}
-        <div className="sticky top-6 self-start">{preview}</div>
+    <div className="flex flex-col gap-6">
+      {/* Di layar sempit panel dan preview bergantian. Pemilihnya HANYA
+          menyembunyikan lewat CSS -- keduanya tetap dirender sekali saja.
+          Versi sebelumnya menaruh panel di dalam <Tabs> DAN di grid desktop,
+          sehingga seluruh editor ada dua kali di DOM: empat <form>, dua input
+          berkas, dan dua salinan tiap isian yang berbagi state. */}
+      <div className="flex w-fit gap-1 lg:hidden">
+        {(["atur", "preview"] as const).map((nilai) => (
+          <Button
+            key={nilai}
+            type="button"
+            size="sm"
+            variant={tampilan === nilai ? "default" : "outline"}
+            aria-pressed={tampilan === nilai}
+            onClick={() => setTampilan(nilai)}
+          >
+            {nilai === "atur" ? "Atur" : "Preview"}
+          </Button>
+        ))}
       </div>
-    </>
+
+      <div className="gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className={cn(tampilan === "preview" && "max-lg:hidden")}>{panel}</div>
+        <div
+          className={cn(
+            "lg:sticky lg:top-6 lg:self-start",
+            tampilan === "atur" && "max-lg:hidden",
+          )}
+        >
+          {preview}
+        </div>
+      </div>
+    </div>
   );
 }
