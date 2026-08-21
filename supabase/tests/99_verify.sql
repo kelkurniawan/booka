@@ -1483,3 +1483,116 @@ select pg_temp.expect_fail(
      values ('66666666-6666-6666-6666-666666666666', 'Anon', 'Anon')$q$,
   't23e anon menulis merchant_faqs');
 rollback;
+
+-- 24. Path media wajib berada di folder merchant sendiri
+-- Layanan uji milik merchant PRO 6666... sudah dibuat di blok 22, tapi kuota
+-- gambarnya sudah penuh di sana. Dipakai layanan milik STARTER 7777... untuk
+-- gambar, supaya yang menangkap baris uji di bawah benar-benar constraint path,
+-- bukan batas lima gambar.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '66666666-6666-6666-6666-666666666666/svc/x/curi.webp', 800, 600)$q$,
+  't24a path menunjuk folder merchant lain');
+
+-- Inilah muatan yang memecah url("...") di CSS halaman publik.
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/a.webp"), url("https://jahat/x.png',
+             800, 600)$q$,
+  't24b path memuat kutip dan kurung (pemecah url() di CSS)');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/../avatars/rahasia.png',
+             800, 600)$q$,
+  't24c path memanjat keluar folder dengan ..');
+
+select pg_temp.expect_fail(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, poster_path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/a.webp',
+             '66666666-6666-6666-6666-666666666666/poster.webp', 800, 600)$q$,
+  't24d poster_path menunjuk folder merchant lain');
+
+select pg_temp.expect_ok(
+  $q$insert into public.service_media
+       (service_id, merchant_id, kind, path, width, height)
+     values ('aaaaaaaa-0000-0000-0000-000000000001',
+             '77777777-7777-7777-7777-777777777777', 'IMAGE',
+             '77777777-7777-7777-7777-777777777777/svc/y/img-a1b2c3d4.webp',
+             800, 600)$q$,
+  't24e path wajar di folder sendiri tetap diterima');
+
+select pg_temp.expect_fail(
+  $q$update public.merchant_themes
+     set background_style = 'IMAGE',
+         background_image_path = '77777777-7777-7777-7777-777777777777/bg.webp'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't24f background_image_path menunjuk folder merchant lain');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes
+     set background_style = 'IMAGE',
+         background_image_path = '66666666-6666-6666-6666-666666666666/bg-a1b2c3d4.webp'
+     where merchant_id = '66666666-6666-6666-6666-666666666666'$q$,
+  't24g background_image_path di folder sendiri tetap diterima');
+
+-- 25. replace_merchant_faqs atomik
+-- Merchant 6666... sudah punya 10 FAQ dari blok 23. Mengganti dengan 11 baris
+-- harus ditolak DAN meninggalkan kesepuluh baris lama utuh -- bukan menghapus
+-- semuanya lalu gagal menyisipkan.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_fail(
+  $q$select public.replace_merchant_faqs(
+       (select jsonb_agg(jsonb_build_object('question', 'Tanya ' || i,
+                                            'answer', 'Jawab ' || i))
+        from generate_series(1, 11) as i))$q$,
+  't25a mengganti FAQ dengan 11 baris');
+rollback;
+
+select case
+         when (select count(*) from public.merchant_faqs
+               where merchant_id = '66666666-6666-6666-6666-666666666666') = 10
+           then 'OK   t25b FAQ lama utuh setelah penggantian gagal (tidak terhapus separuh jalan)'
+         else 'FAIL t25b FAQ hilang setelah penggantian gagal: sisa '
+              || (select count(*) from public.merchant_faqs
+                  where merchant_id = '66666666-6666-6666-6666-666666666666')
+       end as t25b;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '66666666-6666-6666-6666-666666666666';
+select pg_temp.expect_ok(
+  $q$select public.replace_merchant_faqs(
+       '[{"question":"Bisa reschedule?","answer":"Bisa, hubungi WhatsApp."},
+         {"question":"Ada DP?","answer":"Ada, 30 persen."}]'::jsonb)$q$,
+  't25c mengganti FAQ dengan dua baris');
+select case
+         when (select count(*) from public.merchant_faqs
+               where merchant_id = '66666666-6666-6666-6666-666666666666') = 2
+              and (select sort_order from public.merchant_faqs
+                   where merchant_id = '66666666-6666-6666-6666-666666666666'
+                     and question = 'Ada DP?') = 1
+           then 'OK   t25d penggantian berhasil menyisakan 2 baris dengan urutan benar'
+         else 'FAIL t25d hasil penggantian FAQ tidak sesuai'
+       end as t25d;
+rollback;
+
+select case
+         when has_function_privilege('anon', 'public.replace_merchant_faqs(jsonb)', 'EXECUTE')
+           then 'FAIL t25e anon bisa memanggil replace_merchant_faqs'
+         else 'OK   t25e anon TIDAK bisa memanggil replace_merchant_faqs'
+       end as t25e;

@@ -334,6 +334,17 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /**
+       * Mengganti seluruh FAQ merchant yang sedang login dalam satu
+       * statement, sehingga penghapusan lama dan penyisipan baru berhasil
+       * bersama atau gagal bersama. Sebagai dua panggilan terpisah, insert
+       * yang ditolak akan meninggalkan penghapusan yang sudah commit dan
+       * merchant kehilangan seluruh FAQ-nya.
+       */
+      replace_merchant_faqs: {
+        Args: { p_faqs: { question: string; answer: string }[] };
+        Returns: undefined;
+      };
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string }[];

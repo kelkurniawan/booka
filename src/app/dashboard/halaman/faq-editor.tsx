@@ -9,6 +9,33 @@ import { MEDIA_LIMITS } from "@/lib/media/limits";
 
 export type FaqDraft = { id: string; question: string; answer: string };
 
+export type FaqErrors = Record<string, { question?: string; answer?: string }>;
+
+/**
+ * Validasi per baris, dengan aturan yang sama seperti faqSchema.
+ *
+ * Ada di sini supaya kesalahan menempel pada baris yang bersangkutan. Kalau
+ * hanya divalidasi di server, merchant dengan sepuluh pertanyaan cuma menerima
+ * satu kalimat "Pertanyaan minimal 3 karakter" tanpa tahu baris mana yang
+ * dimaksud.
+ */
+export function validasiFaqs(faqs: FaqDraft[]): FaqErrors {
+  const errors: FaqErrors = {};
+  for (const faq of faqs) {
+    const baris: { question?: string; answer?: string } = {};
+    const q = faq.question.trim();
+    const a = faq.answer.trim();
+
+    if (q.length === 0) baris.question = "Pertanyaan belum diisi";
+    else if (q.length < 3) baris.question = "Pertanyaan minimal 3 karakter";
+
+    if (a.length === 0) baris.answer = "Jawaban belum diisi";
+
+    if (baris.question || baris.answer) errors[faq.id] = baris;
+  }
+  return errors;
+}
+
 /**
  * Daftar FAQ yang bisa disusun merchant.
  *
@@ -18,9 +45,11 @@ export type FaqDraft = { id: string; question: string; answer: string };
  */
 export function FaqEditor({
   faqs,
+  errors,
   onChange,
 }: {
   faqs: FaqDraft[];
+  errors: FaqErrors;
   onChange: (faqs: FaqDraft[]) => void;
 }) {
   const penuh = faqs.length >= MEDIA_LIMITS.maxFaqs;
@@ -47,8 +76,14 @@ export function FaqEditor({
         </p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {faqs.map((faq, index) => (
-            <li key={faq.id} className="border-border flex flex-col gap-2 border p-3">
+          {faqs.map((faq, index) => {
+            const galat = errors[faq.id];
+            return (
+            <li
+              key={faq.id}
+              data-invalid={Boolean(galat)}
+              className="border-border data-[invalid=true]:border-destructive flex flex-col gap-2 border p-3"
+            >
               <div className="flex items-center gap-2">
                 <GripVertical
                   className="text-muted-foreground size-4 shrink-0"
@@ -60,6 +95,7 @@ export function FaqEditor({
                   placeholder="Apakah bisa reschedule?"
                   maxLength={200}
                   aria-label={`Pertanyaan ${index + 1}`}
+                  aria-invalid={Boolean(galat?.question)}
                 />
                 <Button
                   type="button"
@@ -71,6 +107,9 @@ export function FaqEditor({
                   <Trash2 className="size-4" />
                 </Button>
               </div>
+              {galat?.question ? (
+                <p className="text-destructive text-xs">{galat.question}</p>
+              ) : null}
               <Textarea
                 value={faq.answer}
                 onChange={(e) => ubah(faq.id, { answer: e.target.value })}
@@ -78,7 +117,11 @@ export function FaqEditor({
                 maxLength={1000}
                 rows={3}
                 aria-label={`Jawaban ${index + 1}`}
+                aria-invalid={Boolean(galat?.answer)}
               />
+              {galat?.answer ? (
+                <p className="text-destructive text-xs">{galat.answer}</p>
+              ) : null}
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -100,7 +143,8 @@ export function FaqEditor({
                 </Button>
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 

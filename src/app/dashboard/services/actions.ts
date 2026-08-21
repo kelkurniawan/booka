@@ -7,6 +7,7 @@ import type { z } from "zod";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { serviceSchema } from "@/lib/validations/service";
+import { isScopedMediaPath, PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
 import { serviceMediaSchema } from "@/lib/validations/service-media";
 
 import type { ServiceFormState } from "./service-state";
@@ -116,13 +117,27 @@ export async function updateService(
 
 export async function deleteService(
   id: string,
-): Promise<{ ok: boolean; message?: string }> {
+): Promise<{ ok: boolean; message?: string; paths?: string[] }> {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) redirect(ROUTES.login);
+
+  // Baris service_media ikut terhapus lewat ON DELETE CASCADE, tapi berkasnya
+  // di Storage tidak -- cascade database tidak tahu apa-apa soal bucket. Path
+  // dikumpulkan SEBELUM penghapusan supaya klien bisa membersihkannya; tanpa
+  // ini setiap layanan yang dihapus meninggalkan berkas yang dibayar selamanya.
+  const { data: media } = await supabase
+    .from("service_media")
+    .select("path, poster_path")
+    .eq("service_id", id)
+    .eq("merchant_id", user.id);
+
+  const paths = (media ?? []).flatMap((baris) =>
+    [baris.path, baris.poster_path].filter((p): p is string => Boolean(p)),
+  );
 
   const { error } = await supabase
     .from("services")
@@ -136,7 +151,8 @@ export async function deleteService(
 
   revalidatePath(ROUTES.services);
   revalidatePath(ROUTES.dashboard);
-  return { ok: true };
+  revalidatePath(ROUTES.appearance);
+  return { ok: true, paths };
 }
 
 export async function toggleServiceActive(
@@ -210,6 +226,18 @@ export async function attachServiceMedia(
   } = await supabase.auth.getUser();
 
   if (!user) redirect(ROUTES.login);
+
+  // Path datang dari browser. Constraint service_media_path_scoped sudah
+  // menahannya di database; dicek juga di sini supaya merchant mendapat
+  // kalimat yang bisa dibaca, bukan galat Postgres mentah.
+  const pathTidakValid =
+    !isScopedMediaPath(parsed.data.path, user.id) ||
+    (parsed.data.poster_path !== null &&
+      !isScopedMediaPath(parsed.data.poster_path, user.id));
+
+  if (pathTidakValid) {
+    return { status: "error", message: PESAN_PATH_TIDAK_VALID, paths: berkas };
+  }
 
   const { error } = await supabase
     .from("service_media")

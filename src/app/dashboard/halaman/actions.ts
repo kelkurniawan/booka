@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 
 import { requireMerchant } from "@/lib/auth/session";
+import { isScopedMediaPath, PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
+import { MEDIA_BUCKET } from "@/lib/media/url";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { faqListSchema, themeSchema } from "@/lib/validations/theme";
@@ -62,6 +64,18 @@ export async function updateTheme(
     };
   }
 
+  // Path datang dari browser. Constraint merchant_themes_background_path_scoped
+  // sudah menahannya di database; dicek juga di sini supaya merchant mendapat
+  // kalimat yang bisa dibaca, bukan galat Postgres mentah.
+  const pathLatar = parsed.data.background_image_path;
+  if (pathLatar !== null && !isScopedMediaPath(pathLatar, user.id)) {
+    return {
+      status: "error",
+      message: PESAN_PATH_TIDAK_VALID,
+      fieldErrors: { background_image_path: PESAN_PATH_TIDAK_VALID },
+    };
+  }
+
   const supabase = await createClient();
   const { error } = await supabase
     .from("merchant_themes")
@@ -87,8 +101,21 @@ export async function updateProfileMedia(
   const { user, merchant } = await requireMerchant();
 
   const avatarUrl = String(formData.get("avatar_url") ?? "").trim();
-  if (avatarUrl !== "" && !avatarUrl.startsWith("https://")) {
-    return { status: "error", message: "Alamat foto profil tidak valid." };
+
+  // Hanya berkas dari bucket kita sendiri. Sebelumnya URL https apa pun
+  // diterima, yang berarti merchant bisa menempelkan pelacak pihak ketiga di
+  // halaman yang berjalan di domain kita. Foto lama dari Google OAuth tetap
+  // aman: validasi ini hanya berlaku saat nilainya DITULIS, bukan saat dibaca.
+  if (avatarUrl !== "") {
+    const awalanBucket = `/storage/v1/object/public/${MEDIA_BUCKET}/`;
+    const posisi = avatarUrl.indexOf(awalanBucket);
+    if (
+      !avatarUrl.startsWith("https://") ||
+      posisi === -1 ||
+      !isScopedMediaPath(avatarUrl.slice(posisi + awalanBucket.length), user.id)
+    ) {
+      return { status: "error", message: PESAN_PATH_TIDAK_VALID };
+    }
   }
 
   const supabase = await createClient();
@@ -109,7 +136,7 @@ export async function saveFaqs(
   _prevState: AppearanceFormState,
   formData: FormData,
 ): Promise<AppearanceFormState> {
-  const { user, merchant } = await requireMerchant();
+  const { merchant } = await requireMerchant();
 
   let mentah: unknown;
   try {
@@ -129,28 +156,18 @@ export async function saveFaqs(
   // Ganti seluruh daftar, bukan diff per baris: urutannya ikut berubah setiap
   // kali merchant menyusun ulang, dan daftar maksimal sepuluh baris terlalu
   // kecil untuk pantas dibuatkan rekonsiliasi sendiri.
-  const { error: hapusError } = await supabase
-    .from("merchant_faqs")
-    .delete()
-    .eq("merchant_id", user.id);
+  //
+  // Lewat RPC, BUKAN delete lalu insert dari sini. Sebagai dua panggilan
+  // terpisah, insert yang ditolak meninggalkan penghapusan yang sudah commit --
+  // merchant kehilangan seluruh FAQ-nya justru saat menyimpan. Satu pemanggilan
+  // fungsi adalah satu statement, jadi keduanya berhasil bersama atau gagal
+  // bersama.
+  const { error } = await supabase.rpc("replace_merchant_faqs", {
+    p_faqs: parsed.data,
+  });
 
-  if (hapusError) {
-    return { status: "error", message: "FAQ gagal disimpan." };
-  }
-
-  if (parsed.data.length > 0) {
-    const { error: simpanError } = await supabase.from("merchant_faqs").insert(
-      parsed.data.map((faq, index) => ({
-        merchant_id: user.id,
-        question: faq.question,
-        answer: faq.answer,
-        sort_order: index,
-      })),
-    );
-
-    if (simpanError) {
-      return { status: "error", message: pesanDariError(simpanError) };
-    }
+  if (error) {
+    return { status: "error", message: pesanDariError(error) };
   }
 
   segarkan(merchant.username);

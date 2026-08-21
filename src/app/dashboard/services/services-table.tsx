@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatDuration, formatRupiah } from "@/lib/format";
+import { removeMedia } from "@/lib/media/upload";
 import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
 
 import { deleteService, toggleServiceActive } from "./actions";
@@ -105,6 +106,12 @@ function ServiceRow({
     startDelete(async () => {
       const result = await deleteService(service.id);
       if (result.ok) {
+        // Baris service_media ikut terhapus lewat cascade, tapi berkasnya di
+        // Storage tidak. Dibersihkan di sini supaya bucket tidak terisi berkas
+        // yang tidak dirujuk apa pun.
+        if (result.paths && result.paths.length > 0) {
+          await removeMedia(result.paths);
+        }
         toast.success("Layanan dihapus");
         setDeleteOpen(false);
       } else {

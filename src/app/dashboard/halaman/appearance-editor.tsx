@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { ExternalLink, ImageUp, Loader2, Lock, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -41,7 +41,7 @@ import type {
 
 import { saveFaqs, updateProfileMedia, updateTheme } from "./actions";
 import { INITIAL_APPEARANCE_STATE } from "./appearance-state";
-import { FaqEditor, type FaqDraft } from "./faq-editor";
+import { FaqEditor, validasiFaqs, type FaqDraft } from "./faq-editor";
 import { AppearancePreview } from "./preview-frame";
 
 /** Bagian tema yang bisa disunting; cerminan kolom merchant_themes. */
@@ -126,32 +126,74 @@ export function AppearanceEditor({
         }
       : TEMA_KOSONG,
   );
+  // Salinan nilai yang benar-benar sudah tersimpan, untuk membedakan "sedang
+  // dicoba-coba" dari "sudah dipakai pelanggan".
+  const [temaTersimpan, setTemaTersimpan] = useState<DraftTema>(() => tema);
   const [avatarUrl, setAvatarUrl] = useState(avatarAwal);
+  const [menghapusAvatar, setMenghapusAvatar] = useState(false);
   const [faqs, setFaqs] = useState<FaqDraft[]>(() =>
+    faqsAwal.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer })),
+  );
+  const [faqsTersimpan, setFaqsTersimpan] = useState<FaqDraft[]>(() =>
     faqsAwal.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer })),
   );
   const [mengunggah, setMengunggah] = useState<"avatar" | "background" | null>(null);
   const [, mulaiTransisi] = useTransition();
 
-  const [temaState, simpanTema, temaPending] = useActionState(
-    updateTheme,
-    INITIAL_APPEARANCE_STATE,
-  );
-  const [faqState, simpanFaqs, faqPending] = useActionState(
-    saveFaqs,
-    INITIAL_APPEARANCE_STATE,
-  );
-  const [, simpanAvatar] = useActionState(updateProfileMedia, INITIAL_APPEARANCE_STATE);
+  const [temaPending, mulaiSimpanTema] = useTransition();
+  const [faqPending, mulaiSimpanFaqs] = useTransition();
 
-  useEffect(() => {
-    if (temaState.status === "success") toast.success(temaState.message);
-    if (temaState.status === "error") toast.error(temaState.message);
-  }, [temaState]);
+  /**
+   * Penyimpanan dijalankan lewat callback async, bukan useActionState +
+   * useEffect. Snapshot "tersimpan" harus diperbarui tepat saat sebuah
+   * penyimpanan berhasil, dan melakukannya di dalam efek berarti setState
+   * sinkron di dalam efek -- render berantai, dan toast yang bisa muncul dua
+   * kali kalau efeknya berjalan ulang. Di sini nilainya ditangkap sebelum
+   * request berangkat, jadi perubahan yang dibuat merchant selagi request
+   * berjalan tidak ikut terhitung sudah tersimpan.
+   */
+  function kirimTema(data: FormData) {
+    const snapshot = tema;
+    mulaiSimpanTema(async () => {
+      const hasil = await updateTheme(INITIAL_APPEARANCE_STATE, data);
+      if (hasil.status === "success") {
+        setTemaTersimpan(snapshot);
+        toast.success(hasil.message);
+      } else {
+        toast.error(hasil.message);
+      }
+    });
+  }
 
+  function kirimFaqs(data: FormData) {
+    const snapshot = faqs;
+    mulaiSimpanFaqs(async () => {
+      const hasil = await saveFaqs(INITIAL_APPEARANCE_STATE, data);
+      if (hasil.status === "success") {
+        setFaqsTersimpan(snapshot);
+        toast.success(hasil.message);
+      } else {
+        toast.error(hasil.message);
+      }
+    });
+  }
+
+  const temaBerubah = JSON.stringify(tema) !== JSON.stringify(temaTersimpan);
+  const faqBerubah = JSON.stringify(faqs) !== JSON.stringify(faqsTersimpan);
+  const adaPerubahan = temaBerubah || faqBerubah;
+
+  // Halaman ini sengaja memakai tombol Simpan, bukan simpan otomatis -- etalase
+  // merchant tidak boleh berubah sambil dicoba-coba. Konsekuensinya, menutup
+  // tab tanpa menyimpan berarti pekerjaan hilang tanpa peringatan apa pun.
   useEffect(() => {
-    if (faqState.status === "success") toast.success(faqState.message);
-    if (faqState.status === "error") toast.error(faqState.message);
-  }, [faqState]);
+    if (!adaPerubahan) return;
+    const cegah = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", cegah);
+    return () => window.removeEventListener("beforeunload", cegah);
+  }, [adaPerubahan]);
+
+  const faqErrors = validasiFaqs(faqs);
+  const faqTidakValid = Object.keys(faqErrors).length > 0;
 
   // Preview memakai resolver yang sama dengan halaman publik, termasuk
   // pemangkasan paket -- jadi merchant STARTER melihat persis apa yang benar
@@ -203,7 +245,15 @@ export function AppearanceEditor({
         setAvatarUrl(url);
         const data = new FormData();
         data.set("avatar_url", url);
-        mulaiTransisi(() => simpanAvatar(data));
+        const hasil = await updateProfileMedia(INITIAL_APPEARANCE_STATE, data);
+        if (hasil.status === "error") {
+          // Kembalikan tampilan ke foto lama: barisnya tidak tersimpan, jadi
+          // menampilkan foto baru akan berbohong soal apa yang dilihat
+          // pelanggan.
+          setAvatarUrl(avatarUrl);
+          throw new Error(hasil.message ?? "Foto profil gagal disimpan.");
+        }
+        toast.success("Foto profil tersimpan");
       } else {
         setTema((lama) => ({
           ...lama,
@@ -264,6 +314,42 @@ export function AppearanceEditor({
                 Ganti foto
               </span>
             </label>
+            {avatarUrl ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-fit"
+                disabled={mengunggah !== null || menghapusAvatar}
+                onClick={() => {
+                  const lama = mediaPathFromUrl(avatarUrl);
+                  setMenghapusAvatar(true);
+                  setAvatarUrl(null);
+                  const data = new FormData();
+                  data.set("avatar_url", "");
+                  mulaiTransisi(async () => {
+                    const hasil = await updateProfileMedia(
+                      INITIAL_APPEARANCE_STATE,
+                      data,
+                    );
+                    if (hasil.status === "error") {
+                      setAvatarUrl(avatarUrl);
+                      toast.error(hasil.message);
+                    } else {
+                      // Hanya berkas milik kita yang dihapus. Foto lama dari
+                      // Google OAuth bukan milik bucket ini, dan
+                      // mediaPathFromUrl mengembalikan null untuknya.
+                      if (lama) await removeMedia([lama]);
+                      toast.success("Foto profil dihapus");
+                    }
+                    setMenghapusAvatar(false);
+                  });
+                }}
+              >
+                <Trash2 className="size-4" />
+                Hapus foto
+              </Button>
+            ) : null}
             <p className="text-muted-foreground text-xs">
               JPG, PNG, atau WebP. Dipotong otomatis jadi persegi.
             </p>
@@ -271,7 +357,7 @@ export function AppearanceEditor({
         </div>
       </section>
 
-      <form action={simpanTema} className="flex flex-col gap-8">
+      <form action={kirimTema} className="flex flex-col gap-8">
         {/* Nilai yang tidak punya kontrol sendiri tetap harus ikut terkirim. */}
         <input type="hidden" name="preset" value={tema.preset} />
         <input type="hidden" name="accent" value={tema.accent ?? ""} />
@@ -372,21 +458,24 @@ export function AppearanceEditor({
                 type="button"
                 size="sm"
                 variant={tema.background_style === gaya.nilai ? "default" : "outline"}
-                disabled={starter}
-                onClick={() =>
-                  setTema((lama) => ({
-                    ...lama,
-                    background_style:
-                      gaya.nilai === "IMAGE" && !lama.background_image_path
-                        ? lama.background_style
-                        : gaya.nilai,
-                  }))
+                // "Foto" tidak bisa dipilih sebelum gambarnya ada. Sebelumnya
+                // tombolnya bisa ditekan tapi tidak melakukan apa-apa, yang
+                // terbaca seperti aplikasi rusak.
+                disabled={
+                  starter || (gaya.nilai === "IMAGE" && !tema.background_image_path)
                 }
+                onClick={() => setTema((lama) => ({ ...lama, background_style: gaya.nilai }))}
               >
                 {gaya.label}
               </Button>
             ))}
           </div>
+
+          {!starter && !tema.background_image_path ? (
+            <FieldDescription>
+              Unggah foto di bawah dulu untuk bisa memilih background bergambar.
+            </FieldDescription>
+          ) : null}
 
           {!starter && tema.background_style !== "IMAGE" ? (
             <div className="flex items-center gap-2">
@@ -570,11 +659,16 @@ export function AppearanceEditor({
           </div>
         </section>
 
-        <div className="flex items-center gap-2">
-          <Button type="submit" disabled={temaPending}>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" disabled={temaPending || !temaBerubah}>
             {temaPending ? <Loader2 className="size-4 animate-spin" /> : null}
             Simpan tampilan
           </Button>
+          {temaBerubah ? (
+            <span className="text-muted-foreground text-xs">
+              Perubahan belum tersimpan. Pengunjung masih melihat versi lama.
+            </span>
+          ) : null}
           <Button asChild variant="outline">
             <a href={ROUTES.merchantPage(username)} target="_blank" rel="noreferrer">
               <ExternalLink className="size-4" />
@@ -585,7 +679,7 @@ export function AppearanceEditor({
       </form>
 
       {/* 8. FAQ */}
-      <form action={simpanFaqs} className="flex flex-col gap-3">
+      <form action={kirimFaqs} className="flex flex-col gap-3">
         <h2 className="text-sm font-medium">Pertanyaan umum</h2>
         <input
           type="hidden"
@@ -594,11 +688,22 @@ export function AppearanceEditor({
             faqs.map(({ question, answer }) => ({ question, answer })),
           )}
         />
-        <FaqEditor faqs={faqs} onChange={setFaqs} />
-        <Button type="submit" className="w-fit" disabled={faqPending}>
-          {faqPending ? <Loader2 className="size-4 animate-spin" /> : null}
-          Simpan FAQ
-        </Button>
+        <FaqEditor faqs={faqs} errors={faqErrors} onChange={setFaqs} />
+        <div className="flex items-center gap-3">
+          <Button
+            type="submit"
+            className="w-fit"
+            disabled={faqPending || faqTidakValid}
+          >
+            {faqPending ? <Loader2 className="size-4 animate-spin" /> : null}
+            Simpan FAQ
+          </Button>
+          {faqTidakValid ? (
+            <span className="text-muted-foreground text-xs">
+              Lengkapi dulu baris yang ditandai merah.
+            </span>
+          ) : null}
+        </div>
       </form>
     </div>
   );

@@ -23,6 +23,13 @@ create table auth.users (
 create or replace function auth.uid() returns uuid
 language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 
+-- Supabase memberi akses ini di luar migration kita. Tanpa tiruannya, fungsi
+-- `security invoker` milik kita yang memanggil auth.uid() akan gagal dengan
+-- "permission denied for schema auth" -- dan uji yang MENGHARAPKAN penolakan
+-- ikut lulus karena alasan yang salah.
+grant usage on schema auth to anon, authenticated, service_role;
+grant execute on function auth.uid() to anon, authenticated, service_role;
+
 -- Supabase memberi ALL pada tabel baru di public ke anon/authenticated.
 alter default privileges in schema public
   grant all on tables to anon, authenticated, service_role;

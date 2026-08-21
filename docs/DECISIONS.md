@@ -385,3 +385,56 @@ Dengan begitu merchant tetap mendapat kuning cerah yang dia inginkan untuk
 tombol, tanpa pernah bisa menghasilkan tulisan yang hilang. Menolak warnanya
 mentah-mentah akan terasa seperti aplikasi yang rewel; membiarkannya apa adanya
 menghasilkan halaman booking yang tidak terbaca.
+
+## 24. Path berkas dibatasi ke folder merchant di level database
+
+`service_media.path`, `service_media.poster_path`, dan
+`merchant_themes.background_image_path` datang dari browser. Ketiganya
+sekarang terikat constraint `check` yang mewajibkan path diawali
+`{merchant_id}/` dengan charset `[A-Za-z0-9._/-]` dan tanpa `..`.
+
+Charsetnya sempit karena `background_image_path` berakhir di dalam
+`url("...")` pada CSS halaman publik. Tanpa pembatasan, nilai seperti
+
+    x.webp"), url("https://pihak-ketiga/beacon.png
+
+menghasilkan daftar `background-image` yang SAH menurut CSS — halaman yang
+berjalan di domain kita memuat URL pihak ketiga dan membocorkan IP pengunjung.
+Tanda kutip, kurung, koma, dan spasi mustahil masuk, jadi tidak ada lagi cara
+keluar dari `url()`.
+
+Ditegakkan di database, bukan hanya di Zod: policy Storage sudah membatasi ke
+folder siapa merchant boleh MENULIS berkas, tapi tidak membatasi path apa yang
+boleh DIRUJUK sebuah baris. Aturan yang sama diulang di
+`src/lib/media/path.ts` semata untuk memberi pesan yang bisa dibaca sebelum
+requestnya sampai ke Postgres.
+
+`merchants.avatar_url` menyimpan URL penuh dan bisa berisi tautan Google dari
+proses signup, jadi tidak bisa diberi constraint yang sama. Server Action
+`updateProfileMedia` yang membatasinya: hanya URL dari bucket kita sendiri yang
+diterima saat DITULIS. Nilai lama dari Google tetap berfungsi karena tidak
+pernah divalidasi ulang saat dibaca.
+
+## 25. FAQ disimpan lewat satu fungsi, bukan delete lalu insert
+
+Penyimpanan FAQ mengganti seluruh daftar. Sebagai dua panggilan terpisah dari
+Server Action, insert yang ditolak — oleh constraint panjang atau trigger batas
+sepuluh — meninggalkan penghapusan yang sudah commit, dan merchant kehilangan
+seluruh FAQ-nya justru pada saat menekan Simpan.
+
+`public.replace_merchant_faqs(jsonb)` membungkus keduanya. Satu pemanggilan
+fungsi adalah satu statement, jadi delete dan insert berhasil bersama atau
+gagal bersama. Fungsinya `security invoker` supaya RLS tetap berlaku;
+`authenticated` bisa memanggil `auth.uid()` dari dalamnya karena Supabase
+memberi `usage` pada schema `auth` ke peran itu — sudah diverifikasi lewat
+`supabase db dump --schema auth` pada project ini. Tiruannya sekarang ada di
+`supabase/tests/00_supabase_stub.sql`; tanpa tiruan itu, uji yang mengharapkan
+penolakan lulus karena alasan yang salah.
+
+## 26. Berkas Storage dibersihkan saat layanan dihapus
+
+`ON DELETE CASCADE` menghapus baris `service_media`, tapi tidak tahu apa-apa
+soal berkas di bucket. `deleteService` mengumpulkan path media sebelum
+penghapusan dan mengembalikannya, lalu kliennya menghapus berkasnya. Tanpa ini
+setiap layanan yang dihapus meninggalkan gambar dan video yang dibayar
+selamanya tanpa pernah dirujuk apa pun.
