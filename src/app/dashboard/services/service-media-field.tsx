@@ -45,6 +45,17 @@ export type DraftMedia = {
 type ServiceMediaFieldProps = {
   merchantId: string;
   tier: SubscriptionTier;
+  /**
+   * Dipanggil setiap kali komponen ini sedang memproses berkas (kompresi
+   * gambar / pembuatan poster video) secara internal, terlepas dari mode.
+   * Dipakai form induk mode Tambah untuk menahan tombol submit utama --
+   * tanpa ini, klik "Tambah layanan" tepat saat kompresi masih berjalan
+   * akan mengambil snapshot draft yang belum berisi berkas yang sedang
+   * diproses, dan berkas itu tak pernah ikut terunggah walau merchant
+   * melihat "Layanan ditambahkan". Aman dipanggil di mode terlampir juga --
+   * pemanggilnya bebas mengabaikan callback ini kalau tidak relevan di sana.
+   */
+  onBusyChange?: (busy: boolean) => void;
 } & (
   | {
       /** Mode terlampir: layanan sudah ada, media langsung disimpan. */
@@ -154,6 +165,11 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
 
   async function tambahGambar(file: File) {
     setSibuk("image");
+    // Menutup jendela race di mana merchant menekan submit form induk tepat
+    // saat kompresi gambar ini masih berjalan -- tanpa sinyal ini, snapshot
+    // draft yang diambil form induk belum berisi berkas ini, dan berkas itu
+    // tak pernah ikut terunggah walau layanannya sudah dianggap tersimpan.
+    props.onBusyChange?.(true);
     try {
       const hasil = await siapkanGambar(file);
       if (typeof hasil === "string") {
@@ -219,11 +235,16 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
       toast.error(error instanceof Error ? error.message : "Gambar gagal diproses.");
     } finally {
       setSibuk(null);
+      props.onBusyChange?.(false);
     }
   }
 
   async function tambahVideo(file: File) {
     setSibuk("video");
+    // Lihat komentar senada di tambahGambar -- kompresi/pembuatan poster
+    // video juga async dan bisa masih berjalan saat submit form induk
+    // ditekan.
+    props.onBusyChange?.(true);
     try {
       const hasil = await siapkanVideo(file);
       if (typeof hasil === "string") {
@@ -301,6 +322,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
       toast.error(error instanceof Error ? error.message : "Video gagal diproses.");
     } finally {
       setSibuk(null);
+      props.onBusyChange?.(false);
     }
   }
 

@@ -169,6 +169,13 @@ function ServiceForm({
 
   const [state, setState] = useState<ServiceFormState>(INITIAL_SERVICE_FORM_STATE);
   const [draft, setDraft] = useState<DraftMedia[]>([]);
+  // Dilaporkan oleh ServiceMediaField lewat onBusyChange selagi ia mengompres
+  // gambar/membuat poster video secara internal. Tombol submit utama ikut
+  // ditahan selama ini true -- tanpa ini, submit yang diklik tepat saat
+  // kompresi masih berjalan mengambil snapshot draft yang belum berisi
+  // berkas itu, dan berkas itu tak pernah ikut terunggah walau merchant
+  // sudah melihat "Layanan ditambahkan".
+  const [mediaSibuk, setMediaSibuk] = useState(false);
 
   // Ref pelacak draft terbaru untuk cleanup unmount di bawah. Ditulis di
   // dalam efek (bukan saat render) supaya lolos aturan lint "Cannot access
@@ -327,10 +334,17 @@ function ServiceForm({
         ) : null}
 
         <DialogFooter>
-          <Button type="submit" disabled={pending}>
-            {pending ? <Spinner /> : null}
+          <Button type="submit" disabled={pending || mediaSibuk}>
+            {pending || mediaSibuk ? <Spinner /> : null}
             {isEdit ? "Simpan perubahan" : "Tambah layanan"}
           </Button>
+          {/* Tombol mati tanpa penjelasan sama membingungkannya dengan
+              kegagalan senyap -- merchant perlu tahu kenapa harus menunggu. */}
+          {mediaSibuk && !pending ? (
+            <span className="text-muted-foreground self-center text-xs">
+              Menunggu foto/video selesai diproses...
+            </span>
+          ) : null}
         </DialogFooter>
       </form>
 
@@ -351,6 +365,7 @@ function ServiceForm({
             draft={draft}
             onDraftChange={setDraft}
             disabled={pending}
+            onBusyChange={setMediaSibuk}
           />
         )}
       </div>
