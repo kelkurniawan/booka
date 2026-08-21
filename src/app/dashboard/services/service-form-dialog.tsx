@@ -1,7 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
-import { useFormStatus } from "react-dom";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -18,12 +17,13 @@ import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { mediaFileName, removeMedia, uploadMedia } from "@/lib/media/upload";
 import { ROUTES } from "@/lib/routes";
 import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
 
-import { createService, updateService } from "./actions";
-import { ServiceMediaField } from "./service-media-field";
-import { INITIAL_SERVICE_FORM_STATE } from "./service-state";
+import { attachServiceMedia, createService, updateService } from "./actions";
+import { ServiceMediaField, type DraftMedia } from "./service-media-field";
+import { INITIAL_SERVICE_FORM_STATE, type ServiceFormState } from "./service-state";
 
 /**
  * Dialog tambah/ubah layanan. Mode ditentukan oleh ada tidaknya `service`.
@@ -51,168 +51,279 @@ export function ServiceFormDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <ServiceForm service={service} onSuccess={() => onOpenChange(false)} />
-
-        {/* Media butuh service_id, yang baru ada setelah layanannya tersimpan.
-            Karena itu bagian ini hanya muncul saat mengubah, dan diletakkan DI
-            LUAR <form> supaya berkasnya tidak ikut terkirim bersama isian
-            layanan. */}
-        {service ? (
-          <div className="border-border mt-2 border-t pt-4">
-            <ServiceMediaField
-              serviceId={service.id}
-              merchantId={merchantId}
-              tier={tier}
-              media={media}
-            />
-          </div>
-        ) : (
-          <p className="text-muted-foreground border-border mt-2 border-t pt-4 text-sm text-pretty">
-            Simpan dulu layanannya, lalu buka lagi lewat menu Ubah untuk menambahkan
-            foto dan video.
-          </p>
-        )}
+        <ServiceForm
+          service={service}
+          merchantId={merchantId}
+          tier={tier}
+          media={media}
+          onSuccess={() => onOpenChange(false)}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
+/**
+ * Mengunggah tiap draft dan melampirkannya ke layanan yang baru saja
+ * tersimpan. Urutan wajib: layanan dulu, berkas kemudian -- foreign key
+ * service_media menolak baris yang menunjuk layanan yang belum ada, dan
+ * menahan berkas sampai titik ini berarti kegagalan pembuatan layanan tidak
+ * meninggalkan sampah di bucket. Mengembalikan jumlah berkas yang gagal.
+ */
+async function unggahDraft(
+  merchantId: string,
+  serviceId: string,
+  draft: DraftMedia[],
+): Promise<number> {
+  const dasar = `${merchantId}/svc/${serviceId}`;
+  let gagal = 0;
+
+  for (const [index, item] of draft.entries()) {
+    const berkas: string[] = [];
+    try {
+      const nama = mediaFileName(item.kind === "VIDEO" ? "vid" : "img", item.ext);
+      const path = `${dasar}/${nama}`;
+
+      let posterPath = "";
+      if (item.kind === "VIDEO" && item.posterBlob) {
+        posterPath = `${dasar}/${nama.replace(/\.\w+$/, "")}-poster.webp`;
+        await uploadMedia(posterPath, item.posterBlob, "image/webp");
+        berkas.push(posterPath);
+      }
+
+      await uploadMedia(path, item.blob, item.contentType);
+      berkas.push(path);
+
+      const data = new FormData();
+      data.set("service_id", serviceId);
+      data.set("kind", item.kind);
+      data.set("path", path);
+      data.set("poster_path", posterPath);
+      data.set("width", String(item.width));
+      data.set("height", String(item.height));
+      data.set("sort_order", String(index));
+
+      const hasil = await attachServiceMedia(data);
+      if (hasil.status === "error") {
+        await removeMedia(hasil.paths);
+        gagal += 1;
+      }
+    } catch {
+      // Berkas terlanjur mendarat tapi rangkaiannya putus -- bersihkan,
+      // jangan tinggalkan berkas yatim di bucket.
+      if (berkas.length > 0) await removeMedia(berkas);
+      gagal += 1;
+    } finally {
+      URL.revokeObjectURL(item.previewUrl);
+    }
+  }
+
+  return gagal;
+}
+
 function ServiceForm({
   service,
+  merchantId,
+  tier,
+  media,
   onSuccess,
 }: {
   service?: Service;
+  merchantId: string;
+  tier: SubscriptionTier;
+  media: ServiceMedia[];
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(service);
   const action = isEdit ? updateService : createService;
-  const [state, formAction] = useActionState(action, INITIAL_SERVICE_FORM_STATE);
+
+  const [state, setState] = useState<ServiceFormState>(INITIAL_SERVICE_FORM_STATE);
+  const [draft, setDraft] = useState<DraftMedia[]>([]);
+  const [pending, startTransition] = useTransition();
+
+  // Ref pelacak draft terbaru untuk cleanup unmount di bawah. Ditulis di
+  // dalam efek (bukan saat render) supaya lolos aturan lint "Cannot access
+  // refs during render".
+  const draftRef = useRef<DraftMedia[]>(draft);
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
 
   useEffect(() => {
-    if (state.status === "success") {
-      toast.success(isEdit ? "Layanan diperbarui" : "Layanan ditambahkan");
+    // Dialog Radix melepas komponen ini begitu tertutup. Bila merchant
+    // menutup dialog tanpa menyimpan, pratinjau blob yang masih tersisa di
+    // draft harus dilepas di sini -- kalau tidak, blob-nya menggantung di
+    // memori.
+    return () => {
+      for (const item of draftRef.current) {
+        URL.revokeObjectURL(item.previewUrl);
+      }
+    };
+  }, []);
+
+  /**
+   * Dipanggil lewat `action` form, bukan `useActionState` + efek terpisah:
+   * penutupan dialog harus menunggu unggahan draft rampung, dan `useEffect`
+   * yang menutup dialog begitu status berubah "success" akan melepas
+   * komponen ini SEBELUM unggahan sempat berjalan -- `await` yang sedang
+   * berlangsung terputus dan draftnya hilang tanpa jejak.
+   */
+  function kirimForm(formData: FormData) {
+    startTransition(async () => {
+      const hasil = await action(INITIAL_SERVICE_FORM_STATE, formData);
+      setState(hasil);
+
+      if (hasil.status !== "success") return;
+
+      if (isEdit) {
+        toast.success("Layanan diperbarui");
+        onSuccess();
+        return;
+      }
+
+      toast.success("Layanan ditambahkan");
+
+      if (hasil.serviceId && draft.length > 0) {
+        const gagal = await unggahDraft(merchantId, hasil.serviceId, draft);
+        if (gagal > 0) {
+          toast.error(
+            `${gagal} dari ${draft.length} berkas gagal diunggah. Layanannya sendiri tetap tersimpan -- tambahkan lagi lewat menu Ubah.`,
+          );
+        }
+      }
+
       onSuccess();
-    }
-    // onSuccess sengaja tidak masuk dependency: identitasnya berubah setiap
-    // render karena dibuat inline di ServiceFormDialog, dan hanya perlu
-    // dipanggil saat status berubah jadi "success".
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, isEdit]);
+    });
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4" noValidate>
-      <DialogHeader>
-        <DialogTitle>{isEdit ? "Ubah layanan" : "Tambah layanan"}</DialogTitle>
-        <DialogDescription>
-          Layanan ini akan tampil di halaman booking Anda beserta harga dan durasinya.
-        </DialogDescription>
-      </DialogHeader>
+    <>
+      <form action={kirimForm} className="flex flex-col gap-4" noValidate>
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Ubah layanan" : "Tambah layanan"}</DialogTitle>
+          <DialogDescription>
+            Layanan ini akan tampil di halaman booking Anda beserta harga dan durasinya.
+          </DialogDescription>
+        </DialogHeader>
 
-      {service ? <input type="hidden" name="id" value={service.id} /> : null}
+        {service ? <input type="hidden" name="id" value={service.id} /> : null}
 
-      <Field data-invalid={Boolean(state.fieldErrors?.name)}>
-        <FieldLabel htmlFor="name">Nama layanan</FieldLabel>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={service?.name ?? ""}
-          placeholder="Riasan pengantin"
-          maxLength={80}
-          required
-          aria-invalid={Boolean(state.fieldErrors?.name)}
-        />
-        {state.fieldErrors?.name ? <FieldError>{state.fieldErrors.name}</FieldError> : null}
-      </Field>
+        <Field data-invalid={Boolean(state.fieldErrors?.name)}>
+          <FieldLabel htmlFor="name">Nama layanan</FieldLabel>
+          <Input
+            id="name"
+            name="name"
+            defaultValue={service?.name ?? ""}
+            placeholder="Riasan pengantin"
+            maxLength={80}
+            required
+            aria-invalid={Boolean(state.fieldErrors?.name)}
+          />
+          {state.fieldErrors?.name ? <FieldError>{state.fieldErrors.name}</FieldError> : null}
+        </Field>
 
-      <Field data-invalid={Boolean(state.fieldErrors?.description)}>
-        <FieldLabel htmlFor="description">Deskripsi (opsional)</FieldLabel>
-        <Textarea
-          id="description"
-          name="description"
-          defaultValue={service?.description ?? ""}
-          placeholder="Ceritakan singkat apa yang didapat pelanggan"
-          maxLength={500}
-          aria-invalid={Boolean(state.fieldErrors?.description)}
-        />
-        {state.fieldErrors?.description ? (
-          <FieldError>{state.fieldErrors.description}</FieldError>
+        <Field data-invalid={Boolean(state.fieldErrors?.description)}>
+          <FieldLabel htmlFor="description">Deskripsi (opsional)</FieldLabel>
+          <Textarea
+            id="description"
+            name="description"
+            defaultValue={service?.description ?? ""}
+            placeholder="Ceritakan singkat apa yang didapat pelanggan"
+            maxLength={500}
+            aria-invalid={Boolean(state.fieldErrors?.description)}
+          />
+          {state.fieldErrors?.description ? (
+            <FieldError>{state.fieldErrors.description}</FieldError>
+          ) : null}
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field data-invalid={Boolean(state.fieldErrors?.price)}>
+            <FieldLabel htmlFor="price">Harga (Rp)</FieldLabel>
+            <Input
+              id="price"
+              name="price"
+              type="number"
+              inputMode="numeric"
+              min={0}
+              step={1000}
+              defaultValue={service?.price ?? ""}
+              placeholder="350000"
+              required
+              aria-invalid={Boolean(state.fieldErrors?.price)}
+            />
+            {state.fieldErrors?.price ? (
+              <FieldError>{state.fieldErrors.price}</FieldError>
+            ) : (
+              <FieldDescription>Angka polos, tanpa titik atau &quot;Rp&quot;.</FieldDescription>
+            )}
+          </Field>
+
+          <Field data-invalid={Boolean(state.fieldErrors?.duration_minutes)}>
+            <FieldLabel htmlFor="duration_minutes">Durasi (menit)</FieldLabel>
+            <Input
+              id="duration_minutes"
+              name="duration_minutes"
+              type="number"
+              inputMode="numeric"
+              min={5}
+              max={480}
+              step={5}
+              defaultValue={service?.duration_minutes ?? ""}
+              placeholder="90"
+              required
+              aria-invalid={Boolean(state.fieldErrors?.duration_minutes)}
+            />
+            {state.fieldErrors?.duration_minutes ? (
+              <FieldError>{state.fieldErrors.duration_minutes}</FieldError>
+            ) : (
+              <FieldDescription>5–480 menit.</FieldDescription>
+            )}
+          </Field>
+        </div>
+
+        {state.status === "error" && !state.fieldErrors ? (
+          <Alert variant="destructive">
+            <AlertTitle>{state.limitReached ? "Batas layanan tercapai" : "Gagal menyimpan"}</AlertTitle>
+            <AlertDescription>
+              {state.message}
+              {state.limitReached ? (
+                <>
+                  {" "}
+                  <a href={ROUTES.billing}>Naik ke paket Pro</a>.
+                </>
+              ) : null}
+            </AlertDescription>
+          </Alert>
         ) : null}
-      </Field>
 
-      <div className="grid grid-cols-2 gap-4">
-        <Field data-invalid={Boolean(state.fieldErrors?.price)}>
-          <FieldLabel htmlFor="price">Harga (Rp)</FieldLabel>
-          <Input
-            id="price"
-            name="price"
-            type="number"
-            inputMode="numeric"
-            min={0}
-            step={1000}
-            defaultValue={service?.price ?? ""}
-            placeholder="350000"
-            required
-            aria-invalid={Boolean(state.fieldErrors?.price)}
-          />
-          {state.fieldErrors?.price ? (
-            <FieldError>{state.fieldErrors.price}</FieldError>
-          ) : (
-            <FieldDescription>Angka polos, tanpa titik atau &quot;Rp&quot;.</FieldDescription>
-          )}
-        </Field>
+        <DialogFooter>
+          <Button type="submit" disabled={pending}>
+            {pending ? <Spinner /> : null}
+            {isEdit ? "Simpan perubahan" : "Tambah layanan"}
+          </Button>
+        </DialogFooter>
+      </form>
 
-        <Field data-invalid={Boolean(state.fieldErrors?.duration_minutes)}>
-          <FieldLabel htmlFor="duration_minutes">Durasi (menit)</FieldLabel>
-          <Input
-            id="duration_minutes"
-            name="duration_minutes"
-            type="number"
-            inputMode="numeric"
-            min={5}
-            max={480}
-            step={5}
-            defaultValue={service?.duration_minutes ?? ""}
-            placeholder="90"
-            required
-            aria-invalid={Boolean(state.fieldErrors?.duration_minutes)}
+      {/* Sengaja DI LUAR <form> supaya berkas media tidak ikut terkirim
+          bersama isian layanan saat form ini disubmit. */}
+      <div className="border-border mt-2 border-t pt-4">
+        {service ? (
+          <ServiceMediaField
+            serviceId={service.id}
+            merchantId={merchantId}
+            tier={tier}
+            media={media}
           />
-          {state.fieldErrors?.duration_minutes ? (
-            <FieldError>{state.fieldErrors.duration_minutes}</FieldError>
-          ) : (
-            <FieldDescription>5–480 menit.</FieldDescription>
-          )}
-        </Field>
+        ) : (
+          <ServiceMediaField
+            merchantId={merchantId}
+            tier={tier}
+            draft={draft}
+            onDraftChange={setDraft}
+          />
+        )}
       </div>
-
-      {state.status === "error" && !state.fieldErrors ? (
-        <Alert variant="destructive">
-          <AlertTitle>{state.limitReached ? "Batas layanan tercapai" : "Gagal menyimpan"}</AlertTitle>
-          <AlertDescription>
-            {state.message}
-            {state.limitReached ? (
-              <>
-                {" "}
-                <a href={ROUTES.billing}>Naik ke paket Pro</a>.
-              </>
-            ) : null}
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      <DialogFooter>
-        <SubmitButton isEdit={isEdit} />
-      </DialogFooter>
-    </form>
-  );
-}
-
-function SubmitButton({ isEdit }: { isEdit: boolean }) {
-  const { pending } = useFormStatus();
-
-  return (
-    <Button type="submit" disabled={pending}>
-      {pending ? <Spinner /> : null}
-      {isEdit ? "Simpan perubahan" : "Tambah layanan"}
-    </Button>
+    </>
   );
 }
