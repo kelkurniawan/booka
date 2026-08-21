@@ -55,13 +55,17 @@ export async function createService(
 
   if (!user) redirect(ROUTES.login);
 
-  const { error } = await supabase.from("services").insert({
-    merchant_id: user.id,
-    name: parsed.data.name,
-    description: parsed.data.description,
-    price: parsed.data.price,
-    duration_minutes: parsed.data.duration_minutes,
-  });
+  const { data, error } = await supabase
+    .from("services")
+    .insert({
+      merchant_id: user.id,
+      name: parsed.data.name,
+      description: parsed.data.description,
+      price: parsed.data.price,
+      duration_minutes: parsed.data.duration_minutes,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     // P0001 — trigger enforce_service_limit menolak layanan kedua paket Starter.
@@ -73,7 +77,7 @@ export async function createService(
 
   revalidatePath(ROUTES.services);
   revalidatePath(ROUTES.dashboard);
-  return { status: "success" };
+  return { status: "success", serviceId: data?.id };
 }
 
 export async function updateService(
