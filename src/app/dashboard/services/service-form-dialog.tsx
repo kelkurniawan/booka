@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type TransitionStartFunction } from "react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -48,14 +48,39 @@ export function ServiceFormDialog({
   tier: SubscriptionTier;
   media?: ServiceMedia[];
 }) {
+  // Dipegang di sini, bukan di ServiceForm, supaya dialog sendiri bisa
+  // menolak ditutup selagi submit atau unggahan draft masih berjalan --
+  // tombol X, Escape, dan klik di luar semuanya lewat onOpenChange yang
+  // dipasang di komponen ini.
+  const [pending, startTransition] = useTransition();
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={(nilai) => {
+        // Menutup selagi sibuk memutus await unggahan yang sedang jalan di
+        // tengah, meninggalkan berkas yatim di bucket dan merchant yang
+        // tidak tahu prosesnya belum selesai.
+        if (!nilai && pending) return;
+        onOpenChange(nilai);
+      }}
+    >
+      <DialogContent
+        showCloseButton={!pending}
+        onEscapeKeyDown={(e) => {
+          if (pending) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (pending) e.preventDefault();
+        }}
+      >
         <ServiceForm
           service={service}
           merchantId={merchantId}
           tier={tier}
           media={media}
+          pending={pending}
+          startTransition={startTransition}
           onSuccess={() => onOpenChange(false)}
         />
       </DialogContent>
@@ -126,12 +151,17 @@ function ServiceForm({
   merchantId,
   tier,
   media,
+  pending,
+  startTransition,
   onSuccess,
 }: {
   service?: Service;
   merchantId: string;
   tier: SubscriptionTier;
   media: ServiceMedia[];
+  /** Dipegang oleh ServiceFormDialog supaya dialog bisa menolak ditutup selagi ini true. */
+  pending: boolean;
+  startTransition: TransitionStartFunction;
   onSuccess: () => void;
 }) {
   const isEdit = Boolean(service);
@@ -139,7 +169,6 @@ function ServiceForm({
 
   const [state, setState] = useState<ServiceFormState>(INITIAL_SERVICE_FORM_STATE);
   const [draft, setDraft] = useState<DraftMedia[]>([]);
-  const [pending, startTransition] = useTransition();
 
   // Ref pelacak draft terbaru untuk cleanup unmount di bawah. Ditulis di
   // dalam efek (bukan saat render) supaya lolos aturan lint "Cannot access
@@ -321,6 +350,7 @@ function ServiceForm({
             tier={tier}
             draft={draft}
             onDraftChange={setDraft}
+            disabled={pending}
           />
         )}
       </div>

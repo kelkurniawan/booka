@@ -56,6 +56,15 @@ type ServiceMediaFieldProps = {
       serviceId?: undefined;
       draft: DraftMedia[];
       onDraftChange: (draft: DraftMedia[]) => void;
+      /**
+       * Mengunci seluruh kontrol (tambah maupun hapus) selagi form induk
+       * sedang menyimpan layanan atau mengunggah draftnya. Tanpa ini,
+       * berkas yang ditambahkan/dihapus setelah submit tidak pernah
+       * tercermin di unggahan yang sudah berjalan dengan snapshot draft
+       * lama -- lenyap diam-diam atau tetap terunggah padahal sudah
+       * "dihapus".
+       */
+      disabled?: boolean;
     }
 );
 
@@ -129,6 +138,10 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
   const [sibuk, setSibuk] = useState<"image" | "video" | null>(null);
   const [, mulaiTransisi] = useTransition();
 
+  // Hanya berlaku di mode draft -- mode terlampir tidak punya konsep ini dan
+  // tetap mengunci lewat `sibuk` internal saja seperti sebelumnya.
+  const terkunciDariLuar = props.serviceId === undefined && (props.disabled ?? false);
+
   const gambar = props.serviceId !== undefined
     ? media.filter((m) => m.kind === "IMAGE")
     : props.draft.filter((m) => m.kind === "IMAGE");
@@ -136,6 +149,8 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
     ? media.filter((m) => m.kind === "VIDEO")
     : props.draft.filter((m) => m.kind === "VIDEO");
   const gambarPenuh = gambar.length >= MEDIA_LIMITS.maxServiceImages;
+  const gambarTerkunci = gambarPenuh || sibuk !== null || terkunciDariLuar;
+  const videoTerkunci = video.length > 0 || sibuk !== null || terkunciDariLuar;
 
   async function tambahGambar(file: File) {
     setSibuk("image");
@@ -322,8 +337,12 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
         // ditangkap di awal proses. Kalau item lain dihapus di tengah
         // pemrosesan (kompresi gambar/poster video bisa makan waktu), hasil
         // hapus itu tertimpa begitu penambahan selesai -- item yang sudah
-        // dihapus (dan previewUrl-nya sudah dicabut) muncul lagi.
-        disabled: sibuk !== null,
+        // dihapus (dan previewUrl-nya sudah dicabut) muncul lagi. Dikunci
+        // juga saat `terkunciDariLuar`: form induk sedang menyimpan layanan
+        // atau mengunggah draft memakai snapshot draft saat ini -- baris
+        // yang dihapus setelah snapshot diambil akan tetap terunggah kalau
+        // penghapusan masih diizinkan di sini.
+        disabled: sibuk !== null || terkunciDariLuar,
         onHapus: () => {
           URL.revokeObjectURL(item.previewUrl);
           props.onDraftChange(props.draft.filter((d) => d.key !== item.key));
@@ -372,7 +391,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
-            disabled={gambarPenuh || sibuk !== null}
+            disabled={gambarTerkunci}
             onChange={(e) => {
               const file = e.target.files?.[0];
               e.target.value = "";
@@ -381,7 +400,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
           />
           <span
             className={
-              gambarPenuh || sibuk !== null
+              gambarTerkunci
                 ? "border-border inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium opacity-50"
                 : "border-border hover:bg-muted inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium"
             }
@@ -408,7 +427,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
               type="file"
               accept="video/mp4,video/webm"
               className="sr-only"
-              disabled={video.length > 0 || sibuk !== null}
+              disabled={videoTerkunci}
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 e.target.value = "";
@@ -417,7 +436,7 @@ export function ServiceMediaField(props: ServiceMediaFieldProps) {
             />
             <span
               className={
-                video.length > 0 || sibuk !== null
+                videoTerkunci
                   ? "border-border inline-flex h-8 cursor-not-allowed items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium opacity-50"
                   : "border-border hover:bg-muted inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-sm font-medium"
               }
