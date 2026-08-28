@@ -1596,3 +1596,73 @@ select case
            then 'FAIL t25e anon bisa memanggil replace_merchant_faqs'
          else 'OK   t25e anon TIDAK bisa memanggil replace_merchant_faqs'
        end as t25e;
+
+-- 26. merchants.avatar_url dibatasi ke sumber yang dikenali
+select pg_temp.expect_ok(
+  $q$update public.merchants
+     set avatar_url = 'https://abc.supabase.co/storage/v1/object/public/merchant-media/'
+                      || '66666666-6666-6666-6666-666666666666/avatar-a1b2c3d4.webp'
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26a avatar di bucket sendiri diterima');
+
+select pg_temp.expect_ok(
+  $q$update public.merchants
+     set avatar_url = 'https://lh3.googleusercontent.com/a/ACg8ocKabc123=s96-c'
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26b foto bawaan signup Google tetap diterima');
+
+-- Inilah muatan yang lolos pemeriksaan indexOf() di Server Action: penanda
+-- bucket disisipkan di query string, sedangkan hostnya milik penyerang.
+select pg_temp.expect_fail(
+  $q$update public.merchants
+     set avatar_url = 'https://pelacak.contoh/beacon?x=/storage/v1/object/public/merchant-media/'
+                      || '66666666-6666-6666-6666-666666666666/a.webp'
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26c host pihak ketiga dengan penanda bucket di query string');
+
+select pg_temp.expect_fail(
+  $q$update public.merchants
+     set avatar_url = 'https://pelacak.contoh/beacon.png'
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26d URL pihak ketiga polos');
+
+select pg_temp.expect_fail(
+  $q$update public.merchants
+     set avatar_url = 'https://abc.supabase.co/storage/v1/object/public/merchant-media/'
+                      || '77777777-7777-7777-7777-777777777777/avatar.webp'
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26e avatar menunjuk folder merchant lain');
+
+select pg_temp.expect_ok(
+  $q$update public.merchants set avatar_url = null
+     where id = '66666666-6666-6666-6666-666666666666'$q$,
+  't26f avatar dikosongkan');
+
+-- 26b. Trigger signup menyaring avatar yang tidak dikenali, BUKAN menggagalkan
+-- pendaftarannya. Tanpa ini, provider OAuth dengan host avatar di luar daftar
+-- membuat seluruh signup gagal -- kegagalan yang jauh lebih parah daripada
+-- celah yang ditutup constraint di atas.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('88888888-8888-8888-8888-888888888888', 'avatar-asing@example.com',
+   '{"full_name":"Avatar Asing","avatar_url":"https://pelacak.contoh/beacon.png"}'::jsonb);
+
+select case
+         when (select count(*) from public.merchants
+               where id = '88888888-8888-8888-8888-888888888888') = 1
+              and (select avatar_url from public.merchants
+                   where id = '88888888-8888-8888-8888-888888888888') is null
+           then 'OK   t26g signup dengan avatar tak dikenali tetap berhasil, avatarnya jadi null'
+         else 'FAIL t26g signup dengan avatar tak dikenali'
+       end as t26g;
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('99999999-9999-9999-9999-999999999999', 'avatar-google@example.com',
+   '{"full_name":"Avatar Google","avatar_url":"https://lh3.googleusercontent.com/a/ACg8ocXyz=s96-c"}'::jsonb);
+
+select case
+         when (select avatar_url from public.merchants
+               where id = '99999999-9999-9999-9999-999999999999')
+              = 'https://lh3.googleusercontent.com/a/ACg8ocXyz=s96-c'
+           then 'OK   t26h avatar Google dari signup tetap tersalin apa adanya'
+         else 'FAIL t26h avatar Google dari signup tidak tersalin'
+       end as t26h;

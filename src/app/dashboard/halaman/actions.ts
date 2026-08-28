@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireMerchant } from "@/lib/auth/session";
+import { clientEnv } from "@/lib/env/client";
 import { isScopedMediaPath, PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
 import { MEDIA_BUCKET } from "@/lib/media/url";
 import { ROUTES } from "@/lib/routes";
@@ -102,18 +103,40 @@ export async function updateProfileMedia(
 
   const avatarUrl = String(formData.get("avatar_url") ?? "").trim();
 
-  // Hanya berkas dari bucket kita sendiri. Sebelumnya URL https apa pun
-  // diterima, yang berarti merchant bisa menempelkan pelacak pihak ketiga di
-  // halaman yang berjalan di domain kita. Foto lama dari Google OAuth tetap
-  // aman: validasi ini hanya berlaku saat nilainya DITULIS, bukan saat dibaca.
+  // Hanya berkas dari bucket kita sendiri, di folder merchant ini sendiri.
+  //
+  // Diparsing dengan `new URL()`, BUKAN dicari dengan indexOf: pencarian
+  // substring meloloskan host pihak ketiga yang menaruh penanda bucket di
+  // query string, misalnya
+  //   https://pelacak.contoh/beacon?x=/storage/v1/object/public/merchant-media/<uid>/a.webp
+  // Nilai itu berakhir sebagai <img src> di halaman publik, sehingga tiap
+  // pengunjung mengirim IP dan User-Agent-nya ke host pilihan merchant.
+  //
+  // Constraint `merchants_avatar_url_scoped` menegakkan aturan yang sama di
+  // database, karena Server Action ini bukan satu-satunya jalur tulis --
+  // `authenticated` punya grant UPDATE pada kolom ini lewat PostgREST.
   if (avatarUrl !== "") {
     const awalanBucket = `/storage/v1/object/public/${MEDIA_BUCKET}/`;
-    const posisi = avatarUrl.indexOf(awalanBucket);
-    if (
-      !avatarUrl.startsWith("https://") ||
-      posisi === -1 ||
-      !isScopedMediaPath(avatarUrl.slice(posisi + awalanBucket.length), user.id)
-    ) {
+    let sah = false;
+
+    try {
+      const url = new URL(avatarUrl);
+      const asal = new URL(clientEnv().supabaseUrl);
+      sah =
+        url.protocol === "https:" &&
+        url.origin === asal.origin &&
+        url.search === "" &&
+        url.hash === "" &&
+        url.pathname.startsWith(awalanBucket) &&
+        isScopedMediaPath(
+          decodeURIComponent(url.pathname.slice(awalanBucket.length)),
+          user.id,
+        );
+    } catch {
+      sah = false;
+    }
+
+    if (!sah) {
       return { status: "error", message: PESAN_PATH_TIDAK_VALID };
     }
   }
