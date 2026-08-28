@@ -1666,3 +1666,205 @@ select case
            then 'OK   t26h avatar Google dari signup tetap tersalin apa adanya'
          else 'FAIL t26h avatar Google dari signup tidak tersalin'
        end as t26h;
+
+-- ===========================================================================
+-- 27. Profil kuesioner onboarding (20260829000100)
+-- ===========================================================================
+
+-- 27a. anon tidak punya hak APA PUN atas merchant_profiles. Ini pengujian
+-- terpenting di migration ini.
+select
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'SELECT')
+       then 'FAIL t27a anon bisa SELECT merchant_profiles'
+       else 'OK   t27a anon tidak bisa SELECT merchant_profiles' end as t27a,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'INSERT')
+       then 'FAIL t27a anon bisa INSERT merchant_profiles'
+       else 'OK   t27a anon tidak bisa INSERT merchant_profiles' end as t27a2,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'UPDATE')
+       then 'FAIL t27a anon bisa UPDATE merchant_profiles'
+       else 'OK   t27a anon tidak bisa UPDATE merchant_profiles' end as t27a3,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'DELETE')
+       then 'FAIL t27a anon bisa DELETE merchant_profiles'
+       else 'OK   t27a anon tidak bisa DELETE merchant_profiles' end as t27a4,
+  case when has_table_privilege('authenticated', 'public.merchant_profiles', 'SELECT')
+       then 'OK   t27a authenticated bisa SELECT merchant_profiles'
+       else 'FAIL t27a authenticated tidak bisa SELECT merchant_profiles' end as t27a5;
+
+-- 27b. Hak EXECUTE complete_onboarding
+select
+  case when has_function_privilege('anon',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'EXECUTE')
+       then 'FAIL t27b anon bisa EXECUTE complete_onboarding'
+       else 'OK   t27b anon tidak bisa EXECUTE complete_onboarding' end as t27b,
+  case when has_function_privilege('authenticated',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'EXECUTE')
+       then 'OK   t27b authenticated bisa EXECUTE complete_onboarding'
+       else 'FAIL t27b authenticated tidak bisa EXECUTE complete_onboarding' end as t27b2;
+
+-- 27c. Merchant uji baru khusus bagian ini.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('aaaaaaaa-0000-0000-0000-00000000000a', 'kuesioner@example.com',
+   '{"full_name":"Barbershop Uji"}'::jsonb);
+
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, business_category, business_type_slug)
+     values ('aaaaaaaa-0000-0000-0000-00000000000a', 'KECANTIKAN', 'barbershop')$q$,
+  't27c profil valid');
+
+-- 27d. Enum menolak nilai di luar daftar.
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles set business_category = 'KULINER'
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27d business_category di luar enum');
+
+-- 27e. goals: maksimal 3, tolak elemen NULL, tolak array kosong.
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW','DP_SULIT','JADWAL_BENTROK']::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals tepat 3 elemen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW','DP_SULIT','JADWAL_BENTROK','CHAT_BERULANG']::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals 4 elemen ditolak');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW', null]::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals mengandung NULL ditolak');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array[]::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals array kosong ditolak');
+
+-- 27f. current_channels: maksimal 6, tolak elemen NULL.
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set current_channels = array['WHATSAPP','INSTAGRAM_DM']::public.booking_channel[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27f current_channels 2 elemen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set current_channels = array['WHATSAPP', null]::public.booking_channel[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27f current_channels mengandung NULL ditolak');
+
+-- 27g. Dijawab dan dilewati saling meniadakan.
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set optional_answered_at = now(), optional_skipped_at = now()
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27g optional_answered_at dan optional_skipped_at bersamaan ditolak');
+
+-- 27h. Hapus merchant ikut menghapus profilnya (cascade).
+delete from auth.users where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+select case when (select count(*) from public.merchant_profiles
+                  where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a') = 0
+            then 'OK   t27h profil ikut terhapus saat merchant dihapus'
+            else 'FAIL t27h profil tertinggal setelah merchant dihapus' end as t27h;
+
+-- ===========================================================================
+-- 27i-27k. Atomicity complete_onboarding.
+--
+-- CATATAN IMPLEMENTASI: brief tugas ini awalnya menulis kasus ini dengan
+-- set_config('request.jwt.claims', '{"sub":"...","role":"authenticated"}', true)
+-- -- pola PostgREST asli. Tapi stub auth.uid() di 00_supabase_stub.sql (TIDAK
+-- diubah, sesuai batasan tugas) membaca GUC datar "request.jwt.claim.sub",
+-- BUKAN JSON request.jwt.claims:
+--
+--   create or replace function auth.uid() returns uuid
+--   language sql stable as $$ select nullif(current_setting(
+--     'request.jwt.claim.sub', true), '')::uuid $$;
+--
+-- Jadi kasus di bawah memakai mekanisme yang SUDAH dipakai berkas ini
+-- (blok 16 dan 18): "set local role authenticated" + "set local
+-- request.jwt.claim.sub = '<uuid>'" di dalam BEGIN/COMMIT eksplisit --
+-- bukan ROLLBACK seperti blok 16/18, karena di sini efek complete_onboarding
+-- justru harus TERSIMPAN supaya bisa diperiksa (jumlah services/availability)
+-- di statement-statement SETELAH blok transaksinya, termasuk sebagai
+-- prasyarat kasus 27k yang menguji pemanggilan ulang. "set local" otomatis
+-- kembali ke keadaan semula begitu COMMIT selesai, jadi tidak perlu
+-- "reset role" manual seperti pola set_config di akhir versi brief.
+-- ===========================================================================
+
+-- Merchant uji baru khusus atomicity. handle_new_user (trigger di
+-- auth.users) otomatis membuat baris public.merchants untuknya, jadi jalur
+-- yang dipakai complete_onboarding di bawah adalah UPDATE, bukan INSERT.
+insert into auth.users (id, email) values
+  ('bbbbbbbb-0000-0000-0000-00000000000b', 'atomik@example.com');
+
+-- 27i. username yang sudah dipakai merchant lain membatalkan SELURUH
+-- pemanggilan -- tidak ada services maupun availability yang tertinggal.
+-- 'studio-mawar' sudah dipakai 11111111-... dari kasus 2.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_fail(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'studio-mawar', '+6281200000001',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27i complete_onboarding dengan username terpakai ditolak');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+          and (select count(*) from public.merchant_profiles
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+         then 'OK   t27i rollback bersih: tidak ada services/availability/profil tertinggal'
+         else 'FAIL t27i ada baris tertinggal setelah complete_onboarding gagal'
+       end as t27i;
+
+-- 27j. Jalur sukses menghasilkan layanan dan jam kerja sekaligus.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_ok(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'barber-atomik', '+6281200000001',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00"},
+         {"day_of_week":2,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27j complete_onboarding jalur sukses');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 1
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 2
+          and (select username from public.merchants
+               where id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 'barber-atomik'
+         then 'OK   t27j 1 layanan + 2 hari jam kerja + username tersimpan'
+         else 'FAIL t27j hasil complete_onboarding tidak sesuai'
+       end as t27j;
+
+-- 27k. Pemanggilan ulang tidak menggandakan layanan maupun jam kerja.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_ok(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'barber-atomik', '+6281200000001',
+       'KECANTIKAN', 'nail-art', 'Layanan Lain', 60, 90000,
+       '[{"day_of_week":3,"start_time":"10:00","end_time":"18:00"}]'::jsonb)$q$,
+  't27k complete_onboarding dipanggil ulang');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 1
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 2
+          and (select business_type_slug from public.merchant_profiles
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 'nail-art'
+         then 'OK   t27k layanan & jam kerja tidak digandakan, profil ter-update'
+         else 'FAIL t27k pemanggilan ulang menggandakan baris'
+       end as t27k;

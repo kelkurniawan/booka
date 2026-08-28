@@ -27,6 +27,80 @@ export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
 export type MediaKind = "IMAGE" | "VIDEO";
 
+export type BusinessCategory =
+  | "KECANTIKAN"
+  | "KESEHATAN"
+  | "FOTOGRAFI"
+  | "ACARA"
+  | "PENDIDIKAN"
+  | "HEWAN"
+  | "OTOMOTIF"
+  | "SERVIS"
+  | "KONSULTASI"
+  | "LAINNYA";
+
+export type TeamSize = "SENDIRI" | "KECIL_2_5" | "MENENGAH_6_15" | "BESAR_15_PLUS";
+
+/** 38 provinsi Indonesia, sama persis dengan enum `id_province` di database. */
+export type IdProvince =
+  | "ACEH" | "SUMATERA_UTARA" | "SUMATERA_BARAT" | "RIAU" | "KEPULAUAN_RIAU"
+  | "JAMBI" | "SUMATERA_SELATAN" | "KEPULAUAN_BANGKA_BELITUNG" | "BENGKULU"
+  | "LAMPUNG" | "DKI_JAKARTA" | "JAWA_BARAT" | "BANTEN" | "JAWA_TENGAH"
+  | "DI_YOGYAKARTA" | "JAWA_TIMUR" | "BALI" | "NUSA_TENGGARA_BARAT"
+  | "NUSA_TENGGARA_TIMUR" | "KALIMANTAN_BARAT" | "KALIMANTAN_TENGAH"
+  | "KALIMANTAN_SELATAN" | "KALIMANTAN_TIMUR" | "KALIMANTAN_UTARA"
+  | "SULAWESI_UTARA" | "GORONTALO" | "SULAWESI_TENGAH" | "SULAWESI_BARAT"
+  | "SULAWESI_SELATAN" | "SULAWESI_TENGGARA" | "MALUKU" | "MALUKU_UTARA"
+  | "PAPUA" | "PAPUA_BARAT" | "PAPUA_BARAT_DAYA" | "PAPUA_TENGAH"
+  | "PAPUA_PEGUNUNGAN" | "PAPUA_SELATAN";
+
+export type BookingChannel =
+  | "WHATSAPP"
+  | "INSTAGRAM_DM"
+  | "TELEPON"
+  | "DATANG_LANGSUNG"
+  | "APLIKASI_LAIN"
+  | "BELUM_ADA";
+
+export type MerchantGoal =
+  | "NO_SHOW"
+  | "DP_SULIT"
+  | "JADWAL_BENTROK"
+  | "CHAT_BERULANG"
+  | "HALAMAN_RAPI"
+  | "LAPORAN_PEMASUKAN";
+
+export type AcquisitionSource =
+  | "INSTAGRAM"
+  | "TIKTOK"
+  | "TEMAN"
+  | "GOOGLE"
+  | "KOMUNITAS"
+  | "LAINNYA";
+
+/**
+ * Jawaban kuesioner onboarding. Barisnya OPSIONAL -- merchant lama dari
+ * sebelum kuesioner ada tidak punya baris sama sekali, dan itu berbeda dari
+ * merchant yang punya baris dengan blok opsional kosong.
+ *
+ * `optional_answered_at` dan `optional_skipped_at` tidak pernah terisi
+ * bersamaan (constraint merchant_profiles_optional_exclusive).
+ */
+export type MerchantProfile = {
+  merchant_id: string;
+  business_category: BusinessCategory;
+  business_type_slug: string | null;
+  team_size: TeamSize | null;
+  province: IdProvince | null;
+  current_channels: BookingChannel[] | null;
+  goals: MerchantGoal[] | null;
+  acquisition_source: AcquisitionSource | null;
+  optional_answered_at: string | null;
+  optional_skipped_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Diturunkan resolveTheme() dari luminansi background, BUKAN kolom database.
  * Terang/gelap tidak boleh dipilih terpisah dari warna: mode gelap di atas
@@ -222,6 +296,14 @@ export type Database = {
           merchant_id: string;
         };
         Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_profiles: {
+        Row: MerchantProfile;
+        Insert: Partial<
+          Omit<MerchantProfile, "merchant_id" | "business_category" | Timestamps>
+        > & { merchant_id: string; business_category: BusinessCategory };
+        Update: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       services: {
@@ -435,6 +517,33 @@ export type Database = {
         };
         Returns: Booking[];
       };
+      /**
+       * Menyimpan seluruh hasil wizard onboarding dalam satu transaksi:
+       * identitas merchant, profil kuesioner, layanan pertama, dan jam
+       * kerja. SECURITY INVOKER -- RLS dan grant per kolom tetap berlaku.
+       *
+       * Layanan hanya disisipkan bila merchant belum punya layanan, dan jam
+       * kerja hanya bila merchant belum punya baris availability. Lihat
+       * supabase/migrations/20260829000100_onboarding_profile.sql.
+       */
+      complete_onboarding: {
+        Args: {
+          p_full_name: string;
+          p_username: string;
+          p_whatsapp_number: string;
+          p_business_category: BusinessCategory;
+          p_business_type_slug: string | null;
+          p_service_name: string;
+          p_service_duration_minutes: number;
+          p_service_price: number;
+          p_availability: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+          }[];
+        };
+        Returns: undefined;
+      };
     };
     Enums: {
       subscription_tier: SubscriptionTier;
@@ -443,6 +552,12 @@ export type Database = {
       connection_status: ConnectionStatus;
       connection_mode: ConnectionMode;
       payment_environment: PaymentEnvironment;
+      business_category: BusinessCategory;
+      team_size: TeamSize;
+      id_province: IdProvince;
+      booking_channel: BookingChannel;
+      merchant_goal: MerchantGoal;
+      acquisition_source: AcquisitionSource;
     };
     CompositeTypes: { [_ in never]: never };
   };
