@@ -1797,9 +1797,16 @@ select case when (select count(*) from public.merchant_profiles
 insert into auth.users (id, email) values
   ('bbbbbbbb-0000-0000-0000-00000000000b', 'atomik@example.com');
 
--- 27i. username yang sudah dipakai merchant lain membatalkan SELURUH
--- pemanggilan -- tidak ada services maupun availability yang tertinggal.
--- 'studio-mawar' sudah dipakai 11111111-... dari kasus 2.
+-- 27i. username yang sudah dipakai merchant lain ditolak. CATATAN: ini gagal
+-- di TAHAP PERTAMA complete_onboarding (UPDATE identitas) -- sebelum profil,
+-- layanan, maupun jam kerja sempat disentuh sama sekali. Karena itu kasus ini
+-- HANYA membuktikan penolakan usernamenya, BUKAN atomicity fungsi: assersi
+-- "tidak ada baris tertinggal" di bawah akan bernilai OK untuk implementasi
+-- apa pun -- atomik ataupun tidak -- karena step 2-4 memang tidak pernah
+-- dieksekusi untuk diuji. Pembuktian atomicity SUNGGUHAN (kegagalan di TAHAP
+-- AKHIR membatalkan tahap-tahap awal yang sudah sempat berjalan) ada di
+-- 27i-bis tepat di bawah blok ini. 'studio-mawar' sudah dipakai 11111111-...
+-- dari kasus 2.
 begin;
 set local role authenticated;
 set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
@@ -1818,9 +1825,56 @@ select case
                where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
           and (select count(*) from public.merchant_profiles
                where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
-         then 'OK   t27i rollback bersih: tidak ada services/availability/profil tertinggal'
+         then 'OK   t27i tidak ada services/availability/profil untuk merchant yang gagal di tahap identitas (TIDAK membuktikan atomicity tahap akhir -- lihat t27i-bis)'
          else 'FAIL t27i ada baris tertinggal setelah complete_onboarding gagal'
        end as t27i;
+
+-- ===========================================================================
+-- 27i-bis. Atomicity SUNGGUHAN: kegagalan di TAHAP TERAKHIR (jam kerja)
+-- membatalkan tahap-tahap SEBELUMNYA (identitas, profil, layanan) yang
+-- sudah sempat berjalan lebih dulu di pemanggilan yang SAMA. Kasus 27i di
+-- atas gagal di tahap PERTAMA sehingga tidak pernah menguji ini -- pola di
+-- bawah meniru t25a/t25b (replace_merchant_faqs, ~250 baris di atas) yang
+-- sama-sama memaksa kegagalan di ujung akhir lalu memeriksa sisa tahap awal.
+--
+-- day_of_week 9 ditolak oleh constraint availability_day_range (1-7) pada
+-- INSERT jam kerja di step 4 complete_onboarding -- step TERAKHIR. Kalau
+-- step 1-3 (UPDATE merchants, INSERT merchant_profiles, INSERT services)
+-- benar-benar sudah berjalan sebelum step 4 gagal, tapi fungsi ini TIDAK
+-- atomik (mis. seseorang menambah EXCEPTION WHEN OTHERS di sekitar salah
+-- satu step lalu melanjutkan), baris-baris step 1-3 akan tertinggal --
+-- persis yang diperiksa di bawah gagal menangkapnya kalau itu terjadi.
+-- ===========================================================================
+
+-- Merchant uji baru khusus 27i-bis, terpisah dari bbbbbbbb... di atas supaya
+-- baris merchants-nya benar-benar tidak tersentuh sama sekali sebelum kasus
+-- ini (bukan sekadar "kembali ke keadaan lama").
+insert into auth.users (id, email) values
+  ('cccccccc-0000-0000-0000-00000000000c', 'atomik-akhir@example.com');
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'cccccccc-0000-0000-0000-00000000000c';
+select pg_temp.expect_fail(
+  $q$select public.complete_onboarding(
+       'Barber Akhir', 'atomik-tahap-akhir', '+6281200000002',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":9,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27i-bis kegagalan step availability (day_of_week di luar 1-7) ditolak');
+rollback;
+
+select case
+         when (select username from public.merchants
+               where id = 'cccccccc-0000-0000-0000-00000000000c') is null
+          and (select onboarded_at from public.merchants
+               where id = 'cccccccc-0000-0000-0000-00000000000c') is null
+          and (select count(*) from public.merchant_profiles
+               where merchant_id = 'cccccccc-0000-0000-0000-00000000000c') = 0
+          and (select count(*) from public.services
+               where merchant_id = 'cccccccc-0000-0000-0000-00000000000c') = 0
+         then 'OK   t27i-bis identitas/profil/layanan tahap awal ikut batal saat step availability gagal (atomicity sungguhan terbukti)'
+         else 'FAIL t27i-bis tahap awal (identitas/profil/layanan) tertinggal walau step availability ditolak -- fungsi TIDAK atomik'
+       end as t27i_bis;
 
 -- 27j. Jalur sukses menghasilkan layanan dan jam kerja sekaligus.
 begin;
