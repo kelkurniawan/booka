@@ -83,12 +83,20 @@ export type AcquisitionSource =
  * sebelum kuesioner ada tidak punya baris sama sekali, dan itu berbeda dari
  * merchant yang punya baris dengan blok opsional kosong.
  *
+ * `business_category` NULLABLE sejak migration
+ * 20260829000200_nullable_business_category.sql -- NULL berarti merchant
+ * ditawari kuesioner dan memilih tidak menjawab (lihat `optional_skipped_at`
+ * di bawah), BUKAN jawaban apa pun, dan harus tetap terbedakan dari kategori
+ * `LAINNYA` yang sungguh dipilih. Constraint
+ * merchant_profiles_category_required_with_answers menjaga arah sebaliknya:
+ * begitu ADA jawaban kuesioner apa pun tersimpan, kolom ini wajib terisi.
+ *
  * `optional_answered_at` dan `optional_skipped_at` tidak pernah terisi
  * bersamaan (constraint merchant_profiles_optional_exclusive).
  */
 export type MerchantProfile = {
   merchant_id: string;
-  business_category: BusinessCategory;
+  business_category: BusinessCategory | null;
   business_type_slug: string | null;
   team_size: TeamSize | null;
   province: IdProvince | null;
@@ -300,9 +308,9 @@ export type Database = {
       };
       merchant_profiles: {
         Row: MerchantProfile;
-        Insert: Partial<
-          Omit<MerchantProfile, "merchant_id" | "business_category" | Timestamps>
-        > & { merchant_id: string; business_category: BusinessCategory };
+        Insert: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>> & {
+          merchant_id: string;
+        };
         Update: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };

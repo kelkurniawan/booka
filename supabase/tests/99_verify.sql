@@ -1922,3 +1922,96 @@ select case
          then 'OK   t27k layanan & jam kerja tidak digandakan, profil ter-update'
          else 'FAIL t27k pemanggilan ulang menggandakan baris'
        end as t27k;
+
+-- ===========================================================================
+-- 28. business_category NULLABLE (20260829000200) -- constraint
+-- merchant_profiles_category_required_with_answers.
+--
+-- Tujuan: NULL berarti "ditawari kuesioner, memilih tidak menjawab" (lewat
+-- dismissal "Nanti saja"), dan itu harus tetap terbedakan dari kategori
+-- LAINNYA yang sungguh dipilih. Constraint-nya menahan arah sebaliknya:
+-- begitu ADA jawaban kuesioner apa pun tersimpan, business_category wajib
+-- ikut terisi. optional_skipped_at SENGAJA tidak memicu constraint ini --
+-- itulah kasus dismissal yang harus tetap lolos dengan kategori NULL.
+-- Merchant uji di sini semuanya baru, uuid tidak dipakai di bagian lain
+-- berkas ini.
+-- ===========================================================================
+
+insert into auth.users (id, email) values
+  ('dddddddd-0000-0000-0000-00000000000d', 'kuesioner-dismiss@example.com'),
+  ('eeeeeeee-0000-0000-0000-00000000000e', 'kuesioner-team-size@example.com'),
+  ('ffffffff-0000-0000-0000-00000000000f', 'kuesioner-answered-at@example.com'),
+  ('12341234-0000-0000-0000-000000000001', 'kuesioner-goals@example.com'),
+  ('43214321-0000-0000-0000-000000000002', 'kuesioner-isi-belakangan@example.com');
+
+-- 28a. Dismissal murni: hanya merchant_id + optional_skipped_at,
+-- business_category NULL -- persis baris yang dihasilkan skipOptionalProfile
+-- untuk merchant yang barisnya belum ada sama sekali. HARUS diterima.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, optional_skipped_at)
+     values ('dddddddd-0000-0000-0000-00000000000d', now())$q$,
+  't28a dismissal murni (business_category NULL, optional_skipped_at terisi) diterima');
+
+select case
+         when (select business_category from public.merchant_profiles
+               where merchant_id = 'dddddddd-0000-0000-0000-00000000000d') is null
+          and (select optional_skipped_at from public.merchant_profiles
+               where merchant_id = 'dddddddd-0000-0000-0000-00000000000d') is not null
+         then 'OK   t28a-verif baris dismissal tersimpan dengan kategori NULL'
+         else 'FAIL t28a-verif baris dismissal tidak sesuai harapan'
+       end as t28a_verif;
+
+-- 28b. business_category NULL dengan team_size terisi -- ditolak.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, team_size)
+     values ('eeeeeeee-0000-0000-0000-00000000000e', 'SENDIRI')$q$,
+  't28b business_category NULL + team_size terisi ditolak');
+
+-- 28c. business_category NULL dengan optional_answered_at terisi -- ditolak.
+-- Ini kasus "baris mengaku sudah dijawab tapi kategorinya tidak diketahui"
+-- yang harus mustahil terjadi.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, optional_answered_at)
+     values ('ffffffff-0000-0000-0000-00000000000f', now())$q$,
+  't28c business_category NULL + optional_answered_at terisi ditolak');
+
+-- 28d. business_category NULL dengan goals terisi -- ditolak.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, goals)
+     values ('12341234-0000-0000-0000-000000000001',
+             array['NO_SHOW']::public.merchant_goal[])$q$,
+  't28d business_category NULL + goals terisi ditolak');
+
+-- 28e. Jalur "declined, lalu kembali mengisi": baris dismissal (kategori
+-- NULL) diisi kategori sungguhan lewat saveProfileFromDashboard (UPDATE
+-- business_category), lalu jawaban opsional lain menyusul lewat
+-- saveOptionalProfile (UPDATE team_size dkk + optional_answered_at,
+-- optional_skipped_at dikosongkan). Kedua langkah harus diterima begitu
+-- kategorinya sudah terisi lebih dulu.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, optional_skipped_at)
+     values ('43214321-0000-0000-0000-000000000002', now())$q$,
+  't28e-1 baris dismissal awal untuk merchant "isi belakangan"');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set business_category = 'LAINNYA'
+     where merchant_id = '43214321-0000-0000-0000-000000000002'$q$,
+  't28e-2 mengisi business_category pada baris dismissal diterima');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set team_size = 'SENDIRI',
+         optional_answered_at = now(),
+         optional_skipped_at = null
+     where merchant_id = '43214321-0000-0000-0000-000000000002'$q$,
+  't28e-3 menambah jawaban opsional setelah kategori terisi diterima');
+
+select case
+         when (select business_category from public.merchant_profiles
+               where merchant_id = '43214321-0000-0000-0000-000000000002') = 'LAINNYA'
+          and (select team_size from public.merchant_profiles
+               where merchant_id = '43214321-0000-0000-0000-000000000002') = 'SENDIRI'
+         then 'OK   t28e-verif kategori & jawaban opsional tersimpan setelah "isi belakangan"'
+         else 'FAIL t28e-verif hasil "isi belakangan" tidak sesuai'
+       end as t28e_verif;

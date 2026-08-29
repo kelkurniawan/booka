@@ -14,10 +14,19 @@ import { ProfileNudgeDialog } from "./profile-nudge-dialog";
  *    belum pernah dijawab maupun dilewati (`optional_answered_at` dan
  *    `optional_skipped_at` keduanya null).
  * 2. Merchant lama dari SEBELUM kuesioner ada, yang tidak punya baris sama
- *    sekali -- `business_category` NOT NULL sehingga baris itu hanya pernah
- *    dibuat lewat RPC `complete_onboarding` (lihat komentar "missing_profile"
- *    di onboarding/actions.ts). `ProfileNudgeDialog` menangani populasi ini
- *    lewat layar kategori tambahan + `saveProfileFromDashboard`.
+ *    sekali -- baris itu sebelumnya hanya pernah dibuat lewat RPC
+ *    `complete_onboarding`.
+ *
+ * `business_category` NULLABLE sejak migration
+ * 20260829000200_nullable_business_category.sql: dismissal ("Nanti saja")
+ * kini dicatat sebagai baris dengan `business_category = NULL` (bukan
+ * sentinel `LAINNYA`), supaya analitik demografi usaha bisa membedakan
+ * "menolak menjawab" dari kategori LAINNYA yang sungguh dipilih -- lihat
+ * header migration itu. `missingProfile` yang dikirim ke `ProfileNudgeDialog`
+ * karena itu bukan lagi "baris tidak ada" semata, tapi "kategori belum
+ * terisi" -- baris tidak ada ATAU baris ada dengan `business_category` NULL.
+ * `ProfileNudgeDialog` menangani populasi itu lewat layar kategori tambahan
+ * + `saveProfileFromDashboard`.
  */
 export async function ProfileNudge() {
   const { user } = await requireMerchant();
@@ -25,7 +34,7 @@ export async function ProfileNudge() {
 
   const { data: profile, error } = await supabase
     .from("merchant_profiles")
-    .select("optional_answered_at, optional_skipped_at")
+    .select("business_category, optional_answered_at, optional_skipped_at")
     .eq("merchant_id", user.id)
     .maybeSingle();
 
@@ -43,5 +52,7 @@ export async function ProfileNudge() {
 
   if (sudahDitawari) return null;
 
-  return <ProfileNudgeDialog missingProfile={profile === null} />;
+  const missingProfile = profile === null || profile.business_category === null;
+
+  return <ProfileNudgeDialog missingProfile={missingProfile} />;
 }

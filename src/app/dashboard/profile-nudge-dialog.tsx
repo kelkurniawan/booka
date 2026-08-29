@@ -33,15 +33,23 @@ type Screen = "kategori" | "profil" | "kebutuhan";
 /**
  * Kartu tawaran + Dialog kuesioner untuk merchant yang belum pernah menjawab
  * atau melewati blok opsional. Render-nya diputuskan `ProfileNudge` (Server
- * Component) berdasarkan ada/tidaknya baris `merchant_profiles`.
+ * Component) berdasarkan ada/tidaknya baris `merchant_profiles` DAN
+ * business_category-nya -- lihat komentar di profile-nudge.tsx.
+ *
+ * `missingProfile` bernilai true untuk DUA keadaan: baris belum ada sama
+ * sekali (merchant lama dari sebelum kuesioner ada), atau baris sudah ada
+ * tapi `business_category`-nya NULL (merchant yang pernah menekan
+ * "Nanti saja" lalu kembali lewat "Isi sekarang"). Keduanya sama-sama butuh
+ * layar "kategori" di bawah lebih dulu.
  *
  * `StepProfil` dan `StepKebutuhan` dipakai APA ADANYA -- komponen yang persis
  * sama dengan yang dipakai wizard (spec 8.5) -- termasuk tombol "Lewati"/
  * "Simpan" bawaannya yang langsung memanggil skipOptionalProfile/
- * saveOptionalProfile. Itu hanya berfungsi kalau baris `merchant_profiles`
- * sudah ada; untuk merchant yang barisnya belum ada sama sekali, layar
- * "kategori" di bawah membuat barisnya lebih dulu lewat
- * `saveProfileFromDashboard` (upsert) sebelum kedua komponen itu dipasang.
+ * saveOptionalProfile. `saveOptionalProfile` (via "Simpan") mensyaratkan
+ * business_category sudah terisi (lihat constraint
+ * merchant_profiles_category_required_with_answers); layar "kategori" di
+ * bawah memastikan itu lewat `saveProfileFromDashboard` (upsert) sebelum
+ * kedua komponen itu dipasang.
  */
 export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean }) {
   const [open, setOpen] = useState(false);
@@ -61,35 +69,21 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
    * actions.ts), yang di sini efeknya cuma me-refresh halaman yang sama --
    * ProfileNudge (Server Component) query ulang lalu tidak lagi merender
    * kartu ini karena optional_skipped_at sudah terisi.
+   *
+   * `skipOptionalProfile` sendiri sudah upsert (lihat actions.ts), jadi di
+   * sini TIDAK perlu lagi membuat baris `merchant_profiles` lebih dulu untuk
+   * merchant yang belum punya baris (`missingProfile`) -- business_category
+   * nullable sejak migration 20260829000200_nullable_business_category.sql,
+   * dan dismissal SENGAJA dicatat dengan kategori NULL, bukan sentinel
+   * apa pun. Merchant tetap bisa mengisi kategori sungguhannya lewat
+   * "Isi sekarang" kapan saja.
    */
   function handleNantiSaja() {
     setSkipError(null);
     startSkip(async () => {
-      // Merchant lama tanpa baris merchant_profiles (missingProfile) tidak
-      // bisa langsung "dilewati" -- business_category NOT NULL di database
-      // mencegah baris itu dibuat tanpa kategori sama sekali, dan
-      // skipOptionalProfile hanya bisa UPDATE baris yang sudah ada (lihat
-      // komentar status "missing_profile" di actions.ts). LAINNYA dipakai di
-      // sini sebagai kategori sentinel: ia sudah jadi keranjang "tidak masuk
-      // kategori lain" di enum-nya sendiri, business_type_slug-nya boleh
-      // NULL, dan memakainya tidak butuh migration atau kolom baru. Merchant
-      // tetap bisa mengoreksi kategori sungguhannya lewat "Isi sekarang"
-      // kapan saja -- baris ini bukan jawaban permanen, hanya syarat teknis
-      // supaya kartunya bisa ditutup.
-      if (missingProfile) {
-        const formData = new FormData();
-        formData.set("business_category", "LAINNYA");
-        const created = await saveProfileFromDashboard(INITIAL_STATE, formData);
-        if (created.status !== "success") {
-          setSkipError("Gagal menyimpan. Coba lagi.");
-          return;
-        }
-      }
-
       const result = await skipOptionalProfile();
       // Jalur sukses berakhir lewat redirect() di dalam action, jadi baris di
-      // bawah ini hanya tercapai kalau UPDATE-nya gagal atau (race jarang)
-      // barisnya ternyata masih belum ada.
+      // bawah ini hanya tercapai kalau upsert-nya gagal.
       if (result.status !== "success") {
         setSkipError(result.message ?? "Gagal menyimpan. Coba lagi.");
       }
@@ -164,10 +158,15 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
 }
 
 /**
- * Layar tambahan HANYA untuk merchant yang baris `merchant_profiles`-nya
- * belum ada sama sekali. `business_category` NOT NULL di database, jadi baris
- * ini tidak bisa dibuat tanpa kategori -- bahkan "Lewati" pun butuh baris ini
- * ada lebih dulu (lihat status "missing_profile" di actions.ts).
+ * Layar tambahan untuk merchant yang belum punya `business_category`
+ * tersimpan -- baik baris `merchant_profiles`-nya belum ada sama sekali,
+ * maupun sudah ada tapi kategorinya NULL (bekas dismissal via "Nanti saja").
+ * `saveOptionalProfile` (dipanggil tombol "Simpan" di StepKebutuhan)
+ * mensyaratkan business_category sudah terisi -- lihat constraint
+ * merchant_profiles_category_required_with_answers di migration
+ * 20260829000200_nullable_business_category.sql -- jadi layar ini WAJIB
+ * mengisinya lebih dulu lewat `saveProfileFromDashboard` sebelum StepProfil/
+ * StepKebutuhan dipasang.
  *
  * Memakai ulang `StepUsaha` (langkah 1 wizard) apa adanya, termasuk peta
  * ikonnya -- lihat komentar CATEGORY_ICONS di step-usaha.tsx.

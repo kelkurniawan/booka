@@ -239,12 +239,16 @@ export async function saveOptionalProfile(
   //
   // `.select("merchant_id").maybeSingle()` dipakai, BUKAN update polos --
   // PostgREST melaporkan `error: null` sekalipun UPDATE mengenai NOL baris.
-  // `merchant_profiles.business_category` NOT NULL, jadi baris ini HANYA
-  // pernah dibuat oleh RPC complete_onboarding (Task 1). Merchant yang
-  // sudah onboarding SEBELUM migration itu tidak punya baris sama sekali --
-  // lihat catatan di src/types/database.ts pada tipe merchant_profiles.
-  // Tanpa deteksi baris-nol ini, merchant itu melihat "tersimpan" padahal
-  // tidak ada satu kolom pun yang tertulis.
+  // Fungsi ini SENGAJA tetap UPDATE (bukan upsert seperti skipOptionalProfile
+  // /saveProfileFromDashboard di bawah): mengisi blok opsional adalah jawaban
+  // SUNGGUHAN, jadi butuh business_category yang sudah pasti terisi lebih
+  // dulu (lihat constraint merchant_profiles_category_required_with_answers
+  // di migration 20260829000200_nullable_business_category.sql) -- kalau
+  // baris belum ada sama sekali, ProfileNudgeDialog wajib mengumpulkan
+  // kategori dulu lewat KategoriStep/saveProfileFromDashboard sebelum layar
+  // ini pernah ditampilkan. Tanpa deteksi baris-nol ini, merchant yang
+  // barisnya memang belum ada akan melihat "tersimpan" padahal tidak ada
+  // satu kolom pun yang tertulis.
   const { data, error } = await supabase
     .from("merchant_profiles")
     .update({
@@ -279,10 +283,26 @@ export async function saveOptionalProfile(
 /**
  * Merchant melewati blok opsional. Ditandai, bukan dihapus dari alur.
  *
- * Mengembalikan OnboardingState, bukan redirect tanpa syarat -- kegagalan
- * UPDATE (termasuk baris yang tidak ada sama sekali, lihat komentar di
- * saveOptionalProfile) sebelumnya diam-diam terlihat seperti berhasil
- * karena redirect tetap jalan tanpa memeriksa errornya.
+ * `upsert`, BUKAN update biasa -- sejak business_category menjadi NULLABLE
+ * (migration 20260829000200_nullable_business_category.sql), dismissal
+ * sudah tidak butuh baris merchant_profiles ada lebih dulu maupun kategori
+ * apa pun untuk dicatat: baris "menolak menjawab" secara sah punya
+ * business_category NULL. Ini menyatukan DUA populasi (merchant yang
+ * barisnya sudah ada dari RPC complete_onboarding, dan merchant lama yang
+ * barisnya belum pernah ada sama sekali) lewat SATU jalur, menggantikan pola
+ * lama yang memaksa ProfileNudgeDialog membuat baris dengan kategori sentinel
+ * 'LAINNYA' terlebih dulu via saveProfileFromDashboard sebelum baris ini
+ * bisa di-UPDATE.
+ *
+ * Hanya kolom `optional_skipped_at`/`optional_answered_at` yang dikirim di
+ * payload -- pada konflik (baris sudah ada), PostgREST hanya menulis ulang
+ * kolom yang ada di payload, jadi business_category dan jawaban lain yang
+ * sudah tersimpan (mis. merchant yang sebelumnya menjawab, lalu melewati
+ * blok berikutnya) TIDAK ikut tertimpa NULL. `upsert` aman di sini --
+ * `authenticated` punya `insert` penuh plus `update` per kolom yang mencakup
+ * seluruh kolom non-kunci (`merchant_id` adalah primary key, bukan kolom
+ * yang di-grant update-nya) -- lihat komentar serupa di
+ * saveProfileFromDashboard di bawah.
  */
 export async function skipOptionalProfile(): Promise<OnboardingState> {
   const supabase = await createClient();
@@ -292,40 +312,29 @@ export async function skipOptionalProfile(): Promise<OnboardingState> {
 
   if (!user) redirect(ROUTES.login);
 
-  const { data, error } = await supabase
-    .from("merchant_profiles")
-    .update({
+  const { error } = await supabase.from("merchant_profiles").upsert(
+    {
+      merchant_id: user.id,
       optional_skipped_at: new Date().toISOString(),
       optional_answered_at: null,
-    })
-    .eq("merchant_id", user.id)
-    .select("merchant_id")
-    .maybeSingle();
+    },
+    { onConflict: "merchant_id" },
+  );
 
   if (error) {
     return { status: "error", message: "Gagal menyimpan. Coba lagi." };
-  }
-
-  if (!data) {
-    // Merchant lama tanpa baris merchant_profiles -- lihat komentar di
-    // saveOptionalProfile. Task 8 wajib membuat baris ini lebih dulu
-    // sebelum status "dilewati" bisa dicatat untuk merchant ini.
-    return {
-      status: "missing_profile",
-      message: "Profil usaha belum lengkap. Lengkapi bidang usaha dulu.",
-    };
   }
 
   redirect(ROUTES.dashboard);
 }
 
 /**
- * Dipanggil dari `ProfileNudge` (dashboard) HANYA untuk merchant lama yang
- * sama sekali tidak punya baris `merchant_profiles` -- lihat komentar
- * "missing_profile" di saveOptionalProfile/skipOptionalProfile. Mereka
- * onboarding sebelum kuesioner ada, jadi RPC `complete_onboarding` (satu-
- * satunya jalur INSERT lain ke tabel ini) tidak pernah membuat baris untuk
- * mereka.
+ * Dipanggil dari `ProfileNudge` (dashboard) untuk merchant yang belum punya
+ * `business_category` tersimpan -- baik yang baris `merchant_profiles`-nya
+ * belum ada sama sekali (merchant lama dari sebelum kuesioner ada), maupun
+ * yang barisnya sudah ada tapi kategorinya NULL (pernah menekan "Nanti saja"
+ * lewat `skipOptionalProfile`, lalu kembali lewat "Isi sekarang"). Kedua
+ * populasi itu sama-sama butuh `KategoriStep` di ProfileNudgeDialog.
  *
  * `upsert` aman DI SINI, berbeda dari `merchants` (lihat komentar 1. di
  * migration `complete_onboarding`): `authenticated` punya `insert` penuh
@@ -334,10 +343,13 @@ export async function skipOptionalProfile(): Promise<OnboardingState> {
  * jadi tidak ada masalah grant kolom `id` yang memaksa RPC memakai pola
  * update-lalu-insert di sana.
  *
- * Hanya menulis `business_category`/`business_type_slug` -- ini adalah
- * langkah "buat barisnya dulu" sebelum dialog lanjut ke pertanyaan opsional
- * yang sama (StepProfil/StepKebutuhan) yang kini bisa memakai UPDATE biasa
- * karena barisnya sudah ada.
+ * Hanya menulis `business_category`/`business_type_slug` -- pada konflik,
+ * PostgREST hanya menulis ulang kolom yang ada di payload, jadi
+ * optional_answered_at/optional_skipped_at milik baris yang sudah ada
+ * (mis. dari dismissal sebelumnya) tidak ikut tertimpa. Ini langkah "pastikan
+ * kategorinya terisi dulu" sebelum dialog lanjut ke pertanyaan opsional yang
+ * sama (StepProfil/StepKebutuhan), yang selalu memakai UPDATE biasa karena
+ * barisnya sudah pasti ada di titik itu.
  */
 export async function saveProfileFromDashboard(
   _prevState: OnboardingState,
