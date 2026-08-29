@@ -11,7 +11,13 @@ import { completeOnboardingSchema, optionalProfileSchema } from "@/lib/validatio
 import { hoursToRows } from "./wizard-state";
 
 export type OnboardingState = {
-  status: "idle" | "error" | "success";
+  // "missing_profile" -- lihat komentar di saveOptionalProfile/
+  // skipOptionalProfile: merchant lama tanpa baris merchant_profiles sama
+  // sekali (dari sebelum Task 1). Dipisah dari "error" biasa karena "Coba
+  // lagi" tidak akan pernah berhasil di sini -- Task 8 perlu tahu supaya
+  // bisa mengarahkan merchant mengisi bidang usaha dulu, bukan menyuruhnya
+  // mengulang aksi yang sama.
+  status: "idle" | "error" | "success" | "missing_profile";
   message?: string;
   fieldErrors?: Partial<
     Record<"full_name" | "username" | "whatsapp_number" | "service" | "hours", string>
@@ -205,25 +211,55 @@ export async function saveOptionalProfile(
   // merchant_profiles_optional_exclusive menolak keduanya terisi bersamaan,
   // dan merchant yang tadinya melewati lalu kembali menjawab sudah bukan
   // "melewati" lagi.
-  const { error } = await supabase
+  //
+  // `.select("merchant_id").maybeSingle()` dipakai, BUKAN update polos --
+  // PostgREST melaporkan `error: null` sekalipun UPDATE mengenai NOL baris.
+  // `merchant_profiles.business_category` NOT NULL, jadi baris ini HANYA
+  // pernah dibuat oleh RPC complete_onboarding (Task 1). Merchant yang
+  // sudah onboarding SEBELUM migration itu tidak punya baris sama sekali --
+  // lihat catatan di src/types/database.ts pada tipe merchant_profiles.
+  // Tanpa deteksi baris-nol ini, merchant itu melihat "tersimpan" padahal
+  // tidak ada satu kolom pun yang tertulis.
+  const { data, error } = await supabase
     .from("merchant_profiles")
     .update({
       ...parsed.data,
       optional_answered_at: new Date().toISOString(),
       optional_skipped_at: null,
     })
-    .eq("merchant_id", user.id);
+    .eq("merchant_id", user.id)
+    .select("merchant_id")
+    .maybeSingle();
 
   if (error) {
     return { status: "error", message: "Gagal menyimpan. Coba lagi." };
+  }
+
+  if (!data) {
+    // Tidak ada baris merchant_profiles untuk merchant ini -- merchant lama
+    // dari sebelum Task 1. Task 8 (dialog kuesioner dari dashboard) WAJIB
+    // mengumpulkan business_category dan MEMBUAT baris ini (insert, bukan
+    // update) sebelum jawaban opsional bisa disimpan -- RPC
+    // complete_onboarding tidak pernah dipanggil ulang untuk merchant lama.
+    return {
+      status: "missing_profile",
+      message: "Profil usaha belum lengkap. Lengkapi bidang usaha dulu.",
+    };
   }
 
   revalidatePath(ROUTES.dashboard);
   return { status: "success" };
 }
 
-/** Merchant melewati blok opsional. Ditandai, bukan dihapus dari alur. */
-export async function skipOptionalProfile(): Promise<void> {
+/**
+ * Merchant melewati blok opsional. Ditandai, bukan dihapus dari alur.
+ *
+ * Mengembalikan OnboardingState, bukan redirect tanpa syarat -- kegagalan
+ * UPDATE (termasuk baris yang tidak ada sama sekali, lihat komentar di
+ * saveOptionalProfile) sebelumnya diam-diam terlihat seperti berhasil
+ * karena redirect tetap jalan tanpa memeriksa errornya.
+ */
+export async function skipOptionalProfile(): Promise<OnboardingState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -231,13 +267,29 @@ export async function skipOptionalProfile(): Promise<void> {
 
   if (!user) redirect(ROUTES.login);
 
-  await supabase
+  const { data, error } = await supabase
     .from("merchant_profiles")
     .update({
       optional_skipped_at: new Date().toISOString(),
       optional_answered_at: null,
     })
-    .eq("merchant_id", user.id);
+    .eq("merchant_id", user.id)
+    .select("merchant_id")
+    .maybeSingle();
+
+  if (error) {
+    return { status: "error", message: "Gagal menyimpan. Coba lagi." };
+  }
+
+  if (!data) {
+    // Merchant lama tanpa baris merchant_profiles -- lihat komentar di
+    // saveOptionalProfile. Task 8 wajib membuat baris ini lebih dulu
+    // sebelum status "dilewati" bisa dicatat untuk merchant ini.
+    return {
+      status: "missing_profile",
+      message: "Profil usaha belum lengkap. Lengkapi bidang usaha dulu.",
+    };
+  }
 
   redirect(ROUTES.dashboard);
 }
