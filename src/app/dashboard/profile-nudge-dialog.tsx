@@ -1,10 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { Sparkles } from "lucide-react";
 
-import { saveProfileFromDashboard, type OnboardingState } from "@/app/onboarding/actions";
+import {
+  saveProfileFromDashboard,
+  skipOptionalProfile,
+  type OnboardingState,
+} from "@/app/onboarding/actions";
 import { StepKebutuhan } from "@/app/onboarding/steps/step-kebutuhan";
 import { StepProfil } from "@/app/onboarding/steps/step-profil";
 import { StepUsaha } from "@/app/onboarding/steps/step-usaha";
@@ -46,6 +50,51 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
     teamSize: TeamSize | null;
     province: IdProvince | null;
   }>({ teamSize: null, province: null });
+  const [skipping, startSkip] = useTransition();
+  const [skipError, setSkipError] = useState<string | null>(null);
+
+  /**
+   * "Nanti saja" -- tanpa ini kartu tampil selamanya untuk merchant yang tidak
+   * mau menjawab (lihat FINDING 4 di laporan review). `skipOptionalProfile`
+   * dipanggil sebagai fungsi biasa, BUKAN lewat useActionState: ia tidak
+   * menerima argumen dan redirect ke dashboard sendiri saat berhasil (lihat
+   * actions.ts), yang di sini efeknya cuma me-refresh halaman yang sama --
+   * ProfileNudge (Server Component) query ulang lalu tidak lagi merender
+   * kartu ini karena optional_skipped_at sudah terisi.
+   */
+  function handleNantiSaja() {
+    setSkipError(null);
+    startSkip(async () => {
+      // Merchant lama tanpa baris merchant_profiles (missingProfile) tidak
+      // bisa langsung "dilewati" -- business_category NOT NULL di database
+      // mencegah baris itu dibuat tanpa kategori sama sekali, dan
+      // skipOptionalProfile hanya bisa UPDATE baris yang sudah ada (lihat
+      // komentar status "missing_profile" di actions.ts). LAINNYA dipakai di
+      // sini sebagai kategori sentinel: ia sudah jadi keranjang "tidak masuk
+      // kategori lain" di enum-nya sendiri, business_type_slug-nya boleh
+      // NULL, dan memakainya tidak butuh migration atau kolom baru. Merchant
+      // tetap bisa mengoreksi kategori sungguhannya lewat "Isi sekarang"
+      // kapan saja -- baris ini bukan jawaban permanen, hanya syarat teknis
+      // supaya kartunya bisa ditutup.
+      if (missingProfile) {
+        const formData = new FormData();
+        formData.set("business_category", "LAINNYA");
+        const created = await saveProfileFromDashboard(INITIAL_STATE, formData);
+        if (created.status !== "success") {
+          setSkipError("Gagal menyimpan. Coba lagi.");
+          return;
+        }
+      }
+
+      const result = await skipOptionalProfile();
+      // Jalur sukses berakhir lewat redirect() di dalam action, jadi baris di
+      // bawah ini hanya tercapai kalau UPDATE-nya gagal atau (race jarang)
+      // barisnya ternyata masih belum ada.
+      if (result.status !== "success") {
+        setSkipError(result.message ?? "Gagal menyimpan. Coba lagi.");
+      }
+    });
+  }
 
   return (
     <Alert>
@@ -56,41 +105,59 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
           Bantu kami menyesuaikan Booka untuk usaha Anda. Beberapa pertanyaan
           singkat, semuanya opsional.
         </p>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="mt-2 min-h-11 w-fit">
-              Isi sekarang
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Sedikit lagi</DialogTitle>
-              <DialogDescription>
-                Semuanya boleh dilewati kapan saja.
-              </DialogDescription>
-            </DialogHeader>
+        {skipError ? (
+          <p role="alert" className="text-destructive text-sm">
+            {skipError}
+          </p>
+        ) : null}
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm" className="min-h-11 w-fit">
+                Isi sekarang
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Sedikit lagi</DialogTitle>
+                <DialogDescription>
+                  Semuanya boleh dilewati kapan saja.
+                </DialogDescription>
+              </DialogHeader>
 
-            {screen === "kategori" ? (
-              <KategoriStep onSaved={() => setScreen("profil")} />
-            ) : null}
+              {screen === "kategori" ? (
+                <KategoriStep onSaved={() => setScreen("profil")} />
+              ) : null}
 
-            {screen === "profil" ? (
-              <StepProfil
-                teamSize={profilDraft.teamSize}
-                province={profilDraft.province}
-                onChange={setProfilDraft}
-                onNext={() => setScreen("kebutuhan")}
-              />
-            ) : null}
+              {screen === "profil" ? (
+                <StepProfil
+                  teamSize={profilDraft.teamSize}
+                  province={profilDraft.province}
+                  onChange={setProfilDraft}
+                  onNext={() => setScreen("kebutuhan")}
+                />
+              ) : null}
 
-            {screen === "kebutuhan" ? (
-              <StepKebutuhan
-                teamSize={profilDraft.teamSize}
-                province={profilDraft.province}
-              />
-            ) : null}
-          </DialogContent>
-        </Dialog>
+              {screen === "kebutuhan" ? (
+                <StepKebutuhan
+                  teamSize={profilDraft.teamSize}
+                  province={profilDraft.province}
+                />
+              ) : null}
+            </DialogContent>
+          </Dialog>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="min-h-11 w-fit"
+            disabled={skipping}
+            onClick={handleNantiSaja}
+          >
+            {skipping ? <Spinner /> : null}
+            Nanti saja
+          </Button>
+        </div>
       </AlertDescription>
     </Alert>
   );

@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { AlertCircle, ArrowRight, Check } from "lucide-react";
 
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,8 @@ export function OnboardingForm({
   defaultFullName,
   defaultUsername = "",
   defaultUsernameTouched,
+  defaultWhatsappNumber = "",
+  onBackToStep,
   onDraftChange,
   onSuccess,
 }: {
@@ -44,6 +47,15 @@ export function OnboardingForm({
    * lihat resolveIdentityDefaults di identity-draft.ts.
    */
   defaultUsernameTouched?: boolean;
+  /** Nomor WhatsApp yang sudah diketik merchant, kalau ada -- lihat draft di bawah. */
+  defaultWhatsappNumber?: string;
+  /**
+   * Mengembalikan merchant ke langkah `layanan` atau `jam` saat submit akhir
+   * gagal di sana (mis. cadangan sessionStorage yang basi/tersunting manual
+   * lolos validasi klien tapi ditolak Zod di server). Opsional supaya
+   * pemanggil lama tidak wajib menyediakannya.
+   */
+  onBackToStep?: (step: "layanan" | "jam") => void;
   /**
    * Melaporkan nilai yang sedang diketik ke wizard, dipanggil dari onChange --
    * BUKAN dari efek. Wizard menyimpannya supaya "Kembali" lalu maju lagi tidak
@@ -62,6 +74,9 @@ export function OnboardingForm({
   const [username, setUsername] = useState(
     () => defaultUsername || suggestUsername(defaultFullName),
   );
+  // Sama seperti fullName/username: OnboardingForm dilepas total saat wizard
+  // menampilkan StepJam, jadi nomor yang sudah diketik hilang tanpa ini.
+  const [whatsappNumber, setWhatsappNumber] = useState(defaultWhatsappNumber);
   // Selama merchant belum menyentuh kolom username, isinya mengikuti nama usaha.
   // Username bawaan dari halaman depan dianggap pilihan sadar, jadi tidak ditimpa.
   const [usernameTouched, setUsernameTouched] = useState(
@@ -129,6 +144,7 @@ export function OnboardingForm({
               fullName: value,
               username: usernameBerikutnya,
               usernameTouched,
+              whatsappNumber,
             });
           }}
           placeholder="Studio Mawar"
@@ -157,7 +173,12 @@ export function OnboardingForm({
               const value = event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
               setUsernameTouched(true);
               setUsername(value);
-              onDraftChange({ fullName, username: value, usernameTouched: true });
+              onDraftChange({
+                fullName,
+                username: value,
+                usernameTouched: true,
+                whatsappNumber,
+              });
             }}
             placeholder="studio-mawar"
             autoComplete="off"
@@ -195,6 +216,12 @@ export function OnboardingForm({
           name="whatsapp_number"
           type="tel"
           inputMode="tel"
+          value={whatsappNumber}
+          onChange={(event) => {
+            const value = event.target.value;
+            setWhatsappNumber(value);
+            onDraftChange({ fullName, username, usernameTouched, whatsappNumber: value });
+          }}
           autoComplete="tel"
           placeholder="0812-3456-7890"
           required
@@ -207,6 +234,56 @@ export function OnboardingForm({
           <FieldError>{state.fieldErrors.whatsapp_number}</FieldError>
         ) : null}
       </Field>
+
+      {/*
+        service/hours berasal dari langkah 2 dan 3, yang formulir ini tidak
+        punya field untuk merendernya. Ini kejadian nyata: cadangan
+        sessionStorage yang basi/tersunting manual bisa lolos pemeriksaan
+        klien lalu ditolak Zod persis di sini -- lihat FINDING 2 di laporan
+        review. Tanpa alert ini merchant hanya melihat "Selesai" berhenti
+        tanpa pesan apa pun.
+      */}
+      {state.fieldErrors?.service ? (
+        <Alert variant="destructive">
+          <AlertCircle aria-hidden />
+          <AlertTitle>Layanan perlu diperbaiki</AlertTitle>
+          <AlertDescription>
+            <p>{state.fieldErrors.service}</p>
+            {onBackToStep ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 min-h-11 w-fit"
+                onClick={() => onBackToStep("layanan")}
+              >
+                Perbaiki layanan
+              </Button>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      {state.fieldErrors?.hours ? (
+        <Alert variant="destructive">
+          <AlertCircle aria-hidden />
+          <AlertTitle>Jam kerja perlu diperbaiki</AlertTitle>
+          <AlertDescription>
+            <p>{state.fieldErrors.hours}</p>
+            {onBackToStep ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 min-h-11 w-fit"
+                onClick={() => onBackToStep("jam")}
+              >
+                Perbaiki jam kerja
+              </Button>
+            ) : null}
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {state.status === "error" && !state.fieldErrors ? (
         <p role="alert" className="text-destructive text-sm">

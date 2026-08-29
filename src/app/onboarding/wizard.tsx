@@ -295,6 +295,8 @@ export function OnboardingWizard({
             defaultFullName={identitas.fullName}
             defaultUsername={identitas.username}
             defaultUsernameTouched={identitas.usernameTouched}
+            defaultWhatsappNumber={identitas.whatsappNumber}
+            onBackToStep={goTo}
             onDraftChange={setIdentitasDraft}
             onSuccess={handleSuccess}
           />

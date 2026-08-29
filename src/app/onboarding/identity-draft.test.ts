@@ -11,6 +11,7 @@ describe("resolveIdentityDefaults", () => {
       fullName: "Studio Mawar",
       username: "",
       usernameTouched: false,
+      whatsappNumber: "",
     });
   });
 
@@ -28,11 +29,13 @@ describe("resolveIdentityDefaults", () => {
         fullName: "Barbershop Jaya",
         username: "barbershop-jaya",
         usernameTouched: true,
+        whatsappNumber: "0812-1111-2222",
       }),
       {
         fullName: "Barbershop Jaya",
         username: "barbershop-jaya",
         usernameTouched: true,
+        whatsappNumber: "0812-1111-2222",
       },
     );
   });
@@ -45,6 +48,7 @@ describe("resolveIdentityDefaults", () => {
       fullName: "Barbershop Jaya",
       username: "barbershop-jaya",
       usernameTouched: false,
+      whatsappNumber: "",
     });
 
     assert.equal(hasil.usernameTouched, false);
@@ -59,8 +63,23 @@ describe("resolveIdentityDefaults", () => {
         fullName: "",
         username: "",
         usernameTouched: true,
+        whatsappNumber: "",
       }),
-      { fullName: "", username: "", usernameTouched: true },
+      { fullName: "", username: "", usernameTouched: true, whatsappNumber: "" },
     );
+  });
+
+  it("nomor WhatsApp yang sudah diketik tidak hilang saat kembali lalu maju lagi", () => {
+    // Regresi: langkah identitas dulu hanya menahan fullName/username lewat
+    // draft, sehingga nomor WhatsApp yang sudah diketik hilang begitu wizard
+    // melepas OnboardingForm untuk menampilkan StepJam, lalu merchant kembali.
+    const hasil = resolveIdentityDefaults(SERVER, {
+      fullName: "Studio Mawar",
+      username: "studio-mawar",
+      usernameTouched: true,
+      whatsappNumber: "0812-3456-7890",
+    });
+
+    assert.equal(hasil.whatsappNumber, "0812-3456-7890");
   });
 });

@@ -19,6 +19,8 @@ export type IdentityDraft = {
    * pilihan sadar.
    */
   usernameTouched: boolean;
+  /** Sama seperti fullName/username: hilang diam-diam tanpa draft ini saat "Kembali". */
+  whatsappNumber: string;
 };
 
 /**
@@ -42,5 +44,8 @@ export function resolveIdentityDefaults(
     // Username yang sudah diketik merchant di halaman depan (`?u=`) dianggap
     // pilihan sadar, sama seperti menyuntingnya di sini.
     usernameTouched: Boolean(server.username),
+    // Server tidak pernah punya nomor WhatsApp bawaan -- kolom ini hanya
+    // pernah terisi lewat draft merchant sendiri.
+    whatsappNumber: "",
   };
 }

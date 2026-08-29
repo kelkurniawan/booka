@@ -119,7 +119,16 @@ export async function completeOnboarding(
         fieldErrors[key] ??= issue.message;
       }
     }
-    return { status: "error", message: "Periksa kembali isian Anda", fieldErrors };
+    // Zod bisa gagal di path yang tidak punya field renderable di form ini
+    // (mis. business_category) -- kalau begitu fieldErrors tetap objek
+    // kosong. Objek kosong itu truthy, jadi kalau tetap dikirim, pesan umum
+    // di bawah (`state.status === "error" && !state.fieldErrors`) diam-diam
+    // tertutup dan tombol "Selesai" terlihat seperti tidak melakukan apa-apa.
+    return {
+      status: "error",
+      message: "Periksa kembali isian Anda",
+      fieldErrors: Object.keys(fieldErrors).length > 0 ? fieldErrors : undefined,
+    };
   }
 
   const supabase = await createClient();
@@ -178,7 +187,19 @@ export async function completeOnboarding(
 
   // Sengaja TIDAK redirect ke dashboard di sini -- wizard menampilkan layar
   // sukses dulu, baru merchant lanjut sendiri (atau ke blok opsional).
-  revalidatePath(ROUTES.dashboard);
+  //
+  // JANGAN tambahkan revalidatePath(ROUTES.dashboard) di sini. Next.js
+  // merender ulang rute yang SEDANG dibuka begitu Server Action memanggil
+  // revalidatePath, dalam response yang sama -- rute yang sedang dibuka di
+  // titik ini adalah /onboarding, dan penjaga di page.tsx
+  // (`if (merchant?.username) redirect(ROUTES.dashboard)`) langsung
+  // menembakkan merchant ke dashboard begitu render ulang itu terjadi,
+  // karena RPC di atas baru saja menulis username-nya. Akibatnya layar
+  // sukses dan kedua layar bonus tidak pernah sempat tampil. Merchant belum
+  // pernah membuka /dashboard di titik ini, jadi tidak ada cache yang perlu
+  // dibersihkan -- beda dengan saveOptionalProfile dan
+  // saveProfileFromDashboard di bawah, yang memang berjalan dari/menuju
+  // /dashboard dan tetap butuh revalidatePath.
   return { status: "success" };
 }
 
