@@ -151,4 +151,44 @@ describe("cadangan sessionStorage", () => {
   it("memulihkan jawaban yang tersimpan", () => {
     assert.deepEqual(parseStoredAnswers(JSON.stringify(JAM)), JAM);
   });
+
+  it("menolak service yang bentuknya salah, bukan meloloskannya setengah jadi", () => {
+    const kosong = parseStoredAnswers(
+      JSON.stringify({ ...USAHA, service: {} }),
+    );
+    assert.equal(kosong.service, null);
+    assert.equal(isStepUnlocked("jam", kosong), false);
+
+    const hargaAngka = parseStoredAnswers(
+      JSON.stringify({
+        ...USAHA,
+        service: { name: "Potong rambut", durationMinutes: 45, price: 50000 },
+      }),
+    );
+    assert.equal(hargaAngka.service, null);
+    assert.equal(isStepUnlocked("jam", hargaAngka), false);
+  });
+
+  it("menolak hours yang bentuknya salah, bukan meloloskannya setengah jadi", () => {
+    const kosong = parseStoredAnswers(
+      JSON.stringify({ ...LAYANAN, hours: {} }),
+    );
+    assert.equal(kosong.hours, null);
+    assert.equal(isStepUnlocked("identitas", kosong), false);
+
+    const salahBentuk = parseStoredAnswers(
+      JSON.stringify({ ...LAYANAN, hours: { price: 123 } }),
+    );
+    assert.equal(salahBentuk.hours, null);
+    assert.equal(isStepUnlocked("identitas", salahBentuk), false);
+
+    const hariBukanArray = parseStoredAnswers(
+      JSON.stringify({
+        ...LAYANAN,
+        hours: { days: "1,2,3", startTime: "09:00", endTime: "17:00" },
+      }),
+    );
+    assert.equal(hariBukanArray.hours, null);
+    assert.equal(isStepUnlocked("identitas", hariBukanArray), false);
+  });
 });

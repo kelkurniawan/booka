@@ -206,18 +206,45 @@ export function parseStoredAnswers(raw: string | null): WizardAnswers {
     typeof value.category === "string" ? (value.category as BusinessCategory) : null;
   const typeSlug = typeof value.typeSlug === "string" ? value.typeSlug : null;
 
-  const service =
-    typeof value.service === "object" && value.service !== null
-      ? (value.service as WizardServiceAnswer)
-      : null;
-  const hours =
-    typeof value.hours === "object" && value.hours !== null
-      ? (value.hours as WizardHoursAnswer)
-      : null;
+  const service = isValidServiceAnswer(value.service) ? value.service : null;
+  const hours = isValidHoursAnswer(value.hours) ? value.hours : null;
 
   if (value.category !== undefined && value.category !== null && category === null) {
     return EMPTY_ANSWERS;
   }
 
   return { category, typeSlug, service, hours };
+}
+
+/**
+ * `service` yang bentuknya salah -- objek kosong, tipe field keliru -- tetap
+ * lolos `typeof === "object"`, lalu diam-diam "menjawab" langkah `jam`
+ * tanpa data yang bisa dipakai. Diperiksa field demi field, sama ketatnya
+ * dengan `category` di atas, supaya bentuk yang tidak lengkap jadi `null`
+ * alih-alih objek setengah jadi.
+ */
+function isValidServiceAnswer(value: unknown): value is WizardServiceAnswer {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    typeof candidate.name === "string" &&
+    typeof candidate.durationMinutes === "number" &&
+    typeof candidate.price === "string"
+  );
+}
+
+/**
+ * Sama seperti isValidServiceAnswer, untuk `hours`. `days` harus array
+ * angka -- kalau tidak, `hoursToRows` akan meledak di `[...hours.days].sort`
+ * sebelum Zod sempat memvalidasi ulang saat kirim.
+ */
+function isValidHoursAnswer(value: unknown): value is WizardHoursAnswer {
+  if (typeof value !== "object" || value === null) return false;
+  const candidate = value as Record<string, unknown>;
+  return (
+    Array.isArray(candidate.days) &&
+    candidate.days.every((day) => typeof day === "number") &&
+    typeof candidate.startTime === "string" &&
+    typeof candidate.endTime === "string"
+  );
 }
