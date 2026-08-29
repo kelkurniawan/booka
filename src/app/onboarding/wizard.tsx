@@ -10,6 +10,7 @@ import { typesForCategory } from "@/lib/business/catalog";
 import { ROUTES } from "@/lib/routes";
 import type { BusinessCategory } from "@/types/database";
 
+import { resolveIdentityDefaults, type IdentityDraft } from "./identity-draft";
 import { OnboardingForm } from "./onboarding-form";
 import { StepJam } from "./steps/step-jam";
 import { StepLayanan } from "./steps/step-layanan";
@@ -136,6 +137,21 @@ export function OnboardingWizard({
    */
   const [finished, setFinished] = useState<FinishedStep | null>(null);
   const [username, setUsername] = useState("");
+
+  /**
+   * Nama usaha dan username yang sedang diketik. Ditahan di sini karena
+   * `OnboardingForm` dilepas sepenuhnya saat merchant menekan "Kembali" --
+   * tanpa ini, ketikannya hilang diam-diam di langkah terakhir sebelum kirim.
+   *
+   * Diisi dari onChange form, BUKAN dari efek: `react-hooks/set-state-in-effect`
+   * adalah error di repo ini, dan melaporkan lewat efek juga akan menambah satu
+   * render bertingkat per ketukan tanpa alasan.
+   */
+  const [identitasDraft, setIdentitasDraft] = useState<IdentityDraft | null>(null);
+  const identitas = resolveIdentityDefaults(
+    { fullName: defaultFullName, username: defaultUsername ?? "" },
+    identitasDraft,
+  );
 
   const step: WizardStep = finished ?? resolveStep(requested, answers);
 
@@ -266,8 +282,10 @@ export function OnboardingWizard({
           <OnboardingForm
             answers={answers}
             appUrl={appUrl}
-            defaultFullName={defaultFullName}
-            defaultUsername={defaultUsername}
+            defaultFullName={identitas.fullName}
+            defaultUsername={identitas.username}
+            defaultUsernameTouched={identitas.usernameTouched}
+            onDraftChange={setIdentitasDraft}
             onSuccess={handleSuccess}
           />
           <Button

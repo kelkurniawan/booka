@@ -16,6 +16,7 @@ import {
   type OnboardingState,
   type UsernameCheck,
 } from "./actions";
+import type { IdentityDraft } from "./identity-draft";
 import { answersToPayload } from "./wizard-payload";
 import type { WizardAnswers } from "./wizard-state";
 
@@ -26,6 +27,8 @@ export function OnboardingForm({
   appUrl,
   defaultFullName,
   defaultUsername = "",
+  defaultUsernameTouched,
+  onDraftChange,
   onSuccess,
 }: {
   /** Jawaban langkah 1-3, dikirim sebagai satu field JSON `answers`. */
@@ -34,6 +37,19 @@ export function OnboardingForm({
   defaultFullName: string;
   /** Username yang sudah diketik merchant di halaman depan, kalau ada. */
   defaultUsername?: string;
+  /**
+   * Apakah username bawaan sudah dianggap pilihan sadar merchant. Dipisah dari
+   * `defaultUsername` karena saat form dipasang ulang, username turunan
+   * otomatis dan username yang disunting sendiri terlihat sama dari luar --
+   * lihat resolveIdentityDefaults di identity-draft.ts.
+   */
+  defaultUsernameTouched?: boolean;
+  /**
+   * Melaporkan nilai yang sedang diketik ke wizard, dipanggil dari onChange --
+   * BUKAN dari efek. Wizard menyimpannya supaya "Kembali" lalu maju lagi tidak
+   * membuang ketikan merchant.
+   */
+  onDraftChange: (draft: IdentityDraft) => void;
   /**
    * Dipanggil sekali saat RPC berhasil, membawa username yang baru dipakai.
    * Wizard-lah yang berpindah ke layar sukses -- aksi sengaja TIDAK redirect.
@@ -48,7 +64,9 @@ export function OnboardingForm({
   );
   // Selama merchant belum menyentuh kolom username, isinya mengikuti nama usaha.
   // Username bawaan dari halaman depan dianggap pilihan sadar, jadi tidak ditimpa.
-  const [usernameTouched, setUsernameTouched] = useState(Boolean(defaultUsername));
+  const [usernameTouched, setUsernameTouched] = useState(
+    defaultUsernameTouched ?? Boolean(defaultUsername),
+  );
   // Hasil disimpan bersama username yang diperiksa, supaya respons yang
   // datang terlambat tidak dipakai untuk username yang sudah berganti.
   const [lastCheck, setLastCheck] = useState<{
@@ -102,8 +120,16 @@ export function OnboardingForm({
           value={fullName}
           onChange={(event) => {
             const value = event.target.value;
+            const usernameBerikutnya = usernameTouched
+              ? username
+              : suggestUsername(value);
             setFullName(value);
-            if (!usernameTouched) setUsername(suggestUsername(value));
+            if (!usernameTouched) setUsername(usernameBerikutnya);
+            onDraftChange({
+              fullName: value,
+              username: usernameBerikutnya,
+              usernameTouched,
+            });
           }}
           placeholder="Studio Mawar"
           autoComplete="organization"
@@ -128,8 +154,10 @@ export function OnboardingForm({
             name="username"
             value={username}
             onChange={(event) => {
+              const value = event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
               setUsernameTouched(true);
-              setUsername(event.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""));
+              setUsername(value);
+              onDraftChange({ fullName, username: value, usernameTouched: true });
             }}
             placeholder="studio-mawar"
             autoComplete="off"

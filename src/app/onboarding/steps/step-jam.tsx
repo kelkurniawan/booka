@@ -38,15 +38,15 @@ export function StepJam({
   const [pilihan, setPilihan] = useState<string | null>(() =>
     presetTersimpan ?? (answers.hours ? SENDIRI : null),
   );
+  // Diambil dari jawaban tersimpan APA PUN asalnya. Preset pun menyimpan hari
+  // dan jamnya ke `answers.hours`, jadi merchant yang kembali lalu menekan
+  // "Atur sendiri" mulai dari preset yang tadi dipilihnya -- bukan dari panel
+  // kosong yang memaksanya mengisi ulang tujuh hari dari nol.
   const [days, setDays] = useState<DayOfWeek[]>(() =>
-    presetTersimpan ? [] : toDaysOfWeek(answers.hours?.days ?? []),
+    toDaysOfWeek(answers.hours?.days ?? []),
   );
-  const [startTime, setStartTime] = useState(
-    presetTersimpan ? "09:00" : (answers.hours?.startTime ?? "09:00"),
-  );
-  const [endTime, setEndTime] = useState(
-    presetTersimpan ? "17:00" : (answers.hours?.endTime ?? "17:00"),
-  );
+  const [startTime, setStartTime] = useState(answers.hours?.startTime ?? "09:00");
+  const [endTime, setEndTime] = useState(answers.hours?.endTime ?? "17:00");
 
   const hasil = hoursStepSchema.safeParse({
     days,
