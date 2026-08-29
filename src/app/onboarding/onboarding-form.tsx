@@ -16,18 +16,29 @@ import {
   type OnboardingState,
   type UsernameCheck,
 } from "./actions";
+import { answersToPayload } from "./wizard-payload";
+import type { WizardAnswers } from "./wizard-state";
 
 const INITIAL_STATE: OnboardingState = { status: "idle" };
 
 export function OnboardingForm({
+  answers,
   appUrl,
   defaultFullName,
   defaultUsername = "",
+  onSuccess,
 }: {
+  /** Jawaban langkah 1-3, dikirim sebagai satu field JSON `answers`. */
+  answers: WizardAnswers;
   appUrl: string;
   defaultFullName: string;
   /** Username yang sudah diketik merchant di halaman depan, kalau ada. */
   defaultUsername?: string;
+  /**
+   * Dipanggil sekali saat RPC berhasil, membawa username yang baru dipakai.
+   * Wizard-lah yang berpindah ke layar sukses -- aksi sengaja TIDAK redirect.
+   */
+  onSuccess: (username: string) => void;
 }) {
   const [state, formAction] = useActionState(completeOnboarding, INITIAL_STATE);
 
@@ -61,12 +72,28 @@ export function OnboardingForm({
     return () => clearTimeout(timer);
   }, [username]);
 
+  // Aksi sengaja TIDAK redirect setelah RPC berhasil -- wizard yang berpindah
+  // ke layar sukses. `status` hanya bergerak sekali ke "success", dan langkah
+  // identitas langsung dilepas begitu wizard berpindah, jadi efek ini praktis
+  // hanya sempat jalan satu kali.
+  useEffect(() => {
+    if (state.status !== "success") return;
+    onSuccess(username);
+  }, [onSuccess, state.status, username]);
+
   const check = lastCheck?.username === username ? lastCheck.result : null;
   const usernameError =
     state.fieldErrors?.username ?? (check?.available === false ? check.reason : undefined);
 
   return (
     <form action={formAction} className="flex flex-col gap-6" noValidate>
+      {/*
+        Jawaban langkah 1-3 ikut sebagai satu field JSON. `service.price`
+        TETAP string: schema menolak string kosong sebelum coercion, dan
+        `Number("")` akan menyelundupkannya masuk sebagai layanan gratis.
+      */}
+      <input type="hidden" name="answers" value={JSON.stringify(answersToPayload(answers))} />
+
       <Field data-invalid={Boolean(state.fieldErrors?.full_name)}>
         <FieldLabel htmlFor="full_name">Nama usaha</FieldLabel>
         <Input
@@ -168,9 +195,9 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending || disabled} className="w-full">
+    <Button type="submit" disabled={pending || disabled} className="min-h-11 w-full">
       {pending ? <Spinner /> : null}
-      Mulai pakai Booka
+      Selesai
       {pending ? null : <ArrowRight />}
     </Button>
   );

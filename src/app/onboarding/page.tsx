@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { serverEnv } from "@/lib/env/server";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
 
-import { OnboardingForm } from "./onboarding-form";
+import { OnboardingWizard } from "./wizard";
 
 export const metadata: Metadata = {
   title: "Lengkapi profil",
@@ -45,6 +38,10 @@ export default async function OnboardingPage({
     .eq("id", user.id)
     .maybeSingle();
 
+  // Penjaga ini juga yang menutup jebakan muat-ulang di layar sukses: begitu
+  // wizard selesai, merchant PUNYA username, jadi memuat ulang
+  // `/onboarding?langkah=sukses` tidak pernah sampai ke wizard -- langsung ke
+  // dashboard, bukan kembali ke form identitas yang sudah terkirim.
   if (merchant?.username) {
     redirect(ROUTES.dashboard);
   }
@@ -55,23 +52,11 @@ export default async function OnboardingPage({
     "";
 
   return (
-    <div className="flex min-h-svh items-center justify-center px-4 py-10">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Satu langkah lagi</CardTitle>
-          <CardDescription>
-            Tentukan tautan booking Anda. Pelanggan cukup membuka tautan ini untuk
-            memesan jadwal dan membayar DP.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <OnboardingForm
-            appUrl={serverEnv().appUrl}
-            defaultFullName={defaultFullName}
-            defaultUsername={usernameSchema.safeParse(u).data ?? ""}
-          />
-        </CardContent>
-      </Card>
-    </div>
+    <OnboardingWizard
+      userId={user.id}
+      appUrl={serverEnv().appUrl}
+      defaultFullName={defaultFullName}
+      defaultUsername={usernameSchema.safeParse(u).data ?? ""}
+    />
   );
 }
