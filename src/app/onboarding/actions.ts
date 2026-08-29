@@ -6,7 +6,11 @@ import { redirect } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
-import { completeOnboardingSchema, optionalProfileSchema } from "@/lib/validations/onboarding";
+import {
+  businessStepSchema,
+  completeOnboardingSchema,
+  optionalProfileSchema,
+} from "@/lib/validations/onboarding";
 
 import { hoursToRows } from "./wizard-state";
 
@@ -292,4 +296,61 @@ export async function skipOptionalProfile(): Promise<OnboardingState> {
   }
 
   redirect(ROUTES.dashboard);
+}
+
+/**
+ * Dipanggil dari `ProfileNudge` (dashboard) HANYA untuk merchant lama yang
+ * sama sekali tidak punya baris `merchant_profiles` -- lihat komentar
+ * "missing_profile" di saveOptionalProfile/skipOptionalProfile. Mereka
+ * onboarding sebelum kuesioner ada, jadi RPC `complete_onboarding` (satu-
+ * satunya jalur INSERT lain ke tabel ini) tidak pernah membuat baris untuk
+ * mereka.
+ *
+ * `upsert` aman DI SINI, berbeda dari `merchants` (lihat komentar 1. di
+ * migration `complete_onboarding`): `authenticated` punya `insert` penuh
+ * plus `update` per kolom yang mencakup SELURUH kolom non-kunci
+ * (`merchant_id` adalah primary key, bukan kolom yang di-grant update-nya),
+ * jadi tidak ada masalah grant kolom `id` yang memaksa RPC memakai pola
+ * update-lalu-insert di sana.
+ *
+ * Hanya menulis `business_category`/`business_type_slug` -- ini adalah
+ * langkah "buat barisnya dulu" sebelum dialog lanjut ke pertanyaan opsional
+ * yang sama (StepProfil/StepKebutuhan) yang kini bisa memakai UPDATE biasa
+ * karena barisnya sudah ada.
+ */
+export async function saveProfileFromDashboard(
+  _prevState: OnboardingState,
+  formData: FormData,
+): Promise<OnboardingState> {
+  const parsed = businessStepSchema.safeParse({
+    business_category: formData.get("business_category"),
+    business_type_slug: formData.get("business_type_slug") || null,
+  });
+
+  if (!parsed.success) {
+    return { status: "error", message: "Pilih bidang usaha Anda" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect(ROUTES.login);
+
+  const { error } = await supabase.from("merchant_profiles").upsert(
+    {
+      merchant_id: user.id,
+      business_category: parsed.data.business_category,
+      business_type_slug: parsed.data.business_type_slug,
+    },
+    { onConflict: "merchant_id" },
+  );
+
+  if (error) {
+    return { status: "error", message: "Gagal menyimpan. Coba lagi." };
+  }
+
+  revalidatePath(ROUTES.dashboard);
+  return { status: "success" };
 }

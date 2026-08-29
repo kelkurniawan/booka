@@ -29,6 +29,15 @@ tidak harus lewat Ubah setelah tersimpan), dan FAQ yang hilang sepenuhnya saat
 kosong. Editornya di `/dashboard/halaman`. Spek dan rencananya di
 `docs/superpowers/`.
 
+`/onboarding` kini wizard interaktif (bidang usaha, layanan pertama, jam
+buka, identitas) yang langsung menyiapkan halaman booking siap pakai, diakhiri
+layar sukses lalu tawaran kuesioner opsional dua langkah (ukuran tim +
+provinsi, lalu kanal pemesanan + kendala utama + sumber tahu Booka) dengan
+tombol "Lewati" yang sama menonjol dengan "Lanjut". Jawabannya masuk tabel
+terpisah `merchant_profiles`, tidak pernah bisa diakses `anon`. Merchant lama
+yang onboarding sebelum kuesioner ini ada ditawari pertanyaan yang sama lewat
+kartu `ProfileNudge` di dashboard. Spek dan rencananya di `docs/superpowers/`.
+
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
 tetap tersedia.

@@ -1,19 +1,19 @@
 "use client";
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
 import { WizardShell } from "@/components/onboarding/wizard-shell";
 import { Button } from "@/components/ui/button";
 import { typesForCategory } from "@/lib/business/catalog";
-import { ROUTES } from "@/lib/routes";
-import type { BusinessCategory } from "@/types/database";
+import type { BusinessCategory, IdProvince, TeamSize } from "@/types/database";
 
 import { resolveIdentityDefaults, type IdentityDraft } from "./identity-draft";
 import { OnboardingForm } from "./onboarding-form";
 import { StepJam } from "./steps/step-jam";
+import { StepKebutuhan } from "./steps/step-kebutuhan";
 import { StepLayanan } from "./steps/step-layanan";
+import { StepProfil } from "./steps/step-profil";
 import { StepSukses } from "./steps/step-sukses";
 import { StepUsaha } from "./steps/step-usaha";
 import {
@@ -152,6 +152,16 @@ export function OnboardingWizard({
     { fullName: defaultFullName, username: defaultUsername ?? "" },
     identitasDraft,
   );
+
+  /**
+   * Jawaban Bonus A (ukuran tim, provinsi), ditahan di sini supaya Bonus B
+   * bisa mengirim keduanya sebagai field tersembunyi dalam satu submit --
+   * lihat komentar di step-kebutuhan.tsx.
+   */
+  const [profilDraft, setProfilDraft] = useState<{
+    teamSize: TeamSize | null;
+    province: IdProvince | null;
+  }>({ teamSize: null, province: null });
 
   const step: WizardStep = finished ?? resolveStep(requested, answers);
 
@@ -307,18 +317,17 @@ export function OnboardingWizard({
         />
       ) : null}
 
-      {step === "profil" || step === "kebutuhan" ? (
-        // Blok opsional dibangun di Task 8. Sampai itu ada, merchant yang
-        // memilih "Lanjut" tetap punya jalan keluar yang jelas.
-        <div className="flex flex-col gap-4">
-          <p className="text-muted-foreground text-sm">
-            Pertanyaan tambahan belum tersedia. Anda bisa mengisinya nanti dari
-            dashboard.
-          </p>
-          <Button asChild className="min-h-11 self-start">
-            <Link href={ROUTES.dashboard}>Ke dashboard</Link>
-          </Button>
-        </div>
+      {step === "profil" ? (
+        <StepProfil
+          teamSize={profilDraft.teamSize}
+          province={profilDraft.province}
+          onChange={setProfilDraft}
+          onNext={() => setFinished("kebutuhan")}
+        />
+      ) : null}
+
+      {step === "kebutuhan" ? (
+        <StepKebutuhan teamSize={profilDraft.teamSize} province={profilDraft.province} />
       ) : null}
     </WizardShell>
   );
