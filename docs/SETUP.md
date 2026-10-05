@@ -29,6 +29,8 @@ Isi nilainya:
 | `TOKEN_ENCRYPTION_KEY` | `openssl rand -base64 32` | Phase 3 |
 | `MIDTRANS_*` / `XENDIT_*` | akun platform/partner gateway | Phase 3 |
 | `CRON_SECRET` | `openssl rand -hex 32` | Phase 6 |
+| `RESEND_API_KEY`, `EMAIL_FROM`, `WHATSAPP_*` | lihat [NOTIFIKASI.md](NOTIFIKASI.md) | opsional |
+| `NEXT_PUBLIC_SENTRY_DSN` | sentry.io → Project Settings → Client Keys | opsional |
 
 ### Format API key
 
