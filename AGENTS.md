@@ -38,6 +38,15 @@ terpisah `merchant_profiles`, tidak pernah bisa diakses `anon`. Merchant lama
 yang onboarding sebelum kuesioner ini ada ditawari pertanyaan yang sama lewat
 kartu `ProfileNudge` di dashboard. Spek dan rencananya di `docs/superpowers/`.
 
+Kesiapan rilis: halaman `/syarat` dan `/privasi` (identitas penyelenggara di
+`src/lib/legal.ts`), unduh data + hapus akun di Pengaturan, robots/sitemap/
+gambar OG, dan Sentry (mati tanpa DSN). Notifikasi email (Resend) dan
+WhatsApp (gateway self-host WAHA/Evolution atau Fonnte) saat DP dibayar plus
+reminder H-1, idempoten lewat `notification_log` — panduan di
+`docs/NOTIFIKASI.md`. Fitur Studio: Analitik, multi-staf (kalender per staf,
+DECISIONS #28), dan domain sendiri (verifikasi TXT, routing di `src/proxy.ts`,
+DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
+
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
 tetap tersedia.
