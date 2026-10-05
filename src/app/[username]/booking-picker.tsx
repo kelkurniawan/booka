@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { formatDuration, formatRupiah } from "@/lib/format";
 import { isoDayOfWeek, jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
+import { ROUTES } from "@/lib/routes";
 import { checkoutSchema } from "@/lib/validations/booking";
 import type { Availability, DayOfWeek, Service } from "@/types/database";
 import { cn } from "@/lib/utils";
@@ -408,6 +410,16 @@ export function BookingPicker({ merchantId, username, services, availability }: 
                 "Konfirmasi booking"
               )}
             </Button>
+            {/* Pelanggan menyerahkan nama + WhatsApp di sini -- titik
+                pengumpulan data pribadi, jadi kebijakannya ditautkan tepat
+                di tempat itu (UU PDP). */}
+            <p className="text-muted-foreground text-center text-xs">
+              Data Anda diproses sesuai{" "}
+              <Link href={ROUTES.privacy} target="_blank" className="underline">
+                Kebijakan Privasi
+              </Link>{" "}
+              Booka.
+            </p>
           </div>
         </form>
       ) : null}

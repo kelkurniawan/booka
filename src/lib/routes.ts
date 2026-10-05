@@ -8,6 +8,11 @@
 export const ROUTES = {
   home: "/",
 
+  // Legal -- kedua segmen sudah dicadangkan di reserved_usernames sejak
+  // migration 20260730000100_reserve_indonesian_routes.sql.
+  terms: "/syarat",
+  privacy: "/privasi",
+
   // Auth
   login: "/masuk",
   signup: "/daftar",

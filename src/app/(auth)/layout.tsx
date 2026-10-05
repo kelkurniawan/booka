@@ -10,8 +10,15 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       </Link>
       <main className="w-full max-w-sm">{children}</main>
       <p className="text-muted-foreground max-w-sm text-center text-xs">
-        Dengan melanjutkan, Anda menyetujui Ketentuan Layanan dan Kebijakan
-        Privasi Booka.
+        Dengan melanjutkan, Anda menyetujui{" "}
+        <Link href={ROUTES.terms} className="hover:text-foreground underline">
+          Ketentuan Layanan
+        </Link>{" "}
+        dan{" "}
+        <Link href={ROUTES.privacy} className="hover:text-foreground underline">
+          Kebijakan Privasi
+        </Link>{" "}
+        Booka.
       </p>
     </div>
   );

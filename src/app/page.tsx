@@ -360,6 +360,14 @@ function SiteFooter() {
     <footer className="border-border border-t">
       <div className="text-muted-foreground mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono">booka</p>
+        <nav className="flex gap-4">
+          <Link href={ROUTES.terms} className="hover:text-foreground">
+            Ketentuan Layanan
+          </Link>
+          <Link href={ROUTES.privacy} className="hover:text-foreground">
+            Kebijakan Privasi
+          </Link>
+        </nav>
         <p>Dibuat untuk usaha jasa kecil di Indonesia.</p>
       </div>
     </footer>
