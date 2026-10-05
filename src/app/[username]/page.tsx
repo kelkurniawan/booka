@@ -169,9 +169,23 @@ export async function generateMetadata({
   const { merchant } = data;
   const name = merchant.full_name ?? merchant.username ?? username;
 
+  const description = merchant.bio ?? `Pesan jadwal ${name} lewat Booka.`;
+
+  // `openGraph` di halaman MENGGANTI milik layout (bukan digabung), jadi
+  // siteName dan locale diulang di sini. Gambarnya datang dari
+  // opengraph-image.tsx di folder ini.
   return {
     title: name,
-    description: merchant.bio ?? `Pesan jadwal ${name} lewat Booka.`,
+    description,
+    alternates: { canonical: ROUTES.merchantPage(merchant.username) },
+    openGraph: {
+      title: name,
+      description,
+      siteName: "Booka",
+      locale: "id_ID",
+      type: "profile",
+      url: ROUTES.merchantPage(merchant.username),
+    },
   };
 }
 

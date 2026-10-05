@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import { Toaster } from "@/components/ui/sonner";
+import { siteUrl } from "@/lib/site";
 
 import "./globals.css";
 
@@ -18,6 +19,14 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Wajib untuk gambar OG: tanpa ini Next memakai localhost dan pratinjau
+  // tautan di WhatsApp/Instagram tidak pernah muncul.
+  metadataBase: siteUrl(),
+  openGraph: {
+    siteName: "Booka",
+    locale: "id_ID",
+    type: "website",
+  },
   title: {
     default: "Booka — Booking & Invoicing untuk usaha kecil",
     template: "%s · Booka",

@@ -44,6 +44,10 @@ select pg_temp.expect_fail(
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'reset-password' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "reset-password"');
+-- Berkas metadata Next.js, ditambahkan di migration 20261005000100.
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'opengraph-image' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "opengraph-image"');
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'AB' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username terlalu pendek / huruf besar');
