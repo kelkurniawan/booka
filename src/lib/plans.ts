@@ -38,6 +38,7 @@ export const PLANS: Plan[] = [
       { label: "10 transaksi per bulan" },
       { label: "1 jenis layanan" },
       { label: "Halaman booking + QRIS" },
+      { label: "Notifikasi email & WhatsApp" },
       { label: "3 tema halaman + FAQ" },
       { label: "Ada watermark Booka" },
     ],
@@ -51,7 +52,7 @@ export const PLANS: Plan[] = [
     features: [
       { label: "Transaksi tanpa batas" },
       { label: "Layanan tanpa batas" },
-      { label: "Reminder WhatsApp otomatis", comingSoon: true },
+      { label: "Reminder WhatsApp H-1 ke pelanggan" },
       { label: "Tanpa watermark" },
       { label: "Semua tema, warna, dan font sendiri" },
       { label: "Video pada layanan" },

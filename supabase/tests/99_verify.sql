@@ -2019,3 +2019,80 @@ select case
          then 'OK   t28e-verif kategori & jawaban opsional tersimpan setelah "isi belakangan"'
          else 'FAIL t28e-verif hasil "isi belakangan" tidak sesuai'
        end as t28e_verif;
+
+-- ===========================================================================
+-- 29. notification_log (20261005000200) -- log + kunci idempotensi notifikasi
+-- ===========================================================================
+
+-- 29a. anon tidak punya hak apa pun; authenticated hanya SELECT (tulis lewat
+-- service role saja).
+select
+  case when has_table_privilege('anon', 'public.notification_log', 'SELECT')
+       then 'FAIL t29a anon bisa SELECT notification_log'
+       else 'OK   t29a anon tidak bisa SELECT notification_log' end as t29a,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'INSERT')
+       then 'FAIL t29a authenticated bisa INSERT notification_log'
+       else 'OK   t29a authenticated tidak bisa INSERT notification_log' end as t29a2,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'UPDATE')
+       then 'FAIL t29a authenticated bisa UPDATE notification_log'
+       else 'OK   t29a authenticated tidak bisa UPDATE notification_log' end as t29a3,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'SELECT')
+       then 'OK   t29a authenticated bisa SELECT notification_log'
+       else 'FAIL t29a authenticated tidak bisa SELECT notification_log' end as t29a4;
+
+-- 29b. Dua merchant, masing-masing satu booking dan satu baris log.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('29292929-0000-0000-0000-000000000001', 'notif-a@example.com', '{}'::jsonb),
+  ('29292929-0000-0000-0000-000000000002', 'notif-b@example.com', '{}'::jsonb);
+
+insert into public.bookings (id, merchant_id, service_name, service_price, duration_minutes,
+                             start_datetime, end_datetime, customer_name, customer_whatsapp, status)
+values
+  ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001', 'Potong',
+   50000, 30, '2027-01-04 09:00+07', '2027-01-04 09:30+07', 'Ani', '+6281100009991', 'PAID'),
+  ('29292929-aaaa-0000-0000-000000000002', '29292929-0000-0000-0000-000000000002', 'Potong',
+   50000, 30, '2027-01-04 09:00+07', '2027-01-04 09:30+07', 'Budi', '+6281100009992', 'PAID');
+
+select pg_temp.expect_ok(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP'),
+            ('29292929-aaaa-0000-0000-000000000002', '29292929-0000-0000-0000-000000000002',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP')$q$,
+  't29b log notifikasi pertama untuk tiap booking');
+
+-- 29c. Klaim kedua untuk (booking, kind, channel) yang sama ditolak unique
+-- constraint -- inilah yang mencegah WhatsApp terkirim dua kali saat
+-- gateway me-retry webhook.
+select pg_temp.expect_fail_code(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP')$q$,
+  '23505',
+  't29c klaim ganda notifikasi yang sama');
+
+-- 29d. Kanal lain untuk booking yang sama tetap boleh.
+select pg_temp.expect_ok(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_MERCHANT', 'EMAIL')$q$,
+  't29d kanal berbeda untuk booking yang sama diterima');
+
+-- 29e. Merchant A hanya melihat log miliknya.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '29292929-0000-0000-0000-000000000001';
+select case when count(*) = 2
+              and bool_and(merchant_id = '29292929-0000-0000-0000-000000000001')
+            then 'OK   t29e merchant hanya melihat log notifikasi miliknya'
+            else 'FAIL t29e merchant melihat ' || count(*) || ' baris log (termasuk milik orang lain?)' end as t29e
+from public.notification_log;
+rollback;
+
+-- 29f. Menghapus booking ikut menghapus lognya (dipakai hapus akun).
+delete from public.bookings where id = '29292929-aaaa-0000-0000-000000000002';
+select case when count(*) = 0
+            then 'OK   t29f log ikut terhapus bersama booking'
+            else 'FAIL t29f log tertinggal setelah booking dihapus' end as t29f
+from public.notification_log
+where booking_id = '29292929-aaaa-0000-0000-000000000002';

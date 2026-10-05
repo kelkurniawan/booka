@@ -214,6 +214,29 @@ export type MerchantFaq = {
   updated_at: string;
 };
 
+export type NotificationKind =
+  | "BOOKING_PAID_MERCHANT"
+  | "BOOKING_PAID_CUSTOMER"
+  | "REMINDER_CUSTOMER";
+export type NotificationChannel = "EMAIL" | "WHATSAPP";
+export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
+
+/**
+ * Satu pengiriman notifikasi. Unique (booking_id, kind, channel) adalah
+ * kunci idempotensinya -- lihat migration 20261005000200_notification_log.sql.
+ */
+export type NotificationLog = {
+  id: string;
+  booking_id: string;
+  merchant_id: string;
+  kind: NotificationKind;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  detail: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Booking = {
   id: string;
   merchant_id: string;
@@ -345,6 +368,16 @@ export type Database = {
           Partial<Pick<MerchantFaq, "id" | "sort_order">>;
         Update: Partial<Omit<MerchantFaq, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      notification_log: {
+        Row: NotificationLog;
+        Insert: Pick<NotificationLog, "booking_id" | "merchant_id" | "kind" | "channel"> &
+          Partial<Pick<NotificationLog, "status" | "detail">>;
+        Update: Partial<Pick<NotificationLog, "status" | "detail">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
       };
       bookings: {
         Row: Booking;
@@ -566,6 +599,9 @@ export type Database = {
       booking_channel: BookingChannel;
       merchant_goal: MerchantGoal;
       acquisition_source: AcquisitionSource;
+      notification_kind: NotificationKind;
+      notification_channel: NotificationChannel;
+      notification_status: NotificationStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

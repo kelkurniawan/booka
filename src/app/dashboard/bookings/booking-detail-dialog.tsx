@@ -20,6 +20,7 @@ import {
   PROVIDER_LABELS,
   STATUS_META,
 } from "./booking-state";
+import { NotificationHistory } from "./notification-history";
 
 /**
  * Nomor WhatsApp pelanggan tersimpan format E.164 ("+62812..." --
@@ -132,6 +133,8 @@ export function BookingDetailDialog({
             </>
           ) : null}
         </dl>
+
+        {open ? <NotificationHistory bookingId={booking.id} /> : null}
 
         {onCancelRequest ? (
           <DialogFooter>

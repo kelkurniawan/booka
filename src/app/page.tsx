@@ -24,7 +24,7 @@ const STEPS = [
   },
   {
     title: "Bayar DP lewat QRIS",
-    body: "Dana masuk ke akun payment gateway Anda. Status pesanan langsung tercatat di dashboard Anda.",
+    body: "Dana masuk ke akun payment gateway Anda. Anda dapat email dan WhatsApp, pelanggan dapat konfirmasi di WhatsApp.",
   },
 ];
 

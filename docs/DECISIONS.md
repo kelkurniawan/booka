@@ -438,3 +438,26 @@ soal berkas di bucket. `deleteService` mengumpulkan path media sebelum
 penghapusan dan mengembalikannya, lalu kliennya menghapus berkasnya. Tanpa ini
 setiap layanan yang dihapus meninggalkan gambar dan video yang dibayar
 selamanya tanpa pernah dirujuk apa pun.
+
+## 27. Notifikasi lewat `after()` + `notification_log`, bukan message queue
+
+**PRD bagian 3 & 5B:** WhatsApp lewat Baileys di VPS, dan webhook melempar
+event ke message queue (Upstash QStash) supaya respons 200 tetap cepat.
+
+**Implementasi:** webhook menjadwalkan `notifyBookingPaid()` dengan `after()`
+dari `next/server` — dikerjakan setelah respons 200 terkirim, dalam fungsi
+yang sama. Pengiriman WhatsApp lewat gateway self-host (WAHA/Evolution, turunan
+Baileys, sesuai PRD) yang dipanggil HTTP, dengan adapter yang juga mendukung
+Fonnte. Email lewat REST API Resend tanpa SDK.
+
+**Alasan:** belum ada pemasukan, jadi tidak ada komponen berbayar. `after()`
+memenuhi alasan PRD meminta queue (respons cepat) tanpa infrastruktur baru.
+Yang hilang dibanding queue adalah retry otomatis bila fungsi mati sebelum
+`after()` selesai. Celah itu ditambal dua cara: event webhook duplikat untuk
+booking yang sudah PAID memicu ulang notifikasi, dan tabel `notification_log`
+dengan unique `(booking_id, kind, channel)` memastikan pesan yang sudah
+terkirim tidak pernah terkirim lagi, siapa pun pemanggilnya.
+
+Reminder H-1 menumpang cron harian (batas paket Hobby), dijadwalkan 08:00 WIB
+supaya pesan tidak datang dini hari. Kalau volume naik, ganti `after()` dengan
+queue sungguhan di satu titik: `defaultDeps.onPaid` di route webhook.

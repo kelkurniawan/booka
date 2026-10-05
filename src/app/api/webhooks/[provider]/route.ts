@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+import { notifyBookingPaid } from "@/lib/notify/dispatch";
 import { getAdapter } from "@/lib/payments";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { parseProviderParam } from "@/lib/payments/oauth-config";
@@ -51,12 +52,20 @@ export type WebhookDeps = {
   createAdminClient: () => WebhookAdminClient;
   loadMerchantCredential: typeof loadMerchantCredential;
   getAdapter: typeof getAdapter;
+  /**
+   * Memicu notifikasi "DP sudah dibayar". Implementasi asli menjadwalkannya
+   * lewat `after()` supaya respons 200 ke gateway tidak menunggu email/WA
+   * terkirim. Idempotensinya dijaga notification_log, jadi aman dipanggil
+   * lebih dari sekali untuk booking yang sama.
+   */
+  onPaid: (bookingId: string) => void;
 };
 
 const defaultDeps: WebhookDeps = {
   createAdminClient: () => createAdminClient() as unknown as WebhookAdminClient,
   loadMerchantCredential,
   getAdapter,
+  onPaid: (bookingId) => after(() => notifyBookingPaid(bookingId)),
 };
 
 /**
@@ -148,6 +157,11 @@ export async function handleWebhook(
   // retry, tanpa efek samping apa pun (nol panggilan UPDATE -- route.test.ts
   // kasus (b)).
   if (!shouldMarkPaid(booking.status)) {
+    // Event duplikat untuk booking yang sudah PAID memicu ulang notifikasi:
+    // kalau pengiriman pertama sempat terputus (fungsi dihentikan sebelum
+    // after() selesai), retry gateway menjadi kesempatan kedua. Yang sudah
+    // terkirim tidak terkirim lagi -- notification_log yang menjaga.
+    if (booking.status === "PAID") deps.onPaid(booking.id);
     if (booking.status === "CANCELLED") {
       console.warn(
         "[webhooks] pembayaran diterima untuk booking yang sudah CANCELLED, tidak di-flip ke PAID",
@@ -183,12 +197,10 @@ export async function handleWebhook(
     return NextResponse.json({ error: "Gagal update booking" }, { status: 500 });
   }
 
-  // Titik pemicu notifikasi WhatsApp (ke merchant + pelanggan) begitu
-  // booking PAID akan ada di sini -- sengaja belum diimplementasikan.
-  // PRD bagian 5B menyebut melempar event ke message queue (Upstash) supaya
-  // respons 200 tetap cepat, tapi proyek ini belum punya message queue
-  // (lihat AGENTS.md/docs/DECISIONS.md) dan notifikasi WhatsApp memang di
-  // luar scope MVP saat ini. Update status di atas sudah cukup untuk Task 9.
+  // PRD bagian 5B meminta message queue supaya respons 200 tetap cepat.
+  // `after()` memberi hal yang sama tanpa infrastruktur tambahan: email/WA
+  // dikirim setelah respons terkirim (lihat docs/DECISIONS.md #27).
+  deps.onPaid(booking.id);
   return NextResponse.json({ ok: true });
 }
 
