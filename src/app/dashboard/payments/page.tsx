@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { getSessionUser } from "@/lib/auth/session";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
+import { getOAuthConfig, isOAuthConfigured } from "@/lib/payments/oauth-config";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -98,6 +99,7 @@ export default async function PaymentsPage({
             connection={connection}
             maskedCredential={maskedCredential}
             isUsedForBooking={isUsedForBooking}
+            oauthAvailable={isOAuthConfigured(getOAuthConfig(provider))}
           />
         ))}
       </div>
