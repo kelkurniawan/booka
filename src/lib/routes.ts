@@ -26,6 +26,7 @@ export const ROUTES = {
   onboarding: "/onboarding",
   dashboard: "/dashboard",
   bookings: "/dashboard/bookings",
+  analytics: "/dashboard/analitik",
   appearance: "/dashboard/halaman",
   services: "/dashboard/services",
   availability: "/dashboard/availability",

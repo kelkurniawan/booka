@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   CalendarClock,
   CreditCard,
   ExternalLink,
@@ -37,6 +38,7 @@ const NAV_GROUPS = [
     label: "Operasional",
     items: [
       { title: "Booking masuk", href: ROUTES.bookings, icon: LayoutList },
+      { title: "Analitik", href: ROUTES.analytics, icon: BarChart3 },
       // Sebelum "Layanan": merchant memikirkan halamannya sebelum memikirkan
       // isinya.
       { title: "Halaman saya", href: ROUTES.appearance, icon: Palette },
