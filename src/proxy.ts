@@ -1,12 +1,27 @@
 import type { NextRequest } from "next/server";
 
+import { handleCustomDomain } from "@/lib/domains/proxy";
+import { isAppHost } from "@/lib/domains/routing";
 import { updateSession } from "@/lib/supabase/proxy";
 
 /**
  * Next.js 16 mengganti nama konvensi `middleware.ts` menjadi `proxy.ts`
  * dengan named export `proxy`.
+ *
+ * Request lewat domain sendiri merchant (paket Studio) ditangani terpisah
+ * dan TIDAK melewati updateSession: di sana hanya halaman publik yang
+ * hidup, jadi tidak ada sesi yang perlu disegarkan.
  */
 export async function proxy(request: NextRequest) {
+  // x-forwarded-host bisa berupa daftar "a, b" bila melewati beberapa proxy;
+  // yang pertama adalah host yang diminta pengunjung.
+  const host = (request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? "")
+    .split(",")[0]
+    .trim();
+  if (host && !isAppHost(host, process.env.NEXT_PUBLIC_APP_URL)) {
+    const handled = await handleCustomDomain(request, host);
+    if (handled) return handled;
+  }
   return await updateSession(request);
 }
 

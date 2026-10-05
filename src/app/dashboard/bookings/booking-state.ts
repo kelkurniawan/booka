@@ -36,7 +36,7 @@ export type BookingListItem = Omit<
  * compiler.
  */
 export const BOOKING_LIST_COLUMNS =
-  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, created_at";
+  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at";
 
 /**
  * Representasi array bertipe dari BOOKING_LIST_COLUMNS di atas -- typo atau
@@ -67,6 +67,8 @@ export const BOOKING_LIST_COLUMN_LIST: readonly (keyof BookingListItem)[] = [
   "cancelled_at",
   "cancel_reason",
   "expires_at",
+  "staff_id",
+  "staff_name",
   "created_at",
 ];
 

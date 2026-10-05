@@ -8,6 +8,7 @@ import { StatCardsSkeleton } from "@/components/ui/skeletons";
 import { ROUTES } from "@/lib/routes";
 
 import { OverviewStats } from "./overview-stats";
+import { ProfileNudge } from "./profile-nudge";
 import { SetupAlerts } from "./setup-alerts";
 import { UpcomingBookings, UpcomingBookingsSkeleton } from "./upcoming-bookings";
 
@@ -24,11 +25,13 @@ export const metadata: Metadata = {
  * upcoming-bookings.tsx, dan queries.ts untuk query yang dibagi di antara
  * komponen-komponen itu supaya tidak dobel.
  *
- * SetupAlerts tidak diberi fallback skeleton: bentuknya dinamis (bisa nol,
- * satu, atau dua alert) sehingga skeleton kotak apa pun akan menyesatkan
- * atau memicu layout shift begitu alert sungguhan muncul. Query-nya sendiri
- * berbagi cache() dengan OverviewStats (lihat queries.ts) jadi biasanya
- * selesai bersamaan dengan kartu statistik.
+ * SetupAlerts dan ProfileNudge tidak diberi fallback skeleton: bentuk
+ * keduanya dinamis (nol atau satu kartu) sehingga skeleton kotak apa pun
+ * akan menyesatkan atau memicu layout shift begitu kontennya muncul.
+ * SetupAlerts berbagi cache() dengan OverviewStats (lihat queries.ts) jadi
+ * biasanya selesai bersamaan dengan kartu statistik. ProfileNudge terpisah
+ * dengan sengaja -- urusannya pengenalan usaha, bukan kesiapan halaman
+ * booking -- lihat komentar di profile-nudge.tsx.
  *
  * UpcomingBookings SEBALIKNYA punya bentuk box tetap (satu Card dengan
  * judul + deskripsi + area list), jadi fallback-nya UpcomingBookingsSkeleton
@@ -47,6 +50,10 @@ export default function DashboardPage() {
 
       <Suspense fallback={null}>
         <SetupAlerts />
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <ProfileNudge />
       </Suspense>
 
       <Suspense fallback={<StatCardsSkeleton />}>

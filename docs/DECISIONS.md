@@ -438,3 +438,80 @@ soal berkas di bucket. `deleteService` mengumpulkan path media sebelum
 penghapusan dan mengembalikannya, lalu kliennya menghapus berkasnya. Tanpa ini
 setiap layanan yang dihapus meninggalkan gambar dan video yang dibayar
 selamanya tanpa pernah dirujuk apa pun.
+
+## 27. Notifikasi lewat `after()` + `notification_log`, bukan message queue
+
+**PRD bagian 3 & 5B:** WhatsApp lewat Baileys di VPS, dan webhook melempar
+event ke message queue (Upstash QStash) supaya respons 200 tetap cepat.
+
+**Implementasi:** webhook menjadwalkan `notifyBookingPaid()` dengan `after()`
+dari `next/server` — dikerjakan setelah respons 200 terkirim, dalam fungsi
+yang sama. Pengiriman WhatsApp lewat gateway self-host (WAHA/Evolution, turunan
+Baileys, sesuai PRD) yang dipanggil HTTP, dengan adapter yang juga mendukung
+Fonnte. Email lewat REST API Resend tanpa SDK.
+
+**Alasan:** belum ada pemasukan, jadi tidak ada komponen berbayar. `after()`
+memenuhi alasan PRD meminta queue (respons cepat) tanpa infrastruktur baru.
+Yang hilang dibanding queue adalah retry otomatis bila fungsi mati sebelum
+`after()` selesai. Celah itu ditambal dua cara: event webhook duplikat untuk
+booking yang sudah PAID memicu ulang notifikasi, dan tabel `notification_log`
+dengan unique `(booking_id, kind, channel)` memastikan pesan yang sudah
+terkirim tidak pernah terkirim lagi, siapa pun pemanggilnya.
+
+Reminder H-1 menumpang cron harian (batas paket Hobby), dijadwalkan 08:00 WIB
+supaya pesan tidak datang dini hari. Kalau volume naik, ganti `after()` dengan
+queue sungguhan di satu titik: `defaultDeps.onPaid` di route webhook.
+
+## 28. Multi-staf: kalender per staf, jam staf di tabel sendiri
+
+**PRD bagian 1:** paket Studio "Multi-staff", tanpa rincian.
+
+**Implementasi:** tabel `staff` dan `staff_availability` (satu rentang per
+hari; staf tanpa baris mengikuti jam kerja usaha), `bookings.staff_id` +
+snapshot `staff_name`, dan `bookings_no_overlap` diubah menjadi per
+(merchant, staf). Pelanggan memilih staf atau "Siapa saja"; untuk yang kedua
+`create_booking` menugaskan staf aktif pertama yang jamnya cocok dan masih
+kosong, di dalam advisory lock yang sama.
+
+**Alasan beberapa pilihan:**
+
+- Jam staf tidak ditaruh sebagai kolom `staff_id` di `availability`, karena
+  banyak tempat membaca tabel itu sebagai "jam kerja usaha" (slot publik,
+  onboarding, peringatan setup) dan baris staf akan diam-diam mengubah arti
+  semuanya.
+- `bookings.staff_id` memakai `NO ACTION`, bukan `SET NULL`: memindahkan
+  booking ke kalender tanpa staf bisa menabrak booking lain di sana. Staf
+  yang punya riwayat dinonaktifkan, bukan dihapus.
+- Turun paket tidak menghapus staf. `create_booking`, `/api/slots`, dan
+  halaman publik sama-sama mengabaikan staf bila paketnya bukan Studio, jadi
+  kalender kembali satu dan semuanya pulih saat upgrade lagi.
+- Aturan slot di `computeStaffSlots` (TypeScript) adalah cermin aturan di
+  `create_booking` (SQL). Keduanya diuji terpisah: `staff-slots.test.ts` dan
+  bagian 30 `99_verify.sql`. Kalau salah satu berubah, ubah keduanya.
+
+## 29. Domain sendiri: verifikasi TXT per merchant, routing di proxy
+
+**PRD bagian 1:** paket Studio "Custom Domain".
+
+**Implementasi:** satu domain per merchant di `merchant_domains`. Merchant
+memasang CNAME/A ke Vercel **dan** TXT `_booka.<domain>` berisi token acak
+miliknya; server memeriksa keduanya (Vercel REST API + `dns.resolveTxt`)
+sebelum service role menandai `ACTIVE`. `src/proxy.ts` me-resolve host asing
+lewat RPC `resolve_custom_domain` (di-cache 60 detik per instance) dan
+me-rewrite `/` ke `/{username}`; selain halaman publik merchant itu, semua
+path dialihkan ke domain Booka.
+
+**Alasan:**
+
+- TXT per merchant wajib. Cukup memeriksa "DNS sudah mengarah ke Vercel"
+  membuka celah penyerobotan: merchant A mendaftarkan domain B lebih dulu,
+  lalu menekan Periksa begitu B memasang CNAME. Token membuktikan siapa yang
+  menguasai DNS.
+- Unik hanya untuk `ACTIVE` (partial unique index). Klaim `PENDING` ganda
+  tidak saling memblokir, jadi penyerobot tidak bisa "mengunci" nama domain
+  orang lain hanya dengan mendaftarkannya.
+- Host yang tidak dikenal jatuh ke aplikasi biasa, bukan 404. Kalau
+  `NEXT_PUBLIC_APP_URL` salah isi, semua host terlihat asing; 404 berarti
+  seluruh situs mati tanpa pesan error yang jelas.
+- Turun paket mematikan domain lewat `resolve_custom_domain` (yang mensyaratkan
+  STUDIO) tanpa menghapus barisnya, sama seperti staf (#28).

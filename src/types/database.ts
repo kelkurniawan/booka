@@ -27,6 +27,88 @@ export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
 export type MediaKind = "IMAGE" | "VIDEO";
 
+export type BusinessCategory =
+  | "KECANTIKAN"
+  | "KESEHATAN"
+  | "FOTOGRAFI"
+  | "ACARA"
+  | "PENDIDIKAN"
+  | "HEWAN"
+  | "OTOMOTIF"
+  | "SERVIS"
+  | "KONSULTASI"
+  | "LAINNYA";
+
+export type TeamSize = "SENDIRI" | "KECIL_2_5" | "MENENGAH_6_15" | "BESAR_15_PLUS";
+
+/** 38 provinsi Indonesia, sama persis dengan enum `id_province` di database. */
+export type IdProvince =
+  | "ACEH" | "SUMATERA_UTARA" | "SUMATERA_BARAT" | "RIAU" | "KEPULAUAN_RIAU"
+  | "JAMBI" | "SUMATERA_SELATAN" | "KEPULAUAN_BANGKA_BELITUNG" | "BENGKULU"
+  | "LAMPUNG" | "DKI_JAKARTA" | "JAWA_BARAT" | "BANTEN" | "JAWA_TENGAH"
+  | "DI_YOGYAKARTA" | "JAWA_TIMUR" | "BALI" | "NUSA_TENGGARA_BARAT"
+  | "NUSA_TENGGARA_TIMUR" | "KALIMANTAN_BARAT" | "KALIMANTAN_TENGAH"
+  | "KALIMANTAN_SELATAN" | "KALIMANTAN_TIMUR" | "KALIMANTAN_UTARA"
+  | "SULAWESI_UTARA" | "GORONTALO" | "SULAWESI_TENGAH" | "SULAWESI_BARAT"
+  | "SULAWESI_SELATAN" | "SULAWESI_TENGGARA" | "MALUKU" | "MALUKU_UTARA"
+  | "PAPUA" | "PAPUA_BARAT" | "PAPUA_BARAT_DAYA" | "PAPUA_TENGAH"
+  | "PAPUA_PEGUNUNGAN" | "PAPUA_SELATAN";
+
+export type BookingChannel =
+  | "WHATSAPP"
+  | "INSTAGRAM_DM"
+  | "TELEPON"
+  | "DATANG_LANGSUNG"
+  | "APLIKASI_LAIN"
+  | "BELUM_ADA";
+
+export type MerchantGoal =
+  | "NO_SHOW"
+  | "DP_SULIT"
+  | "JADWAL_BENTROK"
+  | "CHAT_BERULANG"
+  | "HALAMAN_RAPI"
+  | "LAPORAN_PEMASUKAN";
+
+export type AcquisitionSource =
+  | "INSTAGRAM"
+  | "TIKTOK"
+  | "TEMAN"
+  | "GOOGLE"
+  | "KOMUNITAS"
+  | "LAINNYA";
+
+/**
+ * Jawaban kuesioner onboarding. Barisnya OPSIONAL -- merchant lama dari
+ * sebelum kuesioner ada tidak punya baris sama sekali, dan itu berbeda dari
+ * merchant yang punya baris dengan blok opsional kosong.
+ *
+ * `business_category` NULLABLE sejak migration
+ * 20260830171027_nullable_business_category.sql -- NULL berarti merchant
+ * ditawari kuesioner dan memilih tidak menjawab (lihat `optional_skipped_at`
+ * di bawah), BUKAN jawaban apa pun, dan harus tetap terbedakan dari kategori
+ * `LAINNYA` yang sungguh dipilih. Constraint
+ * merchant_profiles_category_required_with_answers menjaga arah sebaliknya:
+ * begitu ADA jawaban kuesioner apa pun tersimpan, kolom ini wajib terisi.
+ *
+ * `optional_answered_at` dan `optional_skipped_at` tidak pernah terisi
+ * bersamaan (constraint merchant_profiles_optional_exclusive).
+ */
+export type MerchantProfile = {
+  merchant_id: string;
+  business_category: BusinessCategory | null;
+  business_type_slug: string | null;
+  team_size: TeamSize | null;
+  province: IdProvince | null;
+  current_channels: BookingChannel[] | null;
+  goals: MerchantGoal[] | null;
+  acquisition_source: AcquisitionSource | null;
+  optional_answered_at: string | null;
+  optional_skipped_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Diturunkan resolveTheme() dari luminansi background, BUKAN kolom database.
  * Terang/gelap tidak boleh dipilih terpisah dari warna: mode gelap di atas
@@ -132,6 +214,70 @@ export type MerchantFaq = {
   updated_at: string;
 };
 
+/** Staf merchant Studio. Lihat migration 20261005180027_staff.sql. */
+export type Staff = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Jam kerja staf, maksimal satu rentang per hari. Staf tanpa baris sama
+ * sekali mengikuti jam kerja usaha (tabel availability).
+ */
+export type StaffAvailability = {
+  id: string;
+  staff_id: string;
+  merchant_id: string;
+  day_of_week: DayOfWeek;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+};
+
+export type DomainStatus = "PENDING" | "ACTIVE";
+
+/**
+ * Domain sendiri merchant Studio. Hanya service role yang bisa menulis
+ * status/token -- lihat migration 20261005180048_merchant_domains.sql.
+ */
+export type MerchantDomain = {
+  merchant_id: string;
+  domain: string;
+  status: DomainStatus;
+  verification_token: string;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type NotificationKind =
+  | "BOOKING_PAID_MERCHANT"
+  | "BOOKING_PAID_CUSTOMER"
+  | "REMINDER_CUSTOMER";
+export type NotificationChannel = "EMAIL" | "WHATSAPP";
+export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
+
+/**
+ * Satu pengiriman notifikasi. Unique (booking_id, kind, channel) adalah
+ * kunci idempotensinya -- lihat migration 20261005175819_notification_log.sql.
+ */
+export type NotificationLog = {
+  id: string;
+  booking_id: string;
+  merchant_id: string;
+  kind: NotificationKind;
+  channel: NotificationChannel;
+  status: NotificationStatus;
+  detail: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Booking = {
   id: string;
   merchant_id: string;
@@ -152,6 +298,10 @@ export type Booking = {
   cancelled_at: string | null;
   cancel_reason: string | null;
   expires_at: string;
+  /** Staf yang menangani (paket Studio); null untuk kalender tanpa staf. */
+  staff_id: string | null;
+  /** Snapshot nama staf saat booking dibuat, sama alasannya dengan service_name. */
+  staff_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -224,6 +374,14 @@ export type Database = {
         Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      merchant_profiles: {
+        Row: MerchantProfile;
+        Insert: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>> & {
+          merchant_id: string;
+        };
+        Update: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       services: {
         Row: Service;
         Insert: Omit<Service, "id" | Timestamps | "is_active" | "sort_order"> &
@@ -255,6 +413,35 @@ export type Database = {
           Partial<Pick<MerchantFaq, "id" | "sort_order">>;
         Update: Partial<Omit<MerchantFaq, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      staff: {
+        Row: Staff;
+        Insert: Pick<Staff, "merchant_id" | "name"> &
+          Partial<Pick<Staff, "id" | "is_active" | "sort_order">>;
+        Update: Partial<Pick<Staff, "name" | "is_active" | "sort_order">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      staff_availability: {
+        Row: StaffAvailability;
+        Insert: Omit<StaffAvailability, "id" | "created_at">;
+        Update: never;
+        Relationships: [Relationship<"staff_id", "staff">];
+      };
+      merchant_domains: {
+        Row: MerchantDomain;
+        Insert: Pick<MerchantDomain, "merchant_id" | "domain">;
+        Update: Partial<Pick<MerchantDomain, "status" | "verified_at">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      notification_log: {
+        Row: NotificationLog;
+        Insert: Pick<NotificationLog, "booking_id" | "merchant_id" | "kind" | "channel"> &
+          Partial<Pick<NotificationLog, "status" | "detail">>;
+        Update: Partial<Pick<NotificationLog, "status" | "detail">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
       };
       bookings: {
         Row: Booking;
@@ -341,13 +528,24 @@ export type Database = {
        * yang ditolak akan meninggalkan penghapusan yang sudah commit dan
        * merchant kehilangan seluruh FAQ-nya.
        */
+      resolve_custom_domain: {
+        Args: { p_host: string };
+        Returns: string | null;
+      };
+      replace_staff_availability: {
+        Args: {
+          p_staff_id: string;
+          p_rows: { day_of_week: number; start_time: string; end_time: string }[];
+        };
+        Returns: undefined;
+      };
       replace_merchant_faqs: {
         Args: { p_faqs: { question: string; answer: string }[] };
         Returns: undefined;
       };
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
-        Returns: { start_datetime: string; end_datetime: string }[];
+        Returns: { start_datetime: string; end_datetime: string; staff_id: string | null }[];
       };
       /**
        * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
@@ -432,8 +630,37 @@ export type Database = {
           p_start_datetime: string;
           p_customer_name: string;
           p_customer_whatsapp: string;
+          /** Null = "siapa saja" untuk merchant Studio; diabaikan untuk paket lain. */
+          p_staff_id?: string | null;
         };
         Returns: Booking[];
+      };
+      /**
+       * Menyimpan seluruh hasil wizard onboarding dalam satu transaksi:
+       * identitas merchant, profil kuesioner, layanan pertama, dan jam
+       * kerja. SECURITY INVOKER -- RLS dan grant per kolom tetap berlaku.
+       *
+       * Layanan hanya disisipkan bila merchant belum punya layanan, dan jam
+       * kerja hanya bila merchant belum punya baris availability. Lihat
+       * supabase/migrations/20260830171006_onboarding_profile.sql.
+       */
+      complete_onboarding: {
+        Args: {
+          p_full_name: string;
+          p_username: string;
+          p_whatsapp_number: string;
+          p_business_category: BusinessCategory;
+          p_business_type_slug: string | null;
+          p_service_name: string;
+          p_service_duration_minutes: number;
+          p_service_price: number;
+          p_availability: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+          }[];
+        };
+        Returns: undefined;
       };
     };
     Enums: {
@@ -443,6 +670,16 @@ export type Database = {
       connection_status: ConnectionStatus;
       connection_mode: ConnectionMode;
       payment_environment: PaymentEnvironment;
+      business_category: BusinessCategory;
+      team_size: TeamSize;
+      id_province: IdProvince;
+      booking_channel: BookingChannel;
+      merchant_goal: MerchantGoal;
+      acquisition_source: AcquisitionSource;
+      notification_kind: NotificationKind;
+      domain_status: DomainStatus;
+      notification_channel: NotificationChannel;
+      notification_status: NotificationStatus;
     };
     CompositeTypes: { [_ in never]: never };
   };

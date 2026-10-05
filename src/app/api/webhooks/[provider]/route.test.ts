@@ -112,12 +112,14 @@ function makeDeps(params: {
   verifyResult?: boolean;
 }) {
   const { admin, updateCalls } = createFakeAdmin(params.booking);
+  const paidNotifications: string[] = [];
   const deps: WebhookDeps = {
     createAdminClient: () => admin as unknown as ReturnType<WebhookDeps["createAdminClient"]>,
     loadMerchantCredential: async () => params.credential,
     getAdapter: () => makeAdapter(params.verifyResult ?? true),
+    onPaid: (bookingId) => paidNotifications.push(bookingId),
   };
-  return { deps, updateCalls };
+  return { deps, updateCalls, paidNotifications };
 }
 
 const midtransSettlementBody = {
@@ -131,7 +133,7 @@ const midtransSettlementBody = {
 // --- (a) signature tidak valid -> 401, nol UPDATE ---------------------------
 
 test("handleWebhook: signature tidak valid -> 401 dan tidak memanggil UPDATE sama sekali", async () => {
-  const { deps, updateCalls } = makeDeps({
+  const { deps, updateCalls, paidNotifications } = makeDeps({
     booking: { id: "booking-1", merchant_id: "merchant-1", status: "PENDING" },
     credential: VALID_CREDENTIAL,
     verifyResult: false,
@@ -141,12 +143,14 @@ test("handleWebhook: signature tidak valid -> 401 dan tidak memanggil UPDATE sam
 
   assert.equal(response.status, 401);
   assert.equal(updateCalls.length, 0);
+  // Webhook palsu tidak boleh bisa memicu WhatsApp ke pelanggan.
+  assert.deepEqual(paidNotifications, []);
 });
 
 // --- (b) booking sudah terminal (CANCELLED/PAID) -> 200, nol UPDATE --------
 
 test("handleWebhook: booking sudah CANCELLED (signature valid) -> 200, tidak di-flip, nol UPDATE", async () => {
-  const { deps, updateCalls } = makeDeps({
+  const { deps, updateCalls, paidNotifications } = makeDeps({
     booking: { id: "booking-2", merchant_id: "merchant-1", status: "CANCELLED" },
     credential: VALID_CREDENTIAL,
     verifyResult: true,
@@ -156,10 +160,11 @@ test("handleWebhook: booking sudah CANCELLED (signature valid) -> 200, tidak di-
 
   assert.equal(response.status, 200);
   assert.equal(updateCalls.length, 0);
+  assert.deepEqual(paidNotifications, []);
 });
 
 test("handleWebhook: booking sudah PAID (signature valid, event duplikat) -> 200, nol UPDATE", async () => {
-  const { deps, updateCalls } = makeDeps({
+  const { deps, updateCalls, paidNotifications } = makeDeps({
     booking: { id: "booking-3", merchant_id: "merchant-1", status: "PAID" },
     credential: VALID_CREDENTIAL,
     verifyResult: true,
@@ -169,12 +174,14 @@ test("handleWebhook: booking sudah PAID (signature valid, event duplikat) -> 200
 
   assert.equal(response.status, 200);
   assert.equal(updateCalls.length, 0);
+  // Dipicu ulang sebagai kesempatan kedua; notification_log mencegah kirim ganda.
+  assert.deepEqual(paidNotifications, ["booking-3"]);
 });
 
 // --- (c) booking PENDING + signature valid -> UPDATE bersyarat -------------
 
 test("handleWebhook: booking PENDING + signature valid + settlement -> UPDATE dipanggil dengan .eq('status','PENDING')", async () => {
-  const { deps, updateCalls } = makeDeps({
+  const { deps, updateCalls, paidNotifications } = makeDeps({
     booking: { id: "booking-4", merchant_id: "merchant-1", status: "PENDING" },
     credential: VALID_CREDENTIAL,
     verifyResult: true,
@@ -197,6 +204,7 @@ test("handleWebhook: booking PENDING + signature valid + settlement -> UPDATE di
     `update harus difilter .eq("status","PENDING"), tapi eqCalls = ${JSON.stringify(update.eqCalls)}`,
   );
   assert.ok(update.eqCalls.some(([column, value]) => column === "id" && value === "booking-4"));
+  assert.deepEqual(paidNotifications, ["booking-4"]);
 });
 
 test("handleWebhook: kredensial merchant tidak ditemukan -> 401, nol UPDATE (signature tidak bisa diverifikasi sama sekali)", async () => {

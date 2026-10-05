@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 /**
  * Header keamanan yang berlaku untuk SELURUH respons.
@@ -54,4 +55,16 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * Source map hanya diunggah bila SENTRY_AUTH_TOKEN ada (build Vercel yang
+ * sudah dikonfigurasi). Tanpa token, build tetap jalan dan Sentry tetap
+ * menerima error -- hanya stack trace-nya belum ter-unminify.
+ */
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  telemetry: false,
+  sourcemaps: { disable: !process.env.SENTRY_AUTH_TOKEN },
+});

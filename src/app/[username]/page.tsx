@@ -18,6 +18,7 @@ import {
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
+import { loadPublicStaff, type PublicStaff } from "@/lib/booking/staff";
 import type {
   MerchantTheme,
   PublicMerchant,
@@ -144,8 +145,19 @@ const getMerchantPageData = cache(async (username: string) => {
     },
   );
 
+  // Staf dibaca SETELAH tiga query di atas lolos: halaman tanpa layanan atau
+  // jam kerja tidak butuh staf, dan merchant non-Studio tidak memicu query.
+  let staff: PublicStaff[];
+  try {
+    staff = await loadPublicStaff(supabase, onboardedMerchant.id, onboardedMerchant.subscription_tier);
+  } catch (error) {
+    console.error("[booking-page] gagal memuat staf", { username, error });
+    throw new Error("Gagal memuat staf merchant.");
+  }
+
   return {
     merchant: onboardedMerchant,
+    staff,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
     services,
     mediaByService,
@@ -169,9 +181,23 @@ export async function generateMetadata({
   const { merchant } = data;
   const name = merchant.full_name ?? merchant.username ?? username;
 
+  const description = merchant.bio ?? `Pesan jadwal ${name} lewat Booka.`;
+
+  // `openGraph` di halaman MENGGANTI milik layout (bukan digabung), jadi
+  // siteName dan locale diulang di sini. Gambarnya datang dari
+  // opengraph-image.tsx di folder ini.
   return {
     title: name,
-    description: merchant.bio ?? `Pesan jadwal ${name} lewat Booka.`,
+    description,
+    alternates: { canonical: ROUTES.merchantPage(merchant.username) },
+    openGraph: {
+      title: name,
+      description,
+      siteName: "Booka",
+      locale: "id_ID",
+      type: "profile",
+      url: ROUTES.merchantPage(merchant.username),
+    },
   };
 }
 
@@ -187,9 +213,13 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, theme, services, mediaByService, availability, faqs } = data;
+  const { merchant, staff, theme, services, mediaByService, availability, faqs } = data;
   const name = merchant.full_name ?? merchant.username;
-  const canAcceptBookings = services.length > 0 && availability.length > 0;
+  // Staf dengan jam sendiri membuat halaman bisa menerima pesanan walau jam
+  // kerja usaha kosong.
+  const canAcceptBookings =
+    services.length > 0 &&
+    (availability.length > 0 || staff.some((member) => member.availability.length > 0));
 
   return (
     <BookingPageShell theme={theme}>
@@ -224,6 +254,11 @@ export default async function MerchantPublicPage({
             username={merchant.username}
             services={services}
             availability={availability}
+            staff={staff.map((member) => ({
+              id: member.id,
+              name: member.name,
+              days: [...new Set(member.availability.map((row) => row.day_of_week))],
+            }))}
           />
         </section>
       ) : (

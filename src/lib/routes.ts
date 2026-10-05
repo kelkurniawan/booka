@@ -8,6 +8,11 @@
 export const ROUTES = {
   home: "/",
 
+  // Legal -- kedua segmen sudah dicadangkan di reserved_usernames sejak
+  // migration 20260730000100_reserve_indonesian_routes.sql.
+  terms: "/syarat",
+  privacy: "/privasi",
+
   // Auth
   login: "/masuk",
   signup: "/daftar",
@@ -21,11 +26,14 @@ export const ROUTES = {
   onboarding: "/onboarding",
   dashboard: "/dashboard",
   bookings: "/dashboard/bookings",
+  analytics: "/dashboard/analitik",
   appearance: "/dashboard/halaman",
   services: "/dashboard/services",
   availability: "/dashboard/availability",
+  staff: "/dashboard/staf",
   payments: "/dashboard/payments",
   billing: "/dashboard/billing",
+  domain: "/dashboard/domain",
   settings: "/dashboard/settings",
 
   merchantPage: (username: string) => `/${username}`,

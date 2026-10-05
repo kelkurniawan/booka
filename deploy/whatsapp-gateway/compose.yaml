@@ -1,0 +1,27 @@
+# Gateway WhatsApp self-host (WAHA Core, gratis) untuk notifikasi Booka.
+#
+# BUKAN bagian dari aplikasi Next.js -- dijalankan terpisah di VPS yang menyala
+# 24 jam (Vercel tidak bisa menahan sesi WhatsApp). Panduan lengkap:
+# docs/NOTIFIKASI.md bagian "WhatsApp".
+#
+#   cp .env.example .env    # isi WAHA_API_KEY dan kata sandi dashboard
+#   docker compose up -d
+#
+# Lalu buka http://IP-VPS:3000/dashboard, login, dan scan QR sesi "default"
+# dengan nomor WhatsApp khusus Booka (JANGAN nomor pribadi).
+services:
+  waha:
+    image: devlikeapro/waha:latest
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      WHATSAPP_DEFAULT_ENGINE: NOWEB
+      # Sesi tersimpan di volume; restart container tidak perlu scan QR ulang.
+      WHATSAPP_RESTART_ALL_SESSIONS: "True"
+    volumes:
+      - waha_sessions:/app/.sessions
+
+volumes:
+  waha_sessions:

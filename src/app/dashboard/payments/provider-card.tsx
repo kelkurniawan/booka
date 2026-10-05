@@ -47,6 +47,7 @@ export function ProviderCard({
   connection,
   maskedCredential,
   isUsedForBooking,
+  oauthAvailable,
 }: {
   provider: PaymentProvider;
   connection: PaymentConnection | null;
@@ -60,6 +61,12 @@ export function ProviderCard({
    * kalau cuma satu, tidak ada ambiguitas yang perlu dijelaskan lewat badge.
    */
   isUsedForBooking: boolean;
+  /**
+   * False selama kredensial partner OAuth provider ini belum diisi di env.
+   * Tombolnya disembunyikan alih-alih ditampilkan lalu berakhir di pesan
+   * "belum aktif" -- jalan buntu yang membuat merchant mengira Booka rusak.
+   */
+  oauthAvailable: boolean;
 }) {
   const meta = PROVIDER_META[provider];
   const isActive = connection?.status === "ACTIVE";
@@ -188,11 +195,13 @@ export function ProviderCard({
               <Button variant="outline" onClick={() => setManualKeyOpen(true)}>
                 <KeyRound /> Server Key manual
               </Button>
-              <Button variant="secondary" asChild>
-                <a href={`/api/payments/${provider.toLowerCase()}/connect`}>
-                  <Link2 /> Connect via OAuth
-                </a>
-              </Button>
+              {oauthAvailable ? (
+                <Button variant="secondary" asChild>
+                  <a href={`/api/payments/${provider.toLowerCase()}/connect`}>
+                    <Link2 /> Hubungkan via OAuth
+                  </a>
+                </Button>
+              ) : null}
             </>
           )}
         </CardFooter>

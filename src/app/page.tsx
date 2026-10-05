@@ -2,7 +2,9 @@ import Link from "next/link";
 import { Check } from "lucide-react";
 
 import { ClaimLink } from "@/components/landing/claim-link";
+import { COMING_SOON_LABEL, PLANS } from "@/lib/plans";
 import { ROUTES } from "@/lib/routes";
+import type { SubscriptionTier } from "@/types/database";
 
 export const metadata = {
   title: "Booka — Terima booking dan DP lewat satu tautan",
@@ -22,55 +24,16 @@ const STEPS = [
   },
   {
     title: "Bayar DP lewat QRIS",
-    body: "Dana masuk ke akun payment gateway Anda. Anda dan pelanggan sama-sama dapat notifikasi WhatsApp.",
+    body: "Dana masuk ke akun payment gateway Anda. Anda dapat email dan WhatsApp, pelanggan dapat konfirmasi di WhatsApp.",
   },
 ];
 
-const PLANS = [
-  {
-    name: "Starter",
-    price: "Gratis",
-    period: "selamanya",
-    for: "Baru mulai, ingin coba dulu",
-    features: [
-      "10 transaksi per bulan",
-      "1 jenis layanan",
-      "Halaman booking + QRIS",
-      "Ada watermark Booka",
-    ],
-    cta: "Mulai gratis",
-    featured: false,
-  },
-  {
-    name: "Pro",
-    price: "Rp79.000",
-    period: "per bulan",
-    for: "Sudah rutin menerima pesanan",
-    features: [
-      "Transaksi tanpa batas",
-      "Layanan tanpa batas",
-      "Reminder WhatsApp otomatis",
-      "Tanpa watermark",
-      "Warna dan tampilan sendiri",
-    ],
-    cta: "Mulai dari Starter",
-    featured: true,
-  },
-  {
-    name: "Studio",
-    price: "Rp199.000",
-    period: "per bulan",
-    for: "Punya tim dan beberapa staf",
-    features: [
-      "Semua fitur Pro",
-      "Jadwal per staf",
-      "Laporan dan analitik",
-      "Domain sendiri",
-    ],
-    cta: "Mulai dari Starter",
-    featured: false,
-  },
-];
+/** Tampilan khusus halaman depan; isi paketnya dari src/lib/plans.ts. */
+const PLAN_CTA: Record<SubscriptionTier, { cta: string; featured: boolean }> = {
+  STARTER: { cta: "Mulai gratis", featured: false },
+  PRO: { cta: "Mulai dari Starter", featured: true },
+  STUDIO: { cta: "Mulai dari Starter", featured: false },
+};
 
 export default function LandingPage() {
   // Dibaca langsung, bukan lewat serverEnv(), supaya halaman depan tetap bisa
@@ -273,7 +236,7 @@ function Pricing() {
         </div>
 
         <div className="mt-10 grid gap-px sm:grid-cols-3">
-          {PLANS.map((plan) => (
+          {PLANS.map((basePlan) => ({ ...basePlan, ...PLAN_CTA[basePlan.tier] })).map((plan) => (
             <div
               key={plan.name}
               className={
@@ -295,14 +258,28 @@ function Pricing() {
               <p className="text-muted-foreground font-mono text-xs">{plan.period}</p>
 
               <p className="text-muted-foreground mt-4 border-t border-border pt-4 text-sm">
-                {plan.for}
+                {plan.audience}
               </p>
 
               <ul className="mt-4 flex flex-1 flex-col gap-2.5">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex gap-2.5 text-sm">
+                  <li
+                    key={feature.label}
+                    className={
+                      feature.comingSoon
+                        ? "text-muted-foreground flex gap-2.5 text-sm"
+                        : "flex gap-2.5 text-sm"
+                    }
+                  >
                     <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
-                    <span className="text-pretty">{feature}</span>
+                    <span className="text-pretty">
+                      {feature.label}
+                      {feature.comingSoon ? (
+                        <span className="ml-1.5 font-mono text-[0.65rem] tracking-[0.1em] uppercase">
+                          ({COMING_SOON_LABEL})
+                        </span>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -360,6 +337,14 @@ function SiteFooter() {
     <footer className="border-border border-t">
       <div className="text-muted-foreground mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
         <p className="font-mono">booka</p>
+        <nav className="flex gap-4">
+          <Link href={ROUTES.terms} className="hover:text-foreground">
+            Ketentuan Layanan
+          </Link>
+          <Link href={ROUTES.privacy} className="hover:text-foreground">
+            Kebijakan Privasi
+          </Link>
+        </nav>
         <p>Dibuat untuk usaha jasa kecil di Indonesia.</p>
       </div>
     </footer>

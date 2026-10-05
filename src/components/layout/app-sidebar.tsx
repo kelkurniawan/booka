@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BarChart3,
   CalendarClock,
   CreditCard,
   ExternalLink,
+  Globe,
   LayoutList,
   Palette,
   Settings,
   Sparkles,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -37,17 +40,20 @@ const NAV_GROUPS = [
     label: "Operasional",
     items: [
       { title: "Booking masuk", href: ROUTES.bookings, icon: LayoutList },
+      { title: "Analitik", href: ROUTES.analytics, icon: BarChart3 },
       // Sebelum "Layanan": merchant memikirkan halamannya sebelum memikirkan
       // isinya.
       { title: "Halaman saya", href: ROUTES.appearance, icon: Palette },
       { title: "Layanan", href: ROUTES.services, icon: Sparkles },
       { title: "Jam kerja", href: ROUTES.availability, icon: CalendarClock },
+      { title: "Staf", href: ROUTES.staff, icon: Users },
     ],
   },
   {
     label: "Akun",
     items: [
       { title: "Pembayaran", href: ROUTES.payments, icon: Wallet },
+      { title: "Domain", href: ROUTES.domain, icon: Globe },
       { title: "Langganan", href: ROUTES.billing, icon: CreditCard },
       { title: "Pengaturan", href: ROUTES.settings, icon: Settings },
     ],

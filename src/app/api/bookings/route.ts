@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { username, serviceId, startUtc, customer_name, customer_whatsapp } = parsed.data;
+  const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp } = parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
@@ -166,6 +166,7 @@ export async function POST(request: NextRequest) {
     p_start_datetime: startUtc,
     p_customer_name: customer_name,
     p_customer_whatsapp: customer_whatsapp,
+    p_staff_id: staffId,
   });
 
   if (bookingError) {

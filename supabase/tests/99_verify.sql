@@ -44,6 +44,10 @@ select pg_temp.expect_fail(
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'reset-password' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "reset-password"');
+-- Berkas metadata Next.js, ditambahkan di migration 20261005175920.
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'opengraph-image' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "opengraph-image"');
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'AB' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username terlalu pendek / huruf besar');
@@ -434,13 +438,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -1666,3 +1670,677 @@ select case
            then 'OK   t26h avatar Google dari signup tetap tersalin apa adanya'
          else 'FAIL t26h avatar Google dari signup tidak tersalin'
        end as t26h;
+
+-- ===========================================================================
+-- 27. Profil kuesioner onboarding (20260830171006)
+-- ===========================================================================
+
+-- 27a. anon tidak punya hak APA PUN atas merchant_profiles. Ini pengujian
+-- terpenting di migration ini.
+select
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'SELECT')
+       then 'FAIL t27a anon bisa SELECT merchant_profiles'
+       else 'OK   t27a anon tidak bisa SELECT merchant_profiles' end as t27a,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'INSERT')
+       then 'FAIL t27a anon bisa INSERT merchant_profiles'
+       else 'OK   t27a anon tidak bisa INSERT merchant_profiles' end as t27a2,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'UPDATE')
+       then 'FAIL t27a anon bisa UPDATE merchant_profiles'
+       else 'OK   t27a anon tidak bisa UPDATE merchant_profiles' end as t27a3,
+  case when has_table_privilege('anon', 'public.merchant_profiles', 'DELETE')
+       then 'FAIL t27a anon bisa DELETE merchant_profiles'
+       else 'OK   t27a anon tidak bisa DELETE merchant_profiles' end as t27a4,
+  case when has_table_privilege('authenticated', 'public.merchant_profiles', 'SELECT')
+       then 'OK   t27a authenticated bisa SELECT merchant_profiles'
+       else 'FAIL t27a authenticated tidak bisa SELECT merchant_profiles' end as t27a5;
+
+-- 27b. Hak EXECUTE complete_onboarding
+select
+  case when has_function_privilege('anon',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'EXECUTE')
+       then 'FAIL t27b anon bisa EXECUTE complete_onboarding'
+       else 'OK   t27b anon tidak bisa EXECUTE complete_onboarding' end as t27b,
+  case when has_function_privilege('authenticated',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'EXECUTE')
+       then 'OK   t27b authenticated bisa EXECUTE complete_onboarding'
+       else 'FAIL t27b authenticated tidak bisa EXECUTE complete_onboarding' end as t27b2;
+
+-- 27c. Merchant uji baru khusus bagian ini.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('aaaaaaaa-0000-0000-0000-00000000000a', 'kuesioner@example.com',
+   '{"full_name":"Barbershop Uji"}'::jsonb);
+
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, business_category, business_type_slug)
+     values ('aaaaaaaa-0000-0000-0000-00000000000a', 'KECANTIKAN', 'barbershop')$q$,
+  't27c profil valid');
+
+-- 27d. Enum menolak nilai di luar daftar.
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles set business_category = 'KULINER'
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27d business_category di luar enum');
+
+-- 27e. goals: maksimal 3, tolak elemen NULL, tolak array kosong.
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW','DP_SULIT','JADWAL_BENTROK']::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals tepat 3 elemen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW','DP_SULIT','JADWAL_BENTROK','CHAT_BERULANG']::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals 4 elemen ditolak');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array['NO_SHOW', null]::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals mengandung NULL ditolak');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set goals = array[]::public.merchant_goal[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27e goals array kosong ditolak');
+
+-- 27f. current_channels: maksimal 6, tolak elemen NULL.
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set current_channels = array['WHATSAPP','INSTAGRAM_DM']::public.booking_channel[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27f current_channels 2 elemen');
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set current_channels = array['WHATSAPP', null]::public.booking_channel[]
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27f current_channels mengandung NULL ditolak');
+
+-- 27g. Dijawab dan dilewati saling meniadakan.
+select pg_temp.expect_fail(
+  $q$update public.merchant_profiles
+     set optional_answered_at = now(), optional_skipped_at = now()
+     where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a'$q$,
+  't27g optional_answered_at dan optional_skipped_at bersamaan ditolak');
+
+-- 27h. Hapus merchant ikut menghapus profilnya (cascade).
+delete from auth.users where id = 'aaaaaaaa-0000-0000-0000-00000000000a';
+select case when (select count(*) from public.merchant_profiles
+                  where merchant_id = 'aaaaaaaa-0000-0000-0000-00000000000a') = 0
+            then 'OK   t27h profil ikut terhapus saat merchant dihapus'
+            else 'FAIL t27h profil tertinggal setelah merchant dihapus' end as t27h;
+
+-- ===========================================================================
+-- 27i-27k. Atomicity complete_onboarding.
+--
+-- CATATAN IMPLEMENTASI: brief tugas ini awalnya menulis kasus ini dengan
+-- set_config('request.jwt.claims', '{"sub":"...","role":"authenticated"}', true)
+-- -- pola PostgREST asli. Tapi stub auth.uid() di 00_supabase_stub.sql (TIDAK
+-- diubah, sesuai batasan tugas) membaca GUC datar "request.jwt.claim.sub",
+-- BUKAN JSON request.jwt.claims:
+--
+--   create or replace function auth.uid() returns uuid
+--   language sql stable as $$ select nullif(current_setting(
+--     'request.jwt.claim.sub', true), '')::uuid $$;
+--
+-- Jadi kasus di bawah memakai mekanisme yang SUDAH dipakai berkas ini
+-- (blok 16 dan 18): "set local role authenticated" + "set local
+-- request.jwt.claim.sub = '<uuid>'" di dalam BEGIN/COMMIT eksplisit --
+-- bukan ROLLBACK seperti blok 16/18, karena di sini efek complete_onboarding
+-- justru harus TERSIMPAN supaya bisa diperiksa (jumlah services/availability)
+-- di statement-statement SETELAH blok transaksinya, termasuk sebagai
+-- prasyarat kasus 27k yang menguji pemanggilan ulang. "set local" otomatis
+-- kembali ke keadaan semula begitu COMMIT selesai, jadi tidak perlu
+-- "reset role" manual seperti pola set_config di akhir versi brief.
+-- ===========================================================================
+
+-- Merchant uji baru khusus atomicity. handle_new_user (trigger di
+-- auth.users) otomatis membuat baris public.merchants untuknya, jadi jalur
+-- yang dipakai complete_onboarding di bawah adalah UPDATE, bukan INSERT.
+insert into auth.users (id, email) values
+  ('bbbbbbbb-0000-0000-0000-00000000000b', 'atomik@example.com');
+
+-- 27i. username yang sudah dipakai merchant lain ditolak. CATATAN: ini gagal
+-- di TAHAP PERTAMA complete_onboarding (UPDATE identitas) -- sebelum profil,
+-- layanan, maupun jam kerja sempat disentuh sama sekali. Karena itu kasus ini
+-- HANYA membuktikan penolakan usernamenya, BUKAN atomicity fungsi: assersi
+-- "tidak ada baris tertinggal" di bawah akan bernilai OK untuk implementasi
+-- apa pun -- atomik ataupun tidak -- karena step 2-4 memang tidak pernah
+-- dieksekusi untuk diuji. Pembuktian atomicity SUNGGUHAN (kegagalan di TAHAP
+-- AKHIR membatalkan tahap-tahap awal yang sudah sempat berjalan) ada di
+-- 27i-bis tepat di bawah blok ini. 'studio-mawar' sudah dipakai 11111111-...
+-- dari kasus 2.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_fail(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'studio-mawar', '+6281200000001',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27i complete_onboarding dengan username terpakai ditolak');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+          and (select count(*) from public.merchant_profiles
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 0
+         then 'OK   t27i tidak ada services/availability/profil untuk merchant yang gagal di tahap identitas (TIDAK membuktikan atomicity tahap akhir -- lihat t27i-bis)'
+         else 'FAIL t27i ada baris tertinggal setelah complete_onboarding gagal'
+       end as t27i;
+
+-- ===========================================================================
+-- 27i-bis. Atomicity SUNGGUHAN: kegagalan di TAHAP TERAKHIR (jam kerja)
+-- membatalkan tahap-tahap SEBELUMNYA (identitas, profil, layanan) yang
+-- sudah sempat berjalan lebih dulu di pemanggilan yang SAMA. Kasus 27i di
+-- atas gagal di tahap PERTAMA sehingga tidak pernah menguji ini -- pola di
+-- bawah meniru t25a/t25b (replace_merchant_faqs, ~250 baris di atas) yang
+-- sama-sama memaksa kegagalan di ujung akhir lalu memeriksa sisa tahap awal.
+--
+-- day_of_week 9 ditolak oleh constraint availability_day_range (1-7) pada
+-- INSERT jam kerja di step 4 complete_onboarding -- step TERAKHIR. Kalau
+-- step 1-3 (UPDATE merchants, INSERT merchant_profiles, INSERT services)
+-- benar-benar sudah berjalan sebelum step 4 gagal, tapi fungsi ini TIDAK
+-- atomik (mis. seseorang menambah EXCEPTION WHEN OTHERS di sekitar salah
+-- satu step lalu melanjutkan), baris-baris step 1-3 akan tertinggal --
+-- persis yang diperiksa di bawah gagal menangkapnya kalau itu terjadi.
+-- ===========================================================================
+
+-- Merchant uji baru khusus 27i-bis, terpisah dari bbbbbbbb... di atas supaya
+-- baris merchants-nya benar-benar tidak tersentuh sama sekali sebelum kasus
+-- ini (bukan sekadar "kembali ke keadaan lama").
+insert into auth.users (id, email) values
+  ('cccccccc-0000-0000-0000-00000000000c', 'atomik-akhir@example.com');
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'cccccccc-0000-0000-0000-00000000000c';
+select pg_temp.expect_fail(
+  $q$select public.complete_onboarding(
+       'Barber Akhir', 'atomik-tahap-akhir', '+6281200000002',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":9,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27i-bis kegagalan step availability (day_of_week di luar 1-7) ditolak');
+rollback;
+
+select case
+         when (select username from public.merchants
+               where id = 'cccccccc-0000-0000-0000-00000000000c') is null
+          and (select onboarded_at from public.merchants
+               where id = 'cccccccc-0000-0000-0000-00000000000c') is null
+          and (select count(*) from public.merchant_profiles
+               where merchant_id = 'cccccccc-0000-0000-0000-00000000000c') = 0
+          and (select count(*) from public.services
+               where merchant_id = 'cccccccc-0000-0000-0000-00000000000c') = 0
+         then 'OK   t27i-bis identitas/profil/layanan tahap awal ikut batal saat step availability gagal (atomicity sungguhan terbukti)'
+         else 'FAIL t27i-bis tahap awal (identitas/profil/layanan) tertinggal walau step availability ditolak -- fungsi TIDAK atomik'
+       end as t27i_bis;
+
+-- 27j. Jalur sukses menghasilkan layanan dan jam kerja sekaligus.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_ok(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'barber-atomik', '+6281200000001',
+       'KECANTIKAN', 'barbershop', 'Potong rambut', 45, 50000,
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00"},
+         {"day_of_week":2,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$,
+  't27j complete_onboarding jalur sukses');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 1
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 2
+          and (select username from public.merchants
+               where id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 'barber-atomik'
+         then 'OK   t27j 1 layanan + 2 hari jam kerja + username tersimpan'
+         else 'FAIL t27j hasil complete_onboarding tidak sesuai'
+       end as t27j;
+
+-- 27k. Pemanggilan ulang tidak menggandakan layanan maupun jam kerja.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = 'bbbbbbbb-0000-0000-0000-00000000000b';
+select pg_temp.expect_ok(
+  $q$select public.complete_onboarding(
+       'Barber Atomik', 'barber-atomik', '+6281200000001',
+       'KECANTIKAN', 'nail-art', 'Layanan Lain', 60, 90000,
+       '[{"day_of_week":3,"start_time":"10:00","end_time":"18:00"}]'::jsonb)$q$,
+  't27k complete_onboarding dipanggil ulang');
+commit;
+
+select case
+         when (select count(*) from public.services
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 1
+          and (select count(*) from public.availability
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 2
+          and (select business_type_slug from public.merchant_profiles
+               where merchant_id = 'bbbbbbbb-0000-0000-0000-00000000000b') = 'nail-art'
+         then 'OK   t27k layanan & jam kerja tidak digandakan, profil ter-update'
+         else 'FAIL t27k pemanggilan ulang menggandakan baris'
+       end as t27k;
+
+-- ===========================================================================
+-- 28. business_category NULLABLE (20260830171027) -- constraint
+-- merchant_profiles_category_required_with_answers.
+--
+-- Tujuan: NULL berarti "ditawari kuesioner, memilih tidak menjawab" (lewat
+-- dismissal "Nanti saja"), dan itu harus tetap terbedakan dari kategori
+-- LAINNYA yang sungguh dipilih. Constraint-nya menahan arah sebaliknya:
+-- begitu ADA jawaban kuesioner apa pun tersimpan, business_category wajib
+-- ikut terisi. optional_skipped_at SENGAJA tidak memicu constraint ini --
+-- itulah kasus dismissal yang harus tetap lolos dengan kategori NULL.
+-- Merchant uji di sini semuanya baru, uuid tidak dipakai di bagian lain
+-- berkas ini.
+-- ===========================================================================
+
+insert into auth.users (id, email) values
+  ('dddddddd-0000-0000-0000-00000000000d', 'kuesioner-dismiss@example.com'),
+  ('eeeeeeee-0000-0000-0000-00000000000e', 'kuesioner-team-size@example.com'),
+  ('ffffffff-0000-0000-0000-00000000000f', 'kuesioner-answered-at@example.com'),
+  ('12341234-0000-0000-0000-000000000001', 'kuesioner-goals@example.com'),
+  ('43214321-0000-0000-0000-000000000002', 'kuesioner-isi-belakangan@example.com');
+
+-- 28a. Dismissal murni: hanya merchant_id + optional_skipped_at,
+-- business_category NULL -- persis baris yang dihasilkan skipOptionalProfile
+-- untuk merchant yang barisnya belum ada sama sekali. HARUS diterima.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, optional_skipped_at)
+     values ('dddddddd-0000-0000-0000-00000000000d', now())$q$,
+  't28a dismissal murni (business_category NULL, optional_skipped_at terisi) diterima');
+
+select case
+         when (select business_category from public.merchant_profiles
+               where merchant_id = 'dddddddd-0000-0000-0000-00000000000d') is null
+          and (select optional_skipped_at from public.merchant_profiles
+               where merchant_id = 'dddddddd-0000-0000-0000-00000000000d') is not null
+         then 'OK   t28a-verif baris dismissal tersimpan dengan kategori NULL'
+         else 'FAIL t28a-verif baris dismissal tidak sesuai harapan'
+       end as t28a_verif;
+
+-- 28b. business_category NULL dengan team_size terisi -- ditolak.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, team_size)
+     values ('eeeeeeee-0000-0000-0000-00000000000e', 'SENDIRI')$q$,
+  't28b business_category NULL + team_size terisi ditolak');
+
+-- 28c. business_category NULL dengan optional_answered_at terisi -- ditolak.
+-- Ini kasus "baris mengaku sudah dijawab tapi kategorinya tidak diketahui"
+-- yang harus mustahil terjadi.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, optional_answered_at)
+     values ('ffffffff-0000-0000-0000-00000000000f', now())$q$,
+  't28c business_category NULL + optional_answered_at terisi ditolak');
+
+-- 28d. business_category NULL dengan goals terisi -- ditolak.
+select pg_temp.expect_fail(
+  $q$insert into public.merchant_profiles (merchant_id, goals)
+     values ('12341234-0000-0000-0000-000000000001',
+             array['NO_SHOW']::public.merchant_goal[])$q$,
+  't28d business_category NULL + goals terisi ditolak');
+
+-- 28e. Jalur "declined, lalu kembali mengisi": baris dismissal (kategori
+-- NULL) diisi kategori sungguhan lewat saveProfileFromDashboard (UPDATE
+-- business_category), lalu jawaban opsional lain menyusul lewat
+-- saveOptionalProfile (UPDATE team_size dkk + optional_answered_at,
+-- optional_skipped_at dikosongkan). Kedua langkah harus diterima begitu
+-- kategorinya sudah terisi lebih dulu.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, optional_skipped_at)
+     values ('43214321-0000-0000-0000-000000000002', now())$q$,
+  't28e-1 baris dismissal awal untuk merchant "isi belakangan"');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set business_category = 'LAINNYA'
+     where merchant_id = '43214321-0000-0000-0000-000000000002'$q$,
+  't28e-2 mengisi business_category pada baris dismissal diterima');
+
+select pg_temp.expect_ok(
+  $q$update public.merchant_profiles
+     set team_size = 'SENDIRI',
+         optional_answered_at = now(),
+         optional_skipped_at = null
+     where merchant_id = '43214321-0000-0000-0000-000000000002'$q$,
+  't28e-3 menambah jawaban opsional setelah kategori terisi diterima');
+
+select case
+         when (select business_category from public.merchant_profiles
+               where merchant_id = '43214321-0000-0000-0000-000000000002') = 'LAINNYA'
+          and (select team_size from public.merchant_profiles
+               where merchant_id = '43214321-0000-0000-0000-000000000002') = 'SENDIRI'
+         then 'OK   t28e-verif kategori & jawaban opsional tersimpan setelah "isi belakangan"'
+         else 'FAIL t28e-verif hasil "isi belakangan" tidak sesuai'
+       end as t28e_verif;
+
+-- ===========================================================================
+-- 29. notification_log (20261005175819) -- log + kunci idempotensi notifikasi
+-- ===========================================================================
+
+-- 29a. anon tidak punya hak apa pun; authenticated hanya SELECT (tulis lewat
+-- service role saja).
+select
+  case when has_table_privilege('anon', 'public.notification_log', 'SELECT')
+       then 'FAIL t29a anon bisa SELECT notification_log'
+       else 'OK   t29a anon tidak bisa SELECT notification_log' end as t29a,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'INSERT')
+       then 'FAIL t29a authenticated bisa INSERT notification_log'
+       else 'OK   t29a authenticated tidak bisa INSERT notification_log' end as t29a2,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'UPDATE')
+       then 'FAIL t29a authenticated bisa UPDATE notification_log'
+       else 'OK   t29a authenticated tidak bisa UPDATE notification_log' end as t29a3,
+  case when has_table_privilege('authenticated', 'public.notification_log', 'SELECT')
+       then 'OK   t29a authenticated bisa SELECT notification_log'
+       else 'FAIL t29a authenticated tidak bisa SELECT notification_log' end as t29a4;
+
+-- 29b. Dua merchant, masing-masing satu booking dan satu baris log.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('29292929-0000-0000-0000-000000000001', 'notif-a@example.com', '{}'::jsonb),
+  ('29292929-0000-0000-0000-000000000002', 'notif-b@example.com', '{}'::jsonb);
+
+insert into public.bookings (id, merchant_id, service_name, service_price, duration_minutes,
+                             start_datetime, end_datetime, customer_name, customer_whatsapp, status)
+values
+  ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001', 'Potong',
+   50000, 30, '2027-01-04 09:00+07', '2027-01-04 09:30+07', 'Ani', '+6281100009991', 'PAID'),
+  ('29292929-aaaa-0000-0000-000000000002', '29292929-0000-0000-0000-000000000002', 'Potong',
+   50000, 30, '2027-01-04 09:00+07', '2027-01-04 09:30+07', 'Budi', '+6281100009992', 'PAID');
+
+select pg_temp.expect_ok(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP'),
+            ('29292929-aaaa-0000-0000-000000000002', '29292929-0000-0000-0000-000000000002',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP')$q$,
+  't29b log notifikasi pertama untuk tiap booking');
+
+-- 29c. Klaim kedua untuk (booking, kind, channel) yang sama ditolak unique
+-- constraint -- inilah yang mencegah WhatsApp terkirim dua kali saat
+-- gateway me-retry webhook.
+select pg_temp.expect_fail_code(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_CUSTOMER', 'WHATSAPP')$q$,
+  '23505',
+  't29c klaim ganda notifikasi yang sama');
+
+-- 29d. Kanal lain untuk booking yang sama tetap boleh.
+select pg_temp.expect_ok(
+  $q$insert into public.notification_log (booking_id, merchant_id, kind, channel)
+     values ('29292929-aaaa-0000-0000-000000000001', '29292929-0000-0000-0000-000000000001',
+             'BOOKING_PAID_MERCHANT', 'EMAIL')$q$,
+  't29d kanal berbeda untuk booking yang sama diterima');
+
+-- 29e. Merchant A hanya melihat log miliknya.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '29292929-0000-0000-0000-000000000001';
+select case when count(*) = 2
+              and bool_and(merchant_id = '29292929-0000-0000-0000-000000000001')
+            then 'OK   t29e merchant hanya melihat log notifikasi miliknya'
+            else 'FAIL t29e merchant melihat ' || count(*) || ' baris log (termasuk milik orang lain?)' end as t29e
+from public.notification_log;
+rollback;
+
+-- 29f. Menghapus booking ikut menghapus lognya (dipakai hapus akun).
+delete from public.bookings where id = '29292929-aaaa-0000-0000-000000000002';
+select case when count(*) = 0
+            then 'OK   t29f log ikut terhapus bersama booking'
+            else 'FAIL t29f log tertinggal setelah booking dihapus' end as t29f
+from public.notification_log
+where booking_id = '29292929-aaaa-0000-0000-000000000002';
+
+-- ===========================================================================
+-- 30. Multi-staf (20261005180027)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('30303030-0000-0000-0000-000000000001', 'studio@example.com', '{}'::jsonb),
+  ('30303030-0000-0000-0000-000000000002', 'pro@example.com', '{}'::jsonb);
+update public.merchants set username = 'studio-tiga-puluh', subscription_tier = 'STUDIO'
+  where id = '30303030-0000-0000-0000-000000000001';
+update public.merchants set username = 'pro-tiga-puluh', subscription_tier = 'PRO'
+  where id = '30303030-0000-0000-0000-000000000002';
+
+-- Jam kerja usaha: setiap hari 09:00-17:00.
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '30303030-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+insert into public.services (id, merchant_id, name, price, duration_minutes) values
+  ('30303030-5e5e-0000-0000-000000000001', '30303030-0000-0000-0000-000000000001', 'Potong', 50000, 60);
+
+-- 30a. Hanya merchant Studio yang bisa membuat staf.
+select pg_temp.expect_fail_code(
+  $q$insert into public.staff (merchant_id, name) values ('30303030-0000-0000-0000-000000000002', 'Andi')$q$,
+  'BK010',
+  't30a merchant PRO membuat staf');
+
+select pg_temp.expect_ok(
+  $q$insert into public.staff (id, merchant_id, name, sort_order) values
+     ('30303030-57af-0000-0000-000000000001', '30303030-0000-0000-0000-000000000001', 'Dewi', 0),
+     ('30303030-57af-0000-0000-000000000002', '30303030-0000-0000-0000-000000000001', 'Andi', 1)$q$,
+  't30a merchant STUDIO membuat dua staf');
+
+-- 30b. Hak akses: anon hanya kolom publik, tidak bisa menulis; fungsi
+-- pembantu tertutup.
+select
+  case when has_column_privilege('anon', 'public.staff', 'name', 'SELECT')
+       then 'OK   t30b anon bisa membaca nama staf'
+       else 'FAIL t30b anon tidak bisa membaca nama staf' end as t30b,
+  case when has_table_privilege('anon', 'public.staff', 'INSERT')
+       then 'FAIL t30b anon bisa INSERT staff'
+       else 'OK   t30b anon tidak bisa INSERT staff' end as t30b2,
+  case when has_function_privilege('anon', 'public.slot_within_hours(uuid, uuid, integer, time, time)', 'EXECUTE')
+       then 'FAIL t30b anon bisa EXECUTE slot_within_hours'
+       else 'OK   t30b anon tidak bisa EXECUTE slot_within_hours' end as t30b3,
+  case when has_function_privilege('authenticated', 'public.replace_staff_availability(uuid, jsonb)', 'EXECUTE')
+       then 'OK   t30b authenticated bisa EXECUTE replace_staff_availability'
+       else 'FAIL t30b authenticated tidak bisa EXECUTE replace_staff_availability' end as t30b4;
+
+-- 30c. Merchant lain tidak bisa menulis jam kerja untuk staf milik Studio,
+-- walau id stafnya diketahui (FK gabungan + RLS).
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '30303030-0000-0000-0000-000000000002';
+select pg_temp.expect_fail(
+  $q$select public.replace_staff_availability(
+       '30303030-57af-0000-0000-000000000001',
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"12:00"}]'::jsonb)$q$,
+  't30c merchant lain menulis jam kerja staf milik orang lain');
+rollback;
+
+-- 30d. Andi hanya bekerja Senin 13:00-17:00 (jam sendiri); Dewi ikut jam usaha.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '30303030-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  $q$select public.replace_staff_availability(
+       '30303030-57af-0000-0000-000000000002',
+       '[{"day_of_week":1,"start_time":"13:00","end_time":"17:00"}]'::jsonb)$q$,
+  't30d pemilik mengatur jam kerja stafnya');
+commit;
+
+-- 30e. Dua staf boleh melayani di jam yang sama (Senin 14:00).
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Satu', '+6281130300001',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  't30e booking Senin 14:00 untuk Dewi');
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Dua', '+6281130300002',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  't30e booking Senin 14:00 untuk Andi di jam yang sama');
+
+-- 30f. Staf yang sama di jam yang sama ditolak bookings_no_overlap.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Tiga', '+6281130300003',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  '23P01',
+  't30f staf yang sama dipesan dua kali di jam yang sama');
+
+-- 30g. "Siapa saja" saat semua staf penuh -> BK002.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Empat', '+6281130300004')$q$,
+  'BK002',
+  't30g siapa saja saat semua staf penuh');
+
+-- 30h. Jam kerja sendiri Andi menolak Senin pagi, walau jam usaha buka.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '09:00'), 'Pelanggan Lima', '+6281130300005',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  'BK001',
+  't30h Andi dipesan di luar jam kerjanya sendiri');
+
+-- 30i. "Siapa saja" Senin 09:00 jatuh ke Dewi (Andi belum masuk), dan
+-- snapshot staff_name terisi.
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '09:00'), 'Pelanggan Enam', '+6281130300006')$q$,
+  't30i siapa saja Senin 09:00');
+select case when staff_name = 'Dewi'
+            then 'OK   t30i siapa saja ditugaskan ke staf yang jamnya cocok (Dewi)'
+            else 'FAIL t30i siapa saja ditugaskan ke ' || coalesce(staff_name, 'NULL') end as t30i_verif
+from public.bookings where customer_name = 'Pelanggan Enam';
+
+-- 30j. Staf nonaktif tidak bisa dipesan.
+update public.staff set is_active = false where id = '30303030-57af-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '15:00'), 'Pelanggan Tujuh', '+6281130300007',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  'BK003',
+  't30j staf nonaktif dipesan');
+
+-- 30k. Staf yang pernah menangani booking tidak bisa dihapus (dinonaktifkan saja).
+select pg_temp.expect_fail_code(
+  $q$delete from public.staff where id = '30303030-57af-0000-0000-000000000002'$q$,
+  '23503',
+  't30k hapus staf yang punya booking');
+
+-- 30l. Turun paket: staf diabaikan, kalender kembali satu.
+update public.merchants set subscription_tier = 'PRO'
+  where id = '30303030-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(2, 1, '10:00'), 'Pelanggan Delapan', '+6281130300008',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  't30l merchant turun paket tetap bisa menerima booking');
+select case when staff_id is null
+            then 'OK   t30l staf diabaikan setelah turun paket'
+            else 'FAIL t30l booking masih ditugaskan ke staf setelah turun paket' end as t30l_verif
+from public.bookings where customer_name = 'Pelanggan Delapan';
+
+-- 30m. get_booked_ranges mengembalikan staff_id untuk perhitungan slot.
+select case when count(*) filter (where staff_id is not null) >= 2
+            then 'OK   t30m get_booked_ranges menyertakan staff_id'
+            else 'FAIL t30m get_booked_ranges tanpa staff_id' end as t30m
+from public.get_booked_ranges('studio-tiga-puluh', now(), now() + interval '30 days');
+
+-- 30n. Hapus akun (cascade dari auth.users) tetap jalan walau ada booking
+-- yang merujuk staf -- NO ACTION baru diperiksa di akhir statement.
+select pg_temp.expect_ok(
+  $q$delete from auth.users where id = '30303030-0000-0000-0000-000000000001'$q$,
+  't30n hapus akun merchant yang punya staf dan booking staf');
+
+-- ===========================================================================
+-- 31. Domain sendiri (20261005180048)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('31313131-0000-0000-0000-000000000001', 'domain-a@example.com', '{}'::jsonb),
+  ('31313131-0000-0000-0000-000000000002', 'domain-b@example.com', '{}'::jsonb),
+  ('31313131-0000-0000-0000-000000000003', 'domain-pro@example.com', '{}'::jsonb);
+update public.merchants set username = 'domain-a', subscription_tier = 'STUDIO'
+  where id = '31313131-0000-0000-0000-000000000001';
+update public.merchants set username = 'domain-b', subscription_tier = 'STUDIO'
+  where id = '31313131-0000-0000-0000-000000000002';
+update public.merchants set username = 'domain-pro', subscription_tier = 'PRO'
+  where id = '31313131-0000-0000-0000-000000000003';
+
+-- 31a. Paket selain Studio ditolak; format domain dijaga.
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_domains (merchant_id, domain)
+     values ('31313131-0000-0000-0000-000000000003', 'salon-pro.id')$q$,
+  'BK010',
+  't31a merchant PRO mendaftarkan domain');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_domains (merchant_id, domain)
+     values ('31313131-0000-0000-0000-000000000001', 'https://Salon.id')$q$,
+  '23514',
+  't31a format domain tidak valid');
+
+-- 31b. Dua merchant boleh sama-sama punya klaim PENDING atas nama yang sama.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_domains (merchant_id, domain) values
+     ('31313131-0000-0000-0000-000000000001', 'booking.salon.id'),
+     ('31313131-0000-0000-0000-000000000002', 'booking.salon.id')$q$,
+  't31b dua klaim PENDING untuk domain yang sama');
+
+-- 31c. Merchant tidak bisa mengaktifkan domainnya sendiri.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '31313131-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_domains set status = 'ACTIVE'
+     where merchant_id = '31313131-0000-0000-0000-000000000001'$q$,
+  '42501',
+  't31c merchant mengubah status domainnya sendiri');
+rollback;
+
+-- 31d. Domain PENDING belum me-resolve.
+select case when public.resolve_custom_domain('booking.salon.id') is null
+            then 'OK   t31d domain PENDING tidak me-resolve'
+            else 'FAIL t31d domain PENDING sudah me-resolve' end as t31d;
+
+-- 31e. Setelah diaktifkan (service role), host me-resolve ke username,
+-- tidak peka huruf besar.
+update public.merchant_domains set status = 'ACTIVE', verified_at = now()
+  where merchant_id = '31313131-0000-0000-0000-000000000001';
+select case when public.resolve_custom_domain('Booking.Salon.ID') = 'domain-a'
+            then 'OK   t31e domain ACTIVE me-resolve ke username'
+            else 'FAIL t31e resolve_custom_domain salah' end as t31e;
+
+-- 31f. Klaim kedua tidak bisa ikut aktif untuk nama yang sama.
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_domains set status = 'ACTIVE'
+     where merchant_id = '31313131-0000-0000-0000-000000000002'$q$,
+  '23505',
+  't31f domain yang sama aktif untuk dua merchant');
+
+-- 31g. Turun paket mematikan domain tanpa menghapus barisnya.
+update public.merchants set subscription_tier = 'PRO'
+  where id = '31313131-0000-0000-0000-000000000001';
+select case when public.resolve_custom_domain('booking.salon.id') is null
+            then 'OK   t31g domain berhenti me-resolve setelah turun paket'
+            else 'FAIL t31g domain masih me-resolve setelah turun paket' end as t31g;
+
+-- 31h. anon hanya bisa memanggil resolver, tidak membaca tabelnya (token
+-- verifikasi tidak boleh bocor).
+select
+  case when has_table_privilege('anon', 'public.merchant_domains', 'SELECT')
+       then 'FAIL t31h anon bisa SELECT merchant_domains'
+       else 'OK   t31h anon tidak bisa SELECT merchant_domains' end as t31h,
+  case when has_function_privilege('anon', 'public.resolve_custom_domain(text)', 'EXECUTE')
+       then 'OK   t31h anon bisa EXECUTE resolve_custom_domain'
+       else 'FAIL t31h anon tidak bisa EXECUTE resolve_custom_domain' end as t31h2,
+  case when has_column_privilege('authenticated', 'public.merchant_domains', 'verification_token', 'UPDATE')
+       then 'FAIL t31h authenticated bisa mengubah verification_token'
+       else 'OK   t31h authenticated tidak bisa mengubah verification_token' end as t31h3;

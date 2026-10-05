@@ -14,58 +14,10 @@ import {
 } from "@/components/ui/card";
 import { requireMerchant } from "@/lib/auth/session";
 import { clientEnv } from "@/lib/env/client";
+import { COMING_SOON_LABEL, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
-import type { SubscriptionTier } from "@/types/database";
 
 export const metadata: Metadata = { title: "Langganan" };
-
-/**
- * Harga dan fitur di sini WAJIB persis sama dengan array PLANS di
- * src/app/page.tsx (halaman depan) supaya produk tidak berkontradiksi dengan
- * dirinya sendiri. Kalau salah satu diubah, ubah juga yang lain.
- */
-const PLANS: {
-  tier: SubscriptionTier;
-  name: string;
-  price: string;
-  period: string;
-  features: string[];
-}[] = [
-  {
-    tier: "STARTER",
-    name: "Starter",
-    price: "Gratis",
-    period: "selamanya",
-    features: [
-      "10 transaksi per bulan",
-      "1 jenis layanan",
-      "Halaman booking + QRIS",
-      "3 tema halaman + FAQ",
-      "Ada watermark Booka",
-    ],
-  },
-  {
-    tier: "PRO",
-    name: "Pro",
-    price: "Rp79.000",
-    period: "per bulan",
-    features: [
-      "Transaksi tanpa batas",
-      "Layanan tanpa batas",
-      "Reminder WhatsApp otomatis",
-      "Tanpa watermark",
-      "Semua tema, warna, dan font sendiri",
-      "Video pada layanan",
-    ],
-  },
-  {
-    tier: "STUDIO",
-    name: "Studio",
-    price: "Rp199.000",
-    period: "per bulan",
-    features: ["Semua fitur Pro", "Jadwal per staf", "Laporan dan analitik", "Domain sendiri"],
-  },
-];
 
 export default async function BillingPage() {
   // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
@@ -142,9 +94,19 @@ export default async function BillingPage() {
             <CardContent>
               <ul className="flex flex-col gap-2 text-sm">
                 {plan.features.map((feature) => (
-                  <li key={feature} className="flex gap-2">
+                  <li
+                    key={feature.label}
+                    className={feature.comingSoon ? "text-muted-foreground flex gap-2" : "flex gap-2"}
+                  >
                     <Check className="mt-0.5 size-4 shrink-0" aria-hidden />
-                    <span>{feature}</span>
+                    <span>
+                      {feature.label}
+                      {feature.comingSoon ? (
+                        <Badge variant="outline" className="ml-1.5">
+                          {COMING_SOON_LABEL}
+                        </Badge>
+                      ) : null}
+                    </span>
                   </li>
                 ))}
               </ul>
