@@ -2259,3 +2259,88 @@ from public.get_booked_ranges('studio-tiga-puluh', now(), now() + interval '30 d
 select pg_temp.expect_ok(
   $q$delete from auth.users where id = '30303030-0000-0000-0000-000000000001'$q$,
   't30n hapus akun merchant yang punya staf dan booking staf');
+
+-- ===========================================================================
+-- 31. Domain sendiri (20261005000400)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('31313131-0000-0000-0000-000000000001', 'domain-a@example.com', '{}'::jsonb),
+  ('31313131-0000-0000-0000-000000000002', 'domain-b@example.com', '{}'::jsonb),
+  ('31313131-0000-0000-0000-000000000003', 'domain-pro@example.com', '{}'::jsonb);
+update public.merchants set username = 'domain-a', subscription_tier = 'STUDIO'
+  where id = '31313131-0000-0000-0000-000000000001';
+update public.merchants set username = 'domain-b', subscription_tier = 'STUDIO'
+  where id = '31313131-0000-0000-0000-000000000002';
+update public.merchants set username = 'domain-pro', subscription_tier = 'PRO'
+  where id = '31313131-0000-0000-0000-000000000003';
+
+-- 31a. Paket selain Studio ditolak; format domain dijaga.
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_domains (merchant_id, domain)
+     values ('31313131-0000-0000-0000-000000000003', 'salon-pro.id')$q$,
+  'BK010',
+  't31a merchant PRO mendaftarkan domain');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_domains (merchant_id, domain)
+     values ('31313131-0000-0000-0000-000000000001', 'https://Salon.id')$q$,
+  '23514',
+  't31a format domain tidak valid');
+
+-- 31b. Dua merchant boleh sama-sama punya klaim PENDING atas nama yang sama.
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_domains (merchant_id, domain) values
+     ('31313131-0000-0000-0000-000000000001', 'booking.salon.id'),
+     ('31313131-0000-0000-0000-000000000002', 'booking.salon.id')$q$,
+  't31b dua klaim PENDING untuk domain yang sama');
+
+-- 31c. Merchant tidak bisa mengaktifkan domainnya sendiri.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '31313131-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_domains set status = 'ACTIVE'
+     where merchant_id = '31313131-0000-0000-0000-000000000001'$q$,
+  '42501',
+  't31c merchant mengubah status domainnya sendiri');
+rollback;
+
+-- 31d. Domain PENDING belum me-resolve.
+select case when public.resolve_custom_domain('booking.salon.id') is null
+            then 'OK   t31d domain PENDING tidak me-resolve'
+            else 'FAIL t31d domain PENDING sudah me-resolve' end as t31d;
+
+-- 31e. Setelah diaktifkan (service role), host me-resolve ke username,
+-- tidak peka huruf besar.
+update public.merchant_domains set status = 'ACTIVE', verified_at = now()
+  where merchant_id = '31313131-0000-0000-0000-000000000001';
+select case when public.resolve_custom_domain('Booking.Salon.ID') = 'domain-a'
+            then 'OK   t31e domain ACTIVE me-resolve ke username'
+            else 'FAIL t31e resolve_custom_domain salah' end as t31e;
+
+-- 31f. Klaim kedua tidak bisa ikut aktif untuk nama yang sama.
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_domains set status = 'ACTIVE'
+     where merchant_id = '31313131-0000-0000-0000-000000000002'$q$,
+  '23505',
+  't31f domain yang sama aktif untuk dua merchant');
+
+-- 31g. Turun paket mematikan domain tanpa menghapus barisnya.
+update public.merchants set subscription_tier = 'PRO'
+  where id = '31313131-0000-0000-0000-000000000001';
+select case when public.resolve_custom_domain('booking.salon.id') is null
+            then 'OK   t31g domain berhenti me-resolve setelah turun paket'
+            else 'FAIL t31g domain masih me-resolve setelah turun paket' end as t31g;
+
+-- 31h. anon hanya bisa memanggil resolver, tidak membaca tabelnya (token
+-- verifikasi tidak boleh bocor).
+select
+  case when has_table_privilege('anon', 'public.merchant_domains', 'SELECT')
+       then 'FAIL t31h anon bisa SELECT merchant_domains'
+       else 'OK   t31h anon tidak bisa SELECT merchant_domains' end as t31h,
+  case when has_function_privilege('anon', 'public.resolve_custom_domain(text)', 'EXECUTE')
+       then 'OK   t31h anon bisa EXECUTE resolve_custom_domain'
+       else 'FAIL t31h anon tidak bisa EXECUTE resolve_custom_domain' end as t31h2,
+  case when has_column_privilege('authenticated', 'public.merchant_domains', 'verification_token', 'UPDATE')
+       then 'FAIL t31h authenticated bisa mengubah verification_token'
+       else 'OK   t31h authenticated tidak bisa mengubah verification_token' end as t31h3;

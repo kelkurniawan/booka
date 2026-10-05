@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CreditCard,
   ExternalLink,
+  Globe,
   LayoutList,
   Palette,
   Settings,
@@ -52,6 +53,7 @@ const NAV_GROUPS = [
     label: "Akun",
     items: [
       { title: "Pembayaran", href: ROUTES.payments, icon: Wallet },
+      { title: "Domain", href: ROUTES.domain, icon: Globe },
       { title: "Langganan", href: ROUTES.billing, icon: CreditCard },
       { title: "Pengaturan", href: ROUTES.settings, icon: Settings },
     ],

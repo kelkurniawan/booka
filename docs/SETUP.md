@@ -31,6 +31,7 @@ Isi nilainya:
 | `CRON_SECRET` | `openssl rand -hex 32` | Phase 6 |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `WHATSAPP_*` | lihat [NOTIFIKASI.md](NOTIFIKASI.md) | opsional |
 | `NEXT_PUBLIC_SENTRY_DSN` | sentry.io → Project Settings → Client Keys | opsional |
+| `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | Vercel → Tokens / Project Settings | domain sendiri (Studio) |
 
 ### Format API key
 
@@ -91,6 +92,10 @@ lanjut ke onboarding tanpa berhenti.
 Client Secret dari Google Cloud Console. Di Google Cloud, daftarkan
 `https://<project-ref>.supabase.co/auth/v1/callback` sebagai Authorized
 redirect URI.
+
+**`NEXT_PUBLIC_APP_URL` wajib benar di produksi** (mis. `https://booka.id`).
+Proxy memakainya untuk membedakan domain Booka dari domain sendiri merchant
+Studio; nilai yang salah membuat halaman di domain merchant tidak dikenali.
 
 ## 6. Jalankan
 

@@ -63,6 +63,15 @@ const serverEnvSchema = z.object({
   whatsappApiKey: z.string().min(1).optional(),
   /** Nama sesi WAHA atau nama instance Evolution. */
   whatsappSession: z.string().min(1).default("default"),
+
+  /**
+   * Domain sendiri merchant Studio: token Vercel (izin proyek ini) dan id
+   * proyeknya. Tanpa keduanya halaman Domain menjelaskan bahwa fitur belum
+   * diaktifkan, bukan gagal diam-diam.
+   */
+  vercelApiToken: z.string().min(1).optional(),
+  vercelProjectId: z.string().min(1).optional(),
+  vercelTeamId: z.string().min(1).optional(),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -108,6 +117,9 @@ export function serverEnv(): ServerEnv {
     whatsappApiUrl: emptyToUndefined(process.env.WHATSAPP_API_URL),
     whatsappApiKey: emptyToUndefined(process.env.WHATSAPP_API_KEY),
     whatsappSession: emptyToUndefined(process.env.WHATSAPP_SESSION),
+    vercelApiToken: emptyToUndefined(process.env.VERCEL_API_TOKEN),
+    vercelProjectId: emptyToUndefined(process.env.VERCEL_PROJECT_ID),
+    vercelTeamId: emptyToUndefined(process.env.VERCEL_TEAM_ID),
   });
 
   if (!parsed.success) {

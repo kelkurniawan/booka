@@ -239,6 +239,22 @@ export type StaffAvailability = {
   created_at: string;
 };
 
+export type DomainStatus = "PENDING" | "ACTIVE";
+
+/**
+ * Domain sendiri merchant Studio. Hanya service role yang bisa menulis
+ * status/token -- lihat migration 20261005000400_merchant_domains.sql.
+ */
+export type MerchantDomain = {
+  merchant_id: string;
+  domain: string;
+  status: DomainStatus;
+  verification_token: string;
+  verified_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type NotificationKind =
   | "BOOKING_PAID_MERCHANT"
   | "BOOKING_PAID_CUSTOMER"
@@ -411,6 +427,12 @@ export type Database = {
         Update: never;
         Relationships: [Relationship<"staff_id", "staff">];
       };
+      merchant_domains: {
+        Row: MerchantDomain;
+        Insert: Pick<MerchantDomain, "merchant_id" | "domain">;
+        Update: Partial<Pick<MerchantDomain, "status" | "verified_at">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       notification_log: {
         Row: NotificationLog;
         Insert: Pick<NotificationLog, "booking_id" | "merchant_id" | "kind" | "channel"> &
@@ -506,6 +528,10 @@ export type Database = {
        * yang ditolak akan meninggalkan penghapusan yang sudah commit dan
        * merchant kehilangan seluruh FAQ-nya.
        */
+      resolve_custom_domain: {
+        Args: { p_host: string };
+        Returns: string | null;
+      };
       replace_staff_availability: {
         Args: {
           p_staff_id: string;
@@ -651,6 +677,7 @@ export type Database = {
       merchant_goal: MerchantGoal;
       acquisition_source: AcquisitionSource;
       notification_kind: NotificationKind;
+      domain_status: DomainStatus;
       notification_channel: NotificationChannel;
       notification_status: NotificationStatus;
     };

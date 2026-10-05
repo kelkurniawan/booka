@@ -488,3 +488,30 @@ kosong, di dalam advisory lock yang sama.
 - Aturan slot di `computeStaffSlots` (TypeScript) adalah cermin aturan di
   `create_booking` (SQL). Keduanya diuji terpisah: `staff-slots.test.ts` dan
   bagian 30 `99_verify.sql`. Kalau salah satu berubah, ubah keduanya.
+
+## 29. Domain sendiri: verifikasi TXT per merchant, routing di proxy
+
+**PRD bagian 1:** paket Studio "Custom Domain".
+
+**Implementasi:** satu domain per merchant di `merchant_domains`. Merchant
+memasang CNAME/A ke Vercel **dan** TXT `_booka.<domain>` berisi token acak
+miliknya; server memeriksa keduanya (Vercel REST API + `dns.resolveTxt`)
+sebelum service role menandai `ACTIVE`. `src/proxy.ts` me-resolve host asing
+lewat RPC `resolve_custom_domain` (di-cache 60 detik per instance) dan
+me-rewrite `/` ke `/{username}`; selain halaman publik merchant itu, semua
+path dialihkan ke domain Booka.
+
+**Alasan:**
+
+- TXT per merchant wajib. Cukup memeriksa "DNS sudah mengarah ke Vercel"
+  membuka celah penyerobotan: merchant A mendaftarkan domain B lebih dulu,
+  lalu menekan Periksa begitu B memasang CNAME. Token membuktikan siapa yang
+  menguasai DNS.
+- Unik hanya untuk `ACTIVE` (partial unique index). Klaim `PENDING` ganda
+  tidak saling memblokir, jadi penyerobot tidak bisa "mengunci" nama domain
+  orang lain hanya dengan mendaftarkannya.
+- Host yang tidak dikenal jatuh ke aplikasi biasa, bukan 404. Kalau
+  `NEXT_PUBLIC_APP_URL` salah isi, semua host terlihat asing; 404 berarti
+  seluruh situs mati tanpa pesan error yang jelas.
+- Turun paket mematikan domain lewat `resolve_custom_domain` (yang mensyaratkan
+  STUDIO) tanpa menghapus barisnya, sama seperti staf (#28).

@@ -33,6 +33,7 @@ export const ROUTES = {
   staff: "/dashboard/staf",
   payments: "/dashboard/payments",
   billing: "/dashboard/billing",
+  domain: "/dashboard/domain",
   settings: "/dashboard/settings",
 
   merchantPage: (username: string) => `/${username}`,

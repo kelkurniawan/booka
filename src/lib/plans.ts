@@ -68,7 +68,7 @@ export const PLANS: Plan[] = [
       { label: "Semua fitur Pro" },
       { label: "Staf dengan jadwal sendiri" },
       { label: "Laporan dan analitik" },
-      { label: "Domain sendiri", comingSoon: true },
+      { label: "Domain sendiri" },
     ],
   },
 ];
