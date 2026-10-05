@@ -438,13 +438,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2096,3 +2096,166 @@ select case when count(*) = 0
             else 'FAIL t29f log tertinggal setelah booking dihapus' end as t29f
 from public.notification_log
 where booking_id = '29292929-aaaa-0000-0000-000000000002';
+
+-- ===========================================================================
+-- 30. Multi-staf (20261005000300)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('30303030-0000-0000-0000-000000000001', 'studio@example.com', '{}'::jsonb),
+  ('30303030-0000-0000-0000-000000000002', 'pro@example.com', '{}'::jsonb);
+update public.merchants set username = 'studio-tiga-puluh', subscription_tier = 'STUDIO'
+  where id = '30303030-0000-0000-0000-000000000001';
+update public.merchants set username = 'pro-tiga-puluh', subscription_tier = 'PRO'
+  where id = '30303030-0000-0000-0000-000000000002';
+
+-- Jam kerja usaha: setiap hari 09:00-17:00.
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '30303030-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+insert into public.services (id, merchant_id, name, price, duration_minutes) values
+  ('30303030-5e5e-0000-0000-000000000001', '30303030-0000-0000-0000-000000000001', 'Potong', 50000, 60);
+
+-- 30a. Hanya merchant Studio yang bisa membuat staf.
+select pg_temp.expect_fail_code(
+  $q$insert into public.staff (merchant_id, name) values ('30303030-0000-0000-0000-000000000002', 'Andi')$q$,
+  'BK010',
+  't30a merchant PRO membuat staf');
+
+select pg_temp.expect_ok(
+  $q$insert into public.staff (id, merchant_id, name, sort_order) values
+     ('30303030-57af-0000-0000-000000000001', '30303030-0000-0000-0000-000000000001', 'Dewi', 0),
+     ('30303030-57af-0000-0000-000000000002', '30303030-0000-0000-0000-000000000001', 'Andi', 1)$q$,
+  't30a merchant STUDIO membuat dua staf');
+
+-- 30b. Hak akses: anon hanya kolom publik, tidak bisa menulis; fungsi
+-- pembantu tertutup.
+select
+  case when has_column_privilege('anon', 'public.staff', 'name', 'SELECT')
+       then 'OK   t30b anon bisa membaca nama staf'
+       else 'FAIL t30b anon tidak bisa membaca nama staf' end as t30b,
+  case when has_table_privilege('anon', 'public.staff', 'INSERT')
+       then 'FAIL t30b anon bisa INSERT staff'
+       else 'OK   t30b anon tidak bisa INSERT staff' end as t30b2,
+  case when has_function_privilege('anon', 'public.slot_within_hours(uuid, uuid, integer, time, time)', 'EXECUTE')
+       then 'FAIL t30b anon bisa EXECUTE slot_within_hours'
+       else 'OK   t30b anon tidak bisa EXECUTE slot_within_hours' end as t30b3,
+  case when has_function_privilege('authenticated', 'public.replace_staff_availability(uuid, jsonb)', 'EXECUTE')
+       then 'OK   t30b authenticated bisa EXECUTE replace_staff_availability'
+       else 'FAIL t30b authenticated tidak bisa EXECUTE replace_staff_availability' end as t30b4;
+
+-- 30c. Merchant lain tidak bisa menulis jam kerja untuk staf milik Studio,
+-- walau id stafnya diketahui (FK gabungan + RLS).
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '30303030-0000-0000-0000-000000000002';
+select pg_temp.expect_fail(
+  $q$select public.replace_staff_availability(
+       '30303030-57af-0000-0000-000000000001',
+       '[{"day_of_week":1,"start_time":"09:00","end_time":"12:00"}]'::jsonb)$q$,
+  't30c merchant lain menulis jam kerja staf milik orang lain');
+rollback;
+
+-- 30d. Andi hanya bekerja Senin 13:00-17:00 (jam sendiri); Dewi ikut jam usaha.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '30303030-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  $q$select public.replace_staff_availability(
+       '30303030-57af-0000-0000-000000000002',
+       '[{"day_of_week":1,"start_time":"13:00","end_time":"17:00"}]'::jsonb)$q$,
+  't30d pemilik mengatur jam kerja stafnya');
+commit;
+
+-- 30e. Dua staf boleh melayani di jam yang sama (Senin 14:00).
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Satu', '+6281130300001',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  't30e booking Senin 14:00 untuk Dewi');
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Dua', '+6281130300002',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  't30e booking Senin 14:00 untuk Andi di jam yang sama');
+
+-- 30f. Staf yang sama di jam yang sama ditolak bookings_no_overlap.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Tiga', '+6281130300003',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  '23P01',
+  't30f staf yang sama dipesan dua kali di jam yang sama');
+
+-- 30g. "Siapa saja" saat semua staf penuh -> BK002.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '14:00'), 'Pelanggan Empat', '+6281130300004')$q$,
+  'BK002',
+  't30g siapa saja saat semua staf penuh');
+
+-- 30h. Jam kerja sendiri Andi menolak Senin pagi, walau jam usaha buka.
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '09:00'), 'Pelanggan Lima', '+6281130300005',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  'BK001',
+  't30h Andi dipesan di luar jam kerjanya sendiri');
+
+-- 30i. "Siapa saja" Senin 09:00 jatuh ke Dewi (Andi belum masuk), dan
+-- snapshot staff_name terisi.
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '09:00'), 'Pelanggan Enam', '+6281130300006')$q$,
+  't30i siapa saja Senin 09:00');
+select case when staff_name = 'Dewi'
+            then 'OK   t30i siapa saja ditugaskan ke staf yang jamnya cocok (Dewi)'
+            else 'FAIL t30i siapa saja ditugaskan ke ' || coalesce(staff_name, 'NULL') end as t30i_verif
+from public.bookings where customer_name = 'Pelanggan Enam';
+
+-- 30j. Staf nonaktif tidak bisa dipesan.
+update public.staff set is_active = false where id = '30303030-57af-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(1, 1, '15:00'), 'Pelanggan Tujuh', '+6281130300007',
+       '30303030-57af-0000-0000-000000000002')$q$,
+  'BK003',
+  't30j staf nonaktif dipesan');
+
+-- 30k. Staf yang pernah menangani booking tidak bisa dihapus (dinonaktifkan saja).
+select pg_temp.expect_fail_code(
+  $q$delete from public.staff where id = '30303030-57af-0000-0000-000000000002'$q$,
+  '23503',
+  't30k hapus staf yang punya booking');
+
+-- 30l. Turun paket: staf diabaikan, kalender kembali satu.
+update public.merchants set subscription_tier = 'PRO'
+  where id = '30303030-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '30303030-0000-0000-0000-000000000001', '30303030-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(2, 1, '10:00'), 'Pelanggan Delapan', '+6281130300008',
+       '30303030-57af-0000-0000-000000000001')$q$,
+  't30l merchant turun paket tetap bisa menerima booking');
+select case when staff_id is null
+            then 'OK   t30l staf diabaikan setelah turun paket'
+            else 'FAIL t30l booking masih ditugaskan ke staf setelah turun paket' end as t30l_verif
+from public.bookings where customer_name = 'Pelanggan Delapan';
+
+-- 30m. get_booked_ranges mengembalikan staff_id untuk perhitungan slot.
+select case when count(*) filter (where staff_id is not null) >= 2
+            then 'OK   t30m get_booked_ranges menyertakan staff_id'
+            else 'FAIL t30m get_booked_ranges tanpa staff_id' end as t30m
+from public.get_booked_ranges('studio-tiga-puluh', now(), now() + interval '30 days');
+
+-- 30n. Hapus akun (cascade dari auth.users) tetap jalan walau ada booking
+-- yang merujuk staf -- NO ACTION baru diperiksa di akhir statement.
+select pg_temp.expect_ok(
+  $q$delete from auth.users where id = '30303030-0000-0000-0000-000000000001'$q$,
+  't30n hapus akun merchant yang punya staf dan booking staf');

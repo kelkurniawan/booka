@@ -66,8 +66,8 @@ export const PLANS: Plan[] = [
     audience: "Punya tim dan beberapa staf",
     features: [
       { label: "Semua fitur Pro" },
-      { label: "Jadwal per staf", comingSoon: true },
-      { label: "Laporan dan analitik", comingSoon: true },
+      { label: "Staf dengan jadwal sendiri" },
+      { label: "Laporan dan analitik" },
       { label: "Domain sendiri", comingSoon: true },
     ],
   },

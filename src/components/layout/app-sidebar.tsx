@@ -11,6 +11,7 @@ import {
   Palette,
   Settings,
   Sparkles,
+  Users,
   Wallet,
 } from "lucide-react";
 
@@ -44,6 +45,7 @@ const NAV_GROUPS = [
       { title: "Halaman saya", href: ROUTES.appearance, icon: Palette },
       { title: "Layanan", href: ROUTES.services, icon: Sparkles },
       { title: "Jam kerja", href: ROUTES.availability, icon: CalendarClock },
+      { title: "Staf", href: ROUTES.staff, icon: Users },
     ],
   },
   {

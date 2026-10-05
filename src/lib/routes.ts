@@ -30,6 +30,7 @@ export const ROUTES = {
   appearance: "/dashboard/halaman",
   services: "/dashboard/services",
   availability: "/dashboard/availability",
+  staff: "/dashboard/staf",
   payments: "/dashboard/payments",
   billing: "/dashboard/billing",
   settings: "/dashboard/settings",

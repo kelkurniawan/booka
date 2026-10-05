@@ -35,6 +35,7 @@ type BookingRow = Pick<
   | "customer_name"
   | "customer_whatsapp"
   | "access_token"
+  | "staff_name"
 >;
 type MerchantRow = Pick<
   Merchant,
@@ -42,7 +43,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token";
+  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name";
 
 /** Paket yang mendapat reminder H-1 (PRD bagian 1: "WhatsApp Reminder" di Pro). */
 const REMINDER_TIERS: Merchant["subscription_tier"][] = ["PRO", "STUDIO"];
@@ -128,6 +129,7 @@ function messageData(booking: BookingRow, merchant: MerchantRow): BookingMessage
     serviceName: booking.service_name,
     servicePrice: booking.service_price,
     startDatetime: booking.start_datetime,
+    staffName: booking.staff_name,
     statusUrl: new URL(ROUTES.bookingStatus(booking.access_token), base).toString(),
     dashboardUrl: new URL(ROUTES.bookings, base).toString(),
   };

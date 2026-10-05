@@ -214,6 +214,31 @@ export type MerchantFaq = {
   updated_at: string;
 };
 
+/** Staf merchant Studio. Lihat migration 20261005000300_staff.sql. */
+export type Staff = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+/**
+ * Jam kerja staf, maksimal satu rentang per hari. Staf tanpa baris sama
+ * sekali mengikuti jam kerja usaha (tabel availability).
+ */
+export type StaffAvailability = {
+  id: string;
+  staff_id: string;
+  merchant_id: string;
+  day_of_week: DayOfWeek;
+  start_time: string;
+  end_time: string;
+  created_at: string;
+};
+
 export type NotificationKind =
   | "BOOKING_PAID_MERCHANT"
   | "BOOKING_PAID_CUSTOMER"
@@ -257,6 +282,10 @@ export type Booking = {
   cancelled_at: string | null;
   cancel_reason: string | null;
   expires_at: string;
+  /** Staf yang menangani (paket Studio); null untuk kalender tanpa staf. */
+  staff_id: string | null;
+  /** Snapshot nama staf saat booking dibuat, sama alasannya dengan service_name. */
+  staff_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -369,6 +398,19 @@ export type Database = {
         Update: Partial<Omit<MerchantFaq, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      staff: {
+        Row: Staff;
+        Insert: Pick<Staff, "merchant_id" | "name"> &
+          Partial<Pick<Staff, "id" | "is_active" | "sort_order">>;
+        Update: Partial<Pick<Staff, "name" | "is_active" | "sort_order">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      staff_availability: {
+        Row: StaffAvailability;
+        Insert: Omit<StaffAvailability, "id" | "created_at">;
+        Update: never;
+        Relationships: [Relationship<"staff_id", "staff">];
+      };
       notification_log: {
         Row: NotificationLog;
         Insert: Pick<NotificationLog, "booking_id" | "merchant_id" | "kind" | "channel"> &
@@ -464,13 +506,20 @@ export type Database = {
        * yang ditolak akan meninggalkan penghapusan yang sudah commit dan
        * merchant kehilangan seluruh FAQ-nya.
        */
+      replace_staff_availability: {
+        Args: {
+          p_staff_id: string;
+          p_rows: { day_of_week: number; start_time: string; end_time: string }[];
+        };
+        Returns: undefined;
+      };
       replace_merchant_faqs: {
         Args: { p_faqs: { question: string; answer: string }[] };
         Returns: undefined;
       };
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
-        Returns: { start_datetime: string; end_datetime: string }[];
+        Returns: { start_datetime: string; end_datetime: string; staff_id: string | null }[];
       };
       /**
        * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
@@ -555,6 +604,8 @@ export type Database = {
           p_start_datetime: string;
           p_customer_name: string;
           p_customer_whatsapp: string;
+          /** Null = "siapa saja" untuk merchant Studio; diabaikan untuk paket lain. */
+          p_staff_id?: string | null;
         };
         Returns: Booking[];
       };

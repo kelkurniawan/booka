@@ -36,6 +36,17 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Slot yang dipilih di luar jam kerja merchant, silakan pilih jadwal lain.",
   },
+  // create_booking (paket Studio): pelanggan memilih "siapa saja" tapi semua
+  // staf sudah dipesan atau tidak bekerja di jam itu.
+  BK002: {
+    status: 409,
+    message: "Semua staf sudah terisi di jam tersebut, silakan pilih jadwal lain.",
+  },
+  // create_booking (paket Studio): staf yang dipilih sudah nonaktif/dihapus.
+  BK003: {
+    status: 409,
+    message: "Staf yang dipilih sedang tidak menerima pesanan, silakan pilih staf lain.",
+  },
   // create_booking: service_id tidak ditemukan atau is_active = false.
   P0005: {
     status: 404,

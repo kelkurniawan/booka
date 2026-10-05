@@ -58,12 +58,18 @@ export type BookingPickerProps = {
   username: string;
   services: Service[];
   availability: Pick<Availability, "day_of_week">[];
+  /**
+   * Staf aktif (paket Studio) beserta hari kerjanya. `days` kosong berarti
+   * ikut jam kerja usaha. Daftar kosong = merchant tanpa staf.
+   */
+  staff: { id: string; name: string; days: DayOfWeek[] }[];
 };
 
 type CheckoutSubmitPayload = {
   merchantId: string;
   username: string;
   serviceId: string;
+  staffId: string | null;
   startUtc: string;
   customer_name: string;
   customer_whatsapp: string;
@@ -100,6 +106,7 @@ async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutR
     body: JSON.stringify({
       username: payload.username,
       serviceId: payload.serviceId,
+      staffId: payload.staffId,
       startUtc: payload.startUtc,
       customer_name: payload.customer_name,
       customer_whatsapp: payload.customer_whatsapp,
@@ -119,13 +126,26 @@ async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutR
   return body as CheckoutResult;
 }
 
-export function BookingPicker({ merchantId, username, services, availability }: BookingPickerProps) {
+export function BookingPicker({
+  merchantId,
+  username,
+  services,
+  availability,
+  staff,
+}: BookingPickerProps) {
   const router = useRouter();
 
-  const openDays = useMemo(
-    () => new Set(availability.map((row) => row.day_of_week)),
-    [availability],
-  );
+  // null = "siapa saja" (atau merchant tanpa staf).
+  const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
+
+  // Hari buka mengikuti staf yang dipilih: staf dengan jam sendiri bisa
+  // bekerja di hari usaha tutup, dan sebaliknya. "Siapa saja" = gabungan.
+  const openDays = useMemo(() => {
+    const merchantDays = availability.map((row) => row.day_of_week);
+    if (staff.length === 0) return new Set(merchantDays);
+    const candidates = selectedStaffId ? staff.filter((m) => m.id === selectedStaffId) : staff;
+    return new Set(candidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)));
+  }, [availability, staff, selectedStaffId]);
   const availableDates = useMemo(() => nextAvailableDates(openDays), [openDays]);
 
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
@@ -155,13 +175,14 @@ export function BookingPicker({ merchantId, username, services, availability }: 
   // lama yang datang belakangan tidak boleh menimpa hasil request terbaru.
   const requestIdRef = useRef(0);
 
-  async function loadSlots(serviceId: string, dateISO: string) {
+  async function loadSlots(serviceId: string, dateISO: string, staffId: string | null) {
     const requestId = (requestIdRef.current += 1);
     setLoadingSlots(true);
     setSlotsError(null);
 
     try {
       const params = new URLSearchParams({ username, serviceId, date: dateISO });
+      if (staffId) params.set("staffId", staffId);
       const response = await fetch(`/api/slots?${params.toString()}`);
       if (!response.ok) {
         throw new Error("Gagal memuat jadwal");
@@ -189,11 +210,19 @@ export function BookingPicker({ merchantId, username, services, availability }: 
     setSlotsError(null);
   }
 
+  function handleSelectStaff(staffId: string | null) {
+    setSelectedStaffId(staffId);
+    setSelectedDate(null);
+    setSelectedSlot(null);
+    setSlots(null);
+    setSlotsError(null);
+  }
+
   function handleSelectDate(dateISO: string) {
     setSelectedDate(dateISO);
     setSelectedSlot(null);
     if (selectedServiceId) {
-      void loadSlots(selectedServiceId, dateISO);
+      void loadSlots(selectedServiceId, dateISO, selectedStaffId);
     }
   }
 
@@ -203,6 +232,7 @@ export function BookingPicker({ merchantId, username, services, availability }: 
 
     const result = checkoutSchema.safeParse({
       serviceId: selectedServiceId,
+      staffId: selectedStaffId,
       startUtc: selectedSlot.startUtc,
       customer_name: customerName,
       customer_whatsapp: customerWhatsapp,
@@ -227,6 +257,7 @@ export function BookingPicker({ merchantId, username, services, availability }: 
         merchantId,
         username,
         serviceId: result.data.serviceId,
+        staffId: result.data.staffId,
         startUtc: result.data.startUtc,
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
@@ -268,6 +299,32 @@ export function BookingPicker({ merchantId, username, services, availability }: 
               >
                 <span className="font-medium text-balance">{service.name}</span>
                 <span className="shrink-0 text-xs">{formatDuration(service.duration_minutes)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {selectedServiceId && staff.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
+            Pilih staf
+          </span>
+          <div className="flex flex-wrap gap-2">
+            {[{ id: null, name: "Siapa saja" }, ...staff].map((member) => (
+              <button
+                key={member.id ?? "siapa-saja"}
+                type="button"
+                aria-pressed={member.id === selectedStaffId}
+                onClick={() => handleSelectStaff(member.id)}
+                className={cn(
+                  "border px-3 py-2 text-sm font-medium transition-colors",
+                  member.id === selectedStaffId
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border hover:bg-muted",
+                )}
+              >
+                {member.name}
               </button>
             ))}
           </div>

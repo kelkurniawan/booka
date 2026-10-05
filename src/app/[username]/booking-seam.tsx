@@ -1,6 +1,6 @@
 import type { Availability, Service } from "@/types/database";
 
-import { BookingPicker } from "./booking-picker";
+import { BookingPicker, type BookingPickerProps } from "./booking-picker";
 
 /**
  * Props yang dibutuhkan pemilih tanggal/jam dan form checkout: id serta
@@ -14,10 +14,17 @@ export type BookingSeamProps = {
   username: string;
   services: Service[];
   availability: Pick<Availability, "day_of_week">[];
+  staff: BookingPickerProps["staff"];
 };
 
 /** Memasang `BookingPicker` (client) — lihat booking-picker.tsx untuk Task 7. */
-export function BookingSeam({ merchantId, username, services, availability }: BookingSeamProps) {
+export function BookingSeam({
+  merchantId,
+  username,
+  services,
+  availability,
+  staff,
+}: BookingSeamProps) {
   if (services.length === 0) {
     return null;
   }
@@ -28,6 +35,7 @@ export function BookingSeam({ merchantId, username, services, availability }: Bo
       username={username}
       services={services}
       availability={availability}
+      staff={staff}
     />
   );
 }

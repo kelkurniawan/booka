@@ -461,3 +461,30 @@ terkirim tidak pernah terkirim lagi, siapa pun pemanggilnya.
 Reminder H-1 menumpang cron harian (batas paket Hobby), dijadwalkan 08:00 WIB
 supaya pesan tidak datang dini hari. Kalau volume naik, ganti `after()` dengan
 queue sungguhan di satu titik: `defaultDeps.onPaid` di route webhook.
+
+## 28. Multi-staf: kalender per staf, jam staf di tabel sendiri
+
+**PRD bagian 1:** paket Studio "Multi-staff", tanpa rincian.
+
+**Implementasi:** tabel `staff` dan `staff_availability` (satu rentang per
+hari; staf tanpa baris mengikuti jam kerja usaha), `bookings.staff_id` +
+snapshot `staff_name`, dan `bookings_no_overlap` diubah menjadi per
+(merchant, staf). Pelanggan memilih staf atau "Siapa saja"; untuk yang kedua
+`create_booking` menugaskan staf aktif pertama yang jamnya cocok dan masih
+kosong, di dalam advisory lock yang sama.
+
+**Alasan beberapa pilihan:**
+
+- Jam staf tidak ditaruh sebagai kolom `staff_id` di `availability`, karena
+  banyak tempat membaca tabel itu sebagai "jam kerja usaha" (slot publik,
+  onboarding, peringatan setup) dan baris staf akan diam-diam mengubah arti
+  semuanya.
+- `bookings.staff_id` memakai `NO ACTION`, bukan `SET NULL`: memindahkan
+  booking ke kalender tanpa staf bisa menabrak booking lain di sana. Staf
+  yang punya riwayat dinonaktifkan, bukan dihapus.
+- Turun paket tidak menghapus staf. `create_booking`, `/api/slots`, dan
+  halaman publik sama-sama mengabaikan staf bila paketnya bukan Studio, jadi
+  kalender kembali satu dan semuanya pulih saat upgrade lagi.
+- Aturan slot di `computeStaffSlots` (TypeScript) adalah cermin aturan di
+  `create_booking` (SQL). Keduanya diuji terpisah: `staff-slots.test.ts` dan
+  bagian 30 `99_verify.sql`. Kalau salah satu berubah, ubah keduanya.

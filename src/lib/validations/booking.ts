@@ -33,6 +33,8 @@ export const customerWhatsappSchema = whatsappSchema;
  */
 export const checkoutSchema = z.object({
   serviceId: z.uuid("Layanan tidak valid"),
+  // Null = "siapa saja" atau merchant tanpa staf. Database yang memutuskan.
+  staffId: z.uuid("Staf tidak valid").nullable().default(null),
   startUtc: z.iso.datetime({ message: "Slot tidak valid, silakan pilih ulang" }),
   customer_name: customerNameSchema,
   customer_whatsapp: customerWhatsappSchema,
@@ -55,6 +57,7 @@ export type CheckoutValues = z.output<typeof checkoutSchema>;
 export const createBookingRequestSchema = z.object({
   username: usernameSchema,
   serviceId: z.uuid("Layanan tidak valid"),
+  staffId: z.uuid("Staf tidak valid").nullable().default(null),
   startUtc: z.iso.datetime({ message: "Slot tidak valid, silakan pilih ulang" }),
   customer_name: customerNameSchema,
   customer_whatsapp: customerWhatsappSchema,

@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { computeFreeSlots, jakartaWallClockToUtc } from "@/lib/booking/slots";
+import { computeStaffSlots, jakartaWallClockToUtc } from "@/lib/booking/slots";
+import { loadPublicStaff } from "@/lib/booking/staff";
 import { createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
 
@@ -12,10 +13,12 @@ const querySchema = z.object({
   username: usernameSchema,
   serviceId: z.uuid("serviceId tidak valid"),
   date: z.string().regex(DATE_PATTERN, "date harus berformat YYYY-MM-DD"),
+  // Kosong/absen = "siapa saja" (merchant Studio) atau kalender tunggal.
+  staffId: z.uuid("staffId tidak valid").nullable(),
 });
 
 /**
- * GET /api/slots?username=&serviceId=&date=
+ * GET /api/slots?username=&serviceId=&date=&staffId=
  *
  * Mengembalikan daftar slot kosong untuk satu layanan pada satu tanggal
  * kalender Jakarta (lihat src/lib/booking/slots.ts untuk algoritmanya dan
@@ -33,6 +36,7 @@ export async function GET(request: NextRequest) {
     username: url.searchParams.get("username") ?? "",
     serviceId: url.searchParams.get("serviceId") ?? "",
     date: url.searchParams.get("date") ?? "",
+    staffId: url.searchParams.get("staffId") || null,
   });
 
   if (!parsed.success) {
@@ -42,7 +46,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { username, serviceId, date } = parsed.data;
+  const { username, serviceId, date, staffId } = parsed.data;
 
   // Tanggal lolos regex bisa saja tidak valid secara kalender (mis.
   // "2026-02-30"). new Date() JS akan diam-diam menormalkannya jadi tanggal
@@ -63,7 +67,7 @@ export async function GET(request: NextRequest) {
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id, username")
+    .select("id, username, subscription_tier")
     .eq("username", username)
     .maybeSingle();
 
@@ -118,11 +122,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Gagal memuat jadwal" }, { status: 500 });
   }
 
-  const slots = computeFreeSlots({
+  let staff;
+  try {
+    staff = await loadPublicStaff(supabase, merchant.id, merchant.subscription_tier);
+  } catch (staffError) {
+    console.error("[api/slots] gagal memuat staf", { username, error: staffError });
+    return NextResponse.json({ error: "Gagal memuat jadwal staf" }, { status: 500 });
+  }
+
+  const slots = computeStaffSlots({
     dateISO: date,
     durationMinutes: service.duration_minutes,
-    availability: availability ?? [],
+    merchantAvailability: availability ?? [],
+    staff,
     bookedRanges: bookedRanges ?? [],
+    staffId,
   });
 
   return NextResponse.json({ slots });

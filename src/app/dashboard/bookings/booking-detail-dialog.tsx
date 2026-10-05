@@ -82,6 +82,13 @@ export function BookingDetailDialog({
           <dt className="text-muted-foreground">Durasi</dt>
           <dd>{formatDuration(booking.duration_minutes)}</dd>
 
+          {booking.staff_name ? (
+            <>
+              <dt className="text-muted-foreground">Staf</dt>
+              <dd>{booking.staff_name}</dd>
+            </>
+          ) : null}
+
           <dt className="text-muted-foreground">Jadwal</dt>
           <dd>
             {formatDateTime(booking.start_datetime)} &ndash; {formatTime(booking.end_datetime)}

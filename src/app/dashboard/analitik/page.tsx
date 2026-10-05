@@ -90,7 +90,7 @@ export default async function AnalyticsPage({
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "status, service_name, service_price, created_at, paid_at, start_datetime, customer_whatsapp",
+      "status, service_name, service_price, created_at, paid_at, start_datetime, customer_whatsapp, staff_name",
     )
     .eq("merchant_id", user.id)
     .or(`created_at.gte.${from.toISOString()},paid_at.gte.${from.toISOString()}`)

@@ -104,7 +104,12 @@ function BookingRow({ booking, nowMs }: { booking: BookingListItem; nowMs: numbe
           <div className="text-muted-foreground text-xs">{formatTime(booking.start_datetime)}</div>
         </TableCell>
         <TableCell className="max-w-40 truncate">{booking.customer_name}</TableCell>
-        <TableCell className="max-w-48 truncate">{booking.service_name}</TableCell>
+        <TableCell className="max-w-48 truncate">
+          {booking.service_name}
+          {booking.staff_name ? (
+            <span className="text-muted-foreground"> · {booking.staff_name}</span>
+          ) : null}
+        </TableCell>
         <TableCell className="whitespace-nowrap">{formatRupiah(booking.service_price)}</TableCell>
         <TableCell>
           <Badge variant={meta.badgeVariant}>{meta.label}</Badge>

@@ -136,3 +136,59 @@ export function computeFreeSlots(params: {
 
   return slots;
 }
+
+/** Jam kerja satu staf. `availability` kosong berarti ikut jam kerja usaha. */
+export type StaffSchedule = { id: string; availability: AvailabilityWindow[] };
+
+export type StaffBookedRange = BookedRange & { staff_id: string | null };
+
+/**
+ * Slot kosong dengan memperhitungkan staf (paket Studio). Aturannya cermin
+ * persis `create_booking` di migration 20261005000300_staff.sql:
+ *
+ *   - Tanpa staf: satu kalender seperti `computeFreeSlots` biasa.
+ *   - `staffId` diisi: jam kerja staf itu (atau jam usaha bila ia tidak
+ *     punya jam sendiri), dikurangi booking staf itu saja.
+ *   - `staffId` null ("siapa saja"): slot kosong bila SETIDAKNYA satu staf
+ *     kosong di jam itu -- gabungan slot semua staf.
+ *
+ * Booking tanpa staf (sebelum merchant memakai staf) tidak mengunci kalender
+ * staf mana pun, sama seperti exclusion constraint per (merchant, staf).
+ */
+export function computeStaffSlots(params: {
+  dateISO: string;
+  durationMinutes: number;
+  merchantAvailability: AvailabilityWindow[];
+  staff: StaffSchedule[];
+  bookedRanges: StaffBookedRange[];
+  staffId: string | null;
+  now?: Date;
+}): FreeSlot[] {
+  const { staff, staffId, bookedRanges, merchantAvailability } = params;
+
+  if (staff.length === 0) {
+    return computeFreeSlots({
+      dateISO: params.dateISO,
+      durationMinutes: params.durationMinutes,
+      availability: merchantAvailability,
+      bookedRanges,
+      now: params.now,
+    });
+  }
+
+  const candidates = staffId ? staff.filter((member) => member.id === staffId) : staff;
+  const byStart = new Map<string, FreeSlot>();
+
+  for (const member of candidates) {
+    const slots = computeFreeSlots({
+      dateISO: params.dateISO,
+      durationMinutes: params.durationMinutes,
+      availability: member.availability.length > 0 ? member.availability : merchantAvailability,
+      bookedRanges: bookedRanges.filter((range) => range.staff_id === member.id),
+      now: params.now,
+    });
+    for (const slot of slots) byStart.set(slot.startUtc, slot);
+  }
+
+  return [...byStart.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc));
+}
