@@ -44,7 +44,7 @@ select pg_temp.expect_fail(
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'reset-password' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "reset-password"');
--- Berkas metadata Next.js, ditambahkan di migration 20261005000100.
+-- Berkas metadata Next.js, ditambahkan di migration 20261005175920.
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'opengraph-image' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "opengraph-image"');
@@ -1672,7 +1672,7 @@ select case
        end as t26h;
 
 -- ===========================================================================
--- 27. Profil kuesioner onboarding (20260829000100)
+-- 27. Profil kuesioner onboarding (20260830171006)
 -- ===========================================================================
 
 -- 27a. anon tidak punya hak APA PUN atas merchant_profiles. Ini pengujian
@@ -1928,7 +1928,7 @@ select case
        end as t27k;
 
 -- ===========================================================================
--- 28. business_category NULLABLE (20260829000200) -- constraint
+-- 28. business_category NULLABLE (20260830171027) -- constraint
 -- merchant_profiles_category_required_with_answers.
 --
 -- Tujuan: NULL berarti "ditawari kuesioner, memilih tidak menjawab" (lewat
@@ -2021,7 +2021,7 @@ select case
        end as t28e_verif;
 
 -- ===========================================================================
--- 29. notification_log (20261005000200) -- log + kunci idempotensi notifikasi
+-- 29. notification_log (20261005175819) -- log + kunci idempotensi notifikasi
 -- ===========================================================================
 
 -- 29a. anon tidak punya hak apa pun; authenticated hanya SELECT (tulis lewat
@@ -2098,7 +2098,7 @@ from public.notification_log
 where booking_id = '29292929-aaaa-0000-0000-000000000002';
 
 -- ===========================================================================
--- 30. Multi-staf (20261005000300)
+-- 30. Multi-staf (20261005180027)
 -- ===========================================================================
 
 insert into auth.users (id, email, raw_user_meta_data) values
@@ -2261,7 +2261,7 @@ select pg_temp.expect_ok(
   't30n hapus akun merchant yang punya staf dan booking staf');
 
 -- ===========================================================================
--- 31. Domain sendiri (20261005000400)
+-- 31. Domain sendiri (20261005180048)
 -- ===========================================================================
 
 insert into auth.users (id, email, raw_user_meta_data) values

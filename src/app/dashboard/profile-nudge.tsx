@@ -18,7 +18,7 @@ import { ProfileNudgeDialog } from "./profile-nudge-dialog";
  *    `complete_onboarding`.
  *
  * `business_category` NULLABLE sejak migration
- * 20260829000200_nullable_business_category.sql: dismissal ("Nanti saja")
+ * 20260830171027_nullable_business_category.sql: dismissal ("Nanti saja")
  * kini dicatat sebagai baris dengan `business_category = NULL` (bukan
  * sentinel `LAINNYA`), supaya analitik demografi usaha bisa membedakan
  * "menolak menjawab" dari kategori LAINNYA yang sungguh dipilih -- lihat

@@ -243,7 +243,7 @@ export async function saveOptionalProfile(
   // /saveProfileFromDashboard di bawah): mengisi blok opsional adalah jawaban
   // SUNGGUHAN, jadi butuh business_category yang sudah pasti terisi lebih
   // dulu (lihat constraint merchant_profiles_category_required_with_answers
-  // di migration 20260829000200_nullable_business_category.sql) -- kalau
+  // di migration 20260830171027_nullable_business_category.sql) -- kalau
   // baris belum ada sama sekali, ProfileNudgeDialog wajib mengumpulkan
   // kategori dulu lewat KategoriStep/saveProfileFromDashboard sebelum layar
   // ini pernah ditampilkan. Tanpa deteksi baris-nol ini, merchant yang
@@ -284,7 +284,7 @@ export async function saveOptionalProfile(
  * Merchant melewati blok opsional. Ditandai, bukan dihapus dari alur.
  *
  * `upsert`, BUKAN update biasa -- sejak business_category menjadi NULLABLE
- * (migration 20260829000200_nullable_business_category.sql), dismissal
+ * (migration 20260830171027_nullable_business_category.sql), dismissal
  * sudah tidak butuh baris merchant_profiles ada lebih dulu maupun kategori
  * apa pun untuk dicatat: baris "menolak menjawab" secara sah punya
  * business_category NULL. Ini menyatukan DUA populasi (merchant yang

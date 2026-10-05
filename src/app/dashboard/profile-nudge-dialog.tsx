@@ -73,7 +73,7 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
    * `skipOptionalProfile` sendiri sudah upsert (lihat actions.ts), jadi di
    * sini TIDAK perlu lagi membuat baris `merchant_profiles` lebih dulu untuk
    * merchant yang belum punya baris (`missingProfile`) -- business_category
-   * nullable sejak migration 20260829000200_nullable_business_category.sql,
+   * nullable sejak migration 20260830171027_nullable_business_category.sql,
    * dan dismissal SENGAJA dicatat dengan kategori NULL, bukan sentinel
    * apa pun. Merchant tetap bisa mengisi kategori sungguhannya lewat
    * "Isi sekarang" kapan saja.
@@ -164,7 +164,7 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
  * `saveOptionalProfile` (dipanggil tombol "Simpan" di StepKebutuhan)
  * mensyaratkan business_category sudah terisi -- lihat constraint
  * merchant_profiles_category_required_with_answers di migration
- * 20260829000200_nullable_business_category.sql -- jadi layar ini WAJIB
+ * 20260830171027_nullable_business_category.sql -- jadi layar ini WAJIB
  * mengisinya lebih dulu lewat `saveProfileFromDashboard` sebelum StepProfil/
  * StepKebutuhan dipasang.
  *

@@ -38,7 +38,7 @@ export async function createStaff(name: string): Promise<StaffActionResult> {
     .insert({ merchant_id: userId, name: parsed.data, sort_order: count ?? 0 });
 
   if (error) {
-    // Kode dari trigger enforce_staff_limit (migration 20261005000300).
+    // Kode dari trigger enforce_staff_limit (migration 20261005180027).
     if (error.code === "BK010") return { ok: false, message: "Fitur staf khusus paket Studio." };
     if (error.code === "BK011") return { ok: false, message: "Maksimal 20 staf." };
     console.error("[staf] gagal menambah staf", { userId, error });

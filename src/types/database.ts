@@ -84,7 +84,7 @@ export type AcquisitionSource =
  * merchant yang punya baris dengan blok opsional kosong.
  *
  * `business_category` NULLABLE sejak migration
- * 20260829000200_nullable_business_category.sql -- NULL berarti merchant
+ * 20260830171027_nullable_business_category.sql -- NULL berarti merchant
  * ditawari kuesioner dan memilih tidak menjawab (lihat `optional_skipped_at`
  * di bawah), BUKAN jawaban apa pun, dan harus tetap terbedakan dari kategori
  * `LAINNYA` yang sungguh dipilih. Constraint
@@ -214,7 +214,7 @@ export type MerchantFaq = {
   updated_at: string;
 };
 
-/** Staf merchant Studio. Lihat migration 20261005000300_staff.sql. */
+/** Staf merchant Studio. Lihat migration 20261005180027_staff.sql. */
 export type Staff = {
   id: string;
   merchant_id: string;
@@ -243,7 +243,7 @@ export type DomainStatus = "PENDING" | "ACTIVE";
 
 /**
  * Domain sendiri merchant Studio. Hanya service role yang bisa menulis
- * status/token -- lihat migration 20261005000400_merchant_domains.sql.
+ * status/token -- lihat migration 20261005180048_merchant_domains.sql.
  */
 export type MerchantDomain = {
   merchant_id: string;
@@ -264,7 +264,7 @@ export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
 
 /**
  * Satu pengiriman notifikasi. Unique (booking_id, kind, channel) adalah
- * kunci idempotensinya -- lihat migration 20261005000200_notification_log.sql.
+ * kunci idempotensinya -- lihat migration 20261005175819_notification_log.sql.
  */
 export type NotificationLog = {
   id: string;
@@ -642,7 +642,7 @@ export type Database = {
        *
        * Layanan hanya disisipkan bila merchant belum punya layanan, dan jam
        * kerja hanya bila merchant belum punya baris availability. Lihat
-       * supabase/migrations/20260829000100_onboarding_profile.sql.
+       * supabase/migrations/20260830171006_onboarding_profile.sql.
        */
       complete_onboarding: {
         Args: {

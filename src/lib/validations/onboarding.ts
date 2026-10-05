@@ -22,7 +22,7 @@ import { serviceSchema } from "./service";
  * 5..480, harga non-negatif, dan format E.164 tetap punya satu sumber kebenaran.
  */
 
-/** Harus sama persis dengan enum di 20260829000100_onboarding_profile.sql. */
+/** Harus sama persis dengan enum di 20260830171006_onboarding_profile.sql. */
 export const BUSINESS_CATEGORY_VALUES = [
   "KECANTIKAN", "KESEHATAN", "FOTOGRAFI", "ACARA", "PENDIDIKAN",
   "HEWAN", "OTOMOTIF", "SERVIS", "KONSULTASI", "LAINNYA",

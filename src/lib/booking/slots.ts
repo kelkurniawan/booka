@@ -144,7 +144,7 @@ export type StaffBookedRange = BookedRange & { staff_id: string | null };
 
 /**
  * Slot kosong dengan memperhitungkan staf (paket Studio). Aturannya cermin
- * persis `create_booking` di migration 20261005000300_staff.sql:
+ * persis `create_booking` di migration 20261005180027_staff.sql:
  *
  *   - Tanpa staf: satu kalender seperti `computeFreeSlots` biasa.
  *   - `staffId` diisi: jam kerja staf itu (atau jam usaha bila ia tidak
