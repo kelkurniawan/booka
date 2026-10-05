@@ -5,6 +5,7 @@ import { requireMerchant } from "@/lib/auth/session";
 import { serverEnv } from "@/lib/env/server";
 import { createClient } from "@/lib/supabase/server";
 
+import { AccountSection } from "./account-section";
 import { SettingsForm } from "./settings-form";
 
 export const metadata: Metadata = { title: "Pengaturan" };
@@ -38,6 +39,7 @@ export default async function SettingsPage() {
         defaultWhatsapp={profile?.whatsapp_number ?? ""}
         defaultUsername={merchant.username}
       />
+      <AccountSection username={merchant.username} />
     </>
   );
 }
