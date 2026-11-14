@@ -43,6 +43,9 @@ function layanan(
     duration_minutes,
     is_active: true,
     sort_order,
+    payment_mode: "FULL",
+    deposit_type: null,
+    deposit_value: null,
     created_at: waktu,
     updated_at: waktu,
   };

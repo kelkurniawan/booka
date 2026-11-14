@@ -2351,3 +2351,196 @@ select
   case when has_column_privilege('authenticated', 'public.merchant_domains', 'verification_token', 'UPDATE')
        then 'FAIL t31h authenticated bisa mengubah verification_token'
        else 'OK   t31h authenticated tidak bisa mengubah verification_token' end as t31h3;
+
+-- ===========================================================================
+-- 32. Cara bayar: skema (20261115000200)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('32323232-0000-0000-0000-000000000001', 'bayar-a@example.com', '{}'::jsonb),
+  ('32323232-0000-0000-0000-000000000002', 'bayar-b@example.com', '{}'::jsonb),
+  ('32323232-0000-0000-0000-000000000003', 'bayar-c@example.com', '{}'::jsonb);
+update public.merchants set username = 'cara-bayar-32', subscription_tier = 'PRO'
+  where id = '32323232-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id in ('32323232-0000-0000-0000-000000000002', '32323232-0000-0000-0000-000000000003');
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '32323232-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+
+-- 32a. Constraint layanan.
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'DEPOSIT')$q$,
+  '23514', 't32a DEPOSIT tanpa DP');
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'DEPOSIT', 'PERCENT', 95)$q$,
+  '23514', 't32a PERCENT 95');
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'DEPOSIT', 'PERCENT', 0)$q$,
+  '23514', 't32a PERCENT 0');
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'DEPOSIT', 'FIXED', 350000)$q$,
+  '23514', 't32a FIXED sama dengan harga');
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'FULL', 'PERCENT', 30)$q$,
+  '23514', 't32a FULL dengan DP terisi');
+select pg_temp.expect_fail_code(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, deposit_type)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'DEPOSIT', 'PERCENT')$q$,
+  '23514', 't32a deposit_type tanpa deposit_value');
+select pg_temp.expect_ok(
+  $q$insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-5e5e-0000-0000-000000000001', '32323232-0000-0000-0000-000000000001', 'dp', 350000, 60, 'DEPOSIT', 'PERCENT', 30)$q$,
+  't32a DEPOSIT PERCENT 30');
+select pg_temp.expect_ok(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'REQUEST')$q$,
+  't32a REQUEST tanpa DP');
+select pg_temp.expect_ok(
+  $q$insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value)
+     values ('32323232-5e5e-0000-0000-000000000002', '32323232-0000-0000-0000-000000000001', 'req', 350000, 60, 'REQUEST', 'FIXED', 100000)$q$,
+  't32a REQUEST FIXED 100000');
+select pg_temp.expect_ok(
+  $q$insert into public.services (merchant_id, name, price, duration_minutes, payment_mode)
+     values ('32323232-0000-0000-0000-000000000001', 'uji layanan', 350000, 60, 'ON_SITE')$q$,
+  't32a ON_SITE tanpa DP');
+select pg_temp.expect_fail_code(
+  $q$update public.services set price = 90000 where id = '32323232-5e5e-0000-0000-000000000002'$q$,
+  '23514', 't32a harga turun di bawah DP FIXED');
+
+-- 32b. Insert langsung tanpa kolom nominal: trigger mengisi nominal.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status)
+values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-04 09:00+07', '2030-03-04 10:00+07', 'Rina', '+6281300320001', 'PAID');
+select case when amount_due_now = 350000 and amount_due_on_site = 0 and payment_mode = 'FULL'
+            then 'OK   t32b nominal default = harga penuh, FULL'
+            else 'FAIL t32b nominal default salah' end as t32b
+from public.bookings
+where merchant_id = '32323232-0000-0000-0000-000000000001' and customer_whatsapp = '+6281300320001';
+
+-- 32c. Constraint booking.
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site)
+     values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-05 09:00+07', '2030-03-05 10:00+07', 'Rina', '+6281300320002', 'PAID', 100, 0)$q$,
+  '23514', 't32c nominal tidak berjumlah harga');
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, paid_on_site_method)
+     values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-05 09:00+07', '2030-03-05 10:00+07', 'Rina', '+6281300320002', 'PAID', 'CASH')$q$,
+  '23514', 't32c metode lunas tanpa waktu lunas');
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, attended_at, no_show_at)
+     values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-05 09:00+07', '2030-03-05 10:00+07', 'Rina', '+6281300320002', 'PAID', now(), now())$q$,
+  '23514', 't32c hadir dan tidak datang sekaligus');
+
+-- 32d. CONFIRMED dan REQUESTED memegang slot.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode)
+values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-06 09:00+07', '2030-03-06 10:00+07', 'Rina', '+6281300320003', 'CONFIRMED', 0, 350000, 'ON_SITE');
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, expires_at)
+values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-06 11:00+07', '2030-03-06 12:00+07', 'Rina', '+6281300320004', 'REQUESTED', now() + interval '1 hour');
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status)
+     values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-06 09:30+07', '2030-03-06 10:30+07', 'Dewi', '+6281300320005', 'PENDING')$q$,
+  '23P01', 't32d PENDING bentrok dengan CONFIRMED');
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status)
+     values ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2030-03-06 11:30+07', '2030-03-06 12:30+07', 'Dewi', '+6281300320005', 'PENDING')$q$,
+  '23P01', 't32d PENDING bentrok dengan REQUESTED');
+
+-- 32e. Kesepakatan pemegang slot. Merchant 0002 untuk hitungan kuota (bersih).
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site)
+values
+ ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2031-03-04 09:00+07', '2031-03-04 10:00+07', 'Rina', '+6281300320006', 'REQUESTED', now() - interval '1 minute', 350000, 0),
+ ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320007', 'CONFIRMED', now() + interval '1 hour', 0, 350000),
+ ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 09:00+07', '2031-03-04 10:00+07', 'Rina', '+6281300320008', 'REQUESTED', now() - interval '1 minute', 350000, 0),
+ ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320009', 'CONFIRMED', now() + interval '1 hour', 0, 350000),
+ ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 13:00+07', '2031-03-04 14:00+07', 'Rina', '+6281300320010', 'REQUESTED', now() + interval '1 hour', 350000, 0);
+select case when (select count(*) from public.get_booked_ranges('cara-bayar-32', '2031-03-04 00:00+07', '2031-03-05 00:00+07')) = 1
+              and exists (select 1 from public.get_booked_ranges('cara-bayar-32', '2031-03-04 00:00+07', '2031-03-05 00:00+07')
+                          where start_datetime = '2031-03-04 11:00+07')
+            then 'OK   t32e get_booked_ranges memuat CONFIRMED, bukan REQUESTED kedaluwarsa'
+            else 'FAIL t32e get_booked_ranges salah' end as t32e;
+select case when public.count_bookings_this_month('32323232-0000-0000-0000-000000000002') = 2
+            then 'OK   t32e kuota menghitung CONFIRMED + REQUESTED hidup, bukan yang kedaluwarsa'
+            else 'FAIL t32e count_bookings_this_month salah: '
+                 || public.count_bookings_this_month('32323232-0000-0000-0000-000000000002') end as t32e2;
+select case when public.booking_holds_slot('REQUESTED', now() + interval '1 hour')
+             and not public.booking_holds_slot('CANCELLED', now() + interval '1 hour')
+             and not public.booking_holds_slot('REQUESTED', now() - interval '1 minute')
+            then 'OK   t32e booking_holds_slot'
+            else 'FAIL t32e booking_holds_slot' end as t32e3;
+
+-- 32f. Pembersih: REQUESTED kedaluwarsa dibatalkan, CONFIRMED tidak disentuh.
+select public.reap_expired_bookings() >= 2 as t32f_ran;
+select case when (select status = 'CANCELLED' and cancel_reason = 'Permintaan tidak dijawab dalam batas waktu'
+                  from public.bookings where customer_whatsapp = '+6281300320006')
+             and (select status = 'CONFIRMED' from public.bookings where customer_whatsapp = '+6281300320007')
+            then 'OK   t32f reap membatalkan REQUESTED kedaluwarsa saja'
+            else 'FAIL t32f reap_expired_bookings salah' end as t32f;
+
+-- 32g. merchant_settings dibuat otomatis dengan default.
+select case when (select allow_pay_on_site and auto_confirm_on_site and max_active_per_phone = 2 and not deposit_after_no_show
+                  from public.merchant_settings where merchant_id = '32323232-0000-0000-0000-000000000001')
+             and (select count(*) from public.merchant_settings) = (select count(*) from public.merchants)
+            then 'OK   t32g merchant_settings terisi default untuk semua merchant'
+            else 'FAIL t32g merchant_settings tidak sesuai default' end as t32g;
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_settings set max_active_per_phone = 0 where merchant_id = '32323232-0000-0000-0000-000000000001'$q$,
+  '23514', 't32g max_active_per_phone = 0');
+
+-- 32h. Hak akses.
+select
+  case when has_column_privilege('anon', 'public.merchant_settings', 'allow_pay_on_site', 'SELECT')
+        and has_column_privilege('anon', 'public.merchant_settings', 'auto_confirm_on_site', 'SELECT')
+       then 'OK   t32h anon bisa SELECT kolom publik' else 'FAIL t32h anon tidak bisa SELECT kolom publik' end as t32h,
+  case when has_column_privilege('anon', 'public.merchant_settings', 'max_active_per_phone', 'SELECT')
+         or has_column_privilege('anon', 'public.merchant_settings', 'deposit_after_no_show', 'SELECT')
+       then 'FAIL t32h anon bisa SELECT kolom privat' else 'OK   t32h anon tidak bisa SELECT kolom privat' end as t32h2,
+  case when has_table_privilege('anon', 'public.merchant_settings', 'INSERT')
+         or has_table_privilege('anon', 'public.merchant_settings', 'UPDATE')
+       then 'FAIL t32h anon bisa menulis' else 'OK   t32h anon tidak bisa menulis' end as t32h3,
+  case when has_column_privilege('authenticated', 'public.merchant_settings', 'allow_pay_on_site', 'UPDATE')
+        and not has_column_privilege('authenticated', 'public.merchant_settings', 'merchant_id', 'UPDATE')
+        and not has_table_privilege('authenticated', 'public.merchant_settings', 'INSERT')
+       then 'OK   t32h authenticated: UPDATE kolom setelan saja, tanpa INSERT'
+       else 'FAIL t32h hak authenticated salah' end as t32h4,
+  case when has_function_privilege('anon', 'public.booking_holds_slot(public.booking_status, timestamptz)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.booking_holds_slot(public.booking_status, timestamptz)', 'EXECUTE')
+       then 'FAIL t32h booking_holds_slot terbuka' else 'OK   t32h booking_holds_slot tertutup' end as t32h5,
+  case when has_function_privilege('anon', 'public.get_booked_ranges(text, timestamptz, timestamptz)', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.dashboard_booking_summary()', 'EXECUTE')
+        and not has_function_privilege('anon', 'public.dashboard_booking_summary()', 'EXECUTE')
+        and has_function_privilege('service_role', 'public.reap_expired_bookings()', 'EXECUTE')
+        and not has_function_privilege('authenticated', 'public.reap_expired_bookings()', 'EXECUTE')
+       then 'OK   t32h grant fungsi lama tetap' else 'FAIL t32h grant fungsi lama berubah' end as t32h6;
+
+-- 32i. RLS: merchant hanya mengubah setelannya sendiri; boleh membatalkan CONFIRMED.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '32323232-0000-0000-0000-000000000001';
+with u as (update public.merchant_settings set allow_pay_on_site = false
+           where merchant_id = '32323232-0000-0000-0000-000000000002' returning 1)
+select case when (select count(*) from u) = 0
+            then 'OK   t32i setelan merchant lain tidak berubah'
+            else 'FAIL t32i setelan merchant lain berubah' end as t32i;
+with u as (update public.bookings set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'uji'
+           where customer_whatsapp = '+6281300320003' returning 1)
+select case when (select count(*) from u) = 1
+            then 'OK   t32i merchant membatalkan booking CONFIRMED miliknya'
+            else 'FAIL t32i booking CONFIRMED tidak bisa dibatalkan' end as t32i2;
+rollback;
+
+-- 32j. Pendapatan = uang masuk: DP PAID + sisa lunas di tempat.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode, paid_at)
+values ('32323232-0000-0000-0000-000000000003', 'Potong', 350000, 60, '2032-03-04 09:00+07', '2032-03-04 10:00+07', 'Rina', '+6281300320011', 'PAID', 105000, 245000, 'DEPOSIT', now());
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode, paid_on_site_at, paid_on_site_method)
+values ('32323232-0000-0000-0000-000000000003', 'Potong', 450000, 60, '2032-03-04 11:00+07', '2032-03-04 12:00+07', 'Rina', '+6281300320012', 'CONFIRMED', 0, 450000, 'ON_SITE', now(), 'CASH');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '32323232-0000-0000-0000-000000000003';
+select case when (select confirmed_revenue from public.dashboard_booking_summary()) = 555000
+            then 'OK   t32j confirmed_revenue = DP + sisa lunas di tempat'
+            else 'FAIL t32j confirmed_revenue = ' || (select confirmed_revenue from public.dashboard_booking_summary())::text end as t32j;
+rollback;

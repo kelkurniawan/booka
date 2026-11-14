@@ -8,7 +8,10 @@
  */
 
 export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
-export type BookingStatus = "PENDING" | "PAID" | "CANCELLED";
+export type BookingStatus = "PENDING" | "PAID" | "CANCELLED" | "CONFIRMED" | "REQUESTED";
+export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
+export type DepositType = "PERCENT" | "FIXED";
+export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
@@ -167,6 +170,9 @@ export type Service = {
   duration_minutes: number;
   is_active: boolean;
   sort_order: number;
+  payment_mode: PaymentMode;
+  deposit_type: DepositType | null;
+  deposit_value: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -258,7 +264,12 @@ export type MerchantDomain = {
 export type NotificationKind =
   | "BOOKING_PAID_MERCHANT"
   | "BOOKING_PAID_CUSTOMER"
-  | "REMINDER_CUSTOMER";
+  | "REMINDER_CUSTOMER"
+  | "BOOKING_CONFIRMED_MERCHANT"
+  | "BOOKING_CONFIRMED_CUSTOMER"
+  | "BOOKING_REQUESTED_MERCHANT"
+  | "BOOKING_APPROVED_CUSTOMER"
+  | "BOOKING_REJECTED_CUSTOMER";
 export type NotificationChannel = "EMAIL" | "WHATSAPP";
 export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
 
@@ -302,6 +313,24 @@ export type Booking = {
   staff_id: string | null;
   /** Snapshot nama staf saat booking dibuat, sama alasannya dengan service_name. */
   staff_name: string | null;
+  payment_mode: PaymentMode;
+  amount_due_now: number;
+  amount_due_on_site: number;
+  paid_on_site_at: string | null;
+  paid_on_site_method: OnSitePaymentMethod | null;
+  attended_at: string | null;
+  no_show_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MerchantSettings = {
+  merchant_id: string;
+  allow_pay_on_site: boolean;
+  auto_confirm_on_site: boolean;
+  /** null = tanpa batas. */
+  max_active_per_phone: number | null;
+  deposit_after_no_show: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -384,8 +413,27 @@ export type Database = {
       };
       services: {
         Row: Service;
-        Insert: Omit<Service, "id" | Timestamps | "is_active" | "sort_order"> &
-          Partial<Pick<Service, "id" | "is_active" | "sort_order">>;
+        Insert: Omit<
+          Service,
+          | "id"
+          | Timestamps
+          | "is_active"
+          | "sort_order"
+          | "payment_mode"
+          | "deposit_type"
+          | "deposit_value"
+        > &
+          Partial<
+            Pick<
+              Service,
+              | "id"
+              | "is_active"
+              | "sort_order"
+              | "payment_mode"
+              | "deposit_type"
+              | "deposit_value"
+            >
+          >;
         Update: Partial<Omit<Service, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
@@ -455,11 +503,25 @@ export type Database = {
           | "cancelled_at"
           | "cancel_reason"
           | "access_token"
+          | "payment_mode"
+          | "amount_due_now"
+          | "amount_due_on_site"
+          | "paid_on_site_at"
+          | "paid_on_site_method"
+          | "attended_at"
+          | "no_show_at"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "payment_mode"
+              | "amount_due_now"
+              | "amount_due_on_site"
+              | "paid_on_site_at"
+              | "paid_on_site_method"
+              | "attended_at"
+              | "no_show_at"
               | "status"
               | "expires_at"
               | "paid_at"
@@ -472,6 +534,20 @@ export type Database = {
           Relationship<"merchant_id", "merchants">,
           Relationship<"service_id", "services">,
         ];
+      };
+      merchant_settings: {
+        Row: MerchantSettings;
+        Insert: Pick<MerchantSettings, "merchant_id">;
+        Update: Partial<
+          Pick<
+            MerchantSettings,
+            | "allow_pay_on_site"
+            | "auto_confirm_on_site"
+            | "max_active_per_phone"
+            | "deposit_after_no_show"
+          >
+        >;
+        Relationships: [Relationship<"merchant_id", "merchants">];
       };
       payment_connections: {
         Row: PaymentConnection;
@@ -666,6 +742,9 @@ export type Database = {
     Enums: {
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
+      payment_mode: PaymentMode;
+      deposit_type: DepositType;
+      on_site_payment_method: OnSitePaymentMethod;
       payment_provider: PaymentProvider;
       connection_status: ConnectionStatus;
       connection_mode: ConnectionMode;

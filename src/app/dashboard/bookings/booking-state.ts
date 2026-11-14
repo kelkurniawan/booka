@@ -143,6 +143,8 @@ export const STATUS_META: Record<
 > = {
   PENDING: { label: "Menunggu pembayaran", badgeVariant: "secondary" },
   PAID: { label: "Dibayar", badgeVariant: "default" },
+  CONFIRMED: { label: "Terkonfirmasi", badgeVariant: "default" },
+  REQUESTED: { label: "Perlu persetujuan", badgeVariant: "secondary" },
   CANCELLED: { label: "Dibatalkan", badgeVariant: "destructive" },
   EXPIRED: { label: "Kedaluwarsa", badgeVariant: "outline" },
 };

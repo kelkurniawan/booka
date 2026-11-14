@@ -10,6 +10,11 @@ const KIND_LABEL: Record<NotificationLog["kind"], string> = {
   BOOKING_PAID_MERCHANT: "Pemberitahuan ke Anda",
   BOOKING_PAID_CUSTOMER: "Konfirmasi ke pelanggan",
   REMINDER_CUSTOMER: "Reminder H-1 ke pelanggan",
+  BOOKING_CONFIRMED_MERCHANT: "Pemberitahuan ke Anda",
+  BOOKING_CONFIRMED_CUSTOMER: "Konfirmasi ke pelanggan",
+  BOOKING_REQUESTED_MERCHANT: "Permintaan ke Anda",
+  BOOKING_APPROVED_CUSTOMER: "Tautan bayar ke pelanggan",
+  BOOKING_REJECTED_CUSTOMER: "Penolakan ke pelanggan",
 };
 
 const CHANNEL_LABEL: Record<NotificationLog["channel"], string> = {
