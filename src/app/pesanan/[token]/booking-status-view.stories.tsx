@@ -9,7 +9,8 @@ import { BookingStatusView } from "./booking-status-view";
 const meta = {
   title: "Halaman publik/Booking Anda",
   component: BookingStatusView,
-  parameters: { layout: "fullscreen" },
+  // BookingLiveStatus memakai useRouter dari next/navigation.
+  parameters: { layout: "fullscreen", nextjs: { appDirectory: true } },
   globals: { viewport: { value: "hp", isRotated: false } },
   args: {
     booking: sampleBooking,

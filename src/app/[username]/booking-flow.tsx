@@ -36,6 +36,16 @@ type Step = 1 | 2 | 3;
 const STEP_PARAM: Record<Step, string | null> = { 1: null, 2: "jadwal", 3: "data" };
 const STEP_TITLE: Record<Step, string> = { 1: "Pilih layanan", 2: "Pilih jadwal", 3: "Data diri" };
 
+/** URL halaman ini dengan parameter `langkah` untuk `step`; query lain dan hash tetap. */
+function urlForStep(step: Step): string {
+  const params = new URLSearchParams(window.location.search);
+  const value = STEP_PARAM[step];
+  if (value) params.set("langkah", value);
+  else params.delete("langkah");
+  const query = params.toString();
+  return window.location.pathname + (query ? `?${query}` : "") + window.location.hash;
+}
+
 const TANGGAL = new Intl.DateTimeFormat("id-ID", {
   weekday: "long",
   day: "numeric",
@@ -141,19 +151,10 @@ export function BookingFlow({
   // Riwayat browser: maju langkah = pushState, tombol Kembali = popstate.
   // Ini sinkronisasi ke sistem eksternal (history), jadi memang layak di effect.
   useEffect(() => {
-    function dropParam() {
-      const params = new URLSearchParams(window.location.search);
-      params.delete("langkah");
-      const query = params.toString();
-      window.history.replaceState(
-        null,
-        "",
-        window.location.pathname + (query ? `?${query}` : "") + window.location.hash,
-      );
-    }
-
     // Saat dimuat selalu mulai di langkah 1, jadi parameter lama dibuang.
-    if (new URLSearchParams(window.location.search).has("langkah")) dropParam();
+    if (new URLSearchParams(window.location.search).has("langkah")) {
+      window.history.replaceState(null, "", urlForStep(1));
+    }
 
     function onPopState() {
       const param = new URLSearchParams(window.location.search).get("langkah");
@@ -163,8 +164,7 @@ export function BookingFlow({
       const next = (wanted > max ? max : wanted) as Step;
       if (next !== wanted) {
         // Sejajarkan URL dengan langkah yang benar-benar ditampilkan.
-        if (next === 1) dropParam();
-        else window.history.replaceState(null, "", `?langkah=${STEP_PARAM[next]}`);
+        window.history.replaceState(null, "", urlForStep(next));
       }
       setStep(next);
     }
@@ -185,7 +185,7 @@ export function BookingFlow({
   }, [step]);
 
   function goForward(next: Step) {
-    window.history.pushState(null, "", `?langkah=${STEP_PARAM[next]}`);
+    window.history.pushState(null, "", urlForStep(next));
     setStep(next);
   }
 
