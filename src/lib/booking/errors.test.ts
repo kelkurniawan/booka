@@ -39,6 +39,16 @@ test("P0006 (slot sudah lewat) -> 409, pesan jam sudah lewat", () => {
   assert.match(result.message, /sudah lewat/);
 });
 
+test("BK020 (batas booking aktif per nomor) -> 409", () => {
+  assert.equal(mapBookingError("BK020").status, 409);
+});
+
+test("BK021 (pembayaran belum diaktifkan) -> 409, pesan pembayaran", () => {
+  const result = mapBookingError("BK021");
+  assert.equal(result.status, 409);
+  assert.equal(result.message, "Merchant belum mengaktifkan pembayaran");
+});
+
 test("errcode tak dikenal -> 500, pesan generik (tidak membocorkan detail Postgres)", () => {
   const result = mapBookingError("42P01");
   assert.equal(result.status, 500);

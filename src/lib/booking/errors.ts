@@ -61,6 +61,19 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Jam tersebut sudah lewat. Silakan pilih waktu lain.",
   },
+  // create_booking: nomor WhatsApp sudah mencapai batas booking aktif
+  // (max_active_per_phone), hanya untuk ON_SITE dan REQUEST.
+  BK020: {
+    status: 409,
+    message:
+      "Nomor WhatsApp ini sudah mencapai batas booking aktif di merchant ini. Selesaikan atau batalkan booking sebelumnya dulu.",
+  },
+  // create_booking: mode efektif butuh pembayaran online tapi merchant belum
+  // menyambungkan payment gateway (koneksi ACTIVE).
+  BK021: {
+    status: 409,
+    message: "Merchant belum mengaktifkan pembayaran",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {
