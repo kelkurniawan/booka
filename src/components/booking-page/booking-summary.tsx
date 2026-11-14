@@ -1,9 +1,12 @@
 export function BookingSummary({
   rows,
   total,
+  onSite,
 }: {
   rows: { label: string; value: string }[];
   total: string;
+  /** Nominal yang dibayar langsung ke merchant saat layanan; kosong bila tidak ada. */
+  onSite?: string;
 }) {
   return (
     <dl
@@ -20,6 +23,12 @@ export function BookingSummary({
         <dt className="font-medium">Dibayar sekarang</dt>
         <dd className="text-right font-medium">{total}</dd>
       </div>
+      {onSite ? (
+        <div className="flex justify-between gap-3">
+          <dt className="text-muted-foreground">Bayar di tempat</dt>
+          <dd className="text-right font-medium">{onSite}</dd>
+        </div>
+      ) : null}
     </dl>
   );
 }

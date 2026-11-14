@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
+import { DEFAULT_PAYMENT_SETTINGS, type PaymentSettings } from "@/lib/booking/payment-mode";
 import { loadPublicStaff, type PublicStaff } from "@/lib/booking/staff";
 import type {
   MerchantTheme,
@@ -74,7 +75,7 @@ const getMerchantPageData = cache(async (username: string) => {
     .merchant_themes;
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
-  const [servicesResult, availabilityResult, faqsResult] = await Promise.all([
+  const [servicesResult, availabilityResult, faqsResult, settingsResult] = await Promise.all([
     supabase
       .from("services")
       .select("*, service_media(*)")
@@ -88,6 +89,12 @@ const getMerchantPageData = cache(async (username: string) => {
       .select("*")
       .eq("merchant_id", onboardedMerchant.id)
       .order("sort_order", { ascending: true }),
+    // Anon hanya boleh membaca dua kolom ini.
+    supabase
+      .from("merchant_settings")
+      .select("allow_pay_on_site, auto_confirm_on_site")
+      .eq("merchant_id", onboardedMerchant.id)
+      .maybeSingle(),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -142,7 +149,15 @@ const getMerchantPageData = cache(async (username: string) => {
     throw new Error("Gagal memuat staf merchant.");
   }
 
+  // Tanpa baris atau gagal baca: pakai bawaan. Label hanya petunjuk; server
+  // yang menentukan hasil akhir saat booking dibuat.
+  const paymentSettings: PaymentSettings =
+    !settingsResult.error && settingsResult.data
+      ? settingsResult.data
+      : DEFAULT_PAYMENT_SETTINGS;
+
   return {
+    paymentSettings,
     merchant: onboardedMerchant,
     staff,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
@@ -200,7 +215,7 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs } = data;
+  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings } = data;
 
   return (
     <BookingPageView
@@ -211,6 +226,7 @@ export default async function MerchantPublicPage({
       availability={availability}
       staff={staff}
       faqs={faqs}
+      paymentSettings={paymentSettings}
     />
   );
 }

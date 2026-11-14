@@ -30,7 +30,7 @@ type BookingPageParams = { token: string };
  * propnya nanti diteruskan ke komponen client di bawah.
  */
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at" as const;
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at" as const;
 
 type MerchantInfo = {
   username: string | null;
@@ -104,7 +104,7 @@ const getBookingPageData = cache(async (token: string) => {
   // pelanggan yang membuka tautan ini setelah waktunya habis tidak boleh
   // terus melihat "menunggu pembayaran".
   const isExpiredPending =
-    booking.status === "PENDING" && Date.now() >= new Date(booking.expires_at).getTime();
+    (booking.status === "PENDING" || booking.status === "REQUESTED") && Date.now() >= new Date(booking.expires_at).getTime();
 
   // merchant_themes bisa objek (relasi 1-1) atau array satu elemen; sama
   // seperti src/app/[username]/page.tsx.
@@ -152,6 +152,7 @@ export default async function BookingStatusPage({
 
   return (
     <BookingStatusView
+      token={token}
       booking={booking}
       merchantName={merchant.full_name ?? merchant.username ?? "Merchant"}
       merchantUsername={merchant.username}

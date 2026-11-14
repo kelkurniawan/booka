@@ -4,6 +4,7 @@ import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
+import { paymentLabel, type PaymentSettings } from "@/lib/booking/payment-mode";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type { MerchantFaq, Service, ServiceMedia } from "@/types/database";
 
@@ -24,6 +25,7 @@ export function AppearancePreview({
   mediaByService,
   faqs,
   showWatermark,
+  paymentSettings,
 }: {
   theme: ResolvedTheme;
   name: string;
@@ -33,6 +35,7 @@ export function AppearancePreview({
   mediaByService: Record<string, ServiceMedia[]>;
   faqs: MerchantFaq[];
   showWatermark: boolean;
+  paymentSettings: PaymentSettings;
 }) {
   return (
     <div className="border-border mx-auto w-full max-w-[360px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-800">
@@ -54,7 +57,7 @@ export function AppearancePreview({
                     checked={index === 0}
                     onSelect={() => {}}
                     eager={index === 0}
-                    paymentLabel="Bayar saat booking"
+                    paymentLabel={paymentLabel(service, paymentSettings)}
                   />
                 ))}
               </div>

@@ -116,4 +116,11 @@ export const sampleBooking = {
   cancelled_at: null,
   cancel_reason: null,
   expires_at: "2026-11-20T08:15:00Z",
+  payment_mode: "FULL" as const,
+  amount_due_now: 105000,
+  amount_due_on_site: 0,
+  paid_on_site_at: null,
 };
+
+/** Token contoh (48 hex) untuk story /pesanan/[token]. */
+export const sampleToken = "0".repeat(48);

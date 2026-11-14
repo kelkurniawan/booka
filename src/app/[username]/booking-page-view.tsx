@@ -12,6 +12,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import type { PaymentSettings } from "@/lib/booking/payment-mode";
 import type { PublicStaff } from "@/lib/booking/staff";
 import { ROUTES } from "@/lib/routes";
 import { siteUrl } from "@/lib/site";
@@ -37,6 +38,7 @@ export type BookingPageViewProps = {
   availability: Pick<Availability, "day_of_week">[];
   staff: PublicStaff[];
   faqs: MerchantFaq[];
+  paymentSettings: PaymentSettings;
 };
 
 /**
@@ -51,6 +53,7 @@ export function BookingPageView({
   availability,
   staff,
   faqs,
+  paymentSettings,
 }: BookingPageViewProps) {
   const name = merchant.full_name ?? merchant.username;
   // Staf dengan jam sendiri membuat halaman bisa menerima pesanan walau jam
@@ -75,6 +78,7 @@ export function BookingPageView({
             services={services}
             mediaByService={mediaByService}
             availability={availability}
+            paymentSettings={paymentSettings}
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,

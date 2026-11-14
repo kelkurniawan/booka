@@ -14,6 +14,13 @@ import { TimeSlotPicker, type TimeSlotState } from "@/components/booking-page/ti
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import {
+  computeAmounts,
+  effectivePaymentMode,
+  needsApproval,
+  paymentLabel,
+  type PaymentSettings,
+} from "@/lib/booking/payment-mode";
 import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
 import { jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
 import { formatRupiah } from "@/lib/format";
@@ -29,6 +36,8 @@ export type BookingFlowProps = {
   availability: Pick<Availability, "day_of_week">[];
   /** Staf aktif (Studio) beserta hari kerjanya. `days` kosong = ikut jam usaha. */
   staff: { id: string; name: string; days: DayOfWeek[] }[];
+  /** Hanya petunjuk tampilan; server menentukan mode akhir saat booking dibuat. */
+  paymentSettings: PaymentSettings;
 };
 
 type Step = 1 | 2 | 3;
@@ -110,6 +119,7 @@ export function BookingFlow({
   mediaByService,
   availability,
   staff,
+  paymentSettings,
 }: BookingFlowProps) {
   const router = useRouter();
 
@@ -269,14 +279,40 @@ export function BookingFlow({
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
       });
-      // Booking sudah permanen: arahkan ke /pesanan/[token], tempat QRIS
-      // ditampilkan. `submitting` sengaja tidak direset karena halaman segera
+      // Booking sudah permanen: arahkan ke /pesanan/[token], tempat QRIS atau
+      // hasil akhir ditampilkan. Selalu ikuti bookingUrl: server yang
+      // menentukan status (mis. ON_SITE bisa jadi FULL karena no-show). `submitting` sengaja tidak direset karena halaman segera
       // berpindah.
       router.push(checkout.bookingUrl);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Gagal membuat booking, silakan coba lagi.");
       setSubmitting(false);
     }
+  }
+
+  // Rincian bayar langkah 3, dihitung dari pengaturan yang terlihat anon.
+  let payment: {
+    dueNow: number;
+    dueOnSite: number;
+    approval: boolean;
+    online: boolean;
+    actionLabel: string;
+  } | null = null;
+  if (selectedService) {
+    const mode = effectivePaymentMode(selectedService, paymentSettings);
+    const { dueNow, dueOnSite } = computeAmounts(selectedService, mode);
+    const approval = needsApproval(mode, paymentSettings);
+    payment = {
+      dueNow,
+      dueOnSite,
+      approval,
+      online: !approval && mode !== "ON_SITE",
+      actionLabel: approval
+        ? "Kirim permintaan"
+        : mode === "ON_SITE"
+          ? "Konfirmasi booking"
+          : `Bayar ${formatRupiah(dueNow)}`,
+    };
   }
 
   const staffName = selectedStaffId ? staff.find((m) => m.id === selectedStaffId)?.name : null;
@@ -299,7 +335,7 @@ export function BookingFlow({
                 checked={service.id === selectedServiceId}
                 onSelect={() => handleSelectService(service.id)}
                 eager={index === 0}
-                paymentLabel="Bayar saat booking"
+                paymentLabel={paymentLabel(service, paymentSettings)}
               />
             ))}
           </div>
@@ -381,7 +417,7 @@ export function BookingFlow({
         </>
       ) : null}
 
-      {step === 3 && selectedService && selectedDate && selectedSlot ? (
+      {step === 3 && selectedService && selectedDate && selectedSlot && payment ? (
         <form onSubmit={handleCheckoutSubmit} noValidate className="flex flex-col gap-6">
           <BookingSummary
             rows={[
@@ -389,8 +425,12 @@ export function BookingFlow({
               ...(staffName ? [{ label: "Dengan", value: staffName }] : []),
               { label: "Tanggal", value: dateLabel(selectedDate) },
               { label: "Jam", value: selectedSlot.label },
+              ...(payment.dueNow !== Number(selectedService.price)
+                ? [{ label: "Harga layanan", value: formatRupiah(Number(selectedService.price)) }]
+                : []),
             ]}
-            total={formatRupiah(selectedService.price)}
+            total={formatRupiah(payment.dueNow)}
+            onSite={payment.dueOnSite > 0 ? formatRupiah(payment.dueOnSite) : undefined}
           />
 
           <Field data-invalid={Boolean(formErrors.customer_name)}>
@@ -438,10 +478,30 @@ export function BookingFlow({
             ) : null}
           </Field>
 
-          <p className="text-muted-foreground text-sm text-pretty">
-            Pembayaran masuk langsung ke {merchantName} lewat QRIS. Jadwal ditahan 15 menit selama
-            Anda membayar.
-          </p>
+          <div className="text-muted-foreground flex flex-col gap-2 text-sm text-pretty">
+            {payment.online ? (
+              <p>
+                Pembayaran masuk langsung ke {merchantName} lewat QRIS. Jadwal ditahan 15 menit
+                selama Anda membayar.
+              </p>
+            ) : null}
+            {payment.approval ? (
+              <p>
+                Ini permintaan booking. {merchantName} akan menyetujui atau menolak dalam 24 jam.
+                {payment.dueNow > 0
+                  ? ` Setelah disetujui, Anda membayar ${formatRupiah(payment.dueNow)} lewat halaman booking Anda.`
+                  : ""}
+              </p>
+            ) : null}
+            {!payment.online && !payment.approval ? <p>Tidak perlu bayar sekarang.</p> : null}
+            {payment.dueOnSite > 0 ? (
+              <p>
+                {payment.dueNow > 0
+                  ? `Sisanya ${formatRupiah(payment.dueOnSite)} dibayar langsung ke ${merchantName} saat layanan.`
+                  : `Bayar ${formatRupiah(payment.dueOnSite)} langsung ke ${merchantName} saat layanan.`}
+              </p>
+            ) : null}
+          </div>
           {/* Titik pengumpulan data pribadi: kebijakan ditautkan di sini (UU PDP). */}
           <p className="text-muted-foreground text-center text-xs">
             Data Anda diproses sesuai{" "}
@@ -454,7 +514,7 @@ export function BookingFlow({
           <StickyActionBar
             type="submit"
             summary={selectedService.name}
-            actionLabel={`Bayar ${formatRupiah(selectedService.price)}`}
+            actionLabel={payment.actionLabel}
             busy={submitting}
           />
         </form>
