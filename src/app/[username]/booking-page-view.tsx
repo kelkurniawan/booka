@@ -4,7 +4,7 @@ import { CalendarOff } from "lucide-react";
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
-import { BookingServiceCard } from "@/components/booking-page/service-card";
+import { DesktopHandoff } from "@/components/booking-page/desktop-handoff";
 import {
   Empty,
   EmptyDescription,
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/empty";
 import type { PublicStaff } from "@/lib/booking/staff";
 import { ROUTES } from "@/lib/routes";
+import { siteUrl } from "@/lib/site";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type {
   Availability,
@@ -23,7 +24,7 @@ import type {
   ServiceMedia,
 } from "@/types/database";
 
-import { BookingSeam } from "./booking-seam";
+import { BookingFlow } from "./booking-flow";
 
 export type BookingPageViewProps = {
   merchant: Pick<
@@ -67,29 +68,12 @@ export function BookingPageView({
       />
 
       {canAcceptBookings ? (
-        <section aria-labelledby="layanan-heading" className="flex flex-col gap-4">
-          <h2
-            id="layanan-heading"
-            className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase"
-          >
-            Layanan
-          </h2>
-
-          <ul className="flex flex-col gap-3">
-            {services.map((service, index) => (
-              <BookingServiceCard
-                key={service.id}
-                service={service}
-                media={mediaByService[service.id] ?? []}
-                eager={index === 0}
-              />
-            ))}
-          </ul>
-
-          <BookingSeam
-            merchantId={merchant.id}
+        <>
+          <BookingFlow
             username={merchant.username}
+            merchantName={name}
             services={services}
+            mediaByService={mediaByService}
             availability={availability}
             staff={staff.map((member) => ({
               id: member.id,
@@ -97,7 +81,8 @@ export function BookingPageView({
               days: [...new Set(member.availability.map((row) => row.day_of_week))],
             }))}
           />
-        </section>
+          <DesktopHandoff url={new URL(ROUTES.merchantPage(merchant.username), siteUrl()).toString()} />
+        </>
       ) : (
         <Empty className="border">
           <EmptyHeader>
