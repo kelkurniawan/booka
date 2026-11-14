@@ -14,8 +14,17 @@ import type {
 } from "@/types/database";
 
 import { sendEmail, type EmailConfig } from "./email";
+import { REQUEST_REJECT_REASON } from "@/lib/booking/payment-mode";
+
 import {
+  customerApprovedWhatsapp,
+  customerConfirmedWhatsapp,
   customerPaidWhatsapp,
+  customerRejectedWhatsapp,
+  merchantConfirmedEmail,
+  merchantConfirmedWhatsapp,
+  merchantRequestedEmail,
+  merchantRequestedWhatsapp,
   customerReminderWhatsapp,
   merchantPaidEmail,
   merchantPaidWhatsapp,
@@ -36,6 +45,12 @@ type BookingRow = Pick<
   | "customer_whatsapp"
   | "access_token"
   | "staff_name"
+  | "status"
+  | "expires_at"
+  | "amount_due_now"
+  | "amount_due_on_site"
+  | "paid_on_site_at"
+  | "cancel_reason"
 >;
 type MerchantRow = Pick<
   Merchant,
@@ -43,7 +58,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name";
+  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason";
 
 /** Paket yang mendapat reminder H-1 (PRD bagian 1: "WhatsApp Reminder" di Pro). */
 const REMINDER_TIERS: Merchant["subscription_tier"][] = ["PRO", "STUDIO"];
@@ -132,6 +147,10 @@ function messageData(booking: BookingRow, merchant: MerchantRow): BookingMessage
     staffName: booking.staff_name,
     statusUrl: new URL(ROUTES.bookingStatus(booking.access_token), base).toString(),
     dashboardUrl: new URL(ROUTES.bookings, base).toString(),
+    amountDueNow: booking.amount_due_now,
+    amountDueOnSite: booking.amount_due_on_site,
+    respondBefore: booking.status === "REQUESTED" || booking.status === "PENDING" ? booking.expires_at : null,
+    paidOnSite: booking.paid_on_site_at !== null,
   };
 }
 
@@ -186,11 +205,97 @@ export async function notifyBookingPaid(bookingId: string): Promise<void> {
   }
 }
 
+async function loadForNotify(bookingId: string) {
+  const admin = createAdminClient();
+  const { data: booking } = await admin.from("bookings").select(BOOKING_COLUMNS).eq("id", bookingId).maybeSingle();
+  if (!booking) return null;
+  const { data: merchant } = await admin
+    .from("merchants")
+    .select("id, full_name, username, whatsapp_number, subscription_tier")
+    .eq("id", booking.merchant_id)
+    .maybeSingle();
+  if (!merchant) return null;
+  return { admin, booking, merchant, data: messageData(booking, merchant), whatsapp: whatsappConfig() };
+}
+
+/** Email + WA ke merchant (kanal dikonfigurasi di sini), bentuk sama dengan notifyBookingPaid. */
+function toMerchant(
+  ctx: NonNullable<Awaited<ReturnType<typeof loadForNotify>>>,
+  kind: NotificationKind,
+  emailMessage: (d: BookingMessageData) => ReturnType<typeof merchantPaidEmail>,
+  whatsappMessage: (d: BookingMessageData) => string,
+) {
+  const { admin, booking, merchant, data, whatsapp } = ctx;
+  const email = emailConfig();
+  return [
+    deliver(admin, booking, kind, "EMAIL", async () => {
+      if (!email) return { skipped: "Email belum dikonfigurasi" };
+      const { data: authUser } = await admin.auth.admin.getUserById(booking.merchant_id);
+      const to = authUser.user?.email;
+      if (!to) return { skipped: "Merchant tidak punya email" };
+      return sendEmail(email, to, emailMessage(data));
+    }),
+    deliver(admin, booking, kind, "WHATSAPP", async () => {
+      if (!whatsapp) return { skipped: "WhatsApp belum dikonfigurasi" };
+      if (!merchant.whatsapp_number) return { skipped: "Merchant belum mengisi nomor WhatsApp" };
+      return sendWhatsapp(whatsapp, merchant.whatsapp_number, whatsappMessage(data));
+    }),
+  ];
+}
+
+function toCustomer(
+  ctx: NonNullable<Awaited<ReturnType<typeof loadForNotify>>>,
+  kind: NotificationKind,
+  message: (d: BookingMessageData) => string,
+) {
+  const { admin, booking, data, whatsapp } = ctx;
+  return deliver(admin, booking, kind, "WHATSAPP", async () => {
+    if (!whatsapp) return { skipped: "WhatsApp belum dikonfigurasi" };
+    return sendWhatsapp(whatsapp, booking.customer_whatsapp, message(data));
+  });
+}
+
+/** Booking baru lewat jalur tanpa pembayaran awal: CONFIRMED (bayar di tempat) atau REQUESTED. Tidak pernah melempar. */
+export async function notifyBookingCreated(bookingId: string): Promise<void> {
+  try {
+    const ctx = await loadForNotify(bookingId);
+    if (!ctx) return;
+    const { status } = ctx.booking;
+    if (status === "CONFIRMED") {
+      await Promise.all([
+        ...toMerchant(ctx, "BOOKING_CONFIRMED_MERCHANT", merchantConfirmedEmail, merchantConfirmedWhatsapp),
+        toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp),
+      ]);
+    } else if (status === "REQUESTED") {
+      await Promise.all(
+        toMerchant(ctx, "BOOKING_REQUESTED_MERCHANT", merchantRequestedEmail, merchantRequestedWhatsapp),
+      );
+    }
+  } catch (error) {
+    console.error("[notify] notifyBookingCreated gagal", { bookingId, error });
+  }
+}
+
+/** Keputusan merchant atas permintaan (setuju, setuju tanpa bayar, tolak). Tidak pernah melempar. */
+export async function notifyRequestDecided(bookingId: string): Promise<void> {
+  try {
+    const ctx = await loadForNotify(bookingId);
+    if (!ctx) return;
+    const { status, cancel_reason } = ctx.booking;
+    if (status === "PENDING") await toCustomer(ctx, "BOOKING_APPROVED_CUSTOMER", customerApprovedWhatsapp);
+    else if (status === "CONFIRMED") await toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp);
+    else if (status === "CANCELLED" && cancel_reason === REQUEST_REJECT_REASON)
+      await toCustomer(ctx, "BOOKING_REJECTED_CUSTOMER", customerRejectedWhatsapp);
+  } catch (error) {
+    console.error("[notify] notifyRequestDecided gagal", { bookingId, error });
+  }
+}
+
 /** Jeda antarpesan supaya gateway WhatsApp tidak terlihat seperti bot spam. */
 const REMINDER_GAP_MS = 1500;
 
 /**
- * Reminder H-1 ke pelanggan untuk semua booking PAID yang jadwalnya besok
+ * Reminder H-1 ke pelanggan untuk semua booking PAID/CONFIRMED yang jadwalnya besok
  * (hari kalender WIB), khusus merchant Pro/Studio. Dipanggil cron harian.
  */
 export async function sendDayBeforeReminders(
@@ -203,7 +308,7 @@ export async function sendDayBeforeReminders(
   const { data: bookings, error } = await admin
     .from("bookings")
     .select(BOOKING_COLUMNS)
-    .eq("status", "PAID")
+    .in("status", ["PAID", "CONFIRMED"])
     .gte("start_datetime", from.toISOString())
     .lt("start_datetime", to.toISOString())
     .order("start_datetime", { ascending: true })

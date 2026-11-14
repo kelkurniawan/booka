@@ -1,7 +1,16 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { formatRupiah } from "@/lib/format";
+
 import {
+  customerApprovedWhatsapp,
+  customerConfirmedWhatsapp,
+  customerRejectedWhatsapp,
+  merchantConfirmedEmail,
+  merchantConfirmedWhatsapp,
+  merchantRequestedEmail,
+  merchantRequestedWhatsapp,
   customerPaidWhatsapp,
   customerReminderWhatsapp,
   merchantPaidEmail,
@@ -21,6 +30,9 @@ const base: BookingMessageData = {
   startDatetime: "2026-08-19T10:30:00.000Z",
   statusUrl: "https://marky.id/pesanan/abc",
   dashboardUrl: "https://marky.id/dashboard/bookings",
+  amountDueNow: 150000,
+  amountDueOnSite: 0,
+  respondBefore: null,
 };
 
 test("waLink membuang tanda + dan karakter non-digit", () => {
@@ -63,4 +75,60 @@ test("reminder menyebut 'besok' dan jadwal WIB", () => {
   const text = customerReminderWhatsapp(base);
   assert.match(text, /besok/);
   assert.match(text, /17:30 WIB/);
+});
+
+test("WA pelanggan terkonfirmasi memuat nominal di tempat dan tautan status", () => {
+  const text = customerConfirmedWhatsapp({ ...base, amountDueNow: 0, amountDueOnSite: 450000 });
+  assert.ok(text.includes(formatRupiah(450000)));
+  assert.ok(text.includes(base.statusUrl));
+});
+
+test("WA merchant lunas: Dibayar dan Sisa di tempat hanya bila sisa > 0", () => {
+  const dp = merchantPaidWhatsapp({ ...base, amountDueNow: 105000, amountDueOnSite: 245000 });
+  assert.ok(dp.includes(formatRupiah(105000)));
+  assert.match(dp, /Sisa di tempat/);
+  assert.doesNotMatch(merchantPaidWhatsapp(base), /Sisa di tempat/);
+  assert.match(customerPaidWhatsapp({ ...base, amountDueOnSite: 1 }), /pembayaran DP/);
+  assert.doesNotMatch(customerPaidWhatsapp(base), /pembayaran DP/);
+});
+
+test("reminder menambah Bayar di tempat hanya bila belum lunas di tempat", () => {
+  const due = { ...base, amountDueOnSite: 245000 };
+  assert.match(customerReminderWhatsapp(due), /Bayar di tempat/);
+  assert.doesNotMatch(customerReminderWhatsapp({ ...due, paidOnSite: true }), /Bayar di tempat/);
+  assert.doesNotMatch(customerReminderWhatsapp(base), /Bayar di tempat/);
+});
+
+test("WA persetujuan memuat nominal, statusUrl, dan batas bayar", () => {
+  const text = customerApprovedWhatsapp({ ...base, amountDueNow: 100000, respondBefore: "2026-08-18T10:30:00.000Z" });
+  assert.ok(text.includes(formatRupiah(100000)));
+  assert.ok(text.includes(base.statusUrl));
+  assert.match(text, /Batas bayar: .*17:30 WIB/);
+});
+
+test("WA permintaan ke merchant memuat dashboardUrl dan batas jawab", () => {
+  const text = merchantRequestedWhatsapp({ ...base, respondBefore: "2026-08-18T10:30:00.000Z" });
+  assert.ok(text.includes(base.dashboardUrl));
+  assert.match(text, /Jawab sebelum/);
+});
+
+test("WA penolakan netral, kontak merchant hanya bila ada", () => {
+  assert.match(customerRejectedWhatsapp(base), /wa\.me\/6281234567890/);
+  assert.doesNotMatch(customerRejectedWhatsapp({ ...base, merchantWhatsapp: null }), /wa\.me|null/);
+});
+
+test("templat baru tanpa em dash", () => {
+  const d = { ...base, amountDueNow: 100000, amountDueOnSite: 50000, respondBefore: "2026-08-18T10:30:00.000Z", staffName: "Dewi" };
+  const all = [
+    customerApprovedWhatsapp(d),
+    customerConfirmedWhatsapp(d),
+    customerRejectedWhatsapp(d),
+    merchantConfirmedWhatsapp(d),
+    merchantRequestedWhatsapp(d),
+    merchantConfirmedEmail(d).text,
+    merchantConfirmedEmail(d).subject,
+    merchantRequestedEmail(d).text,
+    merchantRequestedEmail(d).subject,
+  ];
+  for (const t of all) assert.ok(!t.includes("\u2014"));
 });
