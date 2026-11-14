@@ -29,7 +29,7 @@ export const customerWhatsappSchema = whatsappSchema;
  * tidak bisa disubmit dengan state yang belum lengkap.
  *
  * Field ini akan menjadi body `POST /api/bookings` di Task 8 — lihat
- * `BookingCheckoutSeam` di booking-picker.tsx untuk seam-nya.
+ * `BookingFlow` di src/app/[username]/booking-flow.tsx untuk pemakainya.
  */
 export const checkoutSchema = z.object({
   serviceId: z.uuid("Layanan tidak valid"),
@@ -45,13 +45,13 @@ export type CheckoutValues = z.output<typeof checkoutSchema>;
 
 /**
  * Body `POST /api/bookings` (Task 8). Sama seperti `checkoutSchema` (dipakai
- * `booking-picker.tsx` untuk validasi form sebelum submit), ditambah
+ * `src/app/[username]/booking-flow.tsx` untuk validasi form sebelum submit), ditambah
  * `username` -- route resolve `merchant_id` sendiri lewat username, sama
  * seperti `GET /api/slots`, bukan memercayai `merchantId` yang dikirim
  * klien meski nilainya sendiri bukan rahasia (halaman `/[username]` publik).
  * `startUtc` sengaja tetap dipakai sebagai nama field (bukan `slotStartUtc`)
  * supaya field-nya identik dengan `checkoutSchema` yang sudah dipakai
- * `booking-picker.tsx` sejak Task 7 -- tidak ada alasan menduplikasi bentuk
+ * `src/app/[username]/booking-flow.tsx` sejak Task 7 -- tidak ada alasan menduplikasi bentuk
  * payload untuk field yang sama persis.
  */
 export const createBookingRequestSchema = z.object({

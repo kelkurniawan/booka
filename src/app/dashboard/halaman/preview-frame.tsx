@@ -42,7 +42,7 @@ export function AppearancePreview({
 
           {services.length > 0 ? (
             <section className="flex flex-col gap-4">
-              <h2 className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
+              <h2 className="text-sm font-medium">
                 Layanan
               </h2>
               <div className="flex flex-col gap-3">

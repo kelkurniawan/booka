@@ -284,13 +284,13 @@ export function BookingFlow({
   return (
     <div className="flex flex-col gap-6">
       <BookingStepIndicator current={step} />
-      <h2 ref={headingRef} tabIndex={-1} className="text-lg font-medium outline-none">
+      <h2 id="langkah-judul" ref={headingRef} tabIndex={-1} className="text-lg font-medium outline-none">
         {STEP_TITLE[step]}
       </h2>
 
       {step === 1 ? (
         <>
-          <div className="flex flex-col gap-3">
+          <div role="radiogroup" aria-labelledby="langkah-judul" className="flex flex-col gap-3">
             {services.map((service, index) => (
               <ServiceOptionCard
                 key={service.id}
@@ -349,14 +349,25 @@ export function BookingFlow({
             </fieldset>
           ) : null}
 
-          <DateStrip days={strip} selected={selectedDate} onSelect={handleSelectDate} />
-          <TimeSlotPicker
-            state={slotState}
-            selected={selectedSlot?.startUtc ?? null}
-            onSelect={setSelectedSlot}
-            onRetry={() => selectedDate && handleSelectDate(selectedDate)}
-            onPickDate={handleSelectDate}
-          />
+          {strip.every((d) => !d.open) ? (
+            <div className="flex flex-col gap-1">
+              <p className="font-medium">Tidak ada jadwal buka dalam 14 hari ke depan.</p>
+              {staff.length > 0 ? (
+                <p className="text-muted-foreground text-sm">Coba pilih staf lain.</p>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <DateStrip days={strip} selected={selectedDate} onSelect={handleSelectDate} />
+              <TimeSlotPicker
+                state={slotState}
+                selected={selectedSlot?.startUtc ?? null}
+                onSelect={setSelectedSlot}
+                onRetry={() => selectedDate && handleSelectDate(selectedDate)}
+                onPickDate={handleSelectDate}
+              />
+            </>
+          )}
           <StickyActionBar
             summary={
               selectedDate && selectedSlot

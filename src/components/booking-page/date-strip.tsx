@@ -35,7 +35,7 @@ export function DateStrip({
             <label
               key={day.dateISO}
               className={cn(
-                "flex min-h-16 w-14 shrink-0 snap-start cursor-pointer flex-col items-center justify-center gap-0.5 text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
+                "relative flex min-h-16 w-14 shrink-0 snap-start cursor-pointer flex-col items-center justify-center gap-0.5 text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
                 checked ? "border-primary bg-primary text-primary-foreground border-2" : "border-border bg-card border",
                 !day.open && "text-muted-foreground cursor-not-allowed opacity-60",
               )}

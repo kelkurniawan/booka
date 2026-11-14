@@ -17,7 +17,7 @@ export function BookingFaqSection({ faqs }: { faqs: MerchantFaq[] }) {
     <section aria-labelledby="faq-heading" className="flex flex-col gap-3">
       <h2
         id="faq-heading"
-        className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase"
+        className="text-sm font-medium"
       >
         Pertanyaan umum
       </h2>

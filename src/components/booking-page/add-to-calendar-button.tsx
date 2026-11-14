@@ -12,7 +12,7 @@ export function AddToCalendarButton({ ics, fileName }: { ics: string; fileName: 
     a.href = url;
     a.download = fileName;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return (

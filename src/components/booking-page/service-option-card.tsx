@@ -31,7 +31,7 @@ export function ServiceOptionCard({
       style={{ borderRadius: "var(--radius)" }}
     >
       <BookingServiceGallery media={media} eager={eager} />
-      <label className="flex min-h-11 cursor-pointer flex-col gap-1">
+      <label className="relative flex min-h-11 cursor-pointer flex-col gap-1">
         <input
           type="radio"
           name="layanan"

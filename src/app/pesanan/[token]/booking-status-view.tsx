@@ -179,6 +179,7 @@ function Pending({ booking }: { booking: BookingPageRow }) {
           kode QR yang sudah lunas tidak terlihat mengundang dipindai lagi. */}
       <BookingLiveStatus bookingId={booking.id} expiresAt={booking.expires_at}>
         <div className="flex flex-col items-center gap-3">
+          <p className="text-sm font-medium">Menunggu pembayaran</p>
           {booking.payment_url ? (
             <QrisCode payload={booking.payment_url} />
           ) : (
@@ -190,7 +191,7 @@ function Pending({ booking }: { booking: BookingPageRow }) {
           )}
 
           <div className="flex flex-col items-center">
-            <span className="text-muted-foreground text-sm">Total dibayar</span>
+            <span className="text-muted-foreground text-sm">Yang perlu dibayar</span>
             <span className="text-2xl font-semibold">
               {formatRupiah(Number(booking.service_price))}
             </span>
