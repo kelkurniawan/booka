@@ -53,7 +53,7 @@ Ganti URL produksi saat build image untuk deploy:
 
 ```bash
 docker build \
-  --build-arg NEXT_PUBLIC_APP_URL=https://booka.app \
+  --build-arg NEXT_PUBLIC_APP_URL=https://marky.id \
   --build-arg NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co \
   --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_... \
   --target runner -t booka:latest .

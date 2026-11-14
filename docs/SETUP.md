@@ -73,7 +73,7 @@ ada di daftar itu — di sanalah token payment gateway merchant disimpan.
 
 - Site URL: `http://localhost:3000`
 - Redirect URLs: tambahkan `http://localhost:3000/auth/callback`
-  (dan URL produksi nanti, misal `https://booka.app/auth/callback`)
+  (dan URL produksi nanti, misal `https://marky.id/auth/callback`)
 
 **Authentication → Providers → Email**: aktifkan.
 
