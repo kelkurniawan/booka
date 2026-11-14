@@ -515,3 +515,8 @@ path dialihkan ke domain Marky.
   seluruh situs mati tanpa pesan error yang jelas.
 - Turun paket mematikan domain lewat `resolve_custom_domain` (yang mensyaratkan
   STUDIO) tanpa menghapus barisnya, sama seperti staf (#28).
+
+## 30. Storybook 10, bukan 9
+
+Spek F0 menyebut Storybook 9. Yang terpasang Storybook 10 dengan
+`@storybook/nextjs-vite`, karena itu versi yang mendukung Next 16 dan Vite 8.

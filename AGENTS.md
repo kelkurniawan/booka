@@ -143,4 +143,6 @@ npm run docker:dev     # dev server di container, hot reload
 npm run docker:test    # terapkan migration ke Postgres asli lalu uji
 npm run docker:prod    # build & jalankan image produksi di :3001
 npm run docker:down    # hentikan semua container dan hapus volume
+npm run storybook      # Storybook di :6006 untuk debug komponen frontend
+npm run build-storybook # build statis Storybook
 ```

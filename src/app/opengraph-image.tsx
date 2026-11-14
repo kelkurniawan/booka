@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og";
 
 import { OG_IMAGE_SIZE } from "@/lib/site";
 
-export const alt = "Marky — terima booking dan DP lewat satu tautan";
+export const alt = "Marky: terima booking dan DP lewat satu tautan";
 export const size = OG_IMAGE_SIZE;
 export const contentType = "image/png";
 

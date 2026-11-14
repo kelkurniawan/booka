@@ -75,7 +75,7 @@ export default async function Image({
               color: theme.accentForeground,
             }}
           >
-            {name.trim().charAt(0).toUpperCase() || "B"}
+            {name.trim().charAt(0).toUpperCase() || "M"}
           </div>
           <div style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.1, maxWidth: 840 }}>
             {name}

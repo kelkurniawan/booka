@@ -7,7 +7,7 @@ import { ROUTES } from "@/lib/routes";
 import type { SubscriptionTier } from "@/types/database";
 
 export const metadata = {
-  title: "Marky — Terima booking dan DP lewat satu tautan",
+  title: "Marky: Terima booking dan DP lewat satu tautan",
   description:
     "Satu tautan untuk pelanggan memesan jadwal dan membayar DP. Dananya masuk langsung ke akun payment gateway Anda, bukan ke Marky.",
 };

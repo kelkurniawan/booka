@@ -78,13 +78,12 @@ export async function registerDomain(input: string): Promise<DomainActionResult>
 /** Apakah TXT `_marky.<domain>` (atau `_booka.` lama) memuat token merchant ini. */
 async function ownsDomain(domain: string, token: string): Promise<boolean> {
   const found: Record<string, string[][]> = {};
-  for (const { name } of acceptedOwnershipRecords(domain, token)) {
-    try {
-      found[name] = await resolveTxt(name);
-    } catch {
-      // ENOTFOUND/ENODATA: record belum ada atau belum menyebar.
-    }
-  }
+  const names = acceptedOwnershipRecords(domain, token).map((r) => r.name);
+  const results = await Promise.allSettled(names.map((n) => resolveTxt(n)));
+  results.forEach((r, i) => {
+    // Rejected (ENOTFOUND/ENODATA): record belum ada atau belum menyebar.
+    if (r.status === "fulfilled") found[names[i]] = r.value;
+  });
   return matchesOwnership(found, domain, token);
 }
 

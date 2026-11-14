@@ -28,8 +28,8 @@ export const metadata: Metadata = {
     type: "website",
   },
   title: {
-    default: "Marky — Booking & Invoicing untuk usaha kecil",
-    template: "%s · Marky",
+    default: "Marky: Booking & Invoicing untuk usaha kecil",
+    template: "%s | Marky",
   },
   description:
     "Terima booking dan DP lewat satu tautan. Dana masuk langsung ke rekening Anda.",

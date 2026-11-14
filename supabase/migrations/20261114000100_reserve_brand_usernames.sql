@@ -5,6 +5,13 @@
 -- lama dan tautan yang sudah beredar.
 -- ===========================================================================
 
+do $$
+begin
+  if exists (select 1 from public.merchants where username in ('marky', 'booka')) then
+    raise exception 'Merchant dengan username marky/booka sudah ada. Ganti username-nya dulu sebelum migration ini dijalankan, kalau tidak akun itu terkunci.';
+  end if;
+end $$;
+
 insert into public.reserved_usernames (name) values
   ('marky'), ('booka')
 on conflict (name) do nothing;
