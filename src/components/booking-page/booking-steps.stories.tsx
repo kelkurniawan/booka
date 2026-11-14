@@ -45,7 +45,7 @@ function KartuLayanan({ theme, awal }: { theme?: ResolvedTheme; awal: string | n
             service={s}
             checked={dipilih === s.id}
             onSelect={() => setDipilih(s.id)}
-            paymentLabel="DP 30% dibayar saat memesan"
+            paymentLabel="Bayar saat booking"
           />
         ))}
       </div>
