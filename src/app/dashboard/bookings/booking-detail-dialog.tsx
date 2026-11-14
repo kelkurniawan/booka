@@ -141,11 +141,10 @@ export function BookingDetailDialog({
             <>
               <dt className="text-muted-foreground">Ditagih di tempat</dt>
               <dd>
-                {formatRupiah(booking.amount_due_on_site)}
-                {" - "}
+                {formatRupiah(booking.amount_due_on_site)},{" "}
                 {booking.paid_on_site_at
-                  ? `Lunas${booking.paid_on_site_method ? `, ${ON_SITE_METHOD_LABEL[booking.paid_on_site_method]}` : ""}`
-                  : "Belum dibayar"}
+                  ? `lunas${booking.paid_on_site_method ? ` (${ON_SITE_METHOD_LABEL[booking.paid_on_site_method]})` : ""}`
+                  : "belum dibayar"}
               </dd>
             </>
           ) : null}
@@ -211,7 +210,7 @@ export function BookingDetailDialog({
         {open ? <NotificationHistory bookingId={booking.id} /> : null}
 
         {error ? (
-          <p role="alert" className="text-destructive text-sm">
+          <p role="alert" className="text-foreground text-sm">
             {error}
           </p>
         ) : null}

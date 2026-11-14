@@ -120,7 +120,7 @@ export async function decideRequest(id: string, approve: boolean): Promise<Cance
 
   const { error } = await supabase.rpc("decide_booking_request", {
     p_booking_id: parsed.data.id,
-    p_approve: approve,
+    p_approve: approve === true,
   });
   if (error) return { ok: false, message: rpcErrorMessage(error.code) };
 

@@ -169,7 +169,7 @@ function BookingRow({ booking, nowMs }: { booking: BookingListItem; nowMs: numbe
             <DialogDescription>
               Slot jadwal ini akan dilepas dan bisa dipesan pelanggan lain. Tindakan ini
               tidak bisa dibatalkan.
-              {booking.status === "PAID" || booking.status === "CONFIRMED" ? (
+              {booking.status === "PAID" ? (
                 <>
                   {" "}
                   DP pelanggan untuk booking ini sudah masuk ke akun payment gateway Anda --
