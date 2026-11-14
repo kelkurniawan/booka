@@ -132,12 +132,41 @@ export function BookingFlow({
 
   const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
 
+  // Pilihan terkini untuk listener popstate (effect-nya hanya jalan sekali).
+  const selectionRef = useRef({ hasService: false, hasSlot: false });
+  useEffect(() => {
+    selectionRef.current = { hasService: Boolean(selectedServiceId), hasSlot: Boolean(selectedSlot) };
+  }, [selectedServiceId, selectedSlot]);
+
   // Riwayat browser: maju langkah = pushState, tombol Kembali = popstate.
   // Ini sinkronisasi ke sistem eksternal (history), jadi memang layak di effect.
   useEffect(() => {
+    function dropParam() {
+      const params = new URLSearchParams(window.location.search);
+      params.delete("langkah");
+      const query = params.toString();
+      window.history.replaceState(
+        null,
+        "",
+        window.location.pathname + (query ? `?${query}` : "") + window.location.hash,
+      );
+    }
+
+    // Saat dimuat selalu mulai di langkah 1, jadi parameter lama dibuang.
+    if (new URLSearchParams(window.location.search).has("langkah")) dropParam();
+
     function onPopState() {
       const param = new URLSearchParams(window.location.search).get("langkah");
-      setStep(param === "data" ? 3 : param === "jadwal" ? 2 : 1);
+      const wanted: Step = param === "data" ? 3 : param === "jadwal" ? 2 : 1;
+      const { hasService, hasSlot } = selectionRef.current;
+      const max: Step = hasService && hasSlot ? 3 : hasService ? 2 : 1;
+      const next = (wanted > max ? max : wanted) as Step;
+      if (next !== wanted) {
+        // Sejajarkan URL dengan langkah yang benar-benar ditampilkan.
+        if (next === 1) dropParam();
+        else window.history.replaceState(null, "", `?langkah=${STEP_PARAM[next]}`);
+      }
+      setStep(next);
     }
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
