@@ -12,7 +12,7 @@ import type {
 
 import { availabilitySchema } from "./availability";
 import { onboardingSchema } from "./merchant";
-import { serviceSchema } from "./service";
+import { serviceFieldsSchema } from "./service";
 
 /**
  * Validasi jawaban kuesioner onboarding.
@@ -129,14 +129,14 @@ export const businessStepSchema = z.object(businessFields).superRefine(refineBus
  * menyimpan layanan gratis. Di sini string kosong ditolak lebih dulu, baru
  * dialirkan ke aturan angka yang sama supaya batas 0..MAX tetap satu sumber.
  *
- * Catatan adaptasi Zod 4.4.3: `.pipe(serviceSchema.shape.price)` gagal
+ * Catatan adaptasi Zod 4.4.3: `.pipe(serviceFieldsSchema.shape.price)` gagal
  * typecheck -- generic `pipe()` mensyaratkan input target persis `string`,
  * sedangkan `z.coerce.number()` bertipe input `unknown`, dan TypeScript
  * memeriksa posisi itu secara invarian di versi ini. `.transform()` yang
  * memanggil `safeParse` tidak kena batasan generic itu, jadi tetap memakai
  * ulang objek skema harga yang sama sebagai satu sumber kebenaran.
  */
-export const wizardServiceSchema = serviceSchema
+export const wizardServiceSchema = serviceFieldsSchema
   .omit({ description: true })
   .extend({
     price: z
@@ -144,7 +144,7 @@ export const wizardServiceSchema = serviceSchema
       .trim()
       .min(1, "Harga wajib diisi")
       .transform((value, ctx) => {
-        const hasil = serviceSchema.shape.price.safeParse(value);
+        const hasil = serviceFieldsSchema.shape.price.safeParse(value);
         if (!hasil.success) {
           for (const issue of hasil.error.issues) {
             ctx.addIssue({

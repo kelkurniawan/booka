@@ -36,6 +36,8 @@ import { removeMedia } from "@/lib/media/upload";
 import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
 
 import { deleteService, toggleServiceActive } from "./actions";
+import { paymentLabel } from "@/lib/booking/payment-mode";
+import type { ServicePaymentSettings } from "./payment-mode-field";
 import { ServiceFormDialog } from "./service-form-dialog";
 
 export function ServicesTable({
@@ -43,11 +45,13 @@ export function ServicesTable({
   merchantId,
   tier,
   mediaByService,
+  settings,
 }: {
   services: Service[];
   merchantId: string;
   tier: SubscriptionTier;
   mediaByService: Record<string, ServiceMedia[]>;
+  settings: ServicePaymentSettings;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border">
@@ -69,6 +73,7 @@ export function ServicesTable({
               merchantId={merchantId}
               tier={tier}
               media={mediaByService[service.id] ?? []}
+              settings={settings}
             />
           ))}
         </TableBody>
@@ -82,11 +87,13 @@ function ServiceRow({
   merchantId,
   tier,
   media,
+  settings,
 }: {
   service: Service;
   merchantId: string;
   tier: SubscriptionTier;
   media: ServiceMedia[];
+  settings: ServicePaymentSettings;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -131,7 +138,10 @@ function ServiceRow({
             </p>
           ) : null}
         </TableCell>
-        <TableCell className="whitespace-nowrap">{formatRupiah(service.price)}</TableCell>
+        <TableCell className="whitespace-nowrap">
+          {formatRupiah(service.price)}
+          <div className="text-muted-foreground text-xs">{paymentLabel(service, settings)}</div>
+        </TableCell>
         <TableCell className="whitespace-nowrap">
           {formatDuration(service.duration_minutes)}
         </TableCell>
@@ -188,6 +198,7 @@ function ServiceRow({
         merchantId={merchantId}
         tier={tier}
         media={media}
+        settings={settings}
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

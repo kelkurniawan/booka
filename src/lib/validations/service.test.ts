@@ -70,3 +70,43 @@ test("durasi pecahan ditolak (harus bilangan bulat menit)", () => {
   const result = serviceSchema.safeParse({ ...VALID, duration_minutes: "5.5" });
   assert.equal(result.success, false);
 });
+
+test("input tanpa payment_mode menghasilkan FULL tanpa DP", () => {
+  const parsed = serviceSchema.parse(VALID);
+  assert.equal(parsed.payment_mode, "FULL");
+  assert.equal(parsed.deposit_type, null);
+  assert.equal(parsed.deposit_value, null);
+});
+
+test("DEPOSIT tanpa DP ditolak dengan 'Isi besar DP'", () => {
+  const r = serviceSchema.safeParse({ ...VALID, payment_mode: "DEPOSIT", deposit_type: "", deposit_value: "" });
+  assert.equal(r.success, false);
+  assert.equal(r.error?.issues[0].message, "Isi besar DP");
+});
+
+test("DP persen 95 ditolak", () => {
+  const r = serviceSchema.safeParse({ ...VALID, payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: "95" });
+  assert.equal(r.error?.issues[0].message, "DP persen 1 sampai 90");
+});
+
+test("DP tetap sama dengan harga ditolak", () => {
+  const r = serviceSchema.safeParse({ ...VALID, payment_mode: "DEPOSIT", deposit_type: "FIXED", deposit_value: "350000" });
+  assert.equal(r.error?.issues[0].message, "DP harus lebih kecil dari harga");
+});
+
+test("DEPOSIT persen valid diterima", () => {
+  const p = serviceSchema.parse({ ...VALID, payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: "30" });
+  assert.equal(p.deposit_value, 30);
+});
+
+test("ON_SITE dengan DP terisi diterima dan DP dibuang", () => {
+  const p = serviceSchema.parse({ ...VALID, payment_mode: "ON_SITE", deposit_type: "PERCENT", deposit_value: "30" });
+  assert.equal(p.deposit_type, null);
+  assert.equal(p.deposit_value, null);
+});
+
+test("REQUEST tanpa DP diterima", () => {
+  const p = serviceSchema.parse({ ...VALID, payment_mode: "REQUEST", deposit_type: "", deposit_value: "" });
+  assert.equal(p.payment_mode, "REQUEST");
+  assert.equal(p.deposit_value, null);
+});

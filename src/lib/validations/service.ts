@@ -14,7 +14,10 @@ import { z } from "zod";
 // Kolom price bertipe numeric(12, 2): 12 digit total, 2 di antaranya desimal.
 export const MAX_SERVICE_PRICE = 9_999_999_999.99;
 
-export const serviceSchema = z.object({
+// Objek polos tanpa refinement: wizard onboarding memakai .omit()/.shape, yang
+// ditolak Zod 4 pada skema ber-refinement. serviceSchema di bawah menambahkan
+// aturan DP yang bergantung pada beberapa kolom sekaligus.
+export const serviceFieldsSchema = z.object({
   name: z
     .string()
     .trim()
@@ -35,6 +38,46 @@ export const serviceSchema = z.object({
     .int("Durasi harus bilangan bulat menit")
     .min(5, "Durasi minimal 5 menit")
     .max(480, "Durasi maksimal 480 menit (8 jam)"),
+  payment_mode: z.enum(["FULL", "DEPOSIT", "ON_SITE", "REQUEST"]).default("FULL"),
+  // Kosong dari form berarti "tanpa DP" (null).
+  deposit_type: z.preprocess(
+    (v) => (v === "" || v === undefined ? null : v),
+    z.enum(["PERCENT", "FIXED"]).nullable(),
+  ),
+  deposit_value: z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? null : v),
+    z.coerce.number().int("DP harus bilangan bulat").nullable(),
+  ),
+});
+
+/**
+ * Mencerminkan constraint services_deposit_* (migration 20261115000200):
+ * persen 1..90, tetap >= 1 dan < harga, tipe+nilai berpasangan, DEPOSIT wajib
+ * DP. DP dibuang untuk FULL dan ON_SITE.
+ */
+export const serviceSchema = serviceFieldsSchema.transform((v, ctx) => {
+  if (v.payment_mode === "FULL" || v.payment_mode === "ON_SITE") {
+    return { ...v, deposit_type: null, deposit_value: null };
+  }
+  const kosong = v.deposit_type === null || v.deposit_value === null;
+  if (kosong) {
+    if (v.payment_mode === "DEPOSIT") {
+      ctx.addIssue({ code: "custom", path: ["deposit_value"], message: "Isi besar DP" });
+    }
+    // REQUEST tanpa DP: minta bayar penuh setelah disetujui.
+    return { ...v, deposit_type: null, deposit_value: null };
+  }
+  const nilai = v.deposit_value as number;
+  if (v.deposit_type === "PERCENT" && (nilai < 1 || nilai > 90)) {
+    ctx.addIssue({ code: "custom", path: ["deposit_value"], message: "DP persen 1 sampai 90" });
+  } else if (v.deposit_type === "FIXED" && (nilai < 1 || nilai >= v.price)) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["deposit_value"],
+      message: nilai < 1 ? "Isi besar DP" : "DP harus lebih kecil dari harga",
+    });
+  }
+  return v;
 });
 
 export type ServiceInput = z.input<typeof serviceSchema>;
