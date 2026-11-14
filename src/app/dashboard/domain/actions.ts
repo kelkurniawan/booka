@@ -5,7 +5,8 @@ import { resolveTxt } from "node:dns/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { ownershipRecord, vercelConfig } from "@/lib/domains/config";
+import { vercelConfig } from "@/lib/domains/config";
+import { acceptedOwnershipRecords, matchesOwnership } from "@/lib/domains/ownership";
 import { isAppHost } from "@/lib/domains/routing";
 import { addProjectDomain, getDomainStatus, removeProjectDomain } from "@/lib/domains/vercel";
 import { serverEnv } from "@/lib/env/server";
@@ -74,16 +75,17 @@ export async function registerDomain(input: string): Promise<DomainActionResult>
   return { ok: true };
 }
 
-/** Apakah TXT `_booka.<domain>` memuat token merchant ini. */
+/** Apakah TXT `_marky.<domain>` (atau `_booka.` lama) memuat token merchant ini. */
 async function ownsDomain(domain: string, token: string): Promise<boolean> {
-  const record = ownershipRecord(domain, token);
-  try {
-    const records = await resolveTxt(record.name);
-    return records.some((chunks) => chunks.join("") === record.value);
-  } catch {
-    // ENOTFOUND/ENODATA: record belum ada atau belum menyebar.
-    return false;
+  const found: Record<string, string[][]> = {};
+  for (const { name } of acceptedOwnershipRecords(domain, token)) {
+    try {
+      found[name] = await resolveTxt(name);
+    } catch {
+      // ENOTFOUND/ENODATA: record belum ada atau belum menyebar.
+    }
   }
+  return matchesOwnership(found, domain, token);
 }
 
 export async function checkDomain(): Promise<DomainActionResult> {

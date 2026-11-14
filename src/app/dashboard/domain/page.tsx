@@ -14,7 +14,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { requireMerchant } from "@/lib/auth/session";
-import { ownershipRecord, vercelConfig } from "@/lib/domains/config";
+import { vercelConfig } from "@/lib/domains/config";
+import { ownershipRecord } from "@/lib/domains/ownership";
 import { apexOf, dnsInstruction } from "@/lib/domains/vercel";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
