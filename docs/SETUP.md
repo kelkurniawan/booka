@@ -93,8 +93,8 @@ Client Secret dari Google Cloud Console. Di Google Cloud, daftarkan
 `https://<project-ref>.supabase.co/auth/v1/callback` sebagai Authorized
 redirect URI.
 
-**`NEXT_PUBLIC_APP_URL` wajib benar di produksi** (mis. `https://booka.id`).
-Proxy memakainya untuk membedakan domain Booka dari domain sendiri merchant
+**`NEXT_PUBLIC_APP_URL` wajib benar di produksi** (mis. `https://marky.id`).
+Proxy memakainya untuk membedakan domain Marky dari domain sendiri merchant
 Studio; nilai yang salah membuat halaman di domain merchant tidak dikenali.
 
 ## 6. Jalankan

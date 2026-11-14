@@ -6,6 +6,8 @@
 #   docker compose --profile test up         -> uji migration ke Postgres asli
 # ===========================================================================
 
+# Nama proyek tetap `booka` (bukan Marky): Compose menamai volume database
+# lokal dari nama proyek, jadi mengubahnya membuat volume lama yatim.
 name: booka
 
 services:

@@ -1,4 +1,4 @@
-# Booka
+# Marky
 
 Platform booking dan invoicing untuk usaha jasa kecil di Indonesia — MUA,
 fotografer, dan sejenisnya.

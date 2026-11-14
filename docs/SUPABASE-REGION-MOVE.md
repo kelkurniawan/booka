@@ -25,7 +25,7 @@ Catatan pelaksanaan, yang berbeda dari rencana awal:
 
 ## Kenapa
 
-Project Supabase Booka (`ydhllxeeymvthgfsqmkb`) berjalan di
+Project Supabase Marky (`ydhllxeeymvthgfsqmkb`) berjalan di
 `ap-northeast-1` (Tokyo), sedangkan penggunanya merchant Indonesia dan
 Vercel Functions-nya di-pin ke Singapura. Akibatnya tiap round-trip
 database menyeberang Tokyo–Singapura (~70 ms), dan satu navigasi dashboard

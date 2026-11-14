@@ -4,7 +4,7 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# Booka — Smart Booking & Invoicing SaaS
+# Marky: Smart Booking & Invoicing SaaS
 
 Platform link-in-bio untuk usaha jasa kecil di Indonesia. Merchant berlangganan
 bulanan; DP pelanggan masuk **langsung ke akun payment gateway merchant**, tidak
@@ -32,7 +32,7 @@ kosong. Editornya di `/dashboard/halaman`. Spek dan rencananya di
 `/onboarding` kini wizard interaktif (bidang usaha, layanan pertama, jam
 buka, identitas) yang langsung menyiapkan halaman booking siap pakai, diakhiri
 layar sukses lalu tawaran kuesioner opsional dua langkah (ukuran tim +
-provinsi, lalu kanal pemesanan + kendala utama + sumber tahu Booka) dengan
+provinsi, lalu kanal pemesanan + kendala utama + sumber tahu Marky) dengan
 tombol "Lewati" yang sama menonjol dengan "Lanjut". Jawabannya masuk tabel
 terpisah `merchant_profiles`, tidak pernah bisa diakses `anon`. Merchant lama
 yang onboarding sebelum kuesioner ini ada ditawari pertanyaan yang sama lewat
@@ -44,8 +44,10 @@ gambar OG, dan Sentry (mati tanpa DSN). Notifikasi email (Resend) dan
 WhatsApp (gateway self-host WAHA/Evolution atau Fonnte) saat DP dibayar plus
 reminder H-1, idempoten lewat `notification_log` — panduan di
 `docs/NOTIFIKASI.md`. Fitur Studio: Analitik, multi-staf (kalender per staf,
-DECISIONS #28), dan domain sendiri (verifikasi TXT, routing di `src/proxy.ts`,
-DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
+DECISIONS #28), dan domain sendiri (verifikasi TXT di `_marky.<domain>`, routing
+di `src/proxy.ts`, DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
+
+Redesign mengikuti `DESIGN.md` dan spec `docs/superpowers/specs/2026-11-14-marky-redesign-design.md`.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
