@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { formatDate, formatDateTime, formatTime } from "./format";
+import { formatDate, formatDateTime, formatDayBlock, formatSchedule, formatTime } from "./format";
 
 test("instant UTC dirender sebagai jam dinding Asia/Jakarta (UTC+7) -- kasus sehari penuh sama", () => {
   // 2026-08-19T10:30:00.000Z + 7 jam = 2026-08-19 17:30 WIB. Tanggal
@@ -49,4 +49,15 @@ test("instant UTC malam hari -- melintasi pergantian tanggal saat digeser ke WIB
 test("menerima objek Date, bukan cuma string ISO", () => {
   const instant = new Date("2026-08-19T10:30:00.000Z");
   assert.equal(formatTime(instant), "17:30");
+});
+
+test("formatSchedule menulis hari, tanggal, dan rentang jam WIB", () => {
+  assert.equal(
+    formatSchedule("2026-11-21T03:00:00Z", "2026-11-21T04:30:00Z"),
+    "Sabtu, 21 Nov 2026, 10.00 sampai 11.30 WIB",
+  );
+});
+
+test("formatDayBlock memakai tanggal Jakarta, bukan UTC", () => {
+  assert.deepEqual(formatDayBlock("2026-11-20T18:00:00Z"), { month: "Nov", day: 21 });
 });
