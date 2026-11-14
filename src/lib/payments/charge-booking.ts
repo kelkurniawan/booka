@@ -44,9 +44,16 @@ export async function findChargeProvider(
  */
 export async function chargeBooking(
   admin: SupabaseClient<Database>,
-  input: { bookingId: string; merchantId: string; amount: number; provider: PaymentProvider },
+  input: {
+    bookingId: string;
+    merchantId: string;
+    amount: number;
+    provider: PaymentProvider;
+    /** Default bookingId. Percobaan ulang butuh id baru: gateway menolak order id ganda. */
+    orderId?: string;
+  },
 ): Promise<{ qrString: string }> {
-  const { bookingId, merchantId, amount, provider } = input;
+  const { bookingId, merchantId, amount, provider, orderId = bookingId } = input;
   try {
     const credential = await loadMerchantCredential(merchantId, provider);
     if (!credential) {
@@ -55,7 +62,7 @@ export async function chargeBooking(
     }
 
     const charge = await getAdapter(provider).createQrisCharge({
-      orderId: bookingId,
+      orderId,
       amount,
       environment: credential.environment,
       credential: credential.credential,
@@ -88,6 +95,6 @@ export async function chargeBooking(
 /** Pesan untuk pelanggan; pesan provider mentah tidak pernah diteruskan. */
 export function chargeFailureMessage(error: unknown): string {
   return error instanceof ChargeRejectedError
-    ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara — silakan hubungi merchant secara langsung, bukan mencoba lagi."
+    ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara. Silakan hubungi merchant secara langsung, bukan mencoba lagi."
     : "Gagal membuat kode pembayaran, silakan coba lagi.";
 }

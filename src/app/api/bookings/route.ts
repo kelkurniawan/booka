@@ -178,6 +178,32 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  const cancelPending = async () => {
+    const { error: cancelError } = await supabase
+      .from("bookings")
+      .update({
+        status: "CANCELLED",
+        cancelled_at: new Date().toISOString(),
+        cancel_reason: "Gagal membuat kode pembayaran QRIS",
+      })
+      .eq("id", booking.id)
+      .eq("merchant_id", merchant.id);
+
+    if (cancelError) {
+      // Dua kegagalan beruntun (charge + rollback): dicatat, bukan dilempar,
+      // supaya pelanggan tetap menerima respons yang jelas di bawah.
+      console.error("[api/bookings] gagal membatalkan booking setelah charge gagal", {
+        bookingId: booking.id,
+        error: cancelError,
+      });
+    }
+  };
+
+  if (!provider) {
+    await cancelPending();
+    return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
+  }
+
   // PENDING hanya mungkin dengan provider (BK021 menolak sisanya), kecuali
   // harga 0 tanpa koneksi: tidak bisa ditagih, jangan biarkan menahan slot.
   // Dari titik ini booking PENDING sudah tersimpan (expires_at = +15 menit).
@@ -186,7 +212,6 @@ export async function POST(request: NextRequest) {
   // dibiarkan menghabiskan kuota merchant atau mengunci slot kalendernya
   // (bookings_no_overlap hanya membebaskan slot untuk status CANCELLED).
   try {
-    if (!provider) throw new NoProviderError();
     const charge = await chargeBooking(supabase, {
       bookingId: booking.id,
       merchantId: merchant.id,
@@ -214,30 +239,9 @@ export async function POST(request: NextRequest) {
       error: chargeError,
     });
 
-    const { error: cancelError } = await supabase
-      .from("bookings")
-      .update({
-        status: "CANCELLED",
-        cancelled_at: new Date().toISOString(),
-        cancel_reason: "Gagal membuat kode pembayaran QRIS",
-      })
-      .eq("id", booking.id)
-      .eq("merchant_id", merchant.id);
+    await cancelPending();
 
-    if (cancelError) {
-      // Dua kegagalan beruntun (charge + rollback): dicatat, bukan dilempar,
-      // supaya pelanggan tetap menerima respons yang jelas di bawah.
-      console.error("[api/bookings] gagal membatalkan booking setelah charge gagal", {
-        bookingId: booking.id,
-        error: cancelError,
-      });
-    }
-
-    if (chargeError instanceof NoProviderError) {
-      return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
-    }
     return NextResponse.json({ error: chargeFailureMessage(chargeError) }, { status: 502 });
   }
 }
 
-class NoProviderError extends Error {}

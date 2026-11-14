@@ -61,20 +61,37 @@ export async function POST(
     return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
   }
 
-  // Klaim atomik: hanya satu pemanggil yang lolos filter payment_url is null.
+  // Klaim eksklusif: payment_provider IS NULL ikut difilter DAN ditulis, jadi
+  // hanya satu pemanggil yang lolos; yang lain melihat 0 baris. Hanya
+  // expires_at yang dipendekkan (tidak pernah diperpanjang).
   const { data: claimed, error: claimError } = await admin
     .from("bookings")
-    .update({ expires_at: paymentHoldUntil(row.expires_at, nowMs) })
+    .update({ payment_provider: provider, expires_at: paymentHoldUntil(row.expires_at, nowMs) })
     .eq("id", row.id)
     .eq("merchant_id", row.merchant_id)
     .eq("status", "PENDING")
+    .gt("expires_at", new Date(nowMs).toISOString())
+    .is("payment_provider", null)
     .is("payment_url", null)
     .select("id");
   if (claimError) {
     console.error("[api/pesanan/bayar] gagal mengklaim booking", { bookingId: row.id, error: claimError });
     return NextResponse.json({ error: "Gagal memproses pembayaran" }, { status: 500 });
   }
-  if (!claimed?.length) return NextResponse.json({ ok: true });
+  if (!claimed?.length) {
+    // Kalah klaim: charge sudah ada (ok) atau masih disiapkan pemanggil lain.
+    const { data: now } = await admin
+      .from("bookings")
+      .select("payment_url")
+      .eq("id", row.id)
+      .eq("merchant_id", row.merchant_id)
+      .maybeSingle();
+    if (now?.payment_url) return NextResponse.json({ ok: true });
+    return NextResponse.json(
+      { error: "Pembayaran sedang disiapkan, coba lagi sebentar." },
+      { status: 409 },
+    );
+  }
 
   try {
     await chargeBooking(admin, {
@@ -82,10 +99,18 @@ export async function POST(
       merchantId: row.merchant_id,
       amount: Math.round(Number(row.amount_due_now)),
       provider,
+      // Id baru per percobaan: percobaan sebelumnya mungkin sudah tercatat di gateway.
+      orderId: `${row.id}-${Date.now().toString(36)}`,
     });
   } catch (chargeError) {
-    // Booking TIDAK dibatalkan: tetap PENDING sampai tenggat 15 menit, jadi
-    // pelanggan boleh mencoba lagi (klaim di atas hanya memendekkan tenggat).
+    // Booking TIDAK dibatalkan: tetap PENDING sampai tenggat, pelanggan boleh
+    // mencoba lagi. Klaim dilepas supaya percobaan berikutnya lolos.
+    await admin
+      .from("bookings")
+      .update({ payment_provider: null })
+      .eq("id", row.id)
+      .eq("merchant_id", row.merchant_id)
+      .is("payment_url", null);
     console.error("[api/pesanan/bayar] gagal membuat charge QRIS", {
       bookingId: row.id,
       merchantId: row.merchant_id,
