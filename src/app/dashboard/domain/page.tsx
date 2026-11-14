@@ -38,7 +38,7 @@ export default async function DomainPage() {
             <EmptyTitle>Fitur paket Studio</EmptyTitle>
             <EmptyDescription>
               Pakai alamat seperti booking.salonanda.id untuk halaman booking Anda, tanpa
-              tautan booka di depannya.
+              tautan Marky di depannya.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -80,7 +80,7 @@ export default async function DomainPage() {
         <Alert>
           <AlertTitle>Belum diaktifkan</AlertTitle>
           <AlertDescription>
-            Fitur ini butuh konfigurasi dari admin Booka (VERCEL_API_TOKEN dan
+            Fitur ini butuh konfigurasi dari admin Marky (VERCEL_API_TOKEN dan
             VERCEL_PROJECT_ID). Hubungi kami bila Anda melihat pesan ini.
           </AlertDescription>
         </Alert>

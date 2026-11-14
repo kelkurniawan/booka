@@ -54,7 +54,7 @@ const TITLES: Record<WizardStep, { title: string; description?: string }> = {
     description:
       "Pelanggan cukup membuka tautan ini untuk memesan jadwal dan membayar DP.",
   },
-  sukses: { title: "Selamat, Booka Anda siap" },
+  sukses: { title: "Selamat, Marky Anda siap" },
   profil: {
     title: "Sedikit lagi",
     description: "Lima pertanyaan singkat, semuanya boleh dilewati.",

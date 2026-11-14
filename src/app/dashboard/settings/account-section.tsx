@@ -85,7 +85,7 @@ export function AccountSection({ username }: { username: string }) {
                 <DialogHeader>
                   <DialogTitle>Hapus akun secara permanen?</DialogTitle>
                   <DialogDescription>
-                    Tautan booka Anda langsung berhenti berfungsi. Unduh data Anda dulu bila
+                    Tautan Marky Anda langsung berhenti berfungsi. Unduh data Anda dulu bila
                     masih membutuhkannya.
                   </DialogDescription>
                 </DialogHeader>

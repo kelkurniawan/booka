@@ -7,9 +7,9 @@ import { ROUTES } from "@/lib/routes";
 import type { SubscriptionTier } from "@/types/database";
 
 export const metadata = {
-  title: "Booka — Terima booking dan DP lewat satu tautan",
+  title: "Marky — Terima booking dan DP lewat satu tautan",
   description:
-    "Satu tautan untuk pelanggan memesan jadwal dan membayar DP. Dananya masuk langsung ke akun payment gateway Anda, bukan ke Booka.",
+    "Satu tautan untuk pelanggan memesan jadwal dan membayar DP. Dananya masuk langsung ke akun payment gateway Anda, bukan ke Marky.",
 };
 
 /** Langkah yang benar-benar berurutan dari sisi pelanggan, karena itu dinomori. */
@@ -65,7 +65,7 @@ function SiteHeader() {
     <header className="border-border sticky top-0 z-10 border-b bg-background/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
         <Link href={ROUTES.home} className="font-mono text-sm font-semibold tracking-tight">
-          booka
+          marky
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           <Link
@@ -137,11 +137,11 @@ function MoneyFlow() {
             </h2>
             <p className="text-muted-foreground text-pretty">
               Anda menghubungkan akun Midtrans atau Xendit milik Anda sendiri.
-              Booka menembak API atas nama Anda, lalu dananya langsung mendarat
+              Marky menembak API atas nama Anda, lalu dananya langsung mendarat
               di akun itu — tanpa jeda pencairan, tanpa potongan dari kami.
             </p>
             <p className="text-muted-foreground text-pretty">
-              Yang Anda bayar ke Booka hanya biaya sewa sistemnya, terpisah sama
+              Yang Anda bayar ke Marky hanya biaya sewa sistemnya, terpisah sama
               sekali dari uang pelanggan.
             </p>
           </div>
@@ -150,7 +150,7 @@ function MoneyFlow() {
             <div
               className="border-border flex flex-col gap-0 border sm:flex-row"
               role="img"
-              aria-label="Diagram: dana dari pelanggan mengalir langsung ke akun payment gateway merchant. Booka hanya menerima data jadwal, bukan dana."
+              aria-label="Diagram: dana dari pelanggan mengalir langsung ke akun payment gateway merchant. Marky hanya menerima data jadwal, bukan dana."
             >
               <div className="flex-1 p-6">
                 <p className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
@@ -178,7 +178,7 @@ function MoneyFlow() {
 
             <figcaption className="border-border text-muted-foreground border border-dashed p-5 text-sm">
               <span className="text-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-                Peran Booka
+                Peran Marky
               </span>
               <span className="mt-2 block text-pretty">
                 Mengunci jadwal, mengirim notifikasi, dan merapikan catatan
@@ -300,7 +300,7 @@ function Pricing() {
 
         <p className="text-muted-foreground mt-6 text-sm">
           Biaya transaksi payment gateway mengikuti tarif Midtrans atau Xendit
-          dan ditagih langsung oleh mereka. Booka tidak menambah potongan apa pun.
+          dan ditagih langsung oleh mereka. Marky tidak menambah potongan apa pun.
         </p>
       </section>
     </>
@@ -336,7 +336,7 @@ function SiteFooter() {
   return (
     <footer className="border-border border-t">
       <div className="text-muted-foreground mx-auto flex max-w-5xl flex-col gap-3 px-6 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
-        <p className="font-mono">booka</p>
+        <p className="font-mono">marky</p>
         <nav className="flex gap-4">
           <Link href={ROUTES.terms} className="hover:text-foreground">
             Ketentuan Layanan

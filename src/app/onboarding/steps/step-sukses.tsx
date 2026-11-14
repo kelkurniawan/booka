@@ -103,7 +103,7 @@ export function StepSukses({
 
       <div className="flex flex-col gap-3">
         <p className="text-sm">
-          Mau bantu kami menyesuaikan Booka untuk usaha Anda? Lima pertanyaan
+          Mau bantu kami menyesuaikan Marky untuk usaha Anda? Lima pertanyaan
           singkat, tidak wajib.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">

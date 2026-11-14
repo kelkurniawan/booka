@@ -93,7 +93,7 @@ export default async function Image({
           >
             Pesan jadwal sekarang
           </div>
-          <div style={{ fontFamily: "monospace", color: theme.mutedForeground }}>booka</div>
+          <div style={{ fontFamily: "monospace", color: theme.mutedForeground }}>marky</div>
         </div>
       </div>
     ),

@@ -40,7 +40,7 @@ export const PLANS: Plan[] = [
       { label: "Halaman booking + QRIS" },
       { label: "Notifikasi email & WhatsApp" },
       { label: "3 tema halaman + FAQ" },
-      { label: "Ada watermark Booka" },
+      { label: "Ada watermark Marky" },
     ],
   },
   {

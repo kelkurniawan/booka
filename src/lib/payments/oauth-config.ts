@@ -15,8 +15,8 @@ export type OAuthProviderConfig = {
  * Konfigurasi OAuth Connect per provider.
  *
  * Midtrans dan Xendit belum menerbitkan dokumentasi publik untuk alur OAuth
- * partner-nya ke Booka -- URL di bawah adalah kerangka authorization-code
- * flow standar (OAuth 2.0), untuk diisi ulang begitu Booka menerima
+ * partner-nya ke Marky -- URL di bawah adalah kerangka authorization-code
+ * flow standar (OAuth 2.0), untuk diisi ulang begitu Marky menerima
  * kredensial partner resmi. Sampai saat itu tiba, `midtransClientId` /
  * `xenditClientId` di .env kosong, dan `isOAuthConfigured()` melaporkan
  * "belum aktif" sebelum URL ini pernah benar-benar dipanggil (lihat

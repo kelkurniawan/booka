@@ -7,7 +7,7 @@
  *   /opengraph-image      -> gambar pratinjau merchant
  *   /pesanan/{token}      -> status pesanan pelanggan (lolos apa adanya)
  *   /{username}           -> dialihkan ke / supaya tautannya satu
- *   selain itu            -> dialihkan ke domain Booka (dashboard, login,
+ *   selain itu            -> dialihkan ke domain Marky (dashboard, login,
  *                            halaman legal, merchant lain)
  */
 export type DomainRoute =
@@ -29,7 +29,7 @@ export function routeCustomDomain(pathname: string, username: string): DomainRou
 }
 
 /**
- * Host milik Booka sendiri: domain aplikasi, localhost, dan deployment
+ * Host milik Marky sendiri: domain aplikasi, localhost, dan deployment
  * pratinjau Vercel. Request ke host ini tidak pernah dicari di
  * merchant_domains -- menghemat satu query di hampir semua request.
  */

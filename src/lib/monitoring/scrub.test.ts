@@ -5,8 +5,8 @@ import { scrubEvent, scrubText } from "./scrub";
 
 test("token di path /pesanan/ disensor, query dan sisa path tetap", () => {
   assert.equal(
-    scrubText("https://booka.id/pesanan/Ab_c-123XYZ?x=1"),
-    "https://booka.id/pesanan/[token]?x=1",
+    scrubText("https://marky.id/pesanan/Ab_c-123XYZ?x=1"),
+    "https://marky.id/pesanan/[token]?x=1",
   );
 });
 
@@ -20,7 +20,7 @@ test("nomor WhatsApp dan email di pesan error disensor", () => {
 test("scrubEvent membersihkan url, transaksi, breadcrumb, dan membuang data request", () => {
   const event = scrubEvent({
     request: {
-      url: "https://booka.id/pesanan/rahasia",
+      url: "https://marky.id/pesanan/rahasia",
       headers: { cookie: "sb=..." },
       data: { customer_whatsapp: "+6281234567890" },
     },
@@ -28,7 +28,7 @@ test("scrubEvent membersihkan url, transaksi, breadcrumb, dan membuang data requ
     breadcrumbs: [{ message: "navigasi", data: { to: "/pesanan/rahasia" } }],
     user: { ip_address: "1.2.3.4" },
   });
-  assert.equal(event.request?.url, "https://booka.id/pesanan/[token]");
+  assert.equal(event.request?.url, "https://marky.id/pesanan/[token]");
   assert.equal(event.request?.headers, undefined);
   assert.equal(event.request?.data, undefined);
   assert.equal(event.transaction, "GET /pesanan/[token]");

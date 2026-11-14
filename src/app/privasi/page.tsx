@@ -7,7 +7,7 @@ import { ROUTES } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "Kebijakan Privasi",
-  description: "Data apa yang dikumpulkan Booka, untuk apa, dan hak Anda atasnya.",
+  description: "Data apa yang dikumpulkan Marky, untuk apa, dan hak Anda atasnya.",
 };
 
 /**
@@ -21,7 +21,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Kebijakan Privasi">
       <p>
-        Booka diselenggarakan oleh {operatorName} ({address}). Kebijakan ini
+        Marky diselenggarakan oleh {operatorName} ({address}). Kebijakan ini
         menjelaskan data pribadi apa yang kami proses, untuk apa, dengan siapa
         data itu dibagikan, dan hak Anda atasnya, sesuai Undang-Undang Nomor 27
         Tahun 2022 tentang Pelindungan Data Pribadi.
@@ -31,7 +31,7 @@ export default function PrivacyPage() {
       <ul>
         <li>
           <strong>Untuk data merchant</strong> (pemilik usaha yang mendaftar di
-          Booka), kami adalah <em>pengendali data</em>.
+          Marky), kami adalah <em>pengendali data</em>.
         </li>
         <li>
           <strong>Untuk data pelanggan merchant</strong> (orang yang memesan

@@ -19,8 +19,8 @@ const base: BookingMessageData = {
   servicePrice: 150000,
   // 10:30 UTC = 17:30 WIB, Rabu 19 Agustus 2026.
   startDatetime: "2026-08-19T10:30:00.000Z",
-  statusUrl: "https://booka.id/pesanan/abc",
-  dashboardUrl: "https://booka.id/dashboard/bookings",
+  statusUrl: "https://marky.id/pesanan/abc",
+  dashboardUrl: "https://marky.id/dashboard/bookings",
 };
 
 test("waLink membuang tanda + dan karakter non-digit", () => {
@@ -43,7 +43,7 @@ test("email merchant meng-escape HTML dari nama pelanggan", () => {
 
 test("WA pelanggan memuat tautan status dan kontak merchant bila ada", () => {
   const text = customerPaidWhatsapp(base);
-  assert.match(text, /https:\/\/booka\.id\/pesanan\/abc/);
+  assert.match(text, /https:\/\/marky\.id\/pesanan\/abc/);
   assert.match(text, /wa\.me\/6281234567890/);
 });
 

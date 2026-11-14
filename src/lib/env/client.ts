@@ -16,7 +16,7 @@ const rawClientEnv = {
   supabaseKey:
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  // Nomor WhatsApp tim Booka untuk permintaan upgrade/downgrade paket manual.
+  // Nomor WhatsApp tim Marky untuk permintaan upgrade/downgrade paket manual.
   // Opsional -- halaman Langganan menyembunyikan tombol upgrade kalau kosong.
   supportWhatsapp: process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP,
 };

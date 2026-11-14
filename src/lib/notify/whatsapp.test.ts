@@ -97,7 +97,7 @@ test("fetch yang melempar (timeout/jaringan) tidak ikut melempar", async () => {
 test("Resend: bearer token dan penerima dalam array", async () => {
   const captured: Captured[] = [];
   const result = await sendEmail(
-    { apiKey: "re_x", from: "Booka <a@b.id>" },
+    { apiKey: "re_x", from: "Marky <a@b.id>" },
     "m@b.id",
     { subject: "s", text: "t", html: "<p>t</p>" },
     fakeFetch(Response.json({ id: "1" }), captured),

@@ -45,7 +45,7 @@ async function resolveHost(host: string): Promise<string | null> {
 
 /**
  * Menangani request yang datang lewat domain merchant. Dipanggil proxy
- * hanya bila host BUKAN host Booka sendiri (lihat isAppHost).
+ * hanya bila host BUKAN host Marky sendiri (lihat isAppHost).
  *
  * Mengembalikan null untuk host yang tidak dikenal, dan proxy melanjutkan
  * seperti biasa. Sengaja bukan 404: NEXT_PUBLIC_APP_URL yang salah isi akan

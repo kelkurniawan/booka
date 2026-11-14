@@ -29,7 +29,7 @@ export default async function SignUpPage({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Buat akun Booka</CardTitle>
+        <CardTitle>Buat akun Marky</CardTitle>
         <CardDescription>
           Gratis selamanya untuk 10 transaksi per bulan. Tanpa kartu kredit.
         </CardDescription>

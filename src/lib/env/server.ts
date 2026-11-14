@@ -55,7 +55,7 @@ const serverEnvSchema = z.object({
    * pembayaran gagal. Lihat docs/NOTIFIKASI.md.
    */
   resendApiKey: z.string().min(1).optional(),
-  /** Pengirim email, mis. "Booka <notifikasi@domainanda.id>". */
+  /** Pengirim email, mis. "Marky <notifikasi@domainanda.id>". */
   emailFrom: z.string().min(1).optional(),
   whatsappProvider: z.enum(["waha", "evolution", "fonnte"]).optional(),
   /** Base URL gateway self-host (WAHA/Evolution). Tidak dipakai Fonnte. */

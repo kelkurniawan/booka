@@ -25,7 +25,7 @@ async function sessionClient() {
   return { supabase, userId: user.id };
 }
 
-const NOT_CONFIGURED = "Fitur domain sendiri belum diaktifkan oleh admin Booka.";
+const NOT_CONFIGURED = "Fitur domain sendiri belum diaktifkan oleh admin Marky.";
 
 export async function registerDomain(input: string): Promise<DomainActionResult> {
   const parsed = domainSchema.safeParse(input);
@@ -33,7 +33,7 @@ export async function registerDomain(input: string): Promise<DomainActionResult>
   const domain = parsed.data;
 
   if (isAppHost(domain, serverEnv().appUrl)) {
-    return { ok: false, message: "Domain ini milik Booka dan tidak bisa dipakai." };
+    return { ok: false, message: "Domain ini milik Marky dan tidak bisa dipakai." };
   }
 
   const config = vercelConfig();
@@ -112,7 +112,7 @@ export async function checkDomain(): Promise<DomainActionResult> {
     return { ok: false, message: "Gagal memeriksa status domain. Coba lagi." };
   }
   if (status.value.misconfigured) {
-    return { ok: false, message: "Record CNAME/A belum mengarah ke Booka. Perubahan DNS bisa butuh beberapa jam." };
+    return { ok: false, message: "Record CNAME/A belum mengarah ke Marky. Perubahan DNS bisa butuh beberapa jam." };
   }
   if (!status.value.verified) {
     return { ok: false, message: "Vercel masih memverifikasi domain ini. Coba lagi beberapa menit lagi." };

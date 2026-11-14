@@ -28,7 +28,7 @@ export default async function SignInPage({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Masuk ke Booka</CardTitle>
+        <CardTitle>Masuk ke Marky</CardTitle>
         <CardDescription>
           Kelola jadwal, layanan, dan pembayaran DP dari satu tempat.
         </CardDescription>

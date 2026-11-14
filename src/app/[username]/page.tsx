@@ -181,7 +181,7 @@ export async function generateMetadata({
   const { merchant } = data;
   const name = merchant.full_name ?? merchant.username ?? username;
 
-  const description = merchant.bio ?? `Pesan jadwal ${name} lewat Booka.`;
+  const description = merchant.bio ?? `Pesan jadwal ${name} lewat Marky.`;
 
   // `openGraph` di halaman MENGGANTI milik layout (bukan digabung), jadi
   // siteName dan locale diulang di sini. Gambarnya datang dari
@@ -193,7 +193,7 @@ export async function generateMetadata({
     openGraph: {
       title: name,
       description,
-      siteName: "Booka",
+      siteName: "Marky",
       locale: "id_ID",
       type: "profile",
       url: ROUTES.merchantPage(merchant.username),
@@ -303,7 +303,7 @@ export default async function MerchantPublicPage({
           href={ROUTES.home}
           className="text-muted-foreground hover:text-foreground mt-auto self-center text-xs"
         >
-          Dibuat dengan Booka
+          Dibuat dengan Marky
         </Link>
       ) : null}
     </BookingPageShell>

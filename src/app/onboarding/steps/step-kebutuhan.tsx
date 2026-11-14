@@ -34,7 +34,7 @@ const INITIAL_STATE: OnboardingState = { status: "idle" };
 
 /**
  * Bonus B: tiga pertanyaan cepat -- kanal pemesanan saat ini, kendala utama
- * (maks 3), dan sumber tahu Booka. Satu `<form>`, satu `saveOptionalProfile`.
+ * (maks 3), dan sumber tahu Marky. Satu `<form>`, satu `saveOptionalProfile`.
  *
  * `teamSize`/`province` datang dari langkah `profil` sebelumnya dan dikirim
  * lewat field tersembunyi supaya SATU submit menyimpan jawaban kedua layar
@@ -144,8 +144,8 @@ export function StepKebutuhan({
       </section>
 
       <section className="flex flex-col gap-3">
-        <h2 className="text-sm font-medium">Tahu Booka dari mana?</h2>
-        <OptionCardGroup aria-label="Sumber tahu Booka">
+        <h2 className="text-sm font-medium">Tahu Marky dari mana?</h2>
+        <OptionCardGroup aria-label="Sumber tahu Marky">
           {ACQUISITION_SOURCE_VALUES.map((value) => (
             <OptionCard
               key={value}
