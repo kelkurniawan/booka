@@ -28,3 +28,15 @@ test("buildBookingIcs meng-escape backslash lebih dulu lalu baris baru", () => {
   // Backslash jadi "\\", baris baru jadi "\n", tanpa escape ganda.
   assert.ok(ics.includes("SUMMARY:a\\\\b\\nc\r\n"));
 });
+
+test("buildBookingIcs tidak bisa disisipi baris lewat CR tunggal atau karakter kontrol", () => {
+  const ics = buildBookingIcs({
+    uid: "x",
+    title: "Potong\rATTENDEE:mailto:x@y.z\u0000",
+    startUtc: "2026-11-21T03:00:00.000Z",
+    endUtc: "2026-11-21T04:30:00.000Z",
+  });
+  assert.ok(ics.includes("SUMMARY:Potong\\nATTENDEE:mailto:x@y.z\r\n"));
+  // Setiap baris dipisah CRLF; tidak ada CR atau LF yatim di dalam isi.
+  assert.ok(ics.split("\r\n").every((line) => !/[\r\n\u0000]/.test(line)));
+});

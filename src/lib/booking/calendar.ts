@@ -18,7 +18,10 @@ function icsText(value: string): string {
     .replace(/\\/g, "\\\\")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;")
-    .replace(/\r?\n/g, "\\n");
+    .replace(/\r\n|\r|\n/g, "\\n")
+    // Karakter kontrol lain (kecuali TAB) dibuang: nama layanan milik merchant
+    // tidak boleh bisa menyisipkan baris atau properti baru ke berkas .ics.
+    .replace(/[\u0000-\u0008\u000a-\u001f\u007f]/g, "");
 }
 
 /**
