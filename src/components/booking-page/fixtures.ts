@@ -1,3 +1,4 @@
+import type { FreeSlot } from "@/lib/booking/slots";
 import { resolveTheme } from "@/lib/theme/resolve";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type {
@@ -83,3 +84,16 @@ export function sampleTheme(preset: ThemePreset): ResolvedTheme {
   };
   return resolveTheme("PRO", row);
 }
+
+/** Slot contoh dari pagi sampai malam, jam dinding Jakarta (UTC+7). */
+export const sampleSlots: FreeSlot[] = [
+  "08:00", "09:30", "11:00", "13:00", "14:30", "15:00", "16:30", "18:00", "19:30",
+].map((label) => {
+  const [h, m] = label.split(":").map(Number);
+  const start = new Date(Date.UTC(2026, 10, 20, h - 7, m));
+  return {
+    label,
+    startUtc: start.toISOString(),
+    endUtc: new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
+  };
+});
