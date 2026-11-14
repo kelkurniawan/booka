@@ -48,6 +48,13 @@ select pg_temp.expect_fail(
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'opengraph-image' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username reserved "opengraph-image"');
+-- Nama merek, ditambahkan di migration 20261114000100.
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'marky' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "marky"');
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'booka' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "booka"');
 select pg_temp.expect_fail(
   $q$update public.merchants set username = 'AB' where id = '11111111-1111-1111-1111-111111111111'$q$,
   'username terlalu pendek / huruf besar');
