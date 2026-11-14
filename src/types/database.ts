@@ -708,6 +708,8 @@ export type Database = {
           p_customer_whatsapp: string;
           /** Null = "siapa saja" untuk merchant Studio; diabaikan untuk paket lain. */
           p_staff_id?: string | null;
+          /** false bila merchant tidak punya koneksi payment ACTIVE (BK021 bila booking perlu bayar online). */
+          p_can_charge?: boolean;
         };
         Returns: Booking[];
       };

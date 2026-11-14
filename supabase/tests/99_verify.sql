@@ -445,13 +445,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2549,3 +2549,216 @@ select case when (select confirmed_revenue from public.dashboard_booking_summary
             then 'OK   t32j confirmed_revenue = DP + sisa lunas di tempat'
             else 'FAIL t32j confirmed_revenue = ' || (select confirmed_revenue from public.dashboard_booking_summary())::text end as t32j;
 rollback;
+
+-- ===========================================================================
+-- 33. create_booking cara bayar (20261115000300)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('33333333-0000-0000-0000-000000000001', 'bayar33-a@example.com', '{}'::jsonb),
+  ('33333333-0000-0000-0000-000000000002', 'bayar33-b@example.com', '{}'::jsonb),
+  ('33333333-0000-0000-0000-000000000003', 'bayar33-c@example.com', '{}'::jsonb);
+update public.merchants set username = 'cara-bayar-33', subscription_tier = 'PRO'
+  where id = '33333333-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'STUDIO'
+  where id = '33333333-0000-0000-0000-000000000002';
+update public.merchants set subscription_tier = 'PRO'
+  where id = '33333333-0000-0000-0000-000000000003';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select m, d, '09:00', '17:00'
+from generate_series(1, 7) d,
+     unnest(array['33333333-0000-0000-0000-000000000001', '33333333-0000-0000-0000-000000000002']::uuid[]) m;
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '33333333-0000-0000-0000-000000000003', d, '00:00', '23:59' from generate_series(1, 7) d;
+
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value) values
+  ('33333333-5e5e-0000-0000-000000000001', '33333333-0000-0000-0000-000000000001', 'Penuh', 350000, 60, 'FULL', null, null),
+  ('33333333-5e5e-0000-0000-000000000002', '33333333-0000-0000-0000-000000000001', 'DP 30 persen', 350000, 60, 'DEPOSIT', 'PERCENT', 30),
+  ('33333333-5e5e-0000-0000-000000000003', '33333333-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null),
+  ('33333333-5e5e-0000-0000-000000000004', '33333333-0000-0000-0000-000000000001', 'Permintaan DP', 1000000, 60, 'REQUEST', 'FIXED', 100000),
+  ('33333333-5e5e-0000-0000-000000000005', '33333333-0000-0000-0000-000000000001', 'Permintaan', 200000, 60, 'REQUEST', null, null),
+  ('33333333-5e5e-0000-0000-000000000006', '33333333-0000-0000-0000-000000000003', 'Permintaan singkat', 100000, 5, 'REQUEST', null, null),
+  ('33333333-5e5e-0000-0000-000000000007', '33333333-0000-0000-0000-000000000002', 'Potong', 100000, 60, 'FULL', null, null);
+
+-- Booking merchant 0001 untuk layanan ke-p_service di slot ke-p_slot: Senin,
+-- delapan slot satu jam (09:00 sampai 16:00) per minggu, supaya tiap kasus
+-- punya slot sendiri dan tidak saling bentrok.
+create or replace function pg_temp.cb33(p_service integer, p_slot integer, p_phone text, p_can_charge boolean default true)
+returns setof public.bookings language plpgsql as $$
+begin
+  return query select * from public.create_booking(
+    '33333333-0000-0000-0000-000000000001',
+    ('33333333-5e5e-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    pg_temp.jakarta_future(1, 1 + p_slot / 8, (9 + p_slot % 8) || ':00'),
+    'Pelanggan 33', p_phone, null, p_can_charge);
+end $$;
+
+create or replace function pg_temp.check33(
+  p_label text, p_service integer, p_slot integer, p_phone text,
+  p_status text, p_due_now numeric, p_due_on_site numeric, p_mode text,
+  p_can_charge boolean default true)
+returns text language plpgsql as $$
+declare
+  b public.bookings;
+begin
+  select * into b from pg_temp.cb33(p_service, p_slot, p_phone, p_can_charge);
+  if b.status::text = p_status and b.amount_due_now = p_due_now
+     and b.amount_due_on_site = p_due_on_site and b.payment_mode::text = p_mode then
+    return 'OK   ' || p_label;
+  end if;
+  return 'FAIL ' || p_label || ' -> ' || b.status || ' ' || b.amount_due_now || '/'
+    || b.amount_due_on_site || ' ' || b.payment_mode;
+exception when others then
+  return 'FAIL ' || p_label || ' [' || sqlstate || ' ' || sqlerrm || ']';
+end $$;
+
+-- 33a. FULL: PENDING, seluruh harga sekarang, kedaluwarsa 15 menit.
+select pg_temp.check33('t33a FULL -> PENDING 350000/0', 1, 0, '+6281333000001', 'PENDING', 350000, 0, 'FULL');
+select case when expires_at between now() + interval '14 minutes' and now() + interval '16 minutes'
+            then 'OK   t33a PENDING kedaluwarsa sekitar 15 menit'
+            else 'FAIL t33a expires_at = ' || expires_at end as t33a
+from public.bookings where customer_whatsapp = '+6281333000001';
+
+-- 33b. DEPOSIT 30 persen dari 350000.
+select pg_temp.check33('t33b DEPOSIT -> PENDING 105000/245000', 2, 1, '+6281333000002', 'PENDING', 105000, 245000, 'DEPOSIT');
+
+-- 33c. ON_SITE dengan setelan default: langsung CONFIRMED.
+select pg_temp.check33('t33c ON_SITE -> CONFIRMED 0/450000', 3, 2, '+6281333000003', 'CONFIRMED', 0, 450000, 'ON_SITE');
+
+-- 33d. auto_confirm_on_site mati: ON_SITE jadi REQUESTED, batas jawab <= 24 jam.
+update public.merchant_settings set auto_confirm_on_site = false
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.check33('t33d ON_SITE tanpa auto-confirm -> REQUESTED', 3, 3, '+6281333000004', 'REQUESTED', 0, 450000, 'ON_SITE');
+select case when expires_at > now() and expires_at <= now() + interval '24 hours'
+            then 'OK   t33d REQUESTED kedaluwarsa paling lama 24 jam'
+            else 'FAIL t33d expires_at = ' || expires_at end as t33d
+from public.bookings where customer_whatsapp = '+6281333000004';
+update public.merchant_settings set auto_confirm_on_site = true
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+
+-- 33e. allow_pay_on_site mati: ON_SITE dibayar penuh online.
+update public.merchant_settings set allow_pay_on_site = false
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.check33('t33e ON_SITE tanpa izin bayar di tempat -> FULL', 3, 4, '+6281333000005', 'PENDING', 450000, 0, 'FULL');
+update public.merchant_settings set allow_pay_on_site = true
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+
+-- 33f. REQUEST: DP FIXED bila terisi, selain itu harga penuh.
+select pg_temp.check33('t33f REQUEST FIXED -> REQUESTED 100000/900000', 4, 5, '+6281333000006', 'REQUESTED', 100000, 900000, 'REQUEST');
+select pg_temp.check33('t33f REQUEST tanpa DP -> REQUESTED 200000/0', 5, 6, '+6281333000007', 'REQUESTED', 200000, 0, 'REQUEST');
+
+-- 33g. Tanpa koneksi payment: yang perlu bayar online ditolak BK021.
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb33(1, 7, '+6281333000008', false)$q$,
+  'BK021', 't33g FULL tanpa koneksi payment');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb33(4, 7, '+6281333000009', false)$q$,
+  'BK021', 't33g REQUEST FIXED tanpa koneksi payment');
+select pg_temp.check33('t33g ON_SITE tanpa koneksi payment diterima', 3, 7, '+6281333000010', 'CONFIRMED', 0, 450000, 'ON_SITE', false);
+
+-- 33h. Batas booking aktif per nomor (ON_SITE dan REQUEST saja).
+update public.merchant_settings set max_active_per_phone = 2
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 8, '+6281333000020')$q$, 't33h ON_SITE pertama nomor X');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 9, '+6281333000020')$q$, 't33h ON_SITE kedua nomor X');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb33(3, 10, '+6281333000020')$q$,
+  'BK020', 't33h ON_SITE ketiga nomor X');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(1, 10, '+6281333000020')$q$, 't33h FULL nomor X tidak dibatasi');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 11, '+6281333000021')$q$, 't33h ON_SITE nomor Y');
+-- Booking Z minggu lalu sudah selesai: tidak dihitung aktif.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode)
+values ('33333333-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60,
+  now() - interval '7 days', now() - interval '7 days' + interval '1 hour',
+  'Pelanggan 33', '+6281333000022', 'CONFIRMED', 0, 450000, 'ON_SITE');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 12, '+6281333000022')$q$, 't33h ON_SITE pertama nomor Z');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 13, '+6281333000022')$q$, 't33h ON_SITE kedua nomor Z (booking lampau tidak dihitung)');
+update public.merchant_settings set max_active_per_phone = null
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(3, 14, '+6281333000020')$q$, 't33h ON_SITE ketiga nomor X tanpa batas');
+update public.merchant_settings set max_active_per_phone = 2
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+
+-- 33i. Nomor yang pernah tidak datang wajib bayar online bila setelan menyala.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode, no_show_at)
+values ('33333333-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60,
+  now() - interval '14 days', now() - interval '14 days' + interval '1 hour',
+  'Pelanggan 33', '+6281333000030', 'CONFIRMED', 0, 450000, 'ON_SITE', now() - interval '14 days');
+update public.merchant_settings set deposit_after_no_show = true
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.check33('t33i nomor pernah tidak datang -> FULL', 3, 15, '+6281333000030', 'PENDING', 450000, 0, 'FULL');
+select pg_temp.check33('t33i nomor lain tetap ON_SITE', 3, 16, '+6281333000031', 'CONFIRMED', 0, 450000, 'ON_SITE');
+update public.merchant_settings set deposit_after_no_show = false
+  where merchant_id = '33333333-0000-0000-0000-000000000001';
+select pg_temp.check33('t33i setelan mati -> nomor itu kembali ON_SITE', 3, 17, '+6281333000030', 'CONFIRMED', 0, 450000, 'ON_SITE');
+
+-- 33j. REQUESTED kedaluwarsa di slot yang sama dibersihkan dulu, bukan 23P01.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode)
+values ('33333333-0000-0000-0000-000000000001', 'Permintaan', 200000, 60,
+  pg_temp.jakarta_future(1, 3, '11:00'), pg_temp.jakarta_future(1, 3, '12:00'),
+  'Pelanggan 33', '+6281333000040', 'REQUESTED', now() - interval '1 minute', 200000, 0, 'REQUEST');
+select pg_temp.expect_ok($q$select * from pg_temp.cb33(1, 18, '+6281333000041')$q$,
+  't33j slot dengan REQUESTED kedaluwarsa bisa dipesan');
+select case when status = 'CANCELLED' and cancel_reason = 'Permintaan tidak dijawab dalam batas waktu'
+            then 'OK   t33j REQUESTED kedaluwarsa dibatalkan dengan alasan permintaan'
+            else 'FAIL t33j status lama = ' || status || ' ' || coalesce(cancel_reason, 'NULL') end as t33j
+from public.bookings where customer_whatsapp = '+6281333000040';
+
+-- 33k. Permintaan untuk jadwal dekat: batas jawab = jam mulai.
+create or replace function pg_temp.t33k()
+returns text language plpgsql as $$
+declare
+  v_start timestamptz := date_trunc('minute', now()) + interval '2 hours';
+  b public.bookings;
+begin
+  if (v_start at time zone 'Asia/Jakarta')::time > '23:50' then
+    return 'OK   t33k dilewati (dekat tengah malam)';
+  end if;
+  select * into b from public.create_booking(
+    '33333333-0000-0000-0000-000000000003', '33333333-5e5e-0000-0000-000000000006',
+    v_start, 'Pelanggan 33', '+6281333000050');
+  if b.status = 'REQUESTED' and b.expires_at = b.start_datetime then
+    return 'OK   t33k REQUESTED untuk 2 jam lagi kedaluwarsa tepat di jam mulai';
+  end if;
+  return 'FAIL t33k -> ' || b.status || ' expires_at ' || b.expires_at || ' start ' || b.start_datetime;
+exception when others then
+  return 'FAIL t33k [' || sqlstate || ' ' || sqlerrm || ']';
+end $$;
+select pg_temp.t33k();
+
+-- 33l. "Siapa saja" melewati staf yang sudah punya booking CONFIRMED.
+insert into public.staff (id, merchant_id, name, sort_order) values
+  ('33333333-57af-0000-0000-000000000001', '33333333-0000-0000-0000-000000000002', 'Ayu', 0),
+  ('33333333-57af-0000-0000-000000000002', '33333333-0000-0000-0000-000000000002', 'Bima', 1);
+insert into public.bookings (merchant_id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode, staff_id, staff_name)
+values ('33333333-0000-0000-0000-000000000002', '33333333-5e5e-0000-0000-000000000007', 'Potong', 100000, 60,
+  pg_temp.jakarta_future(1, 1, '10:00'), pg_temp.jakarta_future(1, 1, '11:00'),
+  'Pelanggan 33', '+6281333000060', 'CONFIRMED', 0, 100000, 'ON_SITE',
+  '33333333-57af-0000-0000-000000000001', 'Ayu');
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '33333333-0000-0000-0000-000000000002', '33333333-5e5e-0000-0000-000000000007',
+       pg_temp.jakarta_future(1, 1, '10:00'), 'Pelanggan 33', '+6281333000061')$q$,
+  't33l siapa saja di jam yang sudah dipegang CONFIRMED milik Ayu');
+select case when staff_name = 'Bima'
+            then 'OK   t33l siapa saja jatuh ke staf yang kosong (Bima)'
+            else 'FAIL t33l siapa saja ditugaskan ke ' || coalesce(staff_name, 'NULL') end as t33l
+from public.bookings where customer_whatsapp = '+6281333000061';
+
+-- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
+select
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)') is null
+       then 'FAIL t33m signature tujuh argumen tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
+       then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
+       then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
+       else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
+       then 'OK   t33m signature enam argumen sudah dihapus'
+       else 'FAIL t33m signature enam argumen masih ada' end as t33m2;
