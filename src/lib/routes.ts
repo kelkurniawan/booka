@@ -38,6 +38,7 @@ export const ROUTES = {
 
   merchantPage: (username: string) => `/${username}`,
   bookingStatus: (token: string) => `/pesanan/${token}`,
+  bookingPay: (token: string) => `/api/pesanan/${token}/bayar`,
 } as const;
 
 /** Rute yang mensyaratkan sesi login. */

@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 import { mapBookingError } from "@/lib/booking/errors";
 import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
-import { ChargeRejectedError, getAdapter, recordChargeRejection, recordChargeSuccess } from "@/lib/payments";
-import { loadMerchantCredential } from "@/lib/payments/credentials";
-import { selectActiveConnection } from "@/lib/payments/select-connection";
+import { notifyBookingCreated } from "@/lib/notify/dispatch";
+import { chargeBooking, chargeFailureMessage, findChargeProvider } from "@/lib/payments/charge-booking";
 import { ROUTES } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createBookingRequestSchema } from "@/lib/validations/booking";
@@ -27,15 +26,12 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  *      ip+merchant per 15 menit) -- IP pemanggil di-hash dulu, tidak pernah
  *      dikirim/dicatat mentah. Lihat src/lib/booking/rate-limit.ts dan
  *      supabase/migrations/20260813120000_harden_booking_abuse.sql.
- *   4. Pastikan merchant sudah punya koneksi payment ACTIVE -- booking yang
- *      tidak bisa dibayar tidak boleh pernah tersimpan.
- *   5. Panggil RPC `create_booking` (SECURITY DEFINER) -- transaksi
+ *   4. Cari provider penagih (koneksi ACTIVE), lalu panggil RPC `create_booking` (SECURITY DEFINER) -- transaksi
  *      insert-nya sendiri yang membaca ulang harga dari `services` dan
  *      menjaga slot bentrok/kuota, lihat migration-nya.
- *   6. Buat charge QRIS lewat adapter provider merchant, simpan
- *      payment_url/payment_reference/payment_provider ke baris booking.
- *      Kalau langkah ini gagal, booking yang SUDAH tersimpan (PENDING)
- *      dibatalkan di sini juga -- lihat komentar di catch block.
+ *   5. Hanya bila status PENDING: buat charge QRIS sebesar amount_due_now
+ *      (chargeBooking). Kalau gagal, booking PENDING dibatalkan di sini juga.
+ *      CONFIRMED/REQUESTED tidak ditagih; hanya notifikasi dikirim.
  */
 export async function POST(request: NextRequest) {
   let rawBody: unknown;
@@ -62,7 +58,7 @@ export async function POST(request: NextRequest) {
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
-    .select("id, active_payment_provider")
+    .select("id")
     .eq("username", username)
     .maybeSingle();
 
@@ -124,40 +120,18 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Booking yang tidak bisa dibayar tidak boleh pernah tersimpan -- cek
-  // koneksi payment SEBELUM memanggil create_booking, bukan sesudahnya.
-  // Merchant bisa saja punya koneksi ACTIVE untuk kedua provider sekaligus.
-  // Kalau merchant sudah pernah memilih satu provider eksplisit lewat
-  // halaman Pembayaran (`merchants.active_payment_provider`, di-set di
-  // src/app/dashboard/payments/actions.ts) DAN koneksi itu masih ACTIVE,
-  // itu yang dipakai. Kalau belum pernah (merchant lama) atau koneksi
-  // pilihannya sudah dicabut/kedaluwarsa, jatuh balik ke koneksi ACTIVE yang
-  // paling lama tersambung supaya hasilnya tetap deterministik, bukan
-  // sekadar baris pertama yang kebetulan dikembalikan Postgres. Aturan
-  // pemilihannya sendiri ada di src/lib/payments/select-connection.ts,
-  // supaya endpoint ini dan halaman Pembayaran (badge "Dipakai untuk booking
-  // baru") tidak bisa diam-diam tidak sinkron.
-  const { data: activeConnections, error: connectionError } = await supabase
-    .from("payment_connections")
-    .select("provider")
-    .eq("merchant_id", merchant.id)
-    .eq("status", "ACTIVE")
-    .order("connected_at", { ascending: true });
-
-  if (connectionError) {
+  // Hanya memberi tahu create_booking apakah merchant bisa ditagih; mode
+  // bayar efektif baru diketahui di dalam transaksinya, yang menolak (BK021)
+  // booking yang harus dibayar online bila provider null.
+  let provider;
+  try {
+    provider = await findChargeProvider(supabase, merchant.id);
+  } catch (providerError) {
     console.error("[api/bookings] gagal memuat koneksi payment", {
       merchantId: merchant.id,
-      error: connectionError,
+      error: providerError,
     });
     return NextResponse.json({ error: "Gagal memuat data pembayaran merchant" }, { status: 500 });
-  }
-
-  const connection = selectActiveConnection(
-    activeConnections ?? [],
-    merchant.active_payment_provider,
-  );
-  if (!connection) {
-    return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
   }
 
   const { data: bookingRows, error: bookingError } = await supabase.rpc("create_booking", {
@@ -167,6 +141,7 @@ export async function POST(request: NextRequest) {
     p_customer_name: customer_name,
     p_customer_whatsapp: customer_whatsapp,
     p_staff_id: staffId,
+    p_can_charge: provider !== null,
   });
 
   if (bookingError) {
@@ -192,60 +167,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Gagal membuat booking, silakan coba lagi." }, { status: 500 });
   }
 
+  const bookingUrl = ROUTES.bookingStatus(booking.access_token);
+
+  if (booking.status !== "PENDING") {
+    // CONFIRMED (bayar di tempat) atau REQUESTED: tidak ada charge.
+    after(() => notifyBookingCreated(booking.id));
+    return NextResponse.json(
+      { bookingId: booking.id, status: booking.status, bookingUrl },
+      { status: 201 },
+    );
+  }
+
+  // PENDING hanya mungkin dengan provider (BK021 menolak sisanya), kecuali
+  // harga 0 tanpa koneksi: tidak bisa ditagih, jangan biarkan menahan slot.
   // Dari titik ini booking PENDING sudah tersimpan (expires_at = +15 menit).
   // Kalau charge QRIS gagal dengan cara apa pun, booking ini WAJIB
   // dibatalkan di blok catch -- booking yang tidak bisa dibayar tidak boleh
   // dibiarkan menghabiskan kuota merchant atau mengunci slot kalendernya
   // (bookings_no_overlap hanya membebaskan slot untuk status CANCELLED).
   try {
-    const credential = await loadMerchantCredential(merchant.id, connection.provider);
-    if (!credential) {
-      // Race langka: koneksi dicabut tepat di antara pengecekan di atas dan
-      // baris ini. Diperlakukan sama seperti kegagalan charge di bawah.
-      throw new Error("Kredensial payment gateway tidak ditemukan");
-    }
-
-    const adapter = getAdapter(connection.provider);
-    const charge = await adapter.createQrisCharge({
-      orderId: booking.id,
-      // service_price adalah numeric(12,2) di Postgres -- Number() berjaga-
-      // jaga kalau suatu saat postgrest-js mengembalikannya sebagai string.
-      amount: Math.round(Number(booking.service_price)),
-      environment: credential.environment,
-      credential: credential.credential,
+    if (!provider) throw new NoProviderError();
+    const charge = await chargeBooking(supabase, {
+      bookingId: booking.id,
+      merchantId: merchant.id,
+      // numeric(12,2): Number() berjaga-jaga kalau postgrest-js mengembalikan string.
+      amount: Math.round(Number(booking.amount_due_now)),
+      provider,
     });
-
-    const { error: updateError } = await supabase
-      .from("bookings")
-      .update({
-        payment_provider: connection.provider,
-        payment_url: charge.qrString,
-        payment_reference: charge.orderId,
-      })
-      .eq("id", booking.id)
-      .eq("merchant_id", merchant.id);
-
-    if (updateError) {
-      throw updateError;
-    }
-
-    // Charge sukses -- catat ke kolom kesehatan payment_connections supaya
-    // /dashboard/payments bisa membersihkan peringatan "pembayaran sedang
-    // gagal" kalau koneksi ini sebelumnya pernah ditolak gateway (lihat
-    // src/lib/payments/health.ts). Kegagalan menulis di sini TIDAK PERNAH
-    // menggagalkan response booking yang sudah sukses.
-    await recordChargeSuccess(supabase, merchant.id, connection.provider);
 
     return NextResponse.json(
       {
         bookingId: booking.id,
+        status: booking.status,
         payment_url: charge.qrString,
         expires_at: booking.expires_at,
-        // Token mentahnya sendiri TIDAK dikirim -- hanya path yang sudah
-        // menyematkannya, konsisten dengan cara semua rute lain dibangun
-        // lewat ROUTES (src/lib/routes.ts). Halaman /pesanan/[token] (task
-        // berikutnya) membaca token dari path ini, bukan dari field lain.
-        bookingUrl: ROUTES.bookingStatus(booking.access_token),
+        // Token mentahnya TIDAK dikirim, hanya path yang menyematkannya.
+        bookingUrl,
       },
       { status: 201 },
     );
@@ -253,7 +210,7 @@ export async function POST(request: NextRequest) {
     console.error("[api/bookings] gagal membuat charge QRIS, membatalkan booking", {
       bookingId: booking.id,
       merchantId: merchant.id,
-      provider: connection.provider,
+      provider,
       error: chargeError,
     });
 
@@ -268,36 +225,19 @@ export async function POST(request: NextRequest) {
       .eq("merchant_id", merchant.id);
 
     if (cancelError) {
-      // Dua kegagalan beruntun (charge + rollback): dicatat, bukan
-      // dilempar -- pelanggan tetap harus menerima respons 502 di bawah,
-      // bukan 500 generik yang menyembunyikan pesan yang lebih jelas.
+      // Dua kegagalan beruntun (charge + rollback): dicatat, bukan dilempar,
+      // supaya pelanggan tetap menerima respons yang jelas di bawah.
       console.error("[api/bookings] gagal membatalkan booking setelah charge gagal", {
         bookingId: booking.id,
         error: cancelError,
       });
     }
 
-    // Hanya penolakan DEFINITIF gateway (ChargeRejectedError) yang menandai
-    // koneksi bermasalah -- kegagalan jaringan/timeout (Error biasa) TIDAK
-    // pernah menyentuh payment_connections di sini, karena gangguan sesaat
-    // bukan salah konfigurasi merchant dan bisa jadi pulih sendiri di
-    // percobaan berikutnya (lihat src/lib/payments/errors.ts). Ini juga
-    // TIDAK PERNAH mengubah status HTTP yang dibalas ke pelanggan di bawah.
-    const isDefiniteRejection = chargeError instanceof ChargeRejectedError;
-    if (isDefiniteRejection) {
-      await recordChargeRejection(supabase, merchant.id, chargeError);
+    if (chargeError instanceof NoProviderError) {
+      return NextResponse.json({ error: "Merchant belum mengaktifkan pembayaran" }, { status: 409 });
     }
-
-    // Pesan provider mentah (chargeError.providerMessage) TIDAK PERNAH
-    // diteruskan ke pelanggan -- itu bocoran detail internal merchant, hanya
-    // untuk merchant (dashboard) dan log. Penolakan definitif mendapat pesan
-    // yang jujur ("coba lagi" TIDAK akan pernah membantu di kondisi ini);
-    // kegagalan jaringan tetap memakai pesan "coba lagi" yang lama karena
-    // itu satu-satunya kasus yang benar-benar bisa pulih sendiri.
-    const customerMessage = isDefiniteRejection
-      ? "Merchant belum bisa menerima pembayaran QRIS saat ini karena ada masalah pada koneksi payment gateway-nya. Ini bukan gangguan sementara — silakan hubungi merchant secara langsung, bukan mencoba lagi."
-      : "Gagal membuat kode pembayaran, silakan coba lagi.";
-
-    return NextResponse.json({ error: customerMessage }, { status: 502 });
+    return NextResponse.json({ error: chargeFailureMessage(chargeError) }, { status: 502 });
   }
 }
+
+class NoProviderError extends Error {}
