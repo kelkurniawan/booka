@@ -25,7 +25,10 @@ alter table public.bookings
   add column paid_on_site_method public.on_site_payment_method,
   add column attended_at timestamptz,
   add column no_show_at timestamptz;
+-- Backfill tidak boleh menggeser updated_at semua booking.
+alter table public.bookings disable trigger bookings_set_updated_at;
 update public.bookings set amount_due_now = service_price;
+alter table public.bookings enable trigger bookings_set_updated_at;
 alter table public.bookings alter column amount_due_now set not null;
 alter table public.bookings
   -- F5 (voucher) wajib mengganti constraint ini: diskon mengubah jumlahnya.

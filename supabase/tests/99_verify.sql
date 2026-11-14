@@ -2453,9 +2453,9 @@ select pg_temp.expect_fail_code(
 insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site)
 values
  ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2031-03-04 09:00+07', '2031-03-04 10:00+07', 'Rina', '+6281300320006', 'REQUESTED', now() - interval '1 minute', 350000, 0),
- ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320007', 'CONFIRMED', now() + interval '1 hour', 0, 350000),
+ ('32323232-0000-0000-0000-000000000001', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320007', 'CONFIRMED', now() - interval '1 minute', 0, 350000),
  ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 09:00+07', '2031-03-04 10:00+07', 'Rina', '+6281300320008', 'REQUESTED', now() - interval '1 minute', 350000, 0),
- ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320009', 'CONFIRMED', now() + interval '1 hour', 0, 350000),
+ ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 11:00+07', '2031-03-04 12:00+07', 'Rina', '+6281300320009', 'CONFIRMED', now() - interval '1 minute', 0, 350000),
  ('32323232-0000-0000-0000-000000000002', 'Potong', 350000, 60, '2031-03-04 13:00+07', '2031-03-04 14:00+07', 'Rina', '+6281300320010', 'REQUESTED', now() + interval '1 hour', 350000, 0);
 select case when (select count(*) from public.get_booked_ranges('cara-bayar-32', '2031-03-04 00:00+07', '2031-03-05 00:00+07')) = 1
               and exists (select 1 from public.get_booked_ranges('cara-bayar-32', '2031-03-04 00:00+07', '2031-03-05 00:00+07')
@@ -2473,7 +2473,9 @@ select case when public.booking_holds_slot('REQUESTED', now() + interval '1 hour
             else 'FAIL t32e booking_holds_slot' end as t32e3;
 
 -- 32f. Pembersih: REQUESTED kedaluwarsa dibatalkan, CONFIRMED tidak disentuh.
-select public.reap_expired_bookings() >= 2 as t32f_ran;
+select case when public.reap_expired_bookings() >= 2
+            then 'OK   t32f reap_expired_bookings membatalkan minimal dua baris'
+            else 'FAIL t32f reap_expired_bookings tidak membatalkan' end as t32f_ran;
 select case when (select status = 'CANCELLED' and cancel_reason = 'Permintaan tidak dijawab dalam batas waktu'
                   from public.bookings where customer_whatsapp = '+6281300320006')
              and (select status = 'CONFIRMED' from public.bookings where customer_whatsapp = '+6281300320007')
@@ -2514,7 +2516,10 @@ select
         and not has_function_privilege('anon', 'public.dashboard_booking_summary()', 'EXECUTE')
         and has_function_privilege('service_role', 'public.reap_expired_bookings()', 'EXECUTE')
         and not has_function_privilege('authenticated', 'public.reap_expired_bookings()', 'EXECUTE')
-       then 'OK   t32h grant fungsi lama tetap' else 'FAIL t32h grant fungsi lama berubah' end as t32h6;
+       then 'OK   t32h grant fungsi lama tetap' else 'FAIL t32h grant fungsi lama berubah' end as t32h6,
+  case when has_function_privilege('anon', 'public.count_bookings_this_month(uuid)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.count_bookings_this_month(uuid)', 'EXECUTE')
+       then 'FAIL t32h count_bookings_this_month terbuka' else 'OK   t32h count_bookings_this_month tertutup' end as t32h7;
 
 -- 32i. RLS: merchant hanya mengubah setelannya sendiri; boleh membatalkan CONFIRMED.
 begin;
