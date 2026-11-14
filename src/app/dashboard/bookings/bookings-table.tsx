@@ -78,11 +78,11 @@ function BookingRow({ booking, nowMs }: { booking: BookingListItem; nowMs: numbe
   const meta = STATUS_META[displayStatus];
   // Booking yang sudah CANCELLED (atau EXPIRED, karena statusnya di database
   // masih PENDING sampai cron jalan -- lihat cancelBooking di actions.ts
-  // yang memfilter status in ('PENDING','PAID')) tetap boleh dicoba
+  // yang memfilter status in ('PENDING','PAID','CONFIRMED')) tetap boleh dicoba
   // dibatalkan lagi lewat menu ini; actions.ts yang menolaknya dengan pesan
   // jelas. Hanya baris yang statusnya SUDAH CANCELLED di database yang
   // disembunyikan aksinya di sini, supaya menunya tidak menyesatkan.
-  const cancellable = booking.status !== "CANCELLED";
+  const cancellable = booking.status !== "CANCELLED" && booking.status !== "REQUESTED";
 
   function handleCancel() {
     startCancel(async () => {
@@ -169,7 +169,7 @@ function BookingRow({ booking, nowMs }: { booking: BookingListItem; nowMs: numbe
             <DialogDescription>
               Slot jadwal ini akan dilepas dan bisa dipesan pelanggan lain. Tindakan ini
               tidak bisa dibatalkan.
-              {booking.status === "PAID" ? (
+              {booking.status === "PAID" || booking.status === "CONFIRMED" ? (
                 <>
                   {" "}
                   DP pelanggan untuk booking ini sudah masuk ke akun payment gateway Anda --

@@ -139,6 +139,12 @@ test("bookingStatusFilterSchema menerima ketiga status booking", () => {
   }
 });
 
+test("bookingStatusFilterSchema menerima CONFIRMED dan REQUESTED", () => {
+  for (const status of ["CONFIRMED", "REQUESTED"]) {
+    assert.equal(bookingStatusFilterSchema.safeParse(status).success, true);
+  }
+});
+
 test("bookingStatusFilterSchema menolak nilai tak dikenal (page.tsx memperlakukannya sebagai 'semua', bukan error)", () => {
   const result = bookingStatusFilterSchema.safeParse("REFUNDED");
   assert.equal(result.success, false);

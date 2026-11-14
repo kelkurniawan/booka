@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useTransition } from "react";
 import { MessageCircle } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
+import { ON_SITE_METHOD_LABEL } from "@/lib/booking/payment-mode";
 import { formatDateTime, formatDuration, formatRupiah, formatTime } from "@/lib/format";
 
 import {
@@ -20,6 +23,8 @@ import {
   PROVIDER_LABELS,
   STATUS_META,
 } from "./booking-state";
+import type { CancelBookingResult } from "./booking-state";
+import { decideRequest, markAttendance, markPaidOnSite } from "./actions";
 import { NotificationHistory } from "./notification-history";
 
 /**
@@ -53,6 +58,30 @@ export function BookingDetailDialog({
 }) {
   const displayStatus = getDisplayStatus(booking, nowMs);
   const meta = STATUS_META[displayStatus];
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [confirmReject, setConfirmReject] = useState(false);
+
+  const startMs = new Date(booking.start_datetime).getTime();
+  const live = booking.status === "PAID" || booking.status === "CONFIRMED";
+  const canDecide = displayStatus === "REQUESTED";
+  const onSiteOpen = live && booking.amount_due_on_site > 0 && !booking.paid_on_site_at;
+  const attendanceDone = Boolean(booking.attended_at || booking.no_show_at);
+  const canAttend = nowMs >= startMs - 60 * 60 * 1000;
+  const canNoShow = nowMs >= startMs;
+
+  function run(action: () => Promise<CancelBookingResult>) {
+    setError(null);
+    startTransition(async () => {
+      const result = await action();
+      if (result.ok) {
+        setConfirmReject(false);
+        onOpenChange(false);
+      } else {
+        setError(result.message ?? "Gagal menyimpan. Coba lagi.");
+      }
+    });
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -96,6 +125,44 @@ export function BookingDetailDialog({
 
           <dt className="text-muted-foreground">Nilai</dt>
           <dd>{formatRupiah(booking.service_price)}</dd>
+
+          {booking.amount_due_now > 0 ? (
+            <>
+              <dt className="text-muted-foreground">Dibayar online</dt>
+              <dd>
+                {booking.status === "PAID"
+                  ? formatRupiah(booking.amount_due_now)
+                  : `${formatRupiah(booking.amount_due_now)} (belum dibayar)`}
+              </dd>
+            </>
+          ) : null}
+
+          {booking.amount_due_on_site > 0 ? (
+            <>
+              <dt className="text-muted-foreground">Ditagih di tempat</dt>
+              <dd>
+                {formatRupiah(booking.amount_due_on_site)}
+                {" - "}
+                {booking.paid_on_site_at
+                  ? `Lunas${booking.paid_on_site_method ? `, ${ON_SITE_METHOD_LABEL[booking.paid_on_site_method]}` : ""}`
+                  : "Belum dibayar"}
+              </dd>
+            </>
+          ) : null}
+
+          {booking.attended_at ? (
+            <>
+              <dt className="text-muted-foreground">Kehadiran</dt>
+              <dd>Hadir</dd>
+            </>
+          ) : null}
+
+          {booking.no_show_at ? (
+            <>
+              <dt className="text-muted-foreground">Kehadiran</dt>
+              <dd>Tidak datang</dd>
+            </>
+          ) : null}
 
           <dt className="text-muted-foreground">Status</dt>
           <dd>
@@ -143,9 +210,91 @@ export function BookingDetailDialog({
 
         {open ? <NotificationHistory bookingId={booking.id} /> : null}
 
+        {error ? (
+          <p role="alert" className="text-destructive text-sm">
+            {error}
+          </p>
+        ) : null}
+
+        {canDecide ? (
+          <DialogFooter>
+            {confirmReject ? (
+              <>
+                <span className="text-sm sm:mr-auto sm:self-center">Tolak permintaan ini?</span>
+                <Button variant="outline" disabled={pending} onClick={() => setConfirmReject(false)}>
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  disabled={pending}
+                  onClick={() => run(() => decideRequest(booking.id, false))}
+                >
+                  {pending ? <Spinner /> : null}
+                  Ya, tolak
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" disabled={pending} onClick={() => setConfirmReject(true)}>
+                  Tolak
+                </Button>
+                <Button disabled={pending} onClick={() => run(() => decideRequest(booking.id, true))}>
+                  {pending ? <Spinner /> : null}
+                  Setujui
+                </Button>
+              </>
+            )}
+          </DialogFooter>
+        ) : null}
+
+        {onSiteOpen ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm">Tandai lunas di tempat:</span>
+            {(Object.keys(ON_SITE_METHOD_LABEL) as (keyof typeof ON_SITE_METHOD_LABEL)[]).map(
+              (method) => (
+                <Button
+                  key={method}
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => run(() => markPaidOnSite(booking.id, method))}
+                >
+                  {ON_SITE_METHOD_LABEL[method]}
+                </Button>
+              ),
+            )}
+          </div>
+        ) : null}
+
+        {live && !attendanceDone ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending || !canAttend}
+              onClick={() => run(() => markAttendance(booking.id, true))}
+            >
+              Hadir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={pending || !canNoShow}
+              onClick={() => run(() => markAttendance(booking.id, false))}
+            >
+              Tidak datang
+            </Button>
+            {!canAttend ? (
+              <span className="text-muted-foreground text-xs">
+                Kehadiran bisa ditandai mulai 1 jam sebelum jadwal.
+              </span>
+            ) : null}
+          </div>
+        ) : null}
+
         {onCancelRequest ? (
           <DialogFooter>
-            <Button variant="destructive" onClick={onCancelRequest}>
+            <Button variant="destructive" disabled={pending} onClick={onCancelRequest}>
               Batalkan booking
             </Button>
           </DialogFooter>

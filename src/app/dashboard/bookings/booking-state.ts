@@ -6,6 +6,7 @@
  * catatan yang sama di service-state.ts).
  */
 
+import { REQUEST_EXPIRY_REASON } from "@/lib/booking/payment-mode";
 import { ROUTES } from "@/lib/routes";
 import type { Booking, BookingStatus } from "@/types/database";
 
@@ -36,7 +37,7 @@ export type BookingListItem = Omit<
  * compiler.
  */
 export const BOOKING_LIST_COLUMNS =
-  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at";
+  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at";
 
 /**
  * Representasi array bertipe dari BOOKING_LIST_COLUMNS di atas -- typo atau
@@ -70,6 +71,13 @@ export const BOOKING_LIST_COLUMN_LIST: readonly (keyof BookingListItem)[] = [
   "staff_id",
   "staff_name",
   "created_at",
+  "payment_mode",
+  "amount_due_now",
+  "amount_due_on_site",
+  "paid_on_site_at",
+  "paid_on_site_method",
+  "attended_at",
+  "no_show_at",
 ];
 
 export type CancelBookingResult = { ok: boolean; message?: string };
@@ -118,10 +126,16 @@ export function getDisplayStatus(
    */
   nowMs: number,
 ): DisplayStatus {
-  if (booking.status === "CANCELLED" && booking.cancel_reason === EXPIRY_CANCEL_REASON) {
+  if (
+    booking.status === "CANCELLED" &&
+    (booking.cancel_reason === EXPIRY_CANCEL_REASON ||
+      booking.cancel_reason === REQUEST_EXPIRY_REASON)
+  ) {
     return "EXPIRED";
   }
-  if (booking.status === "PENDING" && new Date(booking.expires_at).getTime() < nowMs) {
+  if (
+    (booking.status === "PENDING" || booking.status === "REQUESTED") && new Date(booking.expires_at).getTime() < nowMs
+  ) {
     return "EXPIRED";
   }
   return booking.status;
