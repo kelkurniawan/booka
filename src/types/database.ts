@@ -713,6 +713,21 @@ export type Database = {
         };
         Returns: Booking[];
       };
+      /** Merchant menyetujui/menolak booking REQUESTED. BK030 tidak ditemukan, BK031 kedaluwarsa. */
+      decide_booking_request: {
+        Args: { p_booking_id: string; p_approve: boolean };
+        Returns: { id: string; status: BookingStatus }[];
+      };
+      /** Tandai sisa pembayaran diterima di tempat. BK032 bila tidak memenuhi syarat. */
+      mark_booking_paid_on_site: {
+        Args: { p_booking_id: string; p_method: OnSitePaymentMethod };
+        Returns: undefined;
+      };
+      /** Catat hadir atau tidak datang. BK033 bila belum waktunya atau status tidak cocok. */
+      mark_booking_attendance: {
+        Args: { p_booking_id: string; p_attended: boolean };
+        Returns: undefined;
+      };
       /**
        * Menyimpan seluruh hasil wizard onboarding dalam satu transaksi:
        * identitas merchant, profil kuesioner, layanan pertama, dan jam

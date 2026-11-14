@@ -2762,3 +2762,129 @@ select
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
        then 'OK   t33m signature enam argumen sudah dihapus'
        else 'FAIL t33m signature enam argumen masih ada' end as t33m2;
+
+-- ===========================================================================
+-- 34. Aksi merchant atas booking (20261115000400)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('34343434-0000-0000-0000-000000000001', 'aksi34-a@example.com', '{}'::jsonb),
+  ('34343434-0000-0000-0000-000000000002', 'aksi34-b@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO'
+  where id in ('34343434-0000-0000-0000-000000000001', '34343434-0000-0000-0000-000000000002');
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '34343434-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value) values
+  ('34343434-5e5e-0000-0000-000000000001', '34343434-0000-0000-0000-000000000001', 'Permintaan DP', 1000000, 60, 'REQUEST', 'FIXED', 100000),
+  ('34343434-5e5e-0000-0000-000000000002', '34343434-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null);
+
+-- Booking langsung (untuk jadwal lampau / status tertentu), dicari lewat nomor.
+create or replace function pg_temp.ins34(p_phone text, p_status public.booking_status, p_start timestamptz,
+  p_due_now numeric, p_due_on_site numeric, p_expires timestamptz default null)
+returns uuid language sql as $$
+  insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+    customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode)
+  values ('34343434-0000-0000-0000-000000000001', 'Layanan 34', p_due_now + p_due_on_site, 30, p_start, p_start + interval '30 minutes',
+    'Pelanggan 34', p_phone, p_status, coalesce(p_expires, p_start), p_due_now, p_due_on_site, 'ON_SITE')
+  returning id;
+$$;
+
+-- Jalankan sql sebagai merchant (authenticated + sub); p_code null = harus berhasil.
+create or replace function pg_temp.act34(p_label text, p_sub uuid, p_sql text, p_code text default null)
+returns text language plpgsql as $$
+begin
+  perform set_config('request.jwt.claim.sub', p_sub::text, true);
+  execute 'set local role authenticated';
+  execute p_sql;
+  execute 'reset role';
+  if p_code is null then return 'OK   ' || p_label; end if;
+  return 'FAIL (seharusnya ditolak) ' || p_label;
+exception when others then
+  execute 'reset role';
+  if p_code is not null and sqlstate = p_code then return 'OK   ' || p_label; end if;
+  return 'FAIL ' || p_label || ' [' || sqlstate || ' ' || sqlerrm || ']';
+end $$;
+
+create or replace function pg_temp.id34(p_phone text) returns uuid language sql as $$
+  select id from public.bookings where customer_whatsapp = p_phone;
+$$;
+
+-- 34a. Setujui REQUESTED yang perlu bayar sekarang -> PENDING, batas bayar <= jam mulai.
+select * from public.create_booking('34343434-0000-0000-0000-000000000001', '34343434-5e5e-0000-0000-000000000001',
+  pg_temp.jakarta_future(1, 41, '10:00'), 'Pelanggan 34', '+6281343000001', null, true);
+select pg_temp.act34('t34a setujui', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, true)', pg_temp.id34('+6281343000001')));
+select case when status = 'PENDING' and expires_at > now() and expires_at <= start_datetime
+            then 'OK   t34a REQUESTED disetujui -> PENDING dengan batas bayar'
+            else 'FAIL t34a ' || status || ' ' || coalesce(expires_at::text, 'NULL') end as t34a
+from public.bookings where customer_whatsapp = '+6281343000001';
+
+-- 34b. Setujui REQUESTED bayar di tempat -> CONFIRMED.
+update public.merchant_settings set auto_confirm_on_site = false
+  where merchant_id = '34343434-0000-0000-0000-000000000001';
+select * from public.create_booking('34343434-0000-0000-0000-000000000001', '34343434-5e5e-0000-0000-000000000002',
+  pg_temp.jakarta_future(1, 42, '10:00'), 'Pelanggan 34', '+6281343000002', null, true);
+select pg_temp.act34('t34b setujui bayar di tempat', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, true)', pg_temp.id34('+6281343000002')));
+select case when status = 'CONFIRMED' then 'OK   t34b -> CONFIRMED' else 'FAIL t34b ' || status end as t34b
+from public.bookings where customer_whatsapp = '+6281343000002';
+
+-- 34c. Tolak -> CANCELLED dengan alasan.
+select * from public.create_booking('34343434-0000-0000-0000-000000000001', '34343434-5e5e-0000-0000-000000000001',
+  pg_temp.jakarta_future(1, 43, '10:00'), 'Pelanggan 34', '+6281343000003', null, true);
+select pg_temp.act34('t34c tolak', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, false)', pg_temp.id34('+6281343000003')));
+select case when status = 'CANCELLED' and cancel_reason = 'Permintaan ditolak merchant' and cancelled_at is not null
+            then 'OK   t34c -> CANCELLED dengan alasan'
+            else 'FAIL t34c ' || status || ' ' || coalesce(cancel_reason, 'NULL') end as t34c
+from public.bookings where customer_whatsapp = '+6281343000003';
+
+-- 34d. BK030 merchant lain dan keputusan kedua; BK031 permintaan kedaluwarsa.
+select pg_temp.act34('t34d merchant lain BK030', '34343434-0000-0000-0000-000000000002',
+  format('select * from public.decide_booking_request(%L, true)', pg_temp.id34('+6281343000003')), 'BK030');
+select pg_temp.act34('t34d keputusan kedua BK030', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, true)', pg_temp.id34('+6281343000003')), 'BK030');
+select pg_temp.ins34('+6281343000004', 'REQUESTED', now() + interval '3 days', 0, 100000, now() - interval '1 minute');
+select pg_temp.act34('t34d kedaluwarsa BK031', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, true)', pg_temp.id34('+6281343000004')), 'BK031');
+
+-- 34e. Lunas di tempat.
+select pg_temp.act34('t34e lunas di tempat', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_paid_on_site(%L, ''CASH'')', pg_temp.id34('+6281343000002')));
+select case when paid_on_site_at is not null and paid_on_site_method = 'CASH'
+            then 'OK   t34e kolom lunas di tempat terisi'
+            else 'FAIL t34e lunas di tempat tidak terisi' end as t34e
+from public.bookings where customer_whatsapp = '+6281343000002';
+select pg_temp.act34('t34e panggilan kedua BK032', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_paid_on_site(%L, ''CASH'')', pg_temp.id34('+6281343000002')), 'BK032');
+select pg_temp.ins34('+6281343000005', 'PAID', now() + interval '4 days', 100000, 0);
+select pg_temp.act34('t34e PAID tanpa sisa di tempat BK032', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_paid_on_site(%L, ''CASH'')', pg_temp.id34('+6281343000005')), 'BK032');
+
+-- 34f. Kehadiran.
+select pg_temp.ins34('+6281343000006', 'CONFIRMED', now() + interval '7 days', 0, 100000);
+select pg_temp.act34('t34f hadir terlalu dini BK033', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_attendance(%L, true)', pg_temp.id34('+6281343000006')), 'BK033');
+select pg_temp.ins34('+6281343000007', 'CONFIRMED', now() - interval '30 minutes', 0, 100000);
+select pg_temp.act34('t34f hadir', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_attendance(%L, true)', pg_temp.id34('+6281343000007')));
+select case when attended_at is not null and no_show_at is null then 'OK   t34f hadir tercatat'
+            else 'FAIL t34f hadir' end as t34f1
+from public.bookings where customer_whatsapp = '+6281343000007';
+select pg_temp.act34('t34f lalu tidak datang', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_attendance(%L, false)', pg_temp.id34('+6281343000007')));
+select case when no_show_at is not null and attended_at is null then 'OK   t34f tidak datang menggantikan hadir'
+            else 'FAIL t34f tidak datang' end as t34f2
+from public.bookings where customer_whatsapp = '+6281343000007';
+
+-- 34g. Hak EXECUTE.
+select
+  case when has_function_privilege('anon', 'public.decide_booking_request(uuid, boolean)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.mark_booking_paid_on_site(uuid, public.on_site_payment_method)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.mark_booking_attendance(uuid, boolean)', 'EXECUTE')
+       then 'FAIL t34g anon bisa EXECUTE aksi merchant'
+       when not (has_function_privilege('authenticated', 'public.decide_booking_request(uuid, boolean)', 'EXECUTE')
+         and has_function_privilege('authenticated', 'public.mark_booking_paid_on_site(uuid, public.on_site_payment_method)', 'EXECUTE')
+         and has_function_privilege('authenticated', 'public.mark_booking_attendance(uuid, boolean)', 'EXECUTE'))
+       then 'FAIL t34g authenticated tidak bisa EXECUTE'
+       else 'OK   t34g aksi merchant hanya untuk authenticated' end as t34g;
