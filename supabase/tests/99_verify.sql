@@ -2960,6 +2960,11 @@ select pg_temp.expect_ok($q$select * from pg_temp.cb35(5, 4, '+6281335000005')$q
 select pg_temp.expect_fail_code(
   $q$select * from pg_temp.cb35(5, 5, '+6281335000005')$q$,
   'BK020', 't35e REQUEST kedua nomor sama');
+-- Booking gratis juga memegang slot tanpa uang masuk, jadi ikut dibatasi.
+select pg_temp.expect_ok($q$select * from pg_temp.cb35(1, 8, '+6281335000008')$q$, 't35e FULL gratis pertama');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb35(1, 9, '+6281335000008')$q$,
+  'BK020', 't35e FULL gratis kedua nomor sama');
 update public.merchant_settings set max_active_per_phone = 2
   where merchant_id = '35353535-0000-0000-0000-000000000001';
 

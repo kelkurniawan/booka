@@ -55,7 +55,8 @@ export function PaymentModeField({
     deposit_value: hasDeposit && depositValid ? depositNumber : null,
   };
   const amounts = computeAmounts(sample, mode);
-  const showNoShow = mode === "ON_SITE" || mode === "REQUEST";
+  // Batas per nomor berlaku untuk booking tanpa bayar online: ON_SITE, REQUEST, dan gratis.
+  const showNoShow = mode === "ON_SITE" || mode === "REQUEST" || price === 0;
   const labelReady = !(mode === "DEPOSIT" && !depositValid);
 
   return (
@@ -170,7 +171,7 @@ export function PaymentModeField({
               ? `Satu nomor WhatsApp maksimal ${settings.max_active_per_phone} booking aktif.`
               : "Tanpa batas booking aktif per nomor."}
           </span>
-          {settings.deposit_after_no_show ? (
+          {settings.deposit_after_no_show && mode === "ON_SITE" ? (
             <span className="text-muted-foreground">
               Nomor yang pernah tidak datang wajib bayar di muka di booking berikutnya.
             </span>

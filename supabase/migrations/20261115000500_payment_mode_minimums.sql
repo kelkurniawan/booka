@@ -6,6 +6,9 @@
 --      jadi tidak pernah ditagih dan tidak butuh koneksi payment (BK021).
 --   b) DP (DEPOSIT, atau REQUEST ber-DP) minimal min(harga, 1500).
 --   c) PENDING dengan bayar sekarang < 1500 ditolak BK022.
+--   d) Batas booking aktif per nomor (BK020) juga berlaku untuk booking
+--      gratis, bukan hanya ON_SITE dan REQUEST: tanpa itu siapa pun bisa
+--      mengisi semua slot layanan gratis tanpa membayar.
 --
 -- decide_booking_request dan mark_booking_attendance kini menolak NULL
 -- (22004): sebelumnya NULL jatuh ke cabang else, yaitu tolak / tidak datang.
@@ -155,7 +158,9 @@ begin
     raise exception 'Merchant belum mengaktifkan pembayaran' using errcode = 'BK021';
   end if;
 
-  if v_mode in ('ON_SITE', 'REQUEST') and v_max_active_per_phone is not null then
+  -- Batas per nomor untuk semua booking yang memegang slot tanpa bayar
+  -- online: ON_SITE, REQUEST, dan booking gratis (bayar sekarang 0).
+  if (v_mode in ('ON_SITE', 'REQUEST') or v_due_now = 0) and v_max_active_per_phone is not null then
     select count(*) into v_active
       from public.bookings b
       where b.merchant_id = p_merchant_id

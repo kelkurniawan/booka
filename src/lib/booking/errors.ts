@@ -62,7 +62,7 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     message: "Jam tersebut sudah lewat. Silakan pilih waktu lain.",
   },
   // create_booking: nomor WhatsApp sudah mencapai batas booking aktif
-  // (max_active_per_phone), hanya untuk ON_SITE dan REQUEST.
+  // (max_active_per_phone), untuk ON_SITE, REQUEST, dan booking gratis.
   BK020: {
     status: 409,
     message:
