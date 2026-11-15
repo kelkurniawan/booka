@@ -1,4 +1,6 @@
+import { getTabCounts } from "@/app/dashboard/queries";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { requireMerchant } from "@/lib/auth/session";
@@ -20,11 +22,13 @@ export default async function DashboardLayout({
   // belum-onboarding untuk /dashboard/* (lihat komentar di proxy.ts), tapi
   // layout tetap memeriksa sendiri agar sidebar tidak pernah dirender tanpa
   // merchant yang valid.
-  const { user, merchant } = await requireMerchant();
+  const [{ user, merchant }, counts] = await Promise.all([requireMerchant(), getTabCounts()]);
+  const actionCount = counts?.action ?? null;
 
   return (
     <SidebarProvider>
       <AppSidebar
+        actionCount={actionCount}
         merchant={{
           username: merchant.username,
           fullName: merchant.full_name ?? "Merchant",
@@ -34,13 +38,16 @@ export default async function DashboardLayout({
         }}
       />
       <SidebarInset>
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
+        <header className="hidden h-14 shrink-0 items-center md:flex gap-2 border-b px-4">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <span className="text-sm font-medium">Dashboard</span>
         </header>
-        <div className="flex flex-1 flex-col gap-6 p-4 md:p-6">{children}</div>
+        <div className="flex flex-1 flex-col gap-6 p-4 pb-[calc(5rem+env(safe-area-inset-bottom))] md:p-6 md:pb-6">
+          {children}
+        </div>
       </SidebarInset>
+      <MobileNav actionCount={actionCount} />
     </SidebarProvider>
   );
 }

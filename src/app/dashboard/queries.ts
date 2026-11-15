@@ -57,3 +57,19 @@ export const getActivePaymentConnections = cache(
     return data ?? [];
   },
 );
+
+/**
+ * Jumlah booking yang perlu tindakan (badge navigasi). `null` bila RPC gagal:
+ * badge disembunyikan, halaman tetap jalan.
+ */
+export const getTabCounts = cache(
+  async (): Promise<{ action: number; upcoming: number } | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("dashboard_tab_counts");
+    if (error || !data?.[0]) {
+      console.error("dashboard_tab_counts gagal", error);
+      return null;
+    }
+    return { action: data[0].action_count, upcoming: data[0].upcoming_count };
+  },
+);

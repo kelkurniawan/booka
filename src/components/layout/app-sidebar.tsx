@@ -12,6 +12,7 @@ import {
   Palette,
   Settings,
   Sparkles,
+  Sun,
   Users,
   Wallet,
 } from "lucide-react";
@@ -33,27 +34,37 @@ import {
 import { ROUTES } from "@/lib/routes";
 import type { SubscriptionTier } from "@/types/database";
 
+import { ActionBadge } from "./mobile-nav";
 import { NavUser } from "./nav-user";
 
 const NAV_GROUPS = [
   {
-    label: "Operasional",
+    label: null,
     items: [
-      { title: "Booking masuk", href: ROUTES.bookings, icon: LayoutList },
+      { title: "Hari ini", href: ROUTES.dashboard, icon: Sun, exact: true },
+      { title: "Booking", href: ROUTES.bookings, icon: LayoutList, badge: true },
       { title: "Analitik", href: ROUTES.analytics, icon: BarChart3 },
-      // Sebelum "Layanan": merchant memikirkan halamannya sebelum memikirkan
-      // isinya.
-      { title: "Halaman saya", href: ROUTES.appearance, icon: Palette },
+    ],
+  },
+  {
+    label: "Atur usaha",
+    items: [
       { title: "Layanan", href: ROUTES.services, icon: Sparkles },
-      { title: "Jam kerja", href: ROUTES.availability, icon: CalendarClock },
+      { title: "Jam buka", href: ROUTES.availability, icon: CalendarClock },
       { title: "Staf", href: ROUTES.staff, icon: Users },
+      { title: "Pembayaran", href: ROUTES.payments, icon: Wallet },
+    ],
+  },
+  {
+    label: "Halaman booking",
+    items: [
+      { title: "Tampilan", href: ROUTES.appearance, icon: Palette },
+      { title: "Domain", href: ROUTES.domain, icon: Globe },
     ],
   },
   {
     label: "Akun",
     items: [
-      { title: "Pembayaran", href: ROUTES.payments, icon: Wallet },
-      { title: "Domain", href: ROUTES.domain, icon: Globe },
       { title: "Langganan", href: ROUTES.billing, icon: CreditCard },
       { title: "Pengaturan", href: ROUTES.settings, icon: Settings },
     ],
@@ -68,7 +79,9 @@ const TIER_LABEL: Record<SubscriptionTier, string> = {
 
 export function AppSidebar({
   merchant,
+  actionCount,
 }: {
+  actionCount: number | null;
   merchant: {
     username: string;
     fullName: string;
@@ -103,24 +116,34 @@ export function AppSidebar({
 
       <SidebarContent>
         {NAV_GROUPS.map((group) => (
-          <SidebarGroup key={group.label}>
-            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+          <SidebarGroup key={group.label ?? "utama"}>
+            {group.label ? <SidebarGroupLabel>{group.label}</SidebarGroupLabel> : null}
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => (
+                {group.items.map((item) => {
+                  const active =
+                    "exact" in item
+                      ? pathname === item.href
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                  return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
-                      isActive={pathname === item.href || pathname.startsWith(`${item.href}/`)}
+                      isActive={active}
                       tooltip={item.title}
+                      className="max-md:h-11"
                     >
                       <Link href={item.href}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {"badge" in item ? (
+                      <ActionBadge count={actionCount} className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 group-data-[collapsible=icon]:hidden" />
+                    ) : null}
                   </SidebarMenuItem>
-                ))}
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
