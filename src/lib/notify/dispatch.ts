@@ -262,10 +262,12 @@ export async function notifyBookingCreated(bookingId: string): Promise<void> {
     if (!ctx) return;
     const { status } = ctx.booking;
     if (status === "CONFIRMED") {
-      await Promise.all([
-        ...toMerchant(ctx, "BOOKING_CONFIRMED_MERCHANT", merchantConfirmedEmail, merchantConfirmedWhatsapp),
-        toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp),
-      ]);
+      // Booking manual: merchant sendiri yang mencatat, jadi hanya pelanggan yang diberi tahu.
+      const merchantMessages =
+        ctx.booking.source === "MANUAL"
+          ? []
+          : toMerchant(ctx, "BOOKING_CONFIRMED_MERCHANT", merchantConfirmedEmail, merchantConfirmedWhatsapp);
+      await Promise.all([...merchantMessages, toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp)]);
     } else if (status === "REQUESTED") {
       await Promise.all(
         toMerchant(ctx, "BOOKING_REQUESTED_MERCHANT", merchantRequestedEmail, merchantRequestedWhatsapp),

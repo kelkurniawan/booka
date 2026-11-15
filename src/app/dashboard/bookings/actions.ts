@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 
-import { notifyRequestDecided } from "@/lib/notify/dispatch";
+import { notifyBookingCreated, notifyRequestDecided } from "@/lib/notify/dispatch";
 import { findChargeProvider } from "@/lib/payments/charge-booking";
 import { ROUTES } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -12,6 +12,12 @@ import { createClient } from "@/lib/supabase/server";
 import type { OnSitePaymentMethod } from "@/types/database";
 import { cancelBookingSchema } from "@/lib/validations/booking";
 
+import {
+  manualBookingErrorMessage,
+  manualBookingSchema,
+  type ManualBookingInput,
+  type ManualBookingResult,
+} from "./manual-booking";
 import { MERCHANT_CANCEL_REASON, type CancelBookingResult } from "./booking-state";
 
 /**
@@ -165,4 +171,25 @@ export async function markAttendance(id: string, attended: boolean): Promise<Can
 
   revalidatePath(ROUTES.bookings);
   return { ok: true };
+}
+
+/** Catat booking dari telepon/walk-in: langsung CONFIRMED, bayar di tempat. */
+export async function createManualBooking(input: ManualBookingInput): Promise<ManualBookingResult> {
+  const parsed = manualBookingSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: "Periksa lagi isian form." };
+
+  const { supabase } = await requireUser();
+  const { data, error } = await supabase.rpc("create_manual_booking", {
+    p_service_id: parsed.data.serviceId,
+    p_start_datetime: parsed.data.startISO,
+    p_customer_name: parsed.data.customerName,
+    p_customer_whatsapp: parsed.data.customerWhatsapp,
+    p_staff_id: parsed.data.staffId,
+  });
+  const id = data?.[0]?.id;
+  if (error || !id) return { ok: false, message: manualBookingErrorMessage(error?.code) };
+
+  after(() => notifyBookingCreated(id));
+  revalidatePath(ROUTES.dashboard, "layout");
+  return { ok: true, id };
 }
