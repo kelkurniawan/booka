@@ -303,7 +303,7 @@ export function BookingDetailPanel({
               Tolak
             </Button>
             <Button
-              className="min-h-11"
+              className="h-auto min-h-11 whitespace-normal"
               disabled={pending}
               onClick={() => run(() => actions.decide(booking.id, true))}
             >

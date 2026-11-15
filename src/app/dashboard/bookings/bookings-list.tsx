@@ -188,7 +188,9 @@ export async function BookingsList({
   }
 
   return (
-    <>
+    // Satu pembungkus: di lg halaman ini grid dua kolom (daftar | panel),
+    // jadi tabel dan paginasi harus tetap satu sel grid.
+    <div className="flex min-w-0 flex-col gap-4">
       <BookingsTable
         rows={bookings}
         nowMs={now.getTime()}
@@ -222,6 +224,6 @@ export async function BookingsList({
           })
         }
       />
-    </>
+    </div>
   );
 }

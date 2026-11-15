@@ -134,7 +134,7 @@ function ActionRow({
                 Batal
               </Button>
             ) : null}
-            <Button className="h-11" disabled={pending} onClick={() => decide(true)}>
+            <Button className="h-auto min-h-11 whitespace-normal" disabled={pending} onClick={() => decide(true)}>
               {pending && pressed === "approve" ? <Spinner /> : null}
               {b.amount_due_now > 0 ? "Setujui dan kirim tagihan" : "Setujui"}
             </Button>
