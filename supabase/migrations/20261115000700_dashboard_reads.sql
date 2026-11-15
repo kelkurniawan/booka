@@ -1,5 +1,7 @@
 -- Fungsi baca dashboard: definisi tab booking, daftar per tab, hitungan tab,
 -- dan ringkasan 7 hari. Semua membaca merchant = auth.uid().
+-- bookings_in_tab mengembalikan baris penuh: pemanggil WAJIB merantai
+-- .select(BOOKING_LIST_COLUMNS) dan tidak boleh membaca access_token.
 
 -- Satu-satunya definisi tab. Internal: hanya dipanggil fungsi definer di bawah.
 create or replace function public.booking_tab(b public.bookings)

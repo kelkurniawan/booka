@@ -608,7 +608,9 @@ export type Database = {
     Functions: {
       bookings_in_tab: {
         Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
-        Returns: Booking[];
+        // Seperti BookingListItem (booking-state.ts) tapi merchant_id tetap ada agar
+        // .eq("merchant_id", ...) lolos tipe. access_token dan payment_url sengaja tidak ada.
+        Returns: Omit<Booking, "access_token" | "payment_url" | "updated_at">[];
       };
       dashboard_tab_counts: {
         Args: Record<string, never>;
