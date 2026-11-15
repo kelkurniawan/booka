@@ -520,3 +520,7 @@ path dialihkan ke domain Marky.
 
 Spek F0 menyebut Storybook 9. Yang terpasang Storybook 10 dengan
 `@storybook/nextjs-vite`, karena itu versi yang mendukung Next 16 dan Vite 8.
+
+## 31. Batas booking manual dan jadwal ulang oleh merchant
+
+Merchant maksimal membuat 50 booking `MANUAL` per 24 jam bergulir (BK035, semua status termasuk `CANCELLED`) dan menjadwal ulang satu booking maksimal 3 kali (BK036, `merchant_reschedule_count`), supaya akun merchant tidak bisa dipakai membanjiri notifikasi ke nomor pelanggan; angkanya mungkin perlu diskalakan per paket nanti.

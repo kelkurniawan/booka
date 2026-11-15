@@ -323,6 +323,8 @@ export type Booking = {
   attended_at: string | null;
   no_show_at: string | null;
   source: BookingSource;
+  /** Jumlah jadwal ulang oleh merchant; maksimal 3 (BK036). */
+  merchant_reschedule_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -514,12 +516,14 @@ export type Database = {
           | "attended_at"
           | "no_show_at"
           | "source"
+          | "merchant_reschedule_count"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
               | "source"
+              | "merchant_reschedule_count"
               | "payment_mode"
               | "amount_due_now"
               | "amount_due_on_site"
@@ -721,8 +725,8 @@ export type Database = {
         Returns: Booking[];
       };
       /**
-       * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login;
-       * error slot sama dengan create_booking.
+       * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login,
+       * BK035 lebih dari 50 per 24 jam; error slot sama dengan create_booking.
        */
       create_manual_booking: {
         Args: {
@@ -734,7 +738,10 @@ export type Database = {
         };
         Returns: { id: string }[];
       };
-      /** Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK001 di luar jam, P0006 lampau, 23P01 bentrok. */
+      /**
+       * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
+       * BK003 staf nonaktif, BK001 di luar jam, P0006 lampau, 23P01 bentrok.
+       */
       reschedule_booking_by_merchant: {
         Args: { p_booking_id: string; p_new_start: string };
         Returns: undefined;

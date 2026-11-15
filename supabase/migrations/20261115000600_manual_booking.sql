@@ -15,6 +15,9 @@
 --   ONLINE -> aturan F2 (20261115000500), tidak berubah
 --   MANUAL -> ON_SITE -> CONFIRMED 0 / harga, tanpa BK020/BK021
 --
+-- Batas penyalahgunaan oleh merchant (DECISIONS #31): maksimal 50 booking
+-- MANUAL per 24 jam bergulir (BK035) dan 3 jadwal ulang per booking (BK036).
+--
 -- Slot, jam kerja, staf, kuota paket (P0002), dan bookings_no_overlap tetap
 -- berlaku untuk booking manual.
 -- ===========================================================================
@@ -22,7 +25,11 @@
 create type public.booking_source as enum ('ONLINE', 'MANUAL');
 
 alter table public.bookings
-  add column source public.booking_source not null default 'ONLINE';
+  add column source public.booking_source not null default 'ONLINE',
+  -- Jadwal ulang oleh merchant (maksimal 3, BK036). Jadwal ulang oleh
+  -- pelanggan nanti punya kolom sendiri. Tanpa grant UPDATE ke authenticated.
+  add column merchant_reschedule_count smallint not null default 0
+    check (merchant_reschedule_count >= 0);
 
 -- Internal: hanya dipanggil fungsi security definer lain (create_booking,
 -- reschedule_booking_by_merchant) yang sudah memegang kunci merchant.
@@ -84,6 +91,8 @@ declare
 begin
   perform pg_advisory_xact_lock(hashtext(p_merchant_id::text));
 
+  p_source := coalesce(p_source, 'ONLINE');
+
   perform public.reap_expired_bookings_for(p_merchant_id);
 
   if p_start_datetime <= now() then
@@ -112,6 +121,16 @@ begin
     v_due_now := 0;
     v_status := 'CONFIRMED';
     v_expires_at := now() + interval '15 minutes';
+
+    -- Dihitung di bawah advisory lock supaya dua panggilan serentak tidak
+    -- sama-sama lolos. Semua status, termasuk CANCELLED: batal lalu buat
+    -- ulang tetap terhitung.
+    if (select count(*) from public.bookings b
+        where b.merchant_id = p_merchant_id
+          and b.source = 'MANUAL'
+          and b.created_at > now() - interval '24 hours') >= 50 then
+      raise exception 'Batas booking manual harian tercapai' using errcode = 'BK035';
+    end if;
   else
     select ms.allow_pay_on_site, ms.auto_confirm_on_site, ms.max_active_per_phone, ms.deposit_after_no_show
       into v_allow_pay_on_site, v_auto_confirm_on_site, v_max_active_per_phone, v_deposit_after_no_show
@@ -346,6 +365,10 @@ begin
     raise exception 'Booking tidak bisa dijadwal ulang' using errcode = 'BK034';
   end if;
 
+  if b.merchant_reschedule_count >= 3 then
+    raise exception 'Booking sudah dijadwal ulang 3 kali' using errcode = 'BK036';
+  end if;
+
   if p_new_start <= now() then
     raise exception 'Jam tersebut sudah lewat' using errcode = 'P0006';
   end if;
@@ -362,6 +385,12 @@ begin
     from public.merchants m
     where m.id = v_merchant;
 
+  if coalesce(v_uses_staff, false) and b.staff_id is not null and not exists (
+       select 1 from public.staff st
+       where st.id = b.staff_id and st.merchant_id = v_merchant and st.is_active) then
+    raise exception 'Staf tidak tersedia' using errcode = 'BK003';
+  end if;
+
   if not public.slot_within_hours(
        v_merchant,
        case when coalesce(v_uses_staff, false) then b.staff_id end,
@@ -373,9 +402,11 @@ begin
 
   -- Bentrok dengan booking lain ditangkap bookings_no_overlap (23P01);
   -- baris yang sedang diubah tidak bentrok dengan dirinya sendiri.
+  -- Penghitung naik di update yang sama: gagal 23P01 tidak ikut terhitung.
   update public.bookings
-    set start_datetime = p_new_start, end_datetime = v_end
-    where id = b.id;
+    set start_datetime = p_new_start, end_datetime = v_end,
+        merchant_reschedule_count = merchant_reschedule_count + 1
+    where id = b.id and merchant_id = v_merchant;
 
   -- Pengingat H-1 idempoten per (booking, kind, channel); hapus supaya terkirim lagi untuk tanggal baru.
   delete from public.notification_log
