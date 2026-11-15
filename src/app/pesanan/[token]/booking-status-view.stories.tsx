@@ -4,7 +4,52 @@ import { sampleBooking, sampleMerchant, sampleTheme, sampleToken } from "@/compo
 
 import { REQUEST_REJECT_REASON } from "@/lib/booking/payment-mode";
 
-import { BookingStatusView } from "./booking-status-view";
+import { bookingCode, CUSTOMER_CANCEL_REASON, DEFAULT_MANAGE_SETTINGS, manageState, policyLines } from "@/lib/booking/customer-manage";
+
+import { BookingStatusView, type BookingPageRow, type ReminderView } from "./booking-status-view";
+import { ContactSheet, type ContactData } from "./contact-sheet";
+
+const NOW = Date.parse("2026-11-18T03:00:00Z");
+const nama = sampleMerchant.full_name ?? "Merchant";
+const base: BookingPageRow = {
+  ...sampleBooking,
+  service_id: null,
+  staff_id: null,
+  attended_at: null,
+  no_show_at: null,
+  reschedule_count: 0,
+};
+const aturan = {
+  ...DEFAULT_MANAGE_SETTINGS,
+  allow_customer_reschedule: true,
+  allow_customer_cancel: true,
+  policy_text: "DP tidak dikembalikan jika dibatalkan.",
+};
+const contact: ContactData = {
+  whatsapp: { channel: "WHATSAPP", label: "WhatsApp", handle: "Paling cepat dibalas", href: "https://wa.me/6281234567890" },
+  others: [
+    { channel: "PHONE", label: "Telepon", handle: "+6281234567890", href: "tel:+6281234567890" },
+    { channel: "EMAIL", label: "Email", handle: "halo@contoh.id", href: "mailto:halo@contoh.id" },
+    { channel: "INSTAGRAM", label: "Instagram", handle: "@riasbysekar", href: "https://instagram.com/riasbysekar" },
+  ],
+  replyHours: "Jam balas pesan 09.00 sampai 20.00 WIB",
+};
+const reminders: ReminderView = {
+  whatsapp: true,
+  email: false,
+  push: false,
+  channelsOffered: { whatsapp: true, email: true, push: true },
+  offsets: { dayBefore: true, sameDay: true },
+};
+/** Argumen yang diturunkan dari booking dan aturan, seperti page.tsx. */
+function kelola(b: BookingPageRow, settings = aturan) {
+  return {
+    booking: b,
+    code: bookingCode(b.id),
+    manage: manageState(b, settings, NOW),
+    policy: policyLines(b, settings, nama),
+  };
+}
 
 // BookingLiveStatus memolling /api/bookings/[id]/status; di Storybook fetch itu
 // gagal dan itu diterima.
@@ -16,20 +61,22 @@ const meta = {
   globals: { viewport: { value: "hp", isRotated: false } },
   args: {
     token: sampleToken,
-    booking: sampleBooking,
     merchantName: sampleMerchant.full_name ?? "Merchant",
     merchantUsername: sampleMerchant.username,
     theme: sampleTheme("HANGAT"),
     isExpiredPending: false,
+    ...kelola(base),
+    contact,
+    reminders,
   },
 } satisfies Meta<typeof BookingStatusView>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const menunggu = { ...sampleBooking, status: "PENDING" as const, paid_at: null };
+const menunggu = { ...base, status: "PENDING" as const, paid_at: null };
 const batal = {
-  ...sampleBooking,
+  ...base,
   status: "CANCELLED" as const,
   paid_at: null,
   cancelled_at: "2026-11-20T09:00:00Z",
@@ -49,7 +96,7 @@ export const Dibatalkan: Story = { args: { booking: batal } };
 export const DibatalkanMalam: Story = { args: { booking: batal, theme: sampleTheme("MALAM") } };
 
 const terkonfirmasi = {
-  ...sampleBooking,
+  ...base,
   status: "CONFIRMED" as const,
   paid_at: null,
   payment_mode: "ON_SITE" as const,
@@ -57,13 +104,13 @@ const terkonfirmasi = {
   amount_due_on_site: 105000,
 };
 const dpSisa = {
-  ...sampleBooking,
+  ...base,
   payment_mode: "DEPOSIT" as const,
   amount_due_now: 50000,
   amount_due_on_site: 55000,
 };
 const permintaan = {
-  ...sampleBooking,
+  ...base,
   status: "REQUESTED" as const,
   paid_at: null,
   payment_mode: "REQUEST" as const,
@@ -93,3 +140,38 @@ export const Disetujui: Story = { args: { booking: disetujui } };
 export const DisetujuiMalam: Story = { args: { booking: disetujui, theme: sampleTheme("MALAM") } };
 export const Ditolak: Story = { args: { booking: ditolak } };
 export const DitolakMalam: Story = { args: { booking: ditolak, theme: sampleTheme("MALAM") } };
+
+export const TerkonfirmasiSemuaAksi: Story = {
+  args: {
+    ...kelola({ ...terkonfirmasi, start_datetime: "2026-11-21T03:00:00Z" }),
+    reminders: { ...reminders, email: true },
+  },
+};
+const lewatTenggat = { ...dpSisa, start_datetime: "2026-11-19T03:00:00Z", end_datetime: "2026-11-19T04:30:00Z" };
+export const DpLewatTenggat: Story = { args: kelola(lewatTenggat) };
+export const MenungguPersetujuanBisaBatal: Story = { args: kelola(permintaan) };
+export const DibatalkanPelanggan: Story = {
+  args: kelola({ ...batal, cancel_reason: CUSTOMER_CANCEL_REASON }),
+};
+export const PaketStarter: Story = { args: { reminders: null } };
+export const TanpaKontak: Story = {
+  args: { contact: { whatsapp: null, others: [], replyHours: null } },
+};
+
+const pesan = "Halo Rias by Sekar, saya Dewi. Soal booking BK-0000B1, Sabtu, 21 November 2026 pukul 10:00: ";
+export const SheetHubungi: StoryObj<typeof ContactSheet> = {
+  render: () => (
+    <ContactSheet merchantName={nama} whatsappText={pesan} contact={contact} open onOpenChange={() => {}} />
+  ),
+};
+export const SheetHubungiTanpaWhatsapp: StoryObj<typeof ContactSheet> = {
+  render: () => (
+    <ContactSheet
+      merchantName={nama}
+      whatsappText={pesan}
+      contact={{ ...contact, whatsapp: null }}
+      open
+      onOpenChange={() => {}}
+    />
+  ),
+};

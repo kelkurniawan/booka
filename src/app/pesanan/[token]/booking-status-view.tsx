@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { CalendarClock, CheckCircle2, Clock, XCircle } from "lucide-react";
 
 import { AddToCalendarButton } from "@/components/booking-page/add-to-calendar-button";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { QrisCode } from "@/components/qris-code";
 import { Button } from "@/components/ui/button";
 import { buildBookingIcs } from "@/lib/booking/calendar";
+import { contactWhatsappText } from "@/lib/booking/contact";
+import { CUSTOMER_CANCEL_REASON, type ManageState } from "@/lib/booking/customer-manage";
 import { REQUEST_EXPIRY_REASON, REQUEST_REJECT_REASON } from "@/lib/booking/payment-mode";
 import { formatDateTime, formatDayBlock, formatRupiah, formatSchedule, formatTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
@@ -13,7 +15,10 @@ import type { ResolvedTheme } from "@/lib/theme/types";
 import type { BookingStatus, PaymentMode } from "@/types/database";
 
 import { BookingLiveStatus } from "./booking-live-status";
+import { CancelBookingButton } from "./cancel-booking-button";
+import { ContactButton, type ContactData } from "./contact-sheet";
 import { PayNowButton } from "./pay-now-button";
+import { ReminderSummary } from "./reminder-summary";
 
 export type BookingPageRow = {
   id: string;
@@ -33,6 +38,21 @@ export type BookingPageRow = {
   amount_due_now: number;
   amount_due_on_site: number;
   paid_on_site_at: string | null;
+  service_id: string | null;
+  staff_id: string | null;
+  attended_at: string | null;
+  no_show_at: string | null;
+  reschedule_count: number;
+};
+
+export type ReminderView = {
+  /** Efektif untuk booking ini (Keputusan 17). */
+  whatsapp: boolean;
+  email: boolean;
+  push: boolean;
+  /** Kanal yang dinyalakan merchant. */
+  channelsOffered: { whatsapp: boolean; email: boolean; push: boolean };
+  offsets: { dayBefore: boolean; sameDay: boolean };
 };
 
 type ViewProps = {
@@ -43,7 +63,18 @@ type ViewProps = {
   merchantUsername: string | null;
   theme: ResolvedTheme;
   isExpiredPending: boolean;
+  code: string;
+  manage: ManageState;
+  policy: string[];
+  contact: ContactData;
+  /** null = tidak tersedia (paket, status, atau semua kanal dimatikan merchant). */
+  reminders: ReminderView | null;
+  /** Diisi Task 9; Task 6 merender null. */
+  pushPrompt?: React.ReactNode;
 };
+
+const hasContact = (c: ContactData) => c.whatsapp !== null || c.others.length > 0;
+const ACTION_CLASS = "min-h-11 flex-1";
 
 /** Tampilan murni /pesanan/[token]: tanpa query, supaya bisa dipakai Storybook. */
 export function BookingStatusView({
@@ -53,7 +84,22 @@ export function BookingStatusView({
   merchantUsername,
   theme,
   isExpiredPending,
+  code,
+  manage,
+  policy,
+  contact,
+  reminders,
+  pushPrompt,
 }: ViewProps) {
+  const whatsappText = contactWhatsappText({
+    merchantName,
+    customerName: booking.customer_name,
+    code,
+    startISO: booking.start_datetime,
+  });
+  const contactButton = hasContact(contact) ? (
+    <ContactButton merchantName={merchantName} whatsappText={whatsappText} contact={contact} className="min-h-11 w-full" />
+  ) : null;
   return (
     <BookingPageShell theme={theme}>
       <header className="flex flex-col gap-1">
@@ -62,7 +108,19 @@ export function BookingStatusView({
       </header>
 
       {booking.status === "PAID" || booking.status === "CONFIRMED" ? (
-        <Booked booking={booking} merchantName={merchantName} merchantUsername={merchantUsername} />
+        <Booked
+          token={token}
+          booking={booking}
+          merchantName={merchantName}
+          merchantUsername={merchantUsername}
+          code={code}
+          manage={manage}
+          policy={policy}
+          contact={contact}
+          whatsappText={whatsappText}
+          reminders={reminders}
+          pushPrompt={pushPrompt}
+        />
       ) : booking.status === "CANCELLED" || isExpiredPending ? (
         <ExpiredOrCancelled
           booking={booking}
@@ -71,13 +129,15 @@ export function BookingStatusView({
           isExpiredPending={isExpiredPending}
         />
       ) : booking.status === "REQUESTED" ? (
-        <Requested booking={booking} merchantName={merchantName} />
+        <Requested booking={booking} merchantName={merchantName} contactButton={contactButton}>
+          {manage.cancel.allowed ? <CancelBookingButton token={token} policy={policy} /> : null}
+        </Requested>
       ) : booking.payment_mode === "REQUEST" && !booking.payment_url ? (
         // Hanya permintaan yang disetujui yang menunggu pelanggan menekan Bayar;
         // PENDING lain tanpa QR tetap memakai cadangan "muat ulang" di Pending.
-        <Approved token={token} booking={booking} />
+        <Approved token={token} booking={booking} contactButton={contactButton} />
       ) : (
-        <Pending booking={booking} />
+        <Pending booking={booking} contactButton={contactButton} />
       )}
     </BookingPageShell>
   );
@@ -93,13 +153,29 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 function Booked({
+  token,
   booking,
   merchantName,
   merchantUsername,
+  code,
+  manage,
+  policy,
+  contact,
+  whatsappText,
+  reminders,
+  pushPrompt,
 }: {
+  token: string;
   booking: BookingPageRow;
   merchantName: string;
   merchantUsername: string | null;
+  code: string;
+  manage: ManageState;
+  policy: string[];
+  contact: ContactData;
+  whatsappText: string;
+  reminders: ReminderView | null;
+  pushPrompt?: React.ReactNode;
 }) {
   const confirmed = booking.status === "CONFIRMED";
   const { month, day } = formatDayBlock(booking.start_datetime);
@@ -146,6 +222,7 @@ function Booked({
       <dl className="flex flex-col gap-3 text-sm">
         {confirmed ? onSiteRow : null}
         <Row label="Atas nama">{booking.customer_name}</Row>
+        <Row label="Kode booking">{code}</Row>
         {confirmed ? null : (
           <>
             <Row label="Dibayar">{formatRupiah(Number(booking.amount_due_now))} (QRIS)</Row>
@@ -160,8 +237,35 @@ function Booked({
         </Row>
       </dl>
 
+      <div className="flex gap-2">
+        {manage.reschedule.allowed ? (
+          <Button asChild variant="outline" className={ACTION_CLASS}>
+            <Link href={ROUTES.bookingReschedule(token)}>
+              <CalendarClock aria-hidden />
+              Ubah jadwal
+            </Link>
+          </Button>
+        ) : null}
+        {hasContact(contact) ? (
+          <ContactButton merchantName={merchantName} whatsappText={whatsappText} contact={contact} className={ACTION_CLASS} />
+        ) : null}
+        <AddToCalendarButton ics={ics} fileName="booking.ics" label="Kalender" className={ACTION_CLASS} />
+      </div>
+
+      {pushPrompt ?? null}
+      {reminders ? <ReminderSummary token={token} startISO={booking.start_datetime} reminders={reminders} /> : null}
+
+      <section className="border-border bg-card flex flex-col gap-2 rounded-[var(--radius)] border p-4">
+        <h2 className="font-medium">Kebijakan {merchantName}</h2>
+        {policy.map((line) => (
+          <p key={line} className="text-muted-foreground text-sm text-pretty">
+            {line}
+          </p>
+        ))}
+      </section>
+
       <div className="flex flex-col gap-3">
-        <AddToCalendarButton ics={ics} fileName="booking.ics" />
+        {manage.cancel.allowed ? <CancelBookingButton token={token} policy={policy} /> : null}
         {merchantUsername ? (
           <Link
             href={ROUTES.merchantPage(merchantUsername)}
@@ -195,7 +299,8 @@ function ExpiredOrCancelled({
   const unanswered =
     (booking.status === "CANCELLED" && booking.cancel_reason === REQUEST_EXPIRY_REASON) ||
     (booking.status === "REQUESTED" && isExpiredPending);
-  const isRequestEnd = rejected || unanswered;
+  const byCustomer = booking.status === "CANCELLED" && booking.cancel_reason === CUSTOMER_CANCEL_REASON;
+  const isRequestEnd = rejected || unanswered || byCustomer;
   return (
     <div className="border-border bg-card flex flex-col items-center gap-3 rounded-[var(--radius)] border p-6 text-center">
       <XCircle className="text-destructive size-10" aria-hidden />
@@ -205,7 +310,9 @@ function ExpiredOrCancelled({
             ? "Permintaan ditolak"
             : unanswered
               ? "Permintaan tidak dijawab"
-              : booking.status === "CANCELLED"
+              : byCustomer
+                ? "Anda membatalkan booking ini"
+                : booking.status === "CANCELLED"
                 ? "Booking dibatalkan"
                 : "Waktu pembayaran habis"}
         </span>
@@ -225,7 +332,7 @@ function ExpiredOrCancelled({
   );
 }
 
-function Pending({ booking }: { booking: BookingPageRow }) {
+function Pending({ booking, contactButton }: { booking: BookingPageRow; contactButton: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-6">
       {/* Blok QR + nominal diteruskan sebagai children ke BookingLiveStatus
@@ -278,6 +385,7 @@ function Pending({ booking }: { booking: BookingPageRow }) {
         <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
         <Row label="Atas nama">{booking.customer_name}</Row>
       </dl>
+      {contactButton}
     </div>
   );
 }
@@ -298,7 +406,17 @@ function Summary({ booking }: { booking: BookingPageRow }) {
   );
 }
 
-function Requested({ booking, merchantName }: { booking: BookingPageRow; merchantName: string }) {
+function Requested({
+  booking,
+  merchantName,
+  contactButton,
+  children,
+}: {
+  booking: BookingPageRow;
+  merchantName: string;
+  contactButton: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-6">
       <div className="border-border bg-card flex flex-col items-center gap-3 rounded-[var(--radius)] border p-6 text-center">
@@ -312,11 +430,21 @@ function Requested({ booking, merchantName }: { booking: BookingPageRow; merchan
         </div>
       </div>
       <Summary booking={booking} />
+      {contactButton}
+      {children}
     </div>
   );
 }
 
-function Approved({ token, booking }: { token: string; booking: BookingPageRow }) {
+function Approved({
+  token,
+  booking,
+  contactButton,
+}: {
+  token: string;
+  booking: BookingPageRow;
+  contactButton: React.ReactNode;
+}) {
   const amount = formatRupiah(Number(booking.amount_due_now));
   return (
     <div className="flex flex-col gap-6">
@@ -331,6 +459,7 @@ function Approved({ token, booking }: { token: string; booking: BookingPageRow }
         <PayNowButton token={token} label={`Bayar ${amount}`} />
       </div>
       <Summary booking={booking} />
+      {contactButton}
     </div>
   );
 }

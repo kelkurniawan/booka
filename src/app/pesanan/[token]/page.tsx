@@ -2,11 +2,20 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { contactLinks, contactWhatsappText, replyHoursLabel, type ContactSettings } from "@/lib/booking/contact";
+import {
+  bookingCode,
+  DEFAULT_MANAGE_SETTINGS,
+  manageState,
+  policyLines,
+  type ManageSettings,
+} from "@/lib/booking/customer-manage";
+import { REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTheme } from "@/lib/theme/resolve";
-import type { MerchantTheme, SubscriptionTier } from "@/types/database";
+import type { BookingReminderPrefs, MerchantSettings, MerchantTheme, SubscriptionTier } from "@/types/database";
 
-import { BookingStatusView, type BookingPageRow } from "./booking-status-view";
+import { BookingStatusView, type BookingPageRow, type ReminderView } from "./booking-status-view";
 
 /**
  * I3 -- halaman ini TIDAK PERNAH boleh disajikan dari full route cache
@@ -30,10 +39,26 @@ type BookingPageParams = { token: string };
  * propnya nanti diteruskan ke komponen client di bawah.
  */
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at" as const;
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count, customer_whatsapp" as const;
+
+const SETTINGS_COLUMNS =
+  "allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day" as const;
+
+type SettingsRow = ManageSettings & ContactSettings & Pick<MerchantSettings, "reminder_whatsapp" | "reminder_email" | "reminder_push" | "reminder_day_before" | "reminder_same_day">;
+
+// Default migration: WhatsApp, email, dan push menyala; hanya H-1.
+const DEFAULT_REMINDER_SETTINGS = {
+  reminder_whatsapp: true, reminder_email: true, reminder_push: true, reminder_day_before: true, reminder_same_day: false,
+};
+
+const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
+  contact_phone: null, contact_email: null, contact_instagram: null, contact_threads: null,
+  contact_x: null, contact_tiktok: null, contact_hidden: [], reply_from: null, reply_until: null,
+};
 
 type MerchantInfo = {
   username: string | null;
+  whatsapp_number: string | null;
   full_name: string | null;
   subscription_tier: SubscriptionTier;
   merchant_themes?: MerchantTheme | MerchantTheme[] | null;
@@ -58,7 +83,7 @@ const getBookingPageData = cache(async (token: string) => {
     .from("bookings")
     .select(BOOKING_COLUMNS)
     .eq("access_token", token)
-    .maybeSingle<BookingPageRow>();
+    .maybeSingle<BookingPageRow & { customer_whatsapp: string }>();
 
   // Query gagal (bukan "token salah") HARUS beda dari "booking ini memang
   // tidak ada" -- kalau ditelan jadi notFound(), pelanggan yang tautannya
@@ -75,7 +100,7 @@ const getBookingPageData = cache(async (token: string) => {
 
   const { data: merchant, error: merchantError } = await admin
     .from("merchants")
-    .select("username, full_name, subscription_tier, merchant_themes(*)")
+    .select("username, whatsapp_number, full_name, subscription_tier, merchant_themes(*)")
     .eq("id", booking.merchant_id)
     .maybeSingle<MerchantInfo>();
 
@@ -103,8 +128,61 @@ const getBookingPageData = cache(async (token: string) => {
   // seperti CANCELLED: cron pembatalan mungkin belum sempat jalan, tapi
   // pelanggan yang membuka tautan ini setelah waktunya habis tidak boleh
   // terus melihat "menunggu pembayaran".
+  const nowMs = Date.now();
   const isExpiredPending =
-    (booking.status === "PENDING" || booking.status === "REQUESTED") && Date.now() >= new Date(booking.expires_at).getTime();
+    (booking.status === "PENDING" || booking.status === "REQUESTED") && nowMs >= new Date(booking.expires_at).getTime();
+
+  // Query tambahan gagal -> default, halaman booking tetap tampil. Semua difilter merchant_id.
+  const [settingsRes, prefsRes, pushRes] = await Promise.all([
+    admin.from("merchant_settings").select(SETTINGS_COLUMNS).eq("merchant_id", booking.merchant_id).maybeSingle<SettingsRow>(),
+    admin
+      .from("booking_reminder_prefs")
+      .select("whatsapp, email, day_before, same_day")
+      .eq("merchant_id", booking.merchant_id)
+      .eq("booking_id", booking.id)
+      .maybeSingle<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>(),
+    admin
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", booking.merchant_id)
+      .eq("booking_id", booking.id),
+  ]);
+  for (const [name, res] of [["merchant_settings", settingsRes], ["booking_reminder_prefs", prefsRes], ["push_subscriptions", pushRes]] as const) {
+    if (res.error) console.error(`[pesanan-page] gagal memuat ${name}`, { merchantId: booking.merchant_id, error: res.error });
+  }
+  const settings: SettingsRow = settingsRes.data ?? { ...DEFAULT_MANAGE_SETTINGS, ...DEFAULT_CONTACT_SETTINGS, ...DEFAULT_REMINDER_SETTINGS };
+  const prefs = prefsRes.data;
+  const hasPush = (pushRes.count ?? 0) > 0;
+
+  // customer_whatsapp tetap di server (Task 9: 4 digit terakhir), tidak ikut ke tampilan.
+  const { customer_whatsapp: customerWhatsapp, ...bookingRow } = booking;
+  void customerWhatsapp;
+
+  const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
+  const code = bookingCode(booking.id);
+  // Keputusan 17: kanal efektif = dinyalakan merchant DAN dipilih pelanggan.
+  const reminderOn = REMINDER_TIERS.includes(merchant.subscription_tier) &&
+    (booking.status === "PAID" || booking.status === "CONFIRMED") &&
+    (settings.reminder_whatsapp || settings.reminder_email || settings.reminder_push);
+  const reminders: ReminderView | null = reminderOn
+    ? {
+        whatsapp: settings.reminder_whatsapp && (prefs?.whatsapp ?? true),
+        email: settings.reminder_email && !!prefs?.email,
+        push: settings.reminder_push && hasPush,
+        channelsOffered: { whatsapp: settings.reminder_whatsapp, email: settings.reminder_email, push: settings.reminder_push },
+        offsets: {
+          dayBefore: prefs?.day_before ?? settings.reminder_day_before,
+          sameDay: prefs?.same_day ?? settings.reminder_same_day,
+        },
+      }
+    : null;
+  const whatsappText = contactWhatsappText({
+    merchantName, customerName: booking.customer_name, code, startISO: booking.start_datetime,
+  });
+  const links = contactLinks(merchant.whatsapp_number, settings, whatsappText);
+  const contact = { ...links, replyHours: replyHoursLabel(settings) };
+  const manage = manageState(bookingRow, settings, nowMs);
+  const policy = policyLines(bookingRow, settings, merchantName);
 
   // merchant_themes bisa objek (relasi 1-1) atau array satu elemen; sama
   // seperti src/app/[username]/page.tsx.
@@ -112,7 +190,7 @@ const getBookingPageData = cache(async (token: string) => {
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
   const theme = resolveTheme(merchant.subscription_tier, themeRow);
 
-  return { booking, merchant, theme, isExpiredPending };
+  return { booking: bookingRow, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders };
 });
 
 export async function generateMetadata({
@@ -148,16 +226,21 @@ export default async function BookingStatusPage({
     notFound();
   }
 
-  const { booking, merchant, theme, isExpiredPending } = data;
+  const { booking, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders } = data;
 
   return (
     <BookingStatusView
       token={token}
       booking={booking}
-      merchantName={merchant.full_name ?? merchant.username ?? "Merchant"}
+      merchantName={merchantName}
       merchantUsername={merchant.username}
       theme={theme}
       isExpiredPending={isExpiredPending}
+      code={code}
+      manage={manage}
+      policy={policy}
+      contact={contact}
+      reminders={reminders}
     />
   );
 }
