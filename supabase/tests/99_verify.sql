@@ -3860,3 +3860,72 @@ select case when count(*) filter (where status = 'CANCELLED') = 0
             then 'OK   t42b-d booking yang ditolak tidak berubah'
             else 'FAIL t42b-d ' || count(*) filter (where status = 'CANCELLED') || ' booking ikut batal' end as t42d
 from public.bookings where access_token in (pg_temp.tok40('o'), pg_temp.tok40('p'), pg_temp.tok40('u'));
+
+-- ===========================================================================
+-- 43. Preferensi pengingat dan langganan push (20261116000300)
+-- ===========================================================================
+
+-- Memakai merchant, layanan, dan helper ins40 dari bagian 40.
+select pg_temp.ins40('A', 'CONFIRMED', pg_temp.jakarta_future(3, 2, '10:00'));
+select pg_temp.ins40('B', 'CANCELLED', pg_temp.jakarta_future(3, 3, '10:00'));
+select pg_temp.ins40('C', 'CONFIRMED', pg_temp.jakarta_future(3, 4, '10:00'));
+select pg_temp.ins40('D', 'CONFIRMED', now() - interval '3 days');
+select pg_temp.ins40('E', 'CONFIRMED', now() + interval '7 days');
+
+-- 43a. Prefs minimal dan check email.
+insert into public.booking_reminder_prefs (booking_id, merchant_id)
+values (pg_temp.id40('A'), '40404040-0000-0000-0000-000000000001');
+select case when whatsapp and email is null and day_before is null and same_day is null
+            then 'OK   t43a default prefs pengingat'
+            else 'FAIL t43a default prefs salah' end as t43a
+from public.booking_reminder_prefs where booking_id = pg_temp.id40('A');
+select pg_temp.expect_fail_code($q$update public.booking_reminder_prefs set email = 'bukan-email'
+  where email is null$q$, '23514', 't43a email tidak valid');
+
+-- 43b. Unik per (booking, endpoint) dan format hash.
+insert into public.push_subscriptions (booking_id, merchant_id, endpoint_hash, subscription_enc)
+select pg_temp.id40(c), '40404040-0000-0000-0000-000000000001', repeat('a', 64), 'v1.x.y.z'
+from unnest(array['A', 'B', 'D', 'E']) c;
+select pg_temp.expect_fail_code(format($q$insert into public.push_subscriptions
+  (booking_id, merchant_id, endpoint_hash, subscription_enc)
+  values (%L, '40404040-0000-0000-0000-000000000001', repeat('a', 64), 'v1.x.y.z')$q$, pg_temp.id40('A')),
+  '23505', 't43b langganan ganda');
+select pg_temp.expect_fail_code(format($q$insert into public.push_subscriptions
+  (booking_id, merchant_id, endpoint_hash, subscription_enc)
+  values (%L, '40404040-0000-0000-0000-000000000001', 'xyz', 'v1.x.y.z')$q$, pg_temp.id40('C')),
+  '23514', 't43b endpoint_hash bukan hex 64');
+
+-- 43e. Prune: CANCELLED dan selesai > 1 hari lalu hilang, sisanya tetap.
+begin;
+set local role service_role;
+select case when public.prune_push_subscriptions() = 2
+            then 'OK   t43e prune menghapus 2 langganan'
+            else 'FAIL t43e prune tidak menghapus 2' end as t43e1;
+commit;
+select case when count(*) = 2 and bool_and(booking_id in (pg_temp.id40('A'), pg_temp.id40('E')))
+            then 'OK   t43e langganan booking aktif tetap'
+            else 'FAIL t43e sisa langganan salah' end as t43e2
+from public.push_subscriptions;
+
+-- 43c. Hapus booking menghapus prefs dan langganannya.
+delete from public.bookings where id = pg_temp.id40('A');
+select case when not exists (select 1 from public.booking_reminder_prefs where booking_id = pg_temp.id40('A'))
+             and not exists (select 1 from public.push_subscriptions where booking_id = pg_temp.id40('A'))
+            then 'OK   t43c hapus booking ikut menghapus prefs dan langganan'
+            else 'FAIL t43c anak tidak terhapus' end as t43c;
+
+-- 43d. Tanpa hak untuk anon/authenticated.
+select case when not exists (
+  select 1 from unnest(array['anon', 'authenticated']) r,
+    unnest(array['booking_reminder_prefs', 'push_subscriptions']) t,
+    unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p
+  where has_table_privilege(r, 'public.' || t, p))
+  then 'OK   t43d anon dan authenticated tanpa hak di tabel pengingat/push'
+  else 'FAIL t43d ada hak tabel bocor' end as t43d;
+
+-- 43f. Prune tertutup.
+select case when not has_function_privilege('anon', 'public.prune_push_subscriptions()', 'EXECUTE')
+             and not has_function_privilege('authenticated', 'public.prune_push_subscriptions()', 'EXECUTE')
+             and has_function_privilege('service_role', 'public.prune_push_subscriptions()', 'EXECUTE')
+            then 'OK   t43f prune_push_subscriptions hanya service_role'
+            else 'FAIL t43f hak EXECUTE prune salah' end as t43f;

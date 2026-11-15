@@ -295,6 +295,26 @@ export type NotificationLog = {
   updated_at: string;
 };
 
+export type BookingReminderPrefs = {
+  booking_id: string;
+  merchant_id: string;
+  whatsapp: boolean;
+  email: string | null;
+  day_before: boolean | null;
+  same_day: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PushSubscriptionRow = {
+  id: string;
+  booking_id: string;
+  merchant_id: string;
+  endpoint_hash: string;
+  subscription_enc: string;
+  created_at: string;
+};
+
 export type Booking = {
   id: string;
   merchant_id: string;
@@ -529,6 +549,25 @@ export type Database = {
           Relationship<"merchant_id", "merchants">,
         ];
       };
+      booking_reminder_prefs: {
+        Row: BookingReminderPrefs;
+        Insert: Pick<BookingReminderPrefs, "booking_id" | "merchant_id"> &
+          Partial<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>;
+        Update: Partial<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: Pick<PushSubscriptionRow, "booking_id" | "merchant_id" | "endpoint_hash" | "subscription_enc">;
+        Update: Partial<Pick<PushSubscriptionRow, "subscription_enc">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
       bookings: {
         Row: Booking;
         Insert: Omit<
@@ -659,6 +698,7 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      prune_push_subscriptions: { Args: Record<string, never>; Returns: number };
       bookings_in_tab: {
         Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
         // Seperti BookingListItem (booking-state.ts) tapi merchant_id tetap ada agar
