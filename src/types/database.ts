@@ -606,6 +606,24 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      bookings_in_tab: {
+        Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
+        Returns: Booking[];
+      };
+      dashboard_tab_counts: {
+        Args: Record<string, never>;
+        Returns: { action_count: number; upcoming_count: number }[];
+      };
+      dashboard_week_summary: {
+        Args: Record<string, never>;
+        Returns: {
+          bookings: number;
+          online_revenue: number;
+          on_site_revenue: number;
+          no_show: number;
+          attendance_marked: number;
+        }[];
+      };
       /**
        * Mengganti seluruh FAQ merchant yang sedang login dalam satu
        * statement, sehingga penghapusan lama dan penyisipan baru berhasil

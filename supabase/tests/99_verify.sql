@@ -3389,3 +3389,127 @@ select case when merchant_reschedule_count = 3 and status = 'PAID'
             then 'OK   t36o PAID tetap PAID di 12:00, merchant_reschedule_count = 3'
             else 'FAIL t36o ' || status || ' ' || start_datetime || ' count ' || merchant_reschedule_count end as t36o
 from public.bookings where customer_whatsapp = '+6281336000025';
+
+-- ===========================================================================
+-- 37. Fungsi baca dashboard (20261115000700)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('37373737-0000-0000-0000-000000000001', 'dash37-a@example.com', '{}'::jsonb),
+  ('37373737-0000-0000-0000-000000000002', 'dash37-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'dash-37', subscription_tier = 'PRO'
+  where id = '37373737-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id = '37373737-0000-0000-0000-000000000002';
+
+-- Merchant 0001: satu baris per tab yang diharapkan (kunci = customer_name).
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, expires_at, payment_mode, amount_due_now, amount_due_on_site,
+  attended_at, no_show_at, paid_on_site_at, paid_on_site_method)
+select '37373737-0000-0000-0000-000000000001', 'Layanan 37', v.price, 30,
+  now() + v.off, now() + v.off + interval '30 minutes', v.name,
+  '+62813370000' || lpad(v.n::text, 2, '0'), v.status::public.booking_status,
+  now() + v.exp, 'ON_SITE', v.price - v.onsite, v.onsite,
+  v.att, v.noshow, v.paidsite, case when v.paidsite is not null then 'CASH'::public.on_site_payment_method end
+from (values
+  (1,  'ACTION_requested', 'REQUESTED', interval '3 days',            interval '1 hour',   100000, 0,      null::timestamptz, null::timestamptz, null::timestamptz),
+  (2,  'ACTION_pending',   'PENDING',   interval '4 days',            interval '10 minutes', 100000, 0,    null, null, null),
+  (3,  'ACTION_unmarked',  'CONFIRMED', interval '-2 days',           interval '15 minutes', 100000, 0,    null, null, null),
+  (4,  'ACTION_unpaid',    'PAID',      interval '-1 day',            interval '15 minutes', 350000, 245000, now() - interval '1 day', null, null),
+  (5,  'UPCOMING_tomorrow','CONFIRMED', interval '1 day',             interval '15 minutes', 100000, 0,    null, null, null),
+  (6,  'UPCOMING_soon',    'PAID',      interval '2 hours',           interval '15 minutes', 100000, 0,    null, null, null),
+  (7,  'HISTORY_done',     'CONFIRMED', interval '-2 days -5 hours',  interval '15 minutes', 100000, 100000, now() - interval '2 days', null, now() - interval '2 days'),
+  (8,  'HISTORY_old',      'CONFIRMED', interval '-10 days',          interval '15 minutes', 100000, 0,    null, null, null),
+  (9,  'HISTORY_noshow',   'CONFIRMED', interval '-1 day -5 hours',   interval '15 minutes', 100000, 100000, null, now() - interval '1 day', null),
+  (10, 'CANCELLED_status', 'CANCELLED', interval '5 days',            interval '15 minutes', 100000, 0,    null, null, null),
+  (11, 'CANCELLED_stale',  'PENDING',   interval '6 days',            interval '-1 hour',    100000, 0,    null, null, null)
+) as v(n, name, status, off, exp, price, onsite, att, noshow, paidsite);
+
+-- 37a. booking_tab: tab tiap baris sama dengan awalan namanya.
+select case when count(*) = 11 and count(*) filter (where public.booking_tab(b) = split_part(b.customer_name, '_', 1)) = 11
+            then 'OK   t37a booking_tab: 11 baris masuk tab yang diharapkan'
+            else 'FAIL t37a booking_tab salah: ' || coalesce(string_agg(b.customer_name || '=' || public.booking_tab(b), ', ')
+                   filter (where public.booking_tab(b) <> split_part(b.customer_name, '_', 1)), '') end as t37a
+from public.bookings b where b.merchant_id = '37373737-0000-0000-0000-000000000001';
+
+-- Merchant 0002: ringkasan minggu dan bukti isolasi merchant.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, paid_at, expires_at, payment_mode, amount_due_now, amount_due_on_site,
+  attended_at, no_show_at, paid_on_site_at, paid_on_site_method)
+select '37373737-0000-0000-0000-000000000002', 'Layanan 37', v.price, 30,
+  now() + v.off, now() + v.off + interval '30 minutes', v.name,
+  '+62813370001' || lpad(v.n::text, 2, '0'), v.status::public.booking_status,
+  v.paid, now() + interval '15 minutes', 'ON_SITE', v.price - v.onsite, v.onsite,
+  v.att, v.noshow, v.paidsite, case when v.paidsite is not null then 'CASH'::public.on_site_payment_method end
+from (values
+  (1, 'B1', 'PAID',      interval '-1 day',   350000, 245000, now() - interval '1 day',   now() - interval '1 day', null::timestamptz, now() - interval '1 day'),
+  (2, 'B2', 'CONFIRMED', interval '-2 days',  450000, 450000, null::timestamptz,          now() - interval '2 days', null, now() - interval '2 days'),
+  (3, 'B3', 'CONFIRMED', interval '-1 day -3 hours', 200000, 200000, null,                 null, now() - interval '1 day', null),
+  (4, 'B4', 'PAID',      interval '-10 days', 350000, 0,      now() - interval '10 days', null, null, null),
+  (5, 'B5', 'CANCELLED', interval '-1 day -6 hours', 100000, 0, null,                      null, null, null)
+) as v(n, name, status, off, price, onsite, paid, att, noshow, paidsite);
+
+-- 37b. Tab ACTION: tepat empat id merchant 0001, tak satu pun milik 0002.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select case when count(*) = 4 and bool_and(customer_name like 'ACTION\_%') and bool_and(merchant_id = '37373737-0000-0000-0000-000000000001')
+            then 'OK   t37b bookings_in_tab(ACTION): empat baris milik sendiri'
+            else 'FAIL t37b ' || count(*) || ' baris' end as t37b
+from public.bookings_in_tab('ACTION');
+commit;
+
+-- 37c. Tab di luar empat nilai ditolak 22023.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code($q$select * from public.bookings_in_tab('SEMUA')$q$, '22023', 't37c tab tidak dikenal');
+select pg_temp.expect_fail_code($q$select * from public.bookings_in_tab(null)$q$, '22023', 't37c tab null');
+commit;
+
+-- 37d. dashboard_tab_counts() = (4, 2).
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select case when action_count = 4 and upcoming_count = 2 then 'OK   t37d dashboard_tab_counts = (4, 2)'
+            else 'FAIL t37d (' || action_count || ', ' || upcoming_count || ')' end as t37d
+from public.dashboard_tab_counts();
+commit;
+
+-- 37e. dashboard_week_summary untuk merchant 0002.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000002';
+select case when bookings = 3 and online_revenue = 105000 and on_site_revenue = 695000
+             and no_show = 1 and attendance_marked = 3
+            then 'OK   t37e dashboard_week_summary = (3, 105000, 695000, 1, 3)'
+            else 'FAIL t37e (' || bookings || ', ' || online_revenue || ', ' || on_site_revenue || ', '
+                 || no_show || ', ' || attendance_marked || ')' end as t37e
+from public.dashboard_week_summary();
+commit;
+
+-- 37f. Tanpa klaim sub: kosong, bukan error.
+begin;
+set local role authenticated;
+select case when (select count(*) from public.bookings_in_tab('ACTION')) = 0
+             and (select action_count + upcoming_count from public.dashboard_tab_counts()) = 0
+            then 'OK   t37f tanpa sub: 0 baris dan hitungan (0, 0)'
+            else 'FAIL t37f tanpa sub bocor' end as t37f;
+commit;
+
+-- 37g. Hak akses.
+select
+  case when has_function_privilege('anon', 'public.booking_tab(public.bookings)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.booking_tab(public.bookings)', 'EXECUTE')
+       then 'FAIL t37g booking_tab bisa di-EXECUTE anon/authenticated'
+       else 'OK   t37g booking_tab tertutup' end as t37g1,
+  case when has_function_privilege('authenticated', 'public.bookings_in_tab(text)', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.dashboard_tab_counts()', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.dashboard_week_summary()', 'EXECUTE')
+       then 'OK   t37g authenticated bisa memanggil ketiga RPC'
+       else 'FAIL t37g authenticated tidak bisa memanggil RPC' end as t37g2,
+  case when has_function_privilege('anon', 'public.bookings_in_tab(text)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.dashboard_tab_counts()', 'EXECUTE')
+         or has_function_privilege('anon', 'public.dashboard_week_summary()', 'EXECUTE')
+       then 'FAIL t37g anon bisa memanggil RPC'
+       else 'OK   t37g anon tidak bisa memanggil RPC' end as t37g3;
