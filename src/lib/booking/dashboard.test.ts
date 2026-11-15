@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { formatLongDate } from "../format";
+import { formatLongDate, formatRupiah as rp } from "../format";
+import type { BookingListItem } from "@/app/dashboard/bookings/booking-state";
 import {
   actionKind, attendanceWindow, dayLabel, groupByJakartaDay, nowLineIndex,
-  onSiteTotals, parseTab, rescheduleNoticeLink, tabParam, unpaidReminderLink, whatsappLink,
+  onSiteTotals, parseTab, paymentSummary, rescheduleNoticeLink, tabParam, unpaidReminderLink, whatsappLink,
 } from "./dashboard";
 
 test("parseTab: param dikenal dan default", () => {
@@ -21,6 +22,9 @@ test("actionKind", () => {
   assert.equal(actionKind({ ...base, status: "PENDING" }), "UNPAID");
   assert.equal(actionKind({ ...base, status: "CONFIRMED" }), "ATTENDANCE");
   assert.equal(actionKind({ status: "PAID", attended_at: "2026-11-13T03:00:00Z", no_show_at: null }), "ON_SITE_UNPAID");
+  // PAID belum ditandai hadir: kehadiran dulu, bukan tagihan di tempat.
+  assert.equal(actionKind({ status: "PAID", attended_at: null, no_show_at: null }), "ATTENDANCE");
+  assert.equal(actionKind({ status: "PAID", attended_at: null, no_show_at: "2026-11-13T03:00:00Z" }), "ON_SITE_UNPAID");
 });
 
 test("dayLabel: hari ini, besok, kemarin, hari lain, beda tahun", () => {
@@ -88,4 +92,22 @@ test("tautan WhatsApp", () => {
 
 test("formatLongDate", () => {
   assert.equal(formatLongDate("2026-11-14T05:00:00Z"), "Sabtu, 14 November 2026");
+});
+
+test("paymentSummary: lunas hanya bila PAID", () => {
+  const b = (over: Partial<BookingListItem>) =>
+    ({
+      status: "PAID", payment_mode: "DEPOSIT", amount_due_now: 30000, amount_due_on_site: 70000,
+      paid_on_site_at: null, paid_on_site_method: null, ...over,
+    }) as BookingListItem;
+  assert.equal(paymentSummary(b({ status: "PENDING", payment_mode: "FULL", amount_due_now: 100000, amount_due_on_site: 0 })).main, `Belum bayar ${rp(100000)}`);
+  assert.equal(paymentSummary(b({ status: "REQUESTED" })).main, `Bayar online ${rp(30000)}`);
+  const paid = paymentSummary(b({}));
+  assert.equal(paid.main, `DP ${rp(30000)} lunas`);
+  assert.equal(paid.sub, `Sisa ${rp(70000)} di tempat`);
+  const onSite = paymentSummary(b({ paid_on_site_at: "2026-11-15T04:00:00Z", paid_on_site_method: "CASH" }));
+  assert.equal(onSite.sub, `Lunas ${rp(70000)} tunai`);
+  assert.deepEqual(paymentSummary(b({ status: "CONFIRMED", payment_mode: "ON_SITE", amount_due_now: 0, amount_due_on_site: 100000 })), {
+    main: "Bayar di tempat", sub: `Sisa ${rp(100000)} di tempat`,
+  });
 });

@@ -37,8 +37,9 @@ export type ActionKind = "REQUEST" | "UNPAID" | "ATTENDANCE" | "ON_SITE_UNPAID";
 export function actionKind(b: Pick<BookingListItem, "status" | "attended_at" | "no_show_at">): ActionKind {
   if (b.status === "REQUESTED") return "REQUEST";
   if (b.status === "PENDING") return "UNPAID";
-  if (b.status === "CONFIRMED") return "ATTENDANCE";
-  // Sisanya PAID yang bayar di tempat dan belum dilunasi.
+  // Sudah lewat mulai: belum ditandai hadir/tidak datang -> tandai dulu.
+  if (!b.attended_at && !b.no_show_at) return "ATTENDANCE";
+  // Sisanya sudah ditandai tetapi masih ada tagihan di tempat.
   return "ON_SITE_UNPAID";
 }
 
@@ -126,10 +127,13 @@ export function rescheduleNoticeLink(
 
 /** Ringkasan pembayaran satu baris: teks utama + keterangan sisa/pelunasan. */
 export function paymentSummary(b: BookingListItem): { main: string; sub: string | null } {
+  const onSiteToo = b.amount_due_on_site > 0;
   const main =
-    b.amount_due_now > 0
-      ? `${b.amount_due_on_site > 0 ? "DP" : "Lunas"} ${formatRupiah(b.amount_due_now)}${b.amount_due_on_site > 0 ? " lunas" : ""}`
-      : "Bayar di tempat";
+    b.amount_due_now <= 0
+      ? "Bayar di tempat"
+      : b.status === "PAID"
+        ? `${onSiteToo ? "DP" : "Lunas"} ${formatRupiah(b.amount_due_now)}${onSiteToo ? " lunas" : ""}`
+        : `${b.status === "REQUESTED" ? "Bayar online" : "Belum bayar"} ${formatRupiah(b.amount_due_now)}`;
   if (b.amount_due_on_site <= 0) return { main, sub: null };
   if (b.paid_on_site_at) {
     const method = b.paid_on_site_method ? ON_SITE_METHOD_LABEL[b.paid_on_site_method].toLowerCase() : "";
