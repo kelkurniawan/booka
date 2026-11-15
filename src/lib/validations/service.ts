@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { MIN_ONLINE_CHARGE } from "@/lib/booking/payment-mode";
+
 /**
  * Aturan di sini harus persis sama dengan constraint tabel `services` di
  * supabase/migrations/20260729000100_init_schema.sql:
@@ -50,12 +52,23 @@ export const serviceFieldsSchema = z.object({
   ),
 });
 
+export const ONLINE_PRICE_MESSAGE = "Harga minimal Rp1.500 untuk pembayaran QRIS, atau Rp0 untuk gratis.";
+
+/** Harga yang bisa ditagih lewat QRIS: gratis, atau minimal MIN_ONLINE_CHARGE. Hanya Zod, tanpa constraint DB. */
+export function isChargeablePrice(price: number): boolean {
+  return price === 0 || price >= MIN_ONLINE_CHARGE;
+}
+
 /**
  * Mencerminkan constraint services_deposit_* (migration 20261115000200):
  * persen 1..90, tetap >= 1 dan < harga, tipe+nilai berpasangan, DEPOSIT wajib
- * DP. DP dibuang untuk FULL dan ON_SITE.
+ * DP. DP dibuang untuk FULL dan ON_SITE. Selain ON_SITE, harga harus 0 atau
+ * minimal MIN_ONLINE_CHARGE (create_booking menolak sisanya dengan BK022).
  */
 export const serviceSchema = serviceFieldsSchema.transform((v, ctx) => {
+  if (v.payment_mode !== "ON_SITE" && !isChargeablePrice(v.price)) {
+    ctx.addIssue({ code: "custom", path: ["price"], message: ONLINE_PRICE_MESSAGE });
+  }
   if (v.payment_mode === "FULL" || v.payment_mode === "ON_SITE") {
     return { ...v, deposit_type: null, deposit_value: null };
   }

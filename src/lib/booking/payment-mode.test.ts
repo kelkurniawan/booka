@@ -5,8 +5,10 @@ import { formatRupiah } from "@/lib/format";
 
 import {
   DEFAULT_PAYMENT_SETTINGS,
+  MIN_ONLINE_CHARGE,
   computeAmounts,
   effectivePaymentMode,
+  initialBookingStatus,
   needsApproval,
   paymentLabel,
   type ServicePayment,
@@ -51,6 +53,33 @@ test("computeAmounts sama dengan create_booking", () => {
   );
   // Mode efektif FULL mengabaikan DP apa pun.
   assert.deepEqual(computeAmounts(dp, "FULL"), { dueNow: 350000, dueOnSite: 0 });
+});
+
+test("computeAmounts menaikkan DP ke minimum QRIS, tapi tidak melebihi harga", () => {
+  assert.equal(MIN_ONLINE_CHARGE, 1500);
+  const dp1 = svc({ price: 100000, payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: 1 });
+  assert.deepEqual(computeAmounts(dp1, "DEPOSIT"), { dueNow: 1500, dueOnSite: 98500 });
+  assert.deepEqual(
+    computeAmounts(svc({ price: 100000, payment_mode: "REQUEST", deposit_type: "FIXED", deposit_value: 500 }), "REQUEST"),
+    { dueNow: 1500, dueOnSite: 98500 },
+  );
+  // Harga di bawah minimum: DP jadi seluruh harga (server lalu menolak BK022).
+  assert.deepEqual(computeAmounts({ ...dp1, price: 1000 }, "DEPOSIT"), { dueNow: 1000, dueOnSite: 0 });
+  // Gratis tetap 0; REQUEST tanpa DP tidak disentuh aturan DP.
+  assert.deepEqual(computeAmounts({ ...dp1, price: 0 }, "DEPOSIT"), { dueNow: 0, dueOnSite: 0 });
+  assert.deepEqual(computeAmounts(svc({ price: 1000, payment_mode: "REQUEST" }), "REQUEST"), { dueNow: 1000, dueOnSite: 0 });
+});
+
+test("initialBookingStatus sama dengan create_booking", () => {
+  assert.equal(initialBookingStatus("FULL", 350000, on), "PENDING");
+  assert.equal(initialBookingStatus("DEPOSIT", 1500, on), "PENDING");
+  // Bayar sekarang 0 tidak pernah PENDING.
+  assert.equal(initialBookingStatus("FULL", 0, on), "CONFIRMED");
+  assert.equal(initialBookingStatus("DEPOSIT", 0, on), "CONFIRMED");
+  assert.equal(initialBookingStatus("ON_SITE", 0, on), "CONFIRMED");
+  assert.equal(initialBookingStatus("ON_SITE", 0, manual), "REQUESTED");
+  assert.equal(initialBookingStatus("REQUEST", 0, on), "REQUESTED");
+  assert.equal(initialBookingStatus("REQUEST", 200000, on), "REQUESTED");
 });
 
 test("needsApproval", () => {

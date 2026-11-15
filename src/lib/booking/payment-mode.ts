@@ -1,10 +1,13 @@
 // Aturan cara bayar yang dipakai UI dan API. Harus sama persis dengan
-// create_booking (supabase/migrations/20261115000300_create_booking_payment_modes.sql):
+// create_booking (supabase/migrations/20261115000500_payment_mode_minimums.sql):
 // aturan no-show (deposit_after_no_show) hanya ada di server, jadi modul ini
 // tidak memegang data riwayat pelanggan.
 
-import type { MerchantSettings, OnSitePaymentMethod, PaymentMode, Service } from "@/types/database";
+import type { BookingStatus, MerchantSettings, OnSitePaymentMethod, PaymentMode, Service } from "@/types/database";
 import { formatRupiah } from "@/lib/format";
+
+/** Nominal QRIS terkecil (Rupiah), batas minimum QR Xendit. Sama dengan konstanta 1500 di create_booking. */
+export const MIN_ONLINE_CHARGE = 1500;
 
 export type PaymentSettings = Pick<MerchantSettings, "allow_pay_on_site" | "auto_confirm_on_site">;
 
@@ -27,7 +30,8 @@ export function effectivePaymentMode(
 /**
  * Nominal bayar sekarang dan di tempat untuk mode efektif tertentu. PERCENT
  * dibulatkan dengan Math.round (setengah ke atas), sama dengan round() di SQL
- * untuk nilai positif. `price` dan `deposit_value` dibungkus Number() karena
+ * untuk nilai positif. DP tidak pernah di bawah MIN_ONLINE_CHARGE kecuali
+ * harganya sendiri lebih kecil. `price` dan `deposit_value` dibungkus Number() karena
  * PostgREST bisa mengembalikan numeric sebagai string.
  */
 export function computeAmounts(
@@ -46,6 +50,9 @@ export function computeAmounts(
   } else {
     dueNow = price;
   }
+  if (price > 0 && service.deposit_type !== null && (mode === "DEPOSIT" || mode === "REQUEST")) {
+    dueNow = Math.max(dueNow, Math.min(price, MIN_ONLINE_CHARGE));
+  }
   return { dueNow, dueOnSite: price - dueNow };
 }
 
@@ -53,6 +60,16 @@ export function computeAmounts(
 export function needsApproval(mode: PaymentMode, settings: PaymentSettings): boolean {
   if (mode === "REQUEST") return true;
   return mode === "ON_SITE" && !settings.auto_confirm_on_site;
+}
+
+/** Status awal booking, sama dengan create_booking: bayar sekarang 0 tidak pernah PENDING. */
+export function initialBookingStatus(
+  mode: PaymentMode,
+  dueNow: number,
+  settings: PaymentSettings,
+): Extract<BookingStatus, "PENDING" | "CONFIRMED" | "REQUESTED"> {
+  if (needsApproval(mode, settings)) return "REQUESTED";
+  return mode !== "ON_SITE" && dueNow > 0 ? "PENDING" : "CONFIRMED";
 }
 
 /** Label singkat cara bayar untuk halaman publik dan daftar layanan (teks M1). */

@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import {
   computeAmounts,
   effectivePaymentMode,
-  needsApproval,
+  initialBookingStatus,
   paymentLabel,
   type PaymentSettings,
 } from "@/lib/booking/payment-mode";
@@ -301,17 +301,18 @@ export function BookingFlow({
   if (selectedService) {
     const mode = effectivePaymentMode(selectedService, paymentSettings);
     const { dueNow, dueOnSite } = computeAmounts(selectedService, mode);
-    const approval = needsApproval(mode, paymentSettings);
+    const status = initialBookingStatus(mode, dueNow, paymentSettings);
     payment = {
       dueNow,
       dueOnSite,
-      approval,
-      online: !approval && mode !== "ON_SITE",
-      actionLabel: approval
-        ? "Kirim permintaan"
-        : mode === "ON_SITE"
-          ? "Konfirmasi booking"
-          : `Bayar ${formatRupiah(dueNow)}`,
+      approval: status === "REQUESTED",
+      online: status === "PENDING",
+      actionLabel:
+        status === "REQUESTED"
+          ? "Kirim permintaan"
+          : status === "CONFIRMED"
+            ? "Konfirmasi booking"
+            : `Bayar ${formatRupiah(dueNow)}`,
     };
   }
 

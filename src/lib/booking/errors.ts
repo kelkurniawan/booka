@@ -74,6 +74,12 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Merchant belum mengaktifkan pembayaran",
   },
+  // create_booking: nominal bayar sekarang di bawah minimum QRIS (layanan
+  // lama yang harganya 1..1499, dibuat sebelum Zod menolaknya).
+  BK022: {
+    status: 409,
+    message: "Nominal pembayaran terlalu kecil untuk QRIS. Hubungi merchant.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {

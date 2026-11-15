@@ -2888,3 +2888,103 @@ select
          and has_function_privilege('authenticated', 'public.mark_booking_attendance(uuid, boolean)', 'EXECUTE'))
        then 'FAIL t34g authenticated tidak bisa EXECUTE'
        else 'OK   t34g aksi merchant hanya untuk authenticated' end as t34g;
+
+-- ===========================================================================
+-- 35. Nominal minimum QRIS dan booking gratis (20261115000500)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('35353535-0000-0000-0000-000000000001', 'minimum35@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO'
+  where id = '35353535-0000-0000-0000-000000000001';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '35353535-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+
+-- Layanan 0003 meniru layanan lama yang dibuat sebelum Zod menolak harga < 1500.
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value) values
+  ('35353535-5e5e-0000-0000-000000000001', '35353535-0000-0000-0000-000000000001', 'Gratis', 0, 60, 'FULL', null, null),
+  ('35353535-5e5e-0000-0000-000000000002', '35353535-0000-0000-0000-000000000001', 'DP 1 persen', 100000, 60, 'DEPOSIT', 'PERCENT', 1),
+  ('35353535-5e5e-0000-0000-000000000003', '35353535-0000-0000-0000-000000000001', 'Harga lama', 1000, 60, 'FULL', null, null),
+  ('35353535-5e5e-0000-0000-000000000004', '35353535-0000-0000-0000-000000000001', 'DP 30 persen', 99999, 60, 'DEPOSIT', 'PERCENT', 30),
+  ('35353535-5e5e-0000-0000-000000000005', '35353535-0000-0000-0000-000000000001', 'Permintaan', 200000, 60, 'REQUEST', null, null),
+  ('35353535-5e5e-0000-0000-000000000006', '35353535-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null);
+
+-- Sama dengan cb33/check33, untuk merchant 35.
+create or replace function pg_temp.cb35(p_service integer, p_slot integer, p_phone text, p_can_charge boolean default true)
+returns setof public.bookings language plpgsql as $$
+begin
+  return query select * from public.create_booking(
+    '35353535-0000-0000-0000-000000000001',
+    ('35353535-5e5e-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    pg_temp.jakarta_future(1, 1 + p_slot / 8, (9 + p_slot % 8) || ':00'),
+    'Pelanggan 35', p_phone, null, p_can_charge);
+end $$;
+
+create or replace function pg_temp.check35(
+  p_label text, p_service integer, p_slot integer, p_phone text,
+  p_status text, p_due_now numeric, p_due_on_site numeric, p_mode text,
+  p_can_charge boolean default true)
+returns text language plpgsql as $$
+declare
+  b public.bookings;
+begin
+  select * into b from pg_temp.cb35(p_service, p_slot, p_phone, p_can_charge);
+  if b.status::text = p_status and b.amount_due_now = p_due_now
+     and b.amount_due_on_site = p_due_on_site and b.payment_mode::text = p_mode then
+    return 'OK   ' || p_label;
+  end if;
+  return 'FAIL ' || p_label || ' -> ' || b.status || ' ' || b.amount_due_now || '/'
+    || b.amount_due_on_site || ' ' || b.payment_mode;
+exception when others then
+  return 'FAIL ' || p_label || ' [' || sqlstate || ' ' || sqlerrm || ']';
+end $$;
+
+-- 35a. FULL gratis langsung CONFIRMED tanpa koneksi payment.
+select pg_temp.check35('t35a FULL gratis -> CONFIRMED 0/0 tanpa koneksi', 1, 0, '+6281335000001', 'CONFIRMED', 0, 0, 'FULL', false);
+
+-- 35b. DP 1 persen dari 100000 = 1000, dinaikkan ke minimum 1500.
+select pg_temp.check35('t35b DEPOSIT 1% -> PENDING 1500/98500', 2, 1, '+6281335000002', 'PENDING', 1500, 98500, 'DEPOSIT');
+
+-- 35c. Layanan lama FULL 1000 di bawah minimum QRIS.
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb35(3, 2, '+6281335000003')$q$,
+  'BK022', 't35c FULL 1000 di bawah minimum QRIS');
+
+-- 35d. DP di atas minimum tidak berubah: 99999 x 30% = 30000.
+select pg_temp.check35('t35d DEPOSIT 30% dari 99999 -> 30000/69999', 4, 3, '+6281335000004', 'PENDING', 30000, 69999, 'DEPOSIT');
+
+-- 35e. BK020 tetap berlaku untuk REQUEST.
+update public.merchant_settings set max_active_per_phone = 1
+  where merchant_id = '35353535-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.cb35(5, 4, '+6281335000005')$q$, 't35e REQUEST pertama');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb35(5, 5, '+6281335000005')$q$,
+  'BK020', 't35e REQUEST kedua nomor sama');
+update public.merchant_settings set max_active_per_phone = 2
+  where merchant_id = '35353535-0000-0000-0000-000000000001';
+
+-- 35f. REQUEST tanpa DP tetap butuh koneksi payment.
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb35(5, 6, '+6281335000006', false)$q$,
+  'BK021', 't35f REQUEST tanpa DP tanpa koneksi payment');
+
+-- 35g. ON_SITE tanpa auto-confirm dan tanpa koneksi payment diterima sebagai REQUESTED.
+update public.merchant_settings set auto_confirm_on_site = false
+  where merchant_id = '35353535-0000-0000-0000-000000000001';
+select pg_temp.check35('t35g ON_SITE manual tanpa koneksi -> REQUESTED 0/450000', 6, 7, '+6281335000007', 'REQUESTED', 0, 450000, 'ON_SITE', false);
+update public.merchant_settings set auto_confirm_on_site = true
+  where merchant_id = '35353535-0000-0000-0000-000000000001';
+
+-- 35h. NULL pada keputusan/kehadiran ditolak, bukan diam-diam dianggap tolak/tidak datang.
+select pg_temp.ins34('+6281343000035', 'REQUESTED', now() + interval '5 days', 100000, 0, now() + interval '1 day');
+select pg_temp.act34('t35h decide_booking_request NULL ditolak', '34343434-0000-0000-0000-000000000001',
+  format('select * from public.decide_booking_request(%L, null)', pg_temp.id34('+6281343000035')), '22004');
+select case when status = 'REQUESTED' then 'OK   t35h permintaan tetap REQUESTED'
+            else 'FAIL t35h permintaan jadi ' || status end as t35h1
+from public.bookings where customer_whatsapp = '+6281343000035';
+select pg_temp.ins34('+6281343000036', 'CONFIRMED', now() - interval '3 hours', 0, 100000);
+select pg_temp.act34('t35h mark_booking_attendance NULL ditolak', '34343434-0000-0000-0000-000000000001',
+  format('select public.mark_booking_attendance(%L, null)', pg_temp.id34('+6281343000036')), '22004');
+select case when no_show_at is null and attended_at is null then 'OK   t35h kehadiran tidak tercatat'
+            else 'FAIL t35h kehadiran tercatat' end as t35h2
+from public.bookings where customer_whatsapp = '+6281343000036';

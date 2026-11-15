@@ -49,6 +49,12 @@ test("BK021 (pembayaran belum diaktifkan) -> 409, pesan pembayaran", () => {
   assert.equal(result.message, "Merchant belum mengaktifkan pembayaran");
 });
 
+test("BK022 (nominal di bawah minimum QRIS) -> 409", () => {
+  const result = mapBookingError("BK022");
+  assert.equal(result.status, 409);
+  assert.equal(result.message, "Nominal pembayaran terlalu kecil untuk QRIS. Hubungi merchant.");
+});
+
 test("errcode tak dikenal -> 500, pesan generik (tidak membocorkan detail Postgres)", () => {
   const result = mapBookingError("42P01");
   assert.equal(result.status, 500);

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { serviceSchema } from "./service";
+import { ONLINE_PRICE_MESSAGE, serviceSchema } from "./service";
 
 const VALID = {
   name: "Riasan pengantin",
@@ -109,4 +109,19 @@ test("REQUEST tanpa DP diterima", () => {
   const p = serviceSchema.parse({ ...VALID, payment_mode: "REQUEST", deposit_type: "", deposit_value: "" });
   assert.equal(p.payment_mode, "REQUEST");
   assert.equal(p.deposit_value, null);
+});
+
+test("harga 1..1499 ditolak untuk FULL, DEPOSIT, REQUEST; ON_SITE dan 0 diterima", () => {
+  for (const payment_mode of ["FULL", "DEPOSIT", "REQUEST"]) {
+    const r = serviceSchema.safeParse({ ...VALID, price: "1499", payment_mode, deposit_type: "PERCENT", deposit_value: "30" });
+    assert.equal(r.success, false, payment_mode);
+    assert.ok(r.error?.issues.some((i) => i.path[0] === "price" && i.message === ONLINE_PRICE_MESSAGE), payment_mode);
+    assert.equal(
+      serviceSchema.safeParse({ ...VALID, price: "1500", payment_mode, deposit_type: "PERCENT", deposit_value: "30" }).success,
+      true,
+      payment_mode,
+    );
+  }
+  assert.equal(serviceSchema.safeParse({ ...VALID, price: "1000", payment_mode: "ON_SITE" }).success, true);
+  assert.equal(serviceSchema.safeParse({ ...VALID, price: "0", payment_mode: "FULL" }).success, true);
 });

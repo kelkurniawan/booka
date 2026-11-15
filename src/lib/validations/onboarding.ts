@@ -12,7 +12,7 @@ import type {
 
 import { availabilitySchema } from "./availability";
 import { onboardingSchema } from "./merchant";
-import { serviceFieldsSchema } from "./service";
+import { ONLINE_PRICE_MESSAGE, isChargeablePrice, serviceFieldsSchema } from "./service";
 
 /**
  * Validasi jawaban kuesioner onboarding.
@@ -153,6 +153,11 @@ export const wizardServiceSchema = serviceFieldsSchema
               message: issue.message,
             });
           }
+          return z.NEVER;
+        }
+        // Layanan wizard selalu FULL (default kolom), jadi wajib bisa ditagih QRIS.
+        if (!isChargeablePrice(hasil.data)) {
+          ctx.addIssue({ code: "custom", message: ONLINE_PRICE_MESSAGE });
           return z.NEVER;
         }
         return hasil.data;
