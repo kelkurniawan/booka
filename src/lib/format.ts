@@ -36,7 +36,7 @@ export function formatRupiah(value: number): string {
  */
 const JAKARTA_OFFSET_MS = 7 * 60 * 60 * 1000;
 
-const WEEKDAYS_ID = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+export const WEEKDAYS_ID = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 const MONTHS_ID = [
   "Januari",
   "Februari",
@@ -51,7 +51,7 @@ const MONTHS_ID = [
   "November",
   "Desember",
 ];
-const MONTHS_ID_SHORT = [
+export const MONTHS_ID_SHORT = [
   "Jan",
   "Feb",
   "Mar",
@@ -77,7 +77,7 @@ type JakartaWallClock = {
   minute: number;
 };
 
-function toJakartaWallClock(value: string | Date): JakartaWallClock {
+export function toJakartaWallClock(value: string | Date): JakartaWallClock {
   const shifted = new Date(new Date(value).getTime() + JAKARTA_OFFSET_MS);
   return {
     weekday: shifted.getUTCDay(),
@@ -91,6 +91,12 @@ function toJakartaWallClock(value: string | Date): JakartaWallClock {
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
+}
+
+/** "Sabtu, 14 November 2026" */
+export function formatLongDate(value: string | Date): string {
+  const p = toJakartaWallClock(value);
+  return `${WEEKDAYS_ID[p.weekday]}, ${p.day} ${MONTHS_ID[p.month]} ${p.year}`;
 }
 
 export function formatDateTime(value: string | Date): string {
