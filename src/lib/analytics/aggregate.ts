@@ -7,6 +7,9 @@ export type AnalyticsBooking = {
   service_price: number;
   created_at: string;
   paid_at: string | null;
+  amount_due_now: number;
+  amount_due_on_site: number;
+  paid_on_site_at: string | null;
   start_datetime: string;
   customer_whatsapp: string;
   /** Snapshot nama staf; null untuk booking tanpa staf. */
@@ -76,9 +79,11 @@ function sortBreakdown(map: Map<string, Breakdown>): Breakdown[] {
 /**
  * Fungsi murni: daftar booking -> ringkasan analitik untuk [from, to).
  *
- * Pendapatan dihitung dari booking PAID menurut `paid_at` (kapan uangnya
- * masuk), sedangkan tingkat bayar menurut `created_at` (dari semua pesanan
- * yang dibuat di periode ini, berapa yang dibayar). Hari tersibuk memakai
+ * Pendapatan = uang yang benar-benar diterima: `amount_due_now` booking PAID
+ * menurut `paid_at`, ditambah `amount_due_on_site` menurut `paid_on_site_at`.
+ * Booking terkonfirmasi (PAID, atau CONFIRMED menurut `created_at`) dihitung
+ * untuk jumlah; tingkat bayar menurut `created_at` (dari semua pesanan
+ * yang dibuat di periode ini, berapa yang terkonfirmasi). Hari tersibuk memakai
  * `start_datetime` -- kapan merchant benar-benar bekerja.
  */
 export function aggregateBookings(
@@ -110,33 +115,52 @@ export function aggregateBookings(
   let createdCount = 0;
   let createdPaid = 0;
 
+  const addRevenue = (booking: AnalyticsBooking, amount: number, atISO: string) => {
+    if (amount <= 0) return;
+    revenue += amount;
+    const point = series.get(bucketKey(jakartaDateISO(new Date(atISO)), bucket));
+    if (point) point.revenue += amount;
+    const service = services.get(booking.service_name) ?? { name: booking.service_name, count: 0, revenue: 0 };
+    service.revenue += amount;
+    services.set(booking.service_name, service);
+    if (booking.staff_name) {
+      const row = staff.get(booking.staff_name) ?? { name: booking.staff_name, count: 0, revenue: 0 };
+      row.revenue += amount;
+      staff.set(booking.staff_name, row);
+    }
+  };
+
   for (const booking of bookings) {
+    const isPaid = booking.status === "PAID";
+    const confirmed = isPaid || booking.status === "CONFIRMED";
+    // Kapan booking menjadi pasti: DP masuk (PAID) atau disetujui merchant (CONFIRMED).
+    const confirmedAt = isPaid ? booking.paid_at : booking.created_at;
+
     if (inRange(booking.created_at)) {
       createdCount += 1;
-      if (booking.status === "PAID") createdPaid += 1;
+      if (confirmed) createdPaid += 1;
     }
 
-    if (booking.status !== "PAID" || !inRange(booking.paid_at)) continue;
+    // Uang yang benar-benar diterima, masing-masing pada waktunya sendiri.
+    if (isPaid && inRange(booking.paid_at)) addRevenue(booking, Number(booking.amount_due_now), booking.paid_at!);
+    if (confirmed && inRange(booking.paid_on_site_at)) {
+      addRevenue(booking, Number(booking.amount_due_on_site), booking.paid_on_site_at!);
+    }
 
-    const price = Number(booking.service_price);
-    revenue += price;
+    if (!confirmed || !inRange(confirmedAt)) continue;
+
     paidCount += 1;
 
-    const point = series.get(bucketKey(jakartaDateISO(new Date(booking.paid_at!)), bucket));
-    if (point) {
-      point.revenue += price;
-      point.count += 1;
-    }
+    const point = series.get(bucketKey(jakartaDateISO(new Date(confirmedAt!)), bucket));
+    if (point) point.count += 1;
 
     const service = services.get(booking.service_name) ?? { name: booking.service_name, count: 0, revenue: 0 };
     service.count += 1;
-    service.revenue += price;
     services.set(booking.service_name, service);
 
     if (booking.staff_name) {
       const row = staff.get(booking.staff_name) ?? { name: booking.staff_name, count: 0, revenue: 0 };
       row.count += 1;
-      row.revenue += price;
       staff.set(booking.staff_name, row);
     }
 
