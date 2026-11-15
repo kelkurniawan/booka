@@ -31,7 +31,7 @@ export function BookingDetailShell({ closeHref, children }: { closeHref: string;
 
   if (isDesktop) {
     return (
-      <aside aria-labelledby="booking-detail-title" className="relative border-l pl-6">
+      <aside aria-labelledby="booking-detail-title" className="relative hidden border-l pl-6 lg:sticky lg:top-4 lg:block">
         <Button asChild variant="ghost" size="icon" className="absolute top-0 right-0 size-11">
           <Link href={closeHref} scroll={false} aria-label="Tutup detail">
             <X />

@@ -416,6 +416,7 @@ export function BookingDetailPanel({
               disabled={pending}
               onClick={() => run(() => actions.attend(booking.id, true))}
             >
+              {pending ? <Spinner /> : null}
               Tandai hadir
             </Button>
           ) : null}
@@ -441,6 +442,7 @@ export function BookingDetailPanel({
               disabled={pending}
               onClick={() => run(() => actions.attend(booking.id, false))}
             >
+              {pending ? <Spinner /> : null}
               Tidak datang
             </Button>
           ) : null}

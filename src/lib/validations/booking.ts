@@ -84,8 +84,8 @@ export const bookingSearchSchema = z
   .trim()
   .max(80, "Pencarian maksimal 80 karakter")
   .refine(
-    (value) => !/[,.()%\\]/.test(value),
-    "Pencarian tidak boleh mengandung karakter , . ( ) % atau \\",
+    (value) => !/[,.()%"\\]/.test(value),
+    "Pencarian tidak boleh mengandung karakter , . ( ) % \" atau \\",
   );
 
 /** Body Server Action `cancelBooking` di src/app/dashboard/bookings/actions.ts. */

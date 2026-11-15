@@ -10,7 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ROUTES } from "@/lib/routes";
 
 import { createManualBooking } from "../actions";
-import type { ManualBookingInput, ManualBookingResult } from "../manual-booking";
+import { type ManualBookingInput, type ManualBookingResult, manualBookingErrorMessage } from "../manual-booking";
 import { SlotField } from "../slot-field";
 
 type ServiceOption = { id: string; name: string; duration_minutes: number; price: number };
@@ -41,6 +41,8 @@ export function ManualBookingForm({
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  // Naik saat slot bentrok: me-remount SlotField supaya daftar jam diambil ulang.
+  const [slotsRound, setSlotsRound] = useState(0);
   const [pending, startTransition] = useTransition();
 
   function submit(event: React.FormEvent) {
@@ -59,7 +61,13 @@ export function ManualBookingForm({
         customerWhatsapp: whatsapp,
       });
       if (result.ok) router.push(`${ROUTES.bookings}?tab=mendatang&b=${result.id}`);
-      else setMessage(result.message);
+      else {
+        setMessage(result.message);
+        if (result.message === manualBookingErrorMessage("23P01")) {
+          setStartISO(null);
+          setSlotsRound((n) => n + 1);
+        }
+      }
     });
   }
 
@@ -112,6 +120,7 @@ export function ManualBookingForm({
       <div className="flex flex-col gap-2">
         <Label id="mb-jam-label">Jam</Label>
         <SlotField
+          key={slotsRound}
           username={username}
           serviceId={serviceId || null}
           staffId={staffId || null}

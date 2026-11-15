@@ -37,6 +37,9 @@ export default async function NewBookingPage() {
     loadPublicStaff(supabase, user.id, merchant.subscription_tier),
   ]);
   const services = servicesResult.data ?? [];
+  if (servicesResult.error) {
+    console.error("booking manual: muat layanan gagal", { merchantId: user.id, error: servicesResult.error });
+  }
 
   return (
     <>
@@ -44,7 +47,11 @@ export default async function NewBookingPage() {
         title="Booking manual"
         description="Catat booking dari telepon atau pelanggan yang datang langsung."
       />
-      {services.length === 0 ? (
+      {servicesResult.error ? (
+        <p role="alert" className="text-muted-foreground rounded-xl border p-4 text-sm">
+          Gagal memuat layanan. Muat ulang halaman.
+        </p>
+      ) : services.length === 0 ? (
         <Empty className="border">
           <EmptyHeader>
             <EmptyMedia variant="icon">

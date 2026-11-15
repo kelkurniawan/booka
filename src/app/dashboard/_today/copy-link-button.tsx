@@ -12,7 +12,7 @@ export function CopyLinkButton({ path }: { path: string }) {
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
       toast.success("Tautan disalin");
     } catch {
-      toast.error("Gagal menyalin tautan.");
+      toast("Gagal menyalin tautan.");
     }
   }
   return (

@@ -19,13 +19,13 @@ export function ActionBadge({
   if (!count) return null;
   return (
     <span
-      aria-label={`${count} perlu tindakan`}
       className={cn(
         "bg-primary text-primary-foreground inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[11px] leading-none font-medium tabular-nums",
         className,
       )}
     >
       {count > 99 ? "99+" : count}
+      <span className="sr-only"> perlu tindakan</span>
     </span>
   );
 }

@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
+import { getSessionUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -67,7 +68,8 @@ export const getTabCounts = cache(
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("dashboard_tab_counts");
     if (error || !data?.[0]) {
-      console.error("dashboard_tab_counts gagal", error);
+      const user = await getSessionUser(); // cache(): tanpa round-trip tambahan
+      console.error("dashboard_tab_counts gagal", { merchantId: user?.id, error });
       return null;
     }
     return { action: data[0].action_count, upcoming: data[0].upcoming_count };

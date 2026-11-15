@@ -62,7 +62,7 @@ export const Dibatalkan: Story = { render: () => panel(CANCELLED) };
 export const Manual: Story = { render: () => panel(MANUAL, []) };
 export const RiwayatPesanGagal: Story = { render: () => panel(PAID_DEPOSIT, null) };
 export const Hp390DiDalamSheet: Story = {
-  parameters: { viewport: { defaultViewport: "mobile1" } },
+  globals: { viewport: { value: "hp", isRotated: false } },
   render: () => (
     <BookingDetailShell closeHref="/dashboard/bookings">
       <BookingDetailPanel booking={ON_SITE_UNPAID} nowMs={NOW_MS} username="demo" notifications={NOTIFICATIONS} actions={actions} />

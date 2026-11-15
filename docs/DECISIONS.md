@@ -524,3 +524,7 @@ Spek F0 menyebut Storybook 9. Yang terpasang Storybook 10 dengan
 ## 31. Batas booking manual dan jadwal ulang oleh merchant
 
 Merchant maksimal membuat 50 booking `MANUAL` per 24 jam bergulir (BK035, semua status termasuk `CANCELLED`) dan menjadwal ulang satu booking maksimal 3 kali (BK036, `merchant_reschedule_count`), supaya akun merchant tidak bisa dipakai membanjiri notifikasi ke nomor pelanggan; angkanya mungkin perlu diskalakan per paket nanti.
+
+## 32. Target sentuh 44px hanya untuk layar sentuh
+
+Sidebar desktop memakai baris shadcn `h-8` karena dipakai dengan pointer; target 44px berlaku di layar sentuh (`max-md`, navigasi bawah dan panel booking). Tidak ada baris 44px di sidebar desktop.

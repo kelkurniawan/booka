@@ -64,17 +64,16 @@ async function loadNotifications(bookingId: string, merchantId: string): Promise
 }
 
 /**
- * Shell halaman Booking -- SENGAJA tidak meng-`await` query apa pun di
- * sini (pola yang sama dengan dashboard/page.tsx, lihat komentarnya).
- * Daftar yang dipaginasi (BookingsList) adalah komponen async yang dibungkus
- * <Suspense>, jadi header + tab + pencarian langsung tampil.
+ * Shell halaman Booking. Yang di-`await` di sini hanya query kecil (jumlah
+ * badge tab dan booking terpilih, paralel); daftar yang dipaginasi
+ * (BookingsList) adalah komponen async yang dibungkus <Suspense>, jadi
+ * header + tab + pencarian langsung tampil.
  *
  * `key` pada <Suspense> pembungkus BookingsList SENGAJA berubah tiap kali
  * status/pencarian/halaman/ukuran halaman berubah -- itu yang membuat React
  * me-remount boundary-nya (menampilkan TableSkeleton lagi) tiap kali
- * kombinasi filter/paginasi berubah, TANPA ikut membuat kartu ringkasan di
- * atasnya berkedip (boundary-nya terpisah dan key-nya tidak berubah untuk
- * perubahan yang sama).
+ * kombinasi filter/paginasi berubah, TANPA ikut membuat tab dan pencarian di
+ * atasnya berkedip (boundary-nya terpisah).
  */
 export default async function BookingsPage({
   searchParams,
@@ -86,7 +85,6 @@ export default async function BookingsPage({
 
   // Tab tak dikenal jatuh ke "Akan datang".
   const tab = parseTab(rawParams.tab);
-  const counts = await getTabCounts();
 
   // Pencarian yang gagal validasi (kepanjangan, atau mengandung karakter
   // yang berarti khusus di filter PostgREST) diperlakukan sebagai "tanpa
@@ -119,7 +117,7 @@ export default async function BookingsPage({
     ? sizeParam
     : DEFAULT_PAGE_SIZE;
 
-  const selected = await loadSelectedBooking(rawParams.b, user.id);
+  const [counts, selected] = await Promise.all([getTabCounts(), loadSelectedBooking(rawParams.b, user.id)]);
   const notifications = selected ? await loadNotifications(selected.id, user.id) : null;
   const nowMs = new Date().getTime();
   const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
