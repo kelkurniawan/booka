@@ -1,12 +1,14 @@
 # Notifikasi: email dan WhatsApp
 
-Marky mengirim tiga jenis pesan:
+Marky mengirim beberapa jenis pesan:
 
 | Kapan | Ke siapa | Kanal | Paket |
 | --- | --- | --- | --- |
 | DP dibayar | Merchant | Email + WhatsApp | Semua |
 | DP dibayar | Pelanggan | WhatsApp | Semua |
-| H-1, pukul 08:00 WIB | Pelanggan | WhatsApp | Pro, Studio |
+| Pelanggan ubah jadwal atau batal | Merchant | Email + WhatsApp | Semua |
+| H-1, sekitar 08:00 WIB | Pelanggan | WhatsApp, email, notifikasi HP | Pro, Studio |
+| Pagi hari jadwal, sekitar 08:00 WIB | Pelanggan | WhatsApp, email, notifikasi HP | Pro, Studio |
 
 Semua kanal **opsional**. Kanal tanpa konfigurasi dilewati dan tercatat
 `SKIPPED` di tabel `notification_log` — webhook pembayaran tidak pernah gagal
@@ -119,14 +121,53 @@ Redeploy agar env baru terbaca.
 Adapternya ada di `src/lib/notify/whatsapp.ts`. Menambah penyedia lain (mis.
 WhatsApp Cloud API resmi) cukup menambah satu cabang di sana.
 
-## Reminder H-1
+## Pengingat pelanggan (H-1 dan pagi hari jadwal)
 
-Cron `/api/cron/reminders` jalan setiap hari pukul 01:00 UTC (08:00 WIB) dan
-mengingatkan semua booking PAID yang jadwalnya besok, khusus merchant Pro dan
-Studio. Butuh `CRON_SECRET` yang sama dengan cron pembatalan.
+Cron `/api/cron/reminders` jalan sekali sehari pukul 01:00 UTC (08:00 WIB),
+batas cron paket Vercel Hobby. Satu jalan mencakup dua offset:
+
+- **H-1**: semua booking PAID/CONFIRMED yang jadwalnya besok (hari kalender WIB).
+- **Pagi hari jadwal**: booking PAID/CONFIRMED hari ini, mulai 30 menit dari
+  saat cron jalan sampai akhir hari WIB. Jadwal sebelum itu tidak diingatkan.
+
+Tidak ada kirim ganda: jendela keduanya tidak tumpang tindih dan tiap offset
+punya jenis sendiri di `notification_log` (`REMINDER_CUSTOMER` dan
+`REMINDER_CUSTOMER_SAME_DAY`). Khusus merchant Pro dan Studio. Offset dan kanal
+diatur merchant di Pengaturan, lalu bisa ditimpa pelanggan per booking
+(WhatsApp, email, notifikasi HP). Butuh `CRON_SECRET` yang sama dengan cron
+pembatalan. Setiap jalan juga memangkas langganan push yang sudah kedaluwarsa.
 
 Uji manual:
 
 ```bash
 curl -H "Authorization: Bearer $CRON_SECRET" https://domainanda.id/api/cron/reminders
 ```
+
+Respons: `{ candidates, pruned }`. Memanggilnya lagi tidak mengirim ulang.
+
+## Notifikasi HP (web push)
+
+Pelanggan bisa mengaktifkan notifikasi di halaman pesanannya; pengingat lalu
+masuk ke HP tanpa nomor WhatsApp atau email.
+
+1. Buat kunci VAPID: `npx web-push generate-vapid-keys`.
+2. Isi tiga env di Vercel:
+
+   ```
+   NEXT_PUBLIC_VAPID_PUBLIC_KEY=<public key>
+   VAPID_PRIVATE_KEY=<private key>
+   VAPID_SUBJECT=mailto:notifikasi@domainanda.id
+   ```
+
+   Tanpa ketiganya, kanal ini tercatat `SKIPPED` ("Notifikasi HP belum
+   dikonfigurasi").
+3. Redeploy.
+
+Catatan:
+
+- **iPhone**: web push hanya jalan bila situs sudah ditambahkan ke Layar Utama
+  (Bagikan, lalu Tambah ke Layar Utama), iOS 16.4 ke atas.
+- Langganan disimpan **terenkripsi** dengan `TOKEN_ENCRYPTION_KEY`, terikat ke
+  booking dan merchant-nya. Mengganti kunci itu membuat langganan lama tidak
+  terbaca; langganan seperti itu dihapus otomatis saat cron berikutnya.
+- Langganan yang ditolak layanan push (404/410) juga dihapus.

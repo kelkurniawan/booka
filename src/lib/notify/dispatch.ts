@@ -25,6 +25,8 @@ import {
   merchantConfirmedWhatsapp,
   merchantRequestedEmail,
   merchantRequestedWhatsapp,
+  customerReminderEmail,
+  customerReminderPush,
   customerReminderWhatsapp,
   merchantPaidEmail,
   merchantPaidWhatsapp,
@@ -34,8 +36,19 @@ import {
   merchantRescheduledWhatsapp,
   type BookingMessageData,
 } from "./templates";
+import { decryptSecret } from "@/lib/crypto/secret-box";
+import { pushConfig, sendPush, type StoredPushSubscription } from "./push";
+import {
+  DEFAULT_REMINDER_SETTINGS,
+  REMINDER_KIND,
+  REMINDER_TIERS,
+  reminderChannels,
+  type ReminderOffset,
+  type ReminderPrefs,
+  type ReminderSettings,
+} from "./reminder-plan";
 import { sendWhatsapp, type SendResult, type WhatsappConfig } from "./whatsapp";
-import { tomorrowJakartaRange } from "./window";
+import { sameDayRange, tomorrowJakartaRange } from "./window";
 
 type Admin = SupabaseClient<Database>;
 type BookingRow = Pick<
@@ -45,6 +58,7 @@ type BookingRow = Pick<
   | "service_name"
   | "service_price"
   | "start_datetime"
+  | "end_datetime"
   | "customer_name"
   | "customer_whatsapp"
   | "access_token"
@@ -62,10 +76,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
-
-/** Paket yang mendapat reminder H-1 (PRD bagian 1: "WhatsApp Reminder" di Pro). */
-const REMINDER_TIERS: Merchant["subscription_tier"][] = ["PRO", "STUDIO"];
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
 
 function emailConfig(): EmailConfig | null {
   const env = serverEnv();
@@ -141,6 +152,7 @@ async function deliver(
 function messageData(booking: BookingRow, merchant: MerchantRow): BookingMessageData {
   const base = serverEnv().appUrl;
   return {
+    bookingId: booking.id,
     merchantName: merchant.full_name ?? merchant.username ?? "Merchant",
     merchantWhatsapp: merchant.whatsapp_number,
     customerName: booking.customer_name,
@@ -148,6 +160,7 @@ function messageData(booking: BookingRow, merchant: MerchantRow): BookingMessage
     serviceName: booking.service_name,
     servicePrice: booking.service_price,
     startDatetime: booking.start_datetime,
+    endDatetime: booking.end_datetime,
     staffName: booking.staff_name,
     statusUrl: new URL(ROUTES.bookingStatus(booking.access_token), base).toString(),
     dashboardUrl: new URL(ROUTES.bookings, base).toString(),
@@ -322,17 +335,11 @@ export async function notifyCustomerChange(bookingId: string, change: CustomerCh
 /** Jeda antarpesan supaya gateway WhatsApp tidak terlihat seperti bot spam. */
 const REMINDER_GAP_MS = 1500;
 
-/**
- * Reminder H-1 ke pelanggan untuk semua booking PAID/CONFIRMED yang jadwalnya besok
- * (hari kalender WIB), khusus merchant Pro/Studio. Dipanggil cron harian.
- */
-export async function sendDayBeforeReminders(
-  now: Date = new Date(),
-): Promise<{ candidates: number }> {
-  const whatsapp = whatsappConfig();
-  const admin = createAdminClient();
-  const { from, to } = tomorrowJakartaRange(now);
+type ReminderBooking = BookingRow;
 
+async function loadWindow(admin: Admin, offset: ReminderOffset, now: Date) {
+  const { from, to } = offset === "DAY_BEFORE" ? tomorrowJakartaRange(now) : sameDayRange(now);
+  if (from >= to) return null;
   const { data: bookings, error } = await admin
     .from("bookings")
     .select(BOOKING_COLUMNS)
@@ -342,28 +349,141 @@ export async function sendDayBeforeReminders(
     .order("start_datetime", { ascending: true })
     .limit(1000);
   if (error) throw error;
-  if (!bookings || bookings.length === 0) return { candidates: 0 };
+  if (!bookings || bookings.length === 0) return null;
 
   const merchantIds = [...new Set(bookings.map((b) => b.merchant_id))];
-  const { data: merchants, error: merchantsError } = await admin
-    .from("merchants")
-    .select("id, full_name, username, whatsapp_number, subscription_tier")
-    .in("id", merchantIds)
-    .in("subscription_tier", REMINDER_TIERS);
-  if (merchantsError) throw merchantsError;
+  const bookingIds = bookings.map((b) => b.id);
+  const [merchants, settings, prefs, subs] = await Promise.all([
+    admin
+      .from("merchants")
+      .select("id, full_name, username, whatsapp_number, subscription_tier")
+      .in("id", merchantIds)
+      .in("subscription_tier", REMINDER_TIERS),
+    admin
+      .from("merchant_settings")
+      .select("merchant_id, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day")
+      .in("merchant_id", merchantIds),
+    admin
+      .from("booking_reminder_prefs")
+      .select("booking_id, whatsapp, email, day_before, same_day")
+      .in("booking_id", bookingIds)
+      .in("merchant_id", merchantIds),
+    admin
+      .from("push_subscriptions")
+      .select("id, booking_id, merchant_id, subscription_enc")
+      .in("booking_id", bookingIds)
+      .in("merchant_id", merchantIds),
+  ]);
+  for (const r of [merchants, settings, prefs, subs]) if (r.error) throw r.error;
 
-  const merchantById = new Map((merchants ?? []).map((m) => [m.id, m]));
-  const eligible = bookings.filter((b) => merchantById.has(b.merchant_id));
-  for (const booking of eligible) {
-    const merchant = merchantById.get(booking.merchant_id)!;
-    const data = messageData(booking, merchant);
-    await deliver(admin, booking, "REMINDER_CUSTOMER", "WHATSAPP", async () => {
-      if (!whatsapp) return { skipped: "WhatsApp belum dikonfigurasi" };
-      const result = await sendWhatsapp(whatsapp, booking.customer_whatsapp, customerReminderWhatsapp(data));
-      await new Promise((resolve) => setTimeout(resolve, REMINDER_GAP_MS));
-      return result;
-    });
+  const merchantById = new Map((merchants.data ?? []).map((m) => [m.id, m]));
+  const settingsById = new Map<string, ReminderSettings>((settings.data ?? []).map((x) => [x.merchant_id, x]));
+  const prefsById = new Map<string, ReminderPrefs>((prefs.data ?? []).map((x) => [x.booking_id, x]));
+  const subsById = new Map<string, NonNullable<typeof subs.data>>();
+  for (const sub of subs.data ?? []) subsById.set(sub.booking_id, [...(subsById.get(sub.booking_id) ?? []), sub]);
+
+  return bookings.flatMap((booking) => {
+    const merchant = merchantById.get(booking.merchant_id);
+    if (!merchant) return [];
+    const bookingSubs = subsById.get(booking.id) ?? [];
+    const channels = reminderChannels(
+      offset,
+      settingsById.get(booking.merchant_id) ?? DEFAULT_REMINDER_SETTINGS,
+      prefsById.get(booking.id) ?? null,
+      bookingSubs.length > 0,
+    );
+    if (channels.length === 0) return [];
+    return [{ booking, merchant, channels, email: prefsById.get(booking.id)?.email ?? null, subs: bookingSubs }];
+  });
+}
+
+/** Kirim push ke semua langganan; ok bila minimal satu berhasil, langganan mati dihapus. */
+async function sendPushToAll(
+  admin: Admin,
+  booking: ReminderBooking,
+  subs: { id: string; subscription_enc: string }[],
+  payload: ReturnType<typeof customerReminderPush>,
+): Promise<SendResult | { skipped: string }> {
+  const config = pushConfig();
+  if (!config) return { skipped: "Notifikasi HP belum dikonfigurasi" };
+  let delivered = false;
+  let lastReason = "tidak ada langganan";
+  for (const row of subs) {
+    let sub: StoredPushSubscription;
+    try {
+      sub = JSON.parse(
+        decryptSecret(row.subscription_enc, {
+          merchantId: booking.merchant_id,
+          bookingId: booking.id,
+          field: "push_subscription",
+        }),
+      );
+    } catch {
+      await admin.from("push_subscriptions").delete().eq("id", row.id).eq("merchant_id", booking.merchant_id);
+      lastReason = "push: langganan tidak terbaca";
+      continue;
+    }
+    const result = await sendPush(config, sub, payload);
+    if (result.ok) delivered = true;
+    else {
+      lastReason = result.reason;
+      if (result.gone) {
+        await admin.from("push_subscriptions").delete().eq("id", row.id).eq("merchant_id", booking.merchant_id);
+      }
+    }
+  }
+  return delivered ? { ok: true } : { ok: false, reason: lastReason };
+}
+
+/**
+ * Pengingat ke pelanggan untuk dua offset (H-1 dan pagi hari jadwal) lewat
+ * WhatsApp, email, dan push, hanya booking PAID/CONFIRMED milik merchant
+ * Pro/Studio. Dipanggil cron harian; idempoten lewat notification_log.
+ */
+export async function sendReminders(
+  now: Date = new Date(),
+): Promise<{ candidates: number; pruned: number }> {
+  const admin = createAdminClient();
+  const { data: prunedCount, error: pruneError } = await admin.rpc("prune_push_subscriptions");
+  if (pruneError) console.error("[notify] gagal memangkas langganan push", { error: pruneError });
+  const pruned = pruneError ? 0 : (prunedCount ?? 0);
+
+  const whatsapp = whatsappConfig();
+  const email = emailConfig();
+  const candidateIds = new Set<string>();
+
+  for (const offset of ["DAY_BEFORE", "SAME_DAY"] as const) {
+    const items = await loadWindow(admin, offset, now);
+    for (const { booking, merchant, channels, email: to, subs } of items ?? []) {
+      candidateIds.add(booking.id);
+      const data = messageData(booking, merchant);
+      const kind = REMINDER_KIND[offset];
+      for (const channel of channels) {
+        if (channel === "WHATSAPP") {
+          await deliver(admin, booking, kind, channel, async () => {
+            if (!whatsapp) return { skipped: "WhatsApp belum dikonfigurasi" };
+            const result = await sendWhatsapp(
+              whatsapp,
+              booking.customer_whatsapp,
+              customerReminderWhatsapp(data, offset),
+            );
+            await new Promise((resolve) => setTimeout(resolve, REMINDER_GAP_MS));
+            return result;
+          });
+        } else if (channel === "EMAIL") {
+          await deliver(admin, booking, kind, channel, async () => {
+            if (!email) return { skipped: "Email belum dikonfigurasi" };
+            if (!to) return { skipped: "Pelanggan tidak punya email" };
+            return sendEmail(email, to, customerReminderEmail(data, offset));
+          });
+        } else {
+          await deliver(admin, booking, kind, channel, () =>
+            sendPushToAll(admin, booking, subs, customerReminderPush(data, offset)),
+          );
+        }
+      }
+    }
   }
 
-  return { candidates: eligible.length };
+  return { candidates: candidateIds.size, pruned };
 }

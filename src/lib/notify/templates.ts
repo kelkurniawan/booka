@@ -1,10 +1,15 @@
-import { formatDateTime, formatRupiah } from "@/lib/format";
+import { buildBookingIcs } from "@/lib/booking/calendar";
+import { formatDateTime, formatRupiah, formatTime } from "@/lib/format";
+
+import type { PushPayload } from "./push";
+import type { ReminderOffset } from "./reminder-plan";
 
 /**
  * Data yang dibutuhkan semua templat. Sengaja datar dan berisi string jadi,
  * supaya templat murni (tanpa I/O) dan bisa diuji tanpa database.
  */
 export type BookingMessageData = {
+  bookingId: string;
   merchantName: string;
   /** Nomor WhatsApp merchant (+62…) untuk dihubungi pelanggan, bila diisi. */
   merchantWhatsapp: string | null;
@@ -13,6 +18,7 @@ export type BookingMessageData = {
   serviceName: string;
   servicePrice: number;
   startDatetime: string;
+  endDatetime: string;
   /** Nama staf yang menangani, khusus paket Studio. */
   staffName?: string | null;
   /** URL absolut /pesanan/{token} milik pelanggan. */
@@ -29,7 +35,13 @@ export type BookingMessageData = {
   paidOnSite?: boolean;
 };
 
-export type EmailMessage = { subject: string; text: string; html: string };
+export type EmailMessage = {
+  subject: string;
+  text: string;
+  html: string;
+  /** content base64, diteruskan apa adanya ke Resend. */
+  attachments?: { filename: string; content: string }[];
+};
 
 function when(data: BookingMessageData): string {
   return `${formatDateTime(data.startDatetime)} WIB`;
@@ -134,10 +146,14 @@ export function customerPaidWhatsapp(data: BookingMessageData): string {
     .join("\n");
 }
 
-/** WhatsApp ke pelanggan sehari sebelum jadwal (paket Pro ke atas). */
-export function customerReminderWhatsapp(data: BookingMessageData): string {
+function reminderWord(offset: ReminderOffset): string {
+  return offset === "SAME_DAY" ? "hari ini" : "besok";
+}
+
+/** WhatsApp ke pelanggan sehari sebelum atau pagi hari jadwal (paket Pro ke atas). */
+export function customerReminderWhatsapp(data: BookingMessageData, offset: ReminderOffset): string {
   return [
-    `Halo ${data.customerName}, pengingat jadwal *${data.serviceName}* di *${data.merchantName}* besok:`,
+    `Halo ${data.customerName}, pengingat jadwal *${data.serviceName}* di *${data.merchantName}* ${reminderWord(offset)}:`,
     "",
     when(data),
     staffLine(data),
@@ -150,6 +166,41 @@ export function customerReminderWhatsapp(data: BookingMessageData): string {
   ]
     .filter((line) => line !== null)
     .join("\n");
+}
+
+/** Email pengingat ke pelanggan, dengan lampiran booking.ics. */
+export function customerReminderEmail(data: BookingMessageData, offset: ReminderOffset): EmailMessage {
+  // Tanpa tanda bintang WhatsApp; isi sama, ditambah tautan detail.
+  const text = customerReminderWhatsapp(data, offset).replace(/\*/g, "");
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">${text
+    .split("\n")
+    .map((line) => (line ? `<p style="margin:0">${escapeHtml(line)}</p>` : "<br>"))
+    .join("")}
+<p><a href="${escapeHtml(data.statusUrl)}">Lihat detail booking</a></p>
+</div>`;
+  const ics = buildBookingIcs({
+    uid: data.bookingId,
+    title: `${data.serviceName} di ${data.merchantName}`,
+    startUtc: data.startDatetime,
+    endUtc: data.endDatetime,
+    location: data.merchantName,
+  });
+  return {
+    subject: `Pengingat ${reminderWord(offset)}: ${data.serviceName}`,
+    text,
+    html,
+    attachments: [{ filename: "booking.ics", content: Buffer.from(ics, "utf8").toString("base64") }],
+  };
+}
+
+export function customerReminderPush(data: BookingMessageData, offset: ReminderOffset): PushPayload {
+  const word = offset === "SAME_DAY" ? "Hari ini" : "Besok";
+  return {
+    title: `Pengingat: ${data.serviceName}`,
+    body: `${word}, ${formatTime(data.startDatetime)} WIB di ${data.merchantName}.`,
+    url: data.statusUrl,
+    tag: `booking-${data.bookingId}`,
+  };
 }
 
 function contactLine(data: BookingMessageData, prefix: string): string | null {
