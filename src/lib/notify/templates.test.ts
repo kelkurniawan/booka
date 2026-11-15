@@ -170,6 +170,8 @@ test("template perubahan oleh pelanggan memuat nama, layanan, jadwal, tautan das
     merchantCustomerCancelledEmail(base).html,
   ];
   for (const out of outputs) assert.doesNotMatch(out, /—|·/);
+  // Email tidak memakai penanda tebal WhatsApp.
+  for (const out of [outputs[1], outputs[3], outputs[5], outputs[7]]) assert.doesNotMatch(out, /\*/);
   for (const out of [outputs[0], outputs[1], outputs[4], outputs[5]]) {
     assert.match(out, /Rina/);
     assert.match(out, /Makeup Wisuda/);
@@ -202,6 +204,7 @@ test("push pengingat: judul, isi, url, dan tag per booking", () => {
   const p = customerReminderPush(base, "SAME_DAY");
   assert.equal(p.title, "Pengingat: Makeup Wisuda");
   assert.equal(p.body, "Hari ini, 17:30 WIB di Studio Mawar.");
-  assert.equal(p.url, base.statusUrl);
+  assert.equal(p.url, new URL(base.statusUrl).pathname);
+  assert.ok(p.url.startsWith("/"));
   assert.equal(p.tag, `booking-${base.bookingId}`);
 });

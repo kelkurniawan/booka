@@ -198,7 +198,8 @@ export function customerReminderPush(data: BookingMessageData, offset: ReminderO
   return {
     title: `Pengingat: ${data.serviceName}`,
     body: `${word}, ${formatTime(data.startDatetime)} WIB di ${data.merchantName}.`,
-    url: data.statusUrl,
+    // Path saja: sw.js hanya membuka origin sendiri, jadi URL absolut ke domain Marky gagal di domain merchant.
+    url: new URL(data.statusUrl).pathname,
     tag: `booking-${data.bookingId}`,
   };
 }
@@ -349,7 +350,7 @@ export function merchantRescheduledWhatsapp(data: BookingMessageData, oldStart: 
 }
 
 export function merchantRescheduledEmail(data: BookingMessageData, oldStart: string): EmailMessage {
-  return simpleEmail(`Jadwal diubah pelanggan: ${data.serviceName}`, rescheduledLine(data, oldStart), [], data);
+  return simpleEmail(`Jadwal diubah pelanggan: ${data.serviceName}`, rescheduledLine(data, oldStart).replace(/\*/g, ""), [], data);
 }
 
 export function merchantCustomerCancelledWhatsapp(data: BookingMessageData): string {
@@ -357,5 +358,5 @@ export function merchantCustomerCancelledWhatsapp(data: BookingMessageData): str
 }
 
 export function merchantCustomerCancelledEmail(data: BookingMessageData): EmailMessage {
-  return simpleEmail(`Booking dibatalkan pelanggan: ${data.serviceName}`, cancelledLine(data), [], data);
+  return simpleEmail(`Booking dibatalkan pelanggan: ${data.serviceName}`, cancelledLine(data).replace(/\*/g, ""), [], data);
 }

@@ -528,3 +528,7 @@ Merchant maksimal membuat 50 booking `MANUAL` per 24 jam bergulir (BK035, semua 
 ## 32. Target sentuh 44px hanya untuk layar sentuh
 
 Sidebar desktop memakai baris shadcn `h-8` karena dipakai dengan pointer; target 44px berlaku di layar sentuh (`max-md`, navigasi bawah dan panel booking). Tidak ada baris 44px di sidebar desktop.
+
+## 33. Keputusan F4: pengingat, push, dan lisensi web-push
+
+Pengingat hanya punya dua offset, H-1 dan pagi hari jadwal, karena cron Vercel Hobby jalan sekali sehari pukul 08.00 WIB. Tampilan ke pelanggan memangkas offset ke yang masih terjangkau (`reachableOffsets`): H-1 hanya bila 08.00 WIB hari sebelumnya belum lewat, hari H hanya bila 08.00 WIB hari itu belum lewat dan booking mulai paling cepat 08.30. Booking yang sudah selesai tidak menampilkan pengingat. Cron memproses maksimal 1000 booking per offset per jalan dan mencatat peringatan bila batas tercapai. Payload web push membawa path saja, bukan URL absolut, karena `sw.js` hanya membuka origin sendiri. Pembatalan booking `REQUESTED` oleh pelanggan tidak menampilkan baris kebijakan selain "Belum ada pembayaran." (Keputusan 4 rencana F4). Pustaka `web-push` berlisensi MPL-2.0 (copyleft per berkas): dipakai apa adanya sebagai dependensi npm tanpa memodifikasi sumbernya, sehingga tidak ada kewajiban membuka kode Marky.

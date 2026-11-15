@@ -337,6 +337,8 @@ const REMINDER_GAP_MS = 1500;
 
 type ReminderBooking = BookingRow;
 
+const REMINDER_BATCH_LIMIT = 1000;
+
 async function loadWindow(admin: Admin, offset: ReminderOffset, now: Date) {
   const { from, to } = offset === "DAY_BEFORE" ? tomorrowJakartaRange(now) : sameDayRange(now);
   if (from >= to) return null;
@@ -347,9 +349,12 @@ async function loadWindow(admin: Admin, offset: ReminderOffset, now: Date) {
     .gte("start_datetime", from.toISOString())
     .lt("start_datetime", to.toISOString())
     .order("start_datetime", { ascending: true })
-    .limit(1000);
+    .limit(REMINDER_BATCH_LIMIT);
   if (error) throw error;
   if (!bookings || bookings.length === 0) return null;
+  if (bookings.length >= REMINDER_BATCH_LIMIT) {
+    console.warn("[reminders] batas booking per jalan tercapai, sisanya tidak dikirim", { offset, limit: REMINDER_BATCH_LIMIT });
+  }
 
   const merchantIds = [...new Set(bookings.map((b) => b.merchant_id))];
   const bookingIds = bookings.map((b) => b.id);
