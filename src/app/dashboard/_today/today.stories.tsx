@@ -16,13 +16,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const TindakanBerisi: Story = {
-  render: () => <ActionList items={ACTION_ITEMS} total={3} pastUnmarked={0} nowMs={NOW_MS} onDecide={ok} />,
+  render: () => <ActionList items={ACTION_ITEMS} total={3} pastUnmarked={0} onDecide={ok} />,
 };
 export const TindakanKosong: Story = {
-  render: () => <ActionList items={[]} total={0} pastUnmarked={0} nowMs={NOW_MS} onDecide={ok} />,
+  render: () => <ActionList items={[]} total={0} pastUnmarked={0} onDecide={ok} />,
 };
 export const TindakanBelumDitandai: Story = {
-  render: () => <ActionList items={ACTION_ITEMS} total={7} pastUnmarked={4} nowMs={NOW_MS} onDecide={ok} />,
+  render: () => <ActionList items={ACTION_ITEMS} total={7} pastUnmarked={4} onDecide={ok} />,
 };
 export const AgendaGarisSekarang: Story = {
   render: () => <Agenda rows={AGENDA_ROWS} nowMs={NOW_MS} onAttend={ok} />,

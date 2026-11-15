@@ -49,7 +49,7 @@ export function WeekSummary({
           </div>
         ))}
       </dl>
-      <Link href={ROUTES.analytics} className="inline-block text-sm underline underline-offset-4">
+      <Link href={ROUTES.analytics} className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
         Buka analitik
       </Link>
     </section>

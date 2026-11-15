@@ -8,25 +8,11 @@ import { Check } from "lucide-react";
 import type { BookingListItem } from "@/app/dashboard/bookings/booking-state";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
-import { attendanceWindow, nowLineIndex } from "@/lib/booking/dashboard";
-import { ON_SITE_METHOD_LABEL } from "@/lib/booking/payment-mode";
-import { formatRupiah, formatTime } from "@/lib/format";
+import { attendanceWindow, nowLineIndex, paymentSummary } from "@/lib/booking/dashboard";
+import { formatTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 
 type ActionResult = { ok: boolean; message?: string };
-
-function payment(b: BookingListItem): { main: string; sub: string | null } {
-  const main =
-    b.amount_due_now > 0
-      ? `${b.amount_due_on_site > 0 ? "DP" : "Lunas"} ${formatRupiah(b.amount_due_now)}${b.amount_due_on_site > 0 ? " lunas" : ""}`
-      : "Bayar di tempat";
-  if (b.amount_due_on_site <= 0) return { main, sub: null };
-  if (b.paid_on_site_at) {
-    const method = b.paid_on_site_method ? ON_SITE_METHOD_LABEL[b.paid_on_site_method].toLowerCase() : "";
-    return { main, sub: `Lunas ${formatRupiah(b.amount_due_on_site)} ${method}`.trim() };
-  }
-  return { main, sub: `Sisa ${formatRupiah(b.amount_due_on_site)} di tempat` };
-}
 
 export function Agenda({
   rows,
@@ -48,7 +34,7 @@ export function Agenda({
       {rows.length === 0 ? (
         <div className="space-y-2 px-4 py-6 text-sm">
           <p className="text-muted-foreground">Belum ada booking hari ini.</p>
-          <Link href={ROUTES.newBooking} className="underline underline-offset-4">
+          <Link href={ROUTES.newBooking} className="inline-flex min-h-11 items-center underline underline-offset-4">
             Catat booking manual
           </Link>
         </div>
@@ -77,7 +63,7 @@ function AgendaItem({
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const pay = payment(b);
+  const pay = paymentSummary(b);
   const canAttend = !b.attended_at && !b.no_show_at && attendanceWindow(b.start_datetime, nowMs).canAttend;
 
   function attend() {

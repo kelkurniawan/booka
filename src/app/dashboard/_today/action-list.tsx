@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -20,13 +20,11 @@ export function ActionList({
   items,
   total,
   pastUnmarked,
-  nowMs,
   onDecide,
 }: {
   items: BookingListItem[];
   total: number;
   pastUnmarked: number;
-  nowMs: number;
   onDecide: (id: string, approve: boolean) => Promise<ActionResult>;
 }) {
   const empty = items.length === 0 && pastUnmarked === 0;
@@ -36,7 +34,7 @@ export function ActionList({
         <h2 id="today-action" className="text-base font-semibold">
           Perlu tindakan <span className="text-muted-foreground font-normal">{total}</span>
         </h2>
-        <Link href={ACTION_HREF} className="text-sm underline underline-offset-4">
+        <Link href={ACTION_HREF} className="inline-flex min-h-11 items-center text-sm underline underline-offset-4">
           Lihat semua
         </Link>
       </header>
@@ -45,7 +43,7 @@ export function ActionList({
       ) : (
         <ul className="divide-y">
           {items.map((b) => (
-            <ActionRow key={b.id} booking={b} nowMs={nowMs} onDecide={onDecide} />
+            <ActionRow key={b.id} booking={b} onDecide={onDecide} />
           ))}
           {pastUnmarked > 0 ? (
             <li className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -71,14 +69,21 @@ function ActionRow({
   onDecide,
 }: {
   booking: BookingListItem;
-  nowMs: number;
   onDecide: (id: string, approve: boolean) => Promise<ActionResult>;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirmReject, setConfirmReject] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pressed, setPressed] = useState<"approve" | "reject" | null>(null);
   const kind = actionKind(b);
+
+  // Konfirmasi tolak kedaluwarsa sendiri setelah 5 detik.
+  useEffect(() => {
+    if (!confirmReject) return;
+    const t = setTimeout(() => setConfirmReject(false), 5000);
+    return () => clearTimeout(t);
+  }, [confirmReject]);
 
   function decide(approve: boolean) {
     if (!approve && !confirmReject) {
@@ -86,11 +91,13 @@ function ActionRow({
       return;
     }
     setError(null);
+    setPressed(approve ? "approve" : "reject");
     start(async () => {
       const result = await onDecide(b.id, approve);
       if (result.ok) router.refresh();
       else setError(result.message ?? "Gagal menyimpan. Coba lagi.");
       setConfirmReject(false);
+      setPressed(null);
     });
   }
 
@@ -119,10 +126,16 @@ function ActionRow({
         {kind === "REQUEST" ? (
           <div className="grid grid-cols-2 gap-2 sm:flex">
             <Button variant="outline" className="h-11" disabled={pending} onClick={() => decide(false)}>
+              {pending && pressed === "reject" ? <Spinner /> : null}
               {confirmReject ? "Yakin tolak?" : "Tolak"}
             </Button>
+            {confirmReject && !pending ? (
+              <Button variant="ghost" className="h-11" onClick={() => setConfirmReject(false)}>
+                Batal
+              </Button>
+            ) : null}
             <Button className="h-11" disabled={pending} onClick={() => decide(true)}>
-              {pending ? <Spinner /> : null}
+              {pending && pressed === "approve" ? <Spinner /> : null}
               {b.amount_due_now > 0 ? "Setujui dan kirim tagihan" : "Setujui"}
             </Button>
           </div>

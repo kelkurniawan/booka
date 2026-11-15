@@ -86,17 +86,17 @@ export async function ActionSection() {
       items={rows.filter((b) => !isPast(b)).slice(0, 5)}
       total={rows.length}
       pastUnmarked={rows.filter(isPast).length}
-      nowMs={new Date().getTime()}
       onDecide={decideRequest}
     />
   );
 }
 
 export async function AgendaSection() {
+  const nowMs = new Date().getTime();
   const { user } = await requireMerchant();
   const rows = await getTodayRows(user.id);
   if (!rows) return <LoadError name="agenda" />;
-  return <Agenda rows={rows} nowMs={new Date().getTime()} onAttend={(id) => markAttendance(id, true)} />;
+  return <Agenda rows={rows} nowMs={nowMs} onAttend={(id) => markAttendance(id, true)} />;
 }
 
 export async function OnSiteSection() {
@@ -111,8 +111,9 @@ export async function WeekSection() {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("dashboard_week_summary");
   const row = data?.[0];
+  if (error) console.error("dashboard_week_summary gagal", { merchantId: user.id, error });
+  else if (!row) console.error("dashboard_week_summary tanpa baris", { merchantId: user.id });
   if (error || !row) {
-    console.error("dashboard_week_summary gagal", { merchantId: user.id, error });
     return <LoadError name="ringkasan 7 hari" />;
   }
   return (
