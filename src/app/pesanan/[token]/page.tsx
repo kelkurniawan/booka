@@ -10,12 +10,14 @@ import {
   policyLines,
   type ManageSettings,
 } from "@/lib/booking/customer-manage";
+import { clientEnv } from "@/lib/env/client";
 import { ROUTES } from "@/lib/routes";
 import { REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTheme } from "@/lib/theme/resolve";
 import type { BookingReminderPrefs, MerchantSettings, MerchantTheme, SubscriptionTier } from "@/types/database";
 
+import { PushPrompt } from "./push-prompt";
 import { BookingStatusView, type BookingPageRow, type ReminderView } from "./booking-status-view";
 
 /**
@@ -229,6 +231,7 @@ export default async function BookingStatusPage({
   }
 
   const { booking, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders } = data;
+  const vapidPublicKey = clientEnv().vapidPublicKey;
 
   return (
     <BookingStatusView
@@ -243,6 +246,11 @@ export default async function BookingStatusPage({
       policy={policy}
       contact={contact}
       reminders={reminders}
+      pushPrompt={
+        reminders?.channelsOffered.push && !reminders.push && vapidPublicKey ? (
+          <PushPrompt token={token} bookingId={booking.id} vapidPublicKey={vapidPublicKey} offsets={reminders.offsets} />
+        ) : null
+      }
     />
   );
 }

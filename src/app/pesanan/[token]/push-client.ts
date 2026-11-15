@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from "react";
+
 import { ROUTES } from "@/lib/routes";
 
 // Modul browser murni: dipanggil dari komponen client, tanpa dependensi server.
@@ -51,4 +53,13 @@ export async function unsubscribePush(token: string): Promise<Result> {
   } catch {
     return { ok: false, message: "Gagal mematikan notifikasi." };
   }
+}
+
+export const IOS_INSTALL_HINT = 'Pakai iPhone? Ketuk Bagikan lalu "Tambah ke Layar Utama", buka dari ikon itu, lalu aktifkan lagi.';
+
+const noopSubscribe = () => () => {};
+
+/** null selama SSR/hidrasi, supaya markup server tidak menebak kemampuan browser. */
+export function usePushSupport(): PushSupport | null {
+  return useSyncExternalStore(noopSubscribe, pushSupport, () => null);
 }

@@ -7,6 +7,7 @@ import { REQUEST_REJECT_REASON } from "@/lib/booking/payment-mode";
 import { bookingCode, CUSTOMER_CANCEL_REASON, DEFAULT_MANAGE_SETTINGS, manageState, policyLines } from "@/lib/booking/customer-manage";
 
 import { BookingStatusView, type BookingPageRow, type ReminderView } from "./booking-status-view";
+import { PushPrompt } from "./push-prompt";
 import { ContactSheet, type ContactData } from "./contact-sheet";
 
 const NOW = Date.parse("2026-11-18T03:00:00Z");
@@ -174,4 +175,17 @@ export const SheetHubungiTanpaWhatsapp: StoryObj<typeof ContactSheet> = {
       onOpenChange={() => {}}
     />
   ),
+};
+
+export const AjakanNotifikasiHp: Story = {
+  args: {
+    pushPrompt: (
+      <PushPrompt
+        token={sampleToken}
+        bookingId="b-1"
+        vapidPublicKey="BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U"
+        offsets={{ dayBefore: true, sameDay: true }}
+      />
+    ),
+  },
 };
