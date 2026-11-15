@@ -7,9 +7,23 @@ import { createClient } from "@/lib/supabase/server";
 
 import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
 
+import { DEFAULT_MANAGE_SETTINGS } from "@/lib/booking/customer-manage";
+
 import { AccountSection } from "./account-section";
 import { BookingSettingsForm } from "./booking-settings-form";
+import { ContactSettingsForm } from "./contact-settings-form";
+import { CustomerPolicyForm } from "./customer-policy-form";
+import { ReminderSettingsForm } from "./reminder-settings-form";
 import { SettingsForm } from "./settings-form";
+
+// Sama dengan default kolom di migration 20261116000200 bila baris belum ada.
+const DEFAULT_CONTACT = {
+  contact_phone: null, contact_email: null, contact_instagram: null, contact_threads: null,
+  contact_x: null, contact_tiktok: null, contact_hidden: [], reply_from: null, reply_until: null,
+};
+const DEFAULT_REMINDERS = {
+  reminder_whatsapp: true, reminder_email: true, reminder_push: true, reminder_day_before: true, reminder_same_day: false,
+};
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
@@ -32,7 +46,9 @@ export default async function SettingsPage() {
   const [{ data: settingsRow }, { data: onSite }] = await Promise.all([
     supabase
       .from("merchant_settings")
-      .select("allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show")
+      .select(
+        "allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show, allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day",
+      )
       .eq("merchant_id", user.id)
       .maybeSingle(),
     supabase
@@ -59,6 +75,15 @@ export default async function SettingsPage() {
       <BookingSettingsForm
         settings={settingsRow ?? DEFAULT_MERCHANT_SETTINGS}
         onSiteServices={onSite ?? []}
+      />
+      <CustomerPolicyForm settings={{ ...DEFAULT_MANAGE_SETTINGS, ...settingsRow }} />
+      <ContactSettingsForm
+        settings={{ ...DEFAULT_CONTACT, ...settingsRow }}
+        whatsapp={profile?.whatsapp_number ?? null}
+      />
+      <ReminderSettingsForm
+        settings={{ ...DEFAULT_REMINDERS, ...settingsRow }}
+        tier={merchant.subscription_tier}
       />
       <AccountSection username={merchant.username} />
     </>
