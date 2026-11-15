@@ -2,7 +2,7 @@ import { cache } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { contactLinks, contactWhatsappText, replyHoursLabel, type ContactSettings } from "@/lib/booking/contact";
+import { contactLinks, contactWhatsappText, DEFAULT_CONTACT, replyHoursLabel, type ContactSettings } from "@/lib/booking/contact";
 import {
   bookingCode,
   DEFAULT_MANAGE_SETTINGS,
@@ -11,8 +11,7 @@ import {
   type ManageSettings,
 } from "@/lib/booking/customer-manage";
 import { clientEnv } from "@/lib/env/client";
-import { ROUTES } from "@/lib/routes";
-import { REMINDER_TIERS } from "@/lib/notify/reminder-plan";
+import { DEFAULT_REMINDER_SETTINGS, reachableOffsets, REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTheme } from "@/lib/theme/resolve";
 import type { BookingReminderPrefs, MerchantSettings, MerchantTheme, SubscriptionTier } from "@/types/database";
@@ -42,22 +41,12 @@ type BookingPageParams = { token: string };
  * propnya nanti diteruskan ke komponen client di bawah.
  */
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count, customer_whatsapp" as const;
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count" as const;
 
 const SETTINGS_COLUMNS =
   "allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day" as const;
 
 type SettingsRow = ManageSettings & ContactSettings & Pick<MerchantSettings, "reminder_whatsapp" | "reminder_email" | "reminder_push" | "reminder_day_before" | "reminder_same_day">;
-
-// Default migration: WhatsApp, email, dan push menyala; hanya H-1.
-const DEFAULT_REMINDER_SETTINGS = {
-  reminder_whatsapp: true, reminder_email: true, reminder_push: true, reminder_day_before: true, reminder_same_day: false,
-};
-
-const DEFAULT_CONTACT_SETTINGS: ContactSettings = {
-  contact_phone: null, contact_email: null, contact_instagram: null, contact_threads: null,
-  contact_x: null, contact_tiktok: null, contact_hidden: [], reply_from: null, reply_until: null,
-};
 
 type MerchantInfo = {
   username: string | null;
@@ -86,7 +75,7 @@ const getBookingPageData = cache(async (token: string) => {
     .from("bookings")
     .select(BOOKING_COLUMNS)
     .eq("access_token", token)
-    .maybeSingle<BookingPageRow & { customer_whatsapp: string }>();
+    .maybeSingle<BookingPageRow>();
 
   // Query gagal (bukan "token salah") HARUS beda dari "booking ini memang
   // tidak ada" -- kalau ditelan jadi notFound(), pelanggan yang tautannya
@@ -153,20 +142,19 @@ const getBookingPageData = cache(async (token: string) => {
   for (const [name, res] of [["merchant_settings", settingsRes], ["booking_reminder_prefs", prefsRes], ["push_subscriptions", pushRes]] as const) {
     if (res.error) console.error(`[pesanan-page] gagal memuat ${name}`, { merchantId: booking.merchant_id, error: res.error });
   }
-  const settings: SettingsRow = settingsRes.data ?? { ...DEFAULT_MANAGE_SETTINGS, ...DEFAULT_CONTACT_SETTINGS, ...DEFAULT_REMINDER_SETTINGS };
+  const settings: SettingsRow = settingsRes.data ?? { ...DEFAULT_MANAGE_SETTINGS, ...DEFAULT_CONTACT, ...DEFAULT_REMINDER_SETTINGS };
   const prefs = prefsRes.data;
   const hasPush = (pushRes.count ?? 0) > 0;
-
-  // customer_whatsapp tetap di server (Task 9: 4 digit terakhir), tidak ikut ke tampilan.
-  const { customer_whatsapp: customerWhatsapp, ...bookingRow } = booking;
-  void customerWhatsapp;
 
   const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
   const code = bookingCode(booking.id);
   // Keputusan 17: kanal efektif = dinyalakan merchant DAN dipilih pelanggan.
   const reminderOn = REMINDER_TIERS.includes(merchant.subscription_tier) &&
     (booking.status === "PAID" || booking.status === "CONFIRMED") &&
+    Date.parse(booking.end_datetime) > nowMs &&
     (settings.reminder_whatsapp || settings.reminder_email || settings.reminder_push);
+  // Hanya offset yang masih bisa terkirim (jam kirim belum lewat), supaya tampilan tidak menjanjikan pengingat yang tak akan datang.
+  const reachable = reachableOffsets(booking.start_datetime, booking.end_datetime, nowMs);
   const reminders: ReminderView | null = reminderOn
     ? {
         whatsapp: settings.reminder_whatsapp && (prefs?.whatsapp ?? true),
@@ -174,8 +162,8 @@ const getBookingPageData = cache(async (token: string) => {
         push: settings.reminder_push && hasPush,
         channelsOffered: { whatsapp: settings.reminder_whatsapp, email: settings.reminder_email, push: settings.reminder_push },
         offsets: {
-          dayBefore: prefs?.day_before ?? settings.reminder_day_before,
-          sameDay: prefs?.same_day ?? settings.reminder_same_day,
+          dayBefore: (prefs?.day_before ?? settings.reminder_day_before) && reachable.dayBefore,
+          sameDay: (prefs?.same_day ?? settings.reminder_same_day) && reachable.sameDay,
         },
       }
     : null;
@@ -184,8 +172,8 @@ const getBookingPageData = cache(async (token: string) => {
   });
   const links = contactLinks(merchant.whatsapp_number, settings, whatsappText);
   const contact = { ...links, replyHours: replyHoursLabel(settings) };
-  const manage = manageState(bookingRow, settings, nowMs);
-  const policy = policyLines(bookingRow, settings, merchantName);
+  const manage = manageState(booking, settings, nowMs);
+  const policy = policyLines(booking, settings, merchantName);
 
   // merchant_themes bisa objek (relasi 1-1) atau array satu elemen; sama
   // seperti src/app/[username]/page.tsx.
@@ -193,7 +181,7 @@ const getBookingPageData = cache(async (token: string) => {
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
   const theme = resolveTheme(merchant.subscription_tier, themeRow);
 
-  return { booking: bookingRow, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders };
+  return { booking, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders };
 });
 
 export async function generateMetadata({
@@ -213,7 +201,6 @@ export async function generateMetadata({
   // bocor lewat judul tab/riwayat browser yang bisa dilihat orang lain.
   return {
     title: "Status booking",
-    manifest: ROUTES.bookingManifest(token),
     robots: { index: false, follow: false },
   };
 }
@@ -247,7 +234,7 @@ export default async function BookingStatusPage({
       contact={contact}
       reminders={reminders}
       pushPrompt={
-        reminders?.channelsOffered.push && !reminders.push && vapidPublicKey ? (
+        reminders?.channelsOffered.push && !reminders.push && (reminders.offsets.dayBefore || reminders.offsets.sameDay) && vapidPublicKey ? (
           <PushPrompt token={token} bookingId={booking.id} vapidPublicKey={vapidPublicKey} offsets={reminders.offsets} />
         ) : null
       }

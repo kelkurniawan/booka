@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { Button } from "@/components/ui/button";
 import { clientEnv } from "@/lib/env/client";
-import { REMINDER_TIERS } from "@/lib/notify/reminder-plan";
+import { DEFAULT_REMINDER_SETTINGS, reachableOffsets, REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { ROUTES } from "@/lib/routes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTheme } from "@/lib/theme/resolve";
@@ -22,25 +22,24 @@ export const metadata: Metadata = {
 };
 
 // access_token sengaja tidak dipilih: hanya dipakai sebagai filter WHERE.
-const BOOKING_COLUMNS = "id, merchant_id, service_name, start_datetime, status, customer_whatsapp" as const;
+const BOOKING_COLUMNS = "id, merchant_id, service_name, start_datetime, end_datetime, status, customer_whatsapp" as const;
 
 type SettingsRow = Pick<
   MerchantSettings,
   "reminder_whatsapp" | "reminder_email" | "reminder_push" | "reminder_day_before" | "reminder_same_day"
 >;
 
-// Default migration: WhatsApp, email, dan push menyala; hanya H-1.
-const DEFAULT_SETTINGS: SettingsRow = {
-  reminder_whatsapp: true, reminder_email: true, reminder_push: true, reminder_day_before: true, reminder_same_day: false,
-};
-
 type MerchantRow = {
   subscription_tier: SubscriptionTier;
   merchant_themes?: MerchantTheme | MerchantTheme[] | null;
 };
 
+// Di luar komponen: react-hooks/purity melarang Date.now() saat render.
+const nowMs = () => Date.now();
+
 export default async function ReminderPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  if (!/^[0-9a-f]{48}$/.test(token)) notFound();
   const admin = createAdminClient();
 
   const { data: booking, error: bookingError } = await admin
@@ -89,13 +88,15 @@ export default async function ReminderPage({ params }: { params: Promise<{ token
   const merchant = merchantRes.data;
   const themeRaw = merchant.merchant_themes;
   const theme = resolveTheme(merchant.subscription_tier, Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null));
-  const settings = settingsRes.data ?? DEFAULT_SETTINGS;
+  const settings = settingsRes.data ?? DEFAULT_REMINDER_SETTINGS;
   const prefs = prefsRes.data;
   const backHref = ROUTES.bookingStatus(token);
+  const reachable = reachableOffsets(booking.start_datetime, booking.end_datetime, nowMs());
 
   const available =
     REMINDER_TIERS.includes(merchant.subscription_tier) &&
     (booking.status === "PAID" || booking.status === "CONFIRMED") &&
+    Date.parse(booking.end_datetime) > nowMs() &&
     (settings.reminder_whatsapp || settings.reminder_email || settings.reminder_push);
   if (!available) {
     return (
@@ -119,11 +120,12 @@ export default async function ReminderPage({ params }: { params: Promise<{ token
         startISO={booking.start_datetime}
         phoneLast4={booking.customer_whatsapp.slice(-4)}
         offered={{ whatsapp: settings.reminder_whatsapp, email: settings.reminder_email, push: settings.reminder_push }}
+        reachable={reachable}
         initial={{
           whatsapp: prefs?.whatsapp ?? true,
           email: prefs?.email ?? null,
-          dayBefore: prefs?.day_before ?? settings.reminder_day_before,
-          sameDay: prefs?.same_day ?? settings.reminder_same_day,
+          dayBefore: (prefs?.day_before ?? settings.reminder_day_before) && reachable.dayBefore,
+          sameDay: (prefs?.same_day ?? settings.reminder_same_day) && reachable.sameDay,
           push: (pushRes.count ?? 0) > 0,
         }}
       />

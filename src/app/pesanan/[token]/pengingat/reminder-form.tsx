@@ -42,13 +42,15 @@ function SwitchRow({ id, label, hint, checked, onChange, disabled, children }: {
   );
 }
 
-export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, phoneLast4, offered, initial }: {
+export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, phoneLast4, offered, reachable, initial }: {
   token: string;
   vapidPublicKey: string | undefined;
   serviceName: string;
   startISO: string;
   phoneLast4: string;
   offered: ReminderView["channelsOffered"];
+  /** Offset yang jam kirimnya belum lewat (reachableOffsets). */
+  reachable: { dayBefore: boolean; sameDay: boolean };
   initial: { whatsapp: boolean; email: string | null; dayBefore: boolean; sameDay: boolean; push: boolean };
 }) {
   const router = useRouter();
@@ -79,7 +81,7 @@ export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, pho
     const result = next ? await subscribePush(token, vapidPublicKey) : await unsubscribePush(token);
     if (result.ok) {
       setPush(next);
-      setPushMsg(next ? "Notifikasi di HP ini aktif." : "Notifikasi di HP ini dimatikan.");
+      setPushMsg(next ? "Notifikasi HP aktif." : "Notifikasi HP dimatikan untuk booking ini.");
     } else {
       setPushMsg(result.message);
     }
@@ -148,8 +150,8 @@ export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, pho
         {showPush ? (
           <SwitchRow
             id="rem-push"
-            label="Notifikasi di HP ini"
-            hint="Muncul di layar kunci. Tanpa aplikasi."
+            label="Notifikasi HP"
+            hint="Berlaku untuk semua perangkat yang Anda aktifkan."
             checked={push}
             onChange={(v) => void togglePush(v)}
             disabled={pushDisabled}
@@ -177,7 +179,7 @@ export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, pho
                   aria-invalid={emailError ? true : undefined}
                   aria-describedby={emailError ? "rem-email-error" : undefined}
                 />
-                {emailError ? <p id="rem-email-error" className="text-destructive text-sm">{emailError}</p> : null}
+                {emailError ? <p id="rem-email-error" role="alert" className="text-sm">{emailError}</p> : null}
               </div>
             ) : null}
           </SwitchRow>
@@ -187,18 +189,23 @@ export function ReminderForm({ token, vapidPublicKey, serviceName, startISO, pho
       <section className="flex flex-col gap-3">
         <h2 className="font-medium">Kapan</h2>
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant={dayBefore ? "default" : "outline"} aria-pressed={dayBefore} className="min-h-11" onClick={() => setDayBefore(!dayBefore)}>
+          <Button type="button" variant={dayBefore ? "default" : "outline"} aria-pressed={dayBefore} disabled={!reachable.dayBefore} className="min-h-11" onClick={() => setDayBefore(!dayBefore)}>
             {`H-1 (${hariSingkat(Date.parse(startISO) - DAY_MS)})`}
           </Button>
-          <Button type="button" variant={sameDay ? "default" : "outline"} aria-pressed={sameDay} className="min-h-11" onClick={() => setSameDay(!sameDay)}>
+          <Button type="button" variant={sameDay ? "default" : "outline"} aria-pressed={sameDay} disabled={!reachable.sameDay} className="min-h-11" onClick={() => setSameDay(!sameDay)}>
             Pagi hari jadwal
           </Button>
         </div>
+        {!reachable.dayBefore || !reachable.sameDay ? (
+          <p className="text-muted-foreground text-sm text-pretty">
+            Waktu kirim yang sudah lewat atau terlalu dekat dengan jadwal tidak bisa dipilih.
+          </p>
+        ) : null}
         <p aria-live="polite" className="text-muted-foreground text-sm">{summary}</p>
       </section>
 
       <div className="flex flex-col gap-2">
-        {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+        {error ? <p role="alert" className="text-sm text-pretty">{error}</p> : null}
         <Button type="button" className="min-h-11 w-full" disabled={busy} onClick={() => void save()}>
           {busy ? "Menyimpan..." : "Simpan pengingat"}
         </Button>

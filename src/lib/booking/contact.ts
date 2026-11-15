@@ -11,6 +11,12 @@ export type ContactSettings = Pick<MerchantSettings,
   "contact_phone" | "contact_email" | "contact_instagram" | "contact_threads" |
   "contact_x" | "contact_tiktok" | "contact_hidden" | "reply_from" | "reply_until">;
 
+/** Dipakai bila merchant belum punya baris merchant_settings (default kolom di migration). */
+export const DEFAULT_CONTACT: ContactSettings = {
+  contact_phone: null, contact_email: null, contact_instagram: null, contact_threads: null,
+  contact_x: null, contact_tiktok: null, contact_hidden: [], reply_from: null, reply_until: null,
+};
+
 export function contactLinks(whatsapp: string | null, s: ContactSettings, whatsappText: string):
   { whatsapp: ContactLink | null; others: ContactLink[] } {
   const visible = (channel: ContactChannel, value: string | null) =>

@@ -60,7 +60,7 @@ export function PushPrompt({ token, bookingId, vapidPublicKey, offsets }: {
       {support === "ios-needs-install" ? (
         <p className="text-sm text-pretty">{IOS_INSTALL_HINT}</p>
       ) : null}
-      {error ? <p role="alert" className="text-destructive text-sm">{error}</p> : null}
+      {error ? <p role="alert" className="text-sm text-pretty">{error}</p> : null}
       <div className="flex gap-2">
         <Button type="button" variant="outline" className="min-h-11 flex-1" onClick={dismiss}>Nanti saja</Button>
         {support === "available" ? (

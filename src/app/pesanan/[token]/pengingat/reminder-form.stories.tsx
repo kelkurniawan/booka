@@ -25,6 +25,7 @@ const meta = {
     startISO: "2026-11-21T03:00:00Z",
     phoneLast4: "7890",
     offered: { whatsapp: true, email: true, push: true },
+    reachable: { dayBefore: true, sameDay: true },
     initial: { whatsapp: true, email: null, dayBefore: true, sameDay: false, push: false },
   },
 } satisfies Meta<typeof ReminderForm>;

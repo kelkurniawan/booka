@@ -23,10 +23,13 @@ export function ReminderSummary({ token, startISO, reminders }: { token: string;
     offsets.sameDay ? hari(startISO) : null,
   ].filter((day) => day !== null);
   const anyChannel = rows.some((row) => row.on);
+  // offsets sudah dipangkas ke yang masih terjangkau (reachableOffsets).
   const schedule =
-    days.length > 0 && anyChannel
-      ? `Dikirim ${days.join(" dan ")}, sekitar pukul 08.00 WIB.`
-      : "Tidak ada pengingat yang akan dikirim.";
+    days.length === 0
+      ? "Pengingat tidak dikirim untuk booking ini."
+      : anyChannel
+        ? `Dikirim ${days.join(" dan ")}, sekitar pukul 08.00 WIB.`
+        : "Tidak ada pengingat yang akan dikirim.";
 
   return (
     <section className="border-border bg-card flex flex-col gap-3 rounded-[var(--radius)] border p-4">
