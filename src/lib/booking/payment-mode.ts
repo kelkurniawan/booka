@@ -16,6 +16,16 @@ export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {
   auto_confirm_on_site: true,
 };
 
+/** Bawaan satu baris merchant_settings, sama dengan default kolomnya (migration 20261115000200). */
+export const DEFAULT_MERCHANT_SETTINGS: Pick<
+  MerchantSettings,
+  "allow_pay_on_site" | "auto_confirm_on_site" | "max_active_per_phone" | "deposit_after_no_show"
+> = {
+  ...DEFAULT_PAYMENT_SETTINGS,
+  max_active_per_phone: 2,
+  deposit_after_no_show: false,
+};
+
 export type ServicePayment = Pick<Service, "price" | "payment_mode" | "deposit_type" | "deposit_value">;
 
 /** Mode efektif: ON_SITE jatuh ke FULL bila merchant mematikan bayar di tempat. */

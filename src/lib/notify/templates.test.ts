@@ -41,7 +41,7 @@ test("waLink membuang tanda + dan karakter non-digit", () => {
 
 test("email merchant memuat jadwal WIB, DP, dan tautan chat pelanggan", () => {
   const email = merchantPaidEmail(base);
-  assert.match(email.subject, /Rina — Makeup Wisuda/);
+  assert.match(email.subject, /Rina, Makeup Wisuda/);
   assert.match(email.text, /Rabu, 19 Agustus 2026 pukul 17:30 WIB/);
   assert.match(email.text, /Rp\s?150\.000/);
   assert.match(email.text, /https:\/\/wa\.me\/6289876543210/);
@@ -131,4 +131,20 @@ test("templat baru tanpa em dash", () => {
     merchantRequestedEmail(d).subject,
   ];
   for (const t of all) assert.ok(!t.includes("\u2014"));
+});
+
+test("pesan terkonfirmasi menulis Bayar di tempat hanya bila ada sisa di tempat", () => {
+  const due = { ...base, amountDueOnSite: 450000 };
+  assert.match(merchantConfirmedWhatsapp(due), /Bayar di tempat/);
+  assert.match(customerConfirmedWhatsapp(due), /Bayar di tempat/);
+  assert.match(merchantConfirmedEmail(due).text, /Bayar di tempat/);
+  // Booking gratis: tidak ada yang perlu dibayar di tempat.
+  const free = { ...base, amountDueOnSite: 0 };
+  assert.doesNotMatch(merchantConfirmedWhatsapp(free), /Bayar di tempat/);
+  assert.doesNotMatch(customerConfirmedWhatsapp(free), /Bayar di tempat/);
+  assert.doesNotMatch(merchantConfirmedEmail(free).text, /Bayar di tempat|membayar di tempat/);
+});
+
+test("subjek email booking dibayar tanpa em dash", () => {
+  assert.doesNotMatch(merchantPaidEmail(base).subject, /—/);
 });

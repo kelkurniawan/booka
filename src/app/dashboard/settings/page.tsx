@@ -5,7 +5,7 @@ import { requireMerchant } from "@/lib/auth/session";
 import { serverEnv } from "@/lib/env/server";
 import { createClient } from "@/lib/supabase/server";
 
-import { DEFAULT_PAYMENT_SETTINGS } from "@/lib/booking/payment-mode";
+import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
 
 import { AccountSection } from "./account-section";
 import { BookingSettingsForm } from "./booking-settings-form";
@@ -57,13 +57,7 @@ export default async function SettingsPage() {
         defaultUsername={merchant.username}
       />
       <BookingSettingsForm
-        settings={
-          settingsRow ?? {
-            ...DEFAULT_PAYMENT_SETTINGS,
-            max_active_per_phone: null,
-            deposit_after_no_show: false,
-          }
-        }
+        settings={settingsRow ?? DEFAULT_MERCHANT_SETTINGS}
         onSiteServices={onSite ?? []}
       />
       <AccountSection username={merchant.username} />

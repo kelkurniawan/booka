@@ -27,9 +27,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * Authorization yang sama.
  *
  * Membatalkan booking (PENDING -> CANCELLED) otomatis membebaskan:
- *   - slot-nya  (constraint bookings_no_overlap hanya mengunci PENDING/PAID)
- *   - kuota bulanan (trigger bookings_enforce_quota hanya menghitung PENDING/PAID)
- * jadi tidak perlu kerja tambahan selain update status.
+ *   - slot-nya  (bookings_no_overlap hanya mengunci PENDING/PAID/CONFIRMED/REQUESTED)
+ *   - kuota bulanan (dihitung lewat booking_holds_slot, yang mengabaikan CANCELLED)
+ * jadi tidak perlu kerja tambahan selain update status. REQUESTED kedaluwarsa
+ * tidak diurus di sini: create_booking dan reap_expired_bookings membatalkannya.
  */
 export async function GET(request: NextRequest) {
   const env = serverEnv();

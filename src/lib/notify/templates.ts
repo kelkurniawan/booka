@@ -97,7 +97,7 @@ export function merchantPaidEmail(data: BookingMessageData): EmailMessage {
 </div>`;
 
   return {
-    subject: `Booking baru: ${data.customerName} — ${data.serviceName}, ${formatDateTime(data.startDatetime)}`,
+    subject: `Booking baru: ${data.customerName}, ${data.serviceName}, ${formatDateTime(data.startDatetime)}`,
     text,
     html,
   };
@@ -168,11 +168,13 @@ export function merchantConfirmedEmail(data: BookingMessageData): EmailMessage {
     ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
-    ["Bayar di tempat", formatRupiah(data.amountDueOnSite)],
+    ...(data.amountDueOnSite > 0
+      ? ([["Bayar di tempat", formatRupiah(data.amountDueOnSite)]] as [string, string][])
+      : []),
   ];
   return simpleEmail(
     `Booking baru terkonfirmasi: ${data.customerName}, ${data.serviceName}, ${formatDateTime(data.startDatetime)}`,
-    `Booking baru di ${data.merchantName} sudah terkonfirmasi. Pelanggan membayar di tempat.`,
+    `Booking baru di ${data.merchantName} sudah terkonfirmasi.${data.amountDueOnSite > 0 ? " Pelanggan membayar di tempat." : ""}`,
     rows,
     data,
   );
@@ -229,7 +231,7 @@ export function merchantConfirmedWhatsapp(data: BookingMessageData): string {
     `${data.serviceName}, ${when(data)}`,
     staffLine(data),
     `Pelanggan: ${data.customerName} (${data.customerWhatsapp})`,
-    `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}`,
+    data.amountDueOnSite > 0 ? `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}` : null,
     "",
     data.dashboardUrl,
   ]);
@@ -241,7 +243,7 @@ export function customerConfirmedWhatsapp(data: BookingMessageData): string {
     "",
     `Jadwal: ${when(data)}`,
     staffLine(data),
-    `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}`,
+    data.amountDueOnSite > 0 ? `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}` : null,
     "",
     `Detail booking: ${data.statusUrl}`,
     contactLine(data, "Pertanyaan? Hubungi"),

@@ -15,7 +15,7 @@ import {
 import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { DEFAULT_PAYMENT_SETTINGS } from "@/lib/booking/payment-mode";
+import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
 import type { Service, ServiceMedia } from "@/types/database";
 
 import { AddServiceButton } from "./add-service-button";
@@ -47,11 +47,7 @@ export default async function ServicesPage() {
     .select("allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show")
     .eq("merchant_id", user.id)
     .maybeSingle();
-  const settings = settingsRow ?? {
-    ...DEFAULT_PAYMENT_SETTINGS,
-    max_active_per_phone: null,
-    deposit_after_no_show: false,
-  };
+  const settings = settingsRow ?? DEFAULT_MERCHANT_SETTINGS;
 
   // `service_media` datang menempel di tiap baris lewat embedding; dipisah di
   // sini supaya komponen di bawah tetap menerima Service[] polos.
