@@ -8,7 +8,7 @@ Spec ini berisi 11 sub-proyek yang masing-masing bisa dirilis sendiri. Setiap fa
 |---|---|---|---|---|
 | F0 Fondasi (Storybook, rename, kontras) | `2026-11-14-marky-f0-fondasi.md` | Selesai, PR kelkurniawan/booka#10 | – | Ya (username cadangan) |
 | F1 Halaman pelanggan baru | `2026-11-14-marky-f1-halaman-pelanggan.md` | Selesai di cabang `fitur/marky-f1` (dari `fitur/marky-f0`) | F0 | Tidak |
-| F2 Cara bayar per layanan | ditulis setelah F1 | – | F1 | Ya |
+| F2 Cara bayar per layanan | `2026-11-15-marky-f2-cara-bayar.md` | Selesai di cabang `fitur/marky-f2` | F1 | Ya |
 | F3 Dashboard Hari ini + Booking | ditulis setelah F2 | – | F2 | Sedikit (sumber booking) |
 | F4 Kelola booking pelanggan + pengingat | ditulis setelah F2 | – | F2 | Ya |
 | F5 Promosi: banner + voucher | ditulis setelah F2 | – | F2 | Ya |
