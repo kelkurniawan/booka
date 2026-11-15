@@ -88,10 +88,6 @@ export const bookingSearchSchema = z
     "Pencarian tidak boleh mengandung karakter , . ( ) % atau \\",
   );
 
-/** Filter status ledger (`?status=`). Nilai tak dikenal ditangani di page.tsx
- * lewat `safeParse` -- diperlakukan sebagai "semua status", bukan error. */
-export const bookingStatusFilterSchema = z.enum(["PENDING", "PAID", "CONFIRMED", "REQUESTED", "CANCELLED"]);
-
 /** Body Server Action `cancelBooking` di src/app/dashboard/bookings/actions.ts. */
 export const cancelBookingSchema = z.object({
   id: z.uuid("Booking tidak valid"),

@@ -1,25 +1,26 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
-import { StatCardsSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { bookingSearchSchema, bookingStatusFilterSchema } from "@/lib/validations/booking";
-import type { BookingStatus } from "@/types/database";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { parseTab } from "@/lib/booking/dashboard";
+import { ROUTES } from "@/lib/routes";
+import { bookingSearchSchema } from "@/lib/validations/booking";
 
+import { getTabCounts } from "../queries";
 import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./booking-state";
+import { BookingTabs } from "./booking-tabs";
 import { BookingsFilters } from "./bookings-filters";
 import { BookingsList } from "./bookings-list";
-import { BookingsSummary } from "./bookings-summary";
 
-export const metadata: Metadata = { title: "Booking masuk" };
+export const metadata: Metadata = { title: "Booking" };
 
 /**
- * Shell halaman Booking masuk -- SENGAJA tidak meng-`await` query apa pun di
+ * Shell halaman Booking -- SENGAJA tidak meng-`await` query apa pun di
  * sini (pola yang sama dengan dashboard/page.tsx, lihat komentarnya).
- * Kartu ringkasan (BookingsSummary) dan tabel yang dipaginasi (BookingsList)
- * adalah komponen async terpisah, masing-masing dibungkus <Suspense>, jadi
- * header + filter langsung tampil dan tiap bagian streaming begitu query-nya
- * sendiri selesai.
+ * Daftar yang dipaginasi (BookingsList) adalah komponen async yang dibungkus
+ * <Suspense>, jadi header + tab + pencarian langsung tampil.
  *
  * `key` pada <Suspense> pembungkus BookingsList SENGAJA berubah tiap kali
  * status/pencarian/halaman/ukuran halaman berubah -- itu yang membuat React
@@ -31,13 +32,13 @@ export const metadata: Metadata = { title: "Booking masuk" };
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; size?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; page?: string; size?: string; b?: string }>;
 }) {
   const rawParams = await searchParams;
 
-  // Status tak dikenal diperlakukan sebagai "semua status", bukan error.
-  const statusParsed = bookingStatusFilterSchema.safeParse(rawParams.status);
-  const statusFilter: BookingStatus | null = statusParsed.success ? statusParsed.data : null;
+  // Tab tak dikenal jatuh ke "Akan datang".
+  const tab = parseTab(rawParams.tab);
+  const counts = await getTabCounts();
 
   // Pencarian yang gagal validasi (kepanjangan, atau mengandung karakter
   // yang berarti khusus di filter PostgREST) diperlakukan sebagai "tanpa
@@ -73,43 +74,39 @@ export default async function BookingsPage({
   return (
     <>
       <PageHeader
-        title="Booking masuk"
-        description="Semua pesanan yang masuk lewat halaman booking Anda."
+        title="Booking"
+        action={
+          <Link
+            href={ROUTES.newBooking}
+            className="bg-primary text-primary-foreground hidden h-11 items-center rounded-lg px-4 text-sm font-medium md:inline-flex"
+          >
+            Booking manual
+          </Link>
+        }
       />
 
-      <Suspense fallback={<StatCardsSkeleton className="sm:grid-cols-3" />}>
-        <BookingsSummary />
-      </Suspense>
+      <BookingTabs active={tab} counts={counts} q={searchTerm} size={pageSize} />
 
-      {/* key={q}: lihat catatan di bookings-filters.tsx -- ini yang membuat
-          state input lokalnya ikut ter-reset saat q di URL berubah dari
-          luar komponen, tanpa perlu useEffect yang men-setState prop ke
-          state (dilarang aturan react-hooks/set-state-in-effect). */}
-      <BookingsFilters key={rawParams.q ?? ""} status={rawParams.status ?? ""} q={rawParams.q ?? ""} />
+      {/* key={q}: lihat catatan di bookings-filters.tsx. */}
+      <BookingsFilters key={rawParams.q ?? ""} q={rawParams.q ?? ""} />
 
       {searchError ? (
-        <p className="text-destructive text-sm" role="alert">
+        <p className="text-muted-foreground text-sm" role="alert">
           {searchError}
         </p>
       ) : null}
 
       <Suspense
-        key={`${statusFilter ?? ""}|${searchTerm}|${page}|${pageSize}`}
-        // rows={pageSize}: fallback default TableSkeleton (8 baris) jauh
-        // lebih pendek dari tabel asli (sampai pageSize baris, lihat
-        // bookings-list.tsx) -- geser sebanyak itu tiap kali filter/halaman
-        // berubah adalah persis jank yang mau dihindari dengan memberi
-        // <Suspense> ini `key` yang berubah. pageSize di sini sudah
-        // divalidasi/di-default di atas, jadi selalu salah satu dari
-        // PAGE_SIZE_OPTIONS.
-        //
-        // columns={6}, firstColumnTwoLine: cocokkan header BookingsTable
-        // (Jadwal, Pelanggan, Layanan, Nilai, Status, kolom aksi) di
-        // bookings-table.tsx -- kolom Jadwal aslinya dua baris (tanggal di
-        // atas jam).
-        fallback={<TableSkeleton rows={pageSize} columns={6} firstColumnTwoLine />}
+        key={`${tab}|${searchTerm}|${page}|${pageSize}`}
+        fallback={<TableSkeleton rows={pageSize} columns={5} firstColumnTwoLine />}
       >
-        <BookingsList statusFilter={statusFilter} searchTerm={searchTerm} page={page} pageSize={pageSize} />
+        <BookingsList
+          tab={tab}
+          searchTerm={searchTerm}
+          page={page}
+          pageSize={pageSize}
+          selectedId={rawParams.b ?? null}
+        />
       </Suspense>
     </>
   );

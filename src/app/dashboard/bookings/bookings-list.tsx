@@ -15,7 +15,8 @@ import {
 import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import type { BookingStatus } from "@/types/database";
+import { type BookingTab } from "@/lib/booking/dashboard";
+import { jakartaDateISO } from "@/lib/booking/slots";
 
 import {
   BOOKING_LIST_COLUMNS,
@@ -25,48 +26,53 @@ import {
 } from "./booking-state";
 import { BookingsTable } from "./bookings-table";
 
+const EMPTY_TEXT: Record<BookingTab, string> = {
+  ACTION: "Semua beres. Tidak ada yang perlu ditindaklanjuti.",
+  UPCOMING: "Belum ada booking mendatang.",
+  HISTORY: "Belum ada riwayat booking.",
+  CANCELLED: "Tidak ada booking yang dibatalkan.",
+};
+
 /**
- * Tabel booking yang dipaginasi -- query utama halaman ini (bukan kartu
- * ringkasan, lihat bookings-summary.tsx). `statusFilter`/`searchTerm` di
- * sini SUDAH divalidasi oleh page.tsx; komponen ini tidak perlu tahu soal
- * `searchError` (itu murni soal tampilan pesan di atas tabel, dirender
- * langsung oleh page.tsx tanpa menunggu query apa pun).
+ * Daftar booking satu tab, dipaginasi. `tab`/`searchTerm` SUDAH divalidasi
+ * page.tsx (pencarian menolak `, . ( ) % \`, jadi aman untuk sintaks `.or()`
+ * PostgREST). `selectedId` = booking yang panelnya terbuka (`?b=`).
  */
 export async function BookingsList({
-  statusFilter,
+  tab,
   searchTerm,
   page,
   pageSize,
+  selectedId,
 }: {
-  statusFilter: BookingStatus | null;
+  tab: BookingTab;
   searchTerm: string;
   page: number;
   pageSize: number;
+  selectedId: string | null;
 }) {
-  const { user, merchant } = await requireMerchant();
+  const { user } = await requireMerchant();
   const supabase = await createClient();
 
   const from = (page - 1) * pageSize;
   const to = from + pageSize - 1;
 
+  // Fungsi tab sudah memfilter per tab; .eq merchant_id tetap eksplisit
+  // (RLS lapis kedua) dan kolom daftar tanpa access_token/payment_url.
   let bookingsQuery = supabase
-    .from("bookings")
-    .select(BOOKING_LIST_COLUMNS, { count: "exact" })
+    .rpc("bookings_in_tab", { p_tab: tab }, { count: "exact" })
+    .select(BOOKING_LIST_COLUMNS)
     .eq("merchant_id", user.id);
 
-  if (statusFilter) {
-    bookingsQuery = bookingsQuery.eq("status", statusFilter);
-  }
   if (searchTerm) {
-    // searchTerm sudah lolos bookingSearchSchema, yang menolak `, . ( ) % \`
-    // -- karakter yang punya arti khusus di sintaks filter PostgREST --
-    // jadi nilai ini tidak bisa dipakai menyuntik kondisi `.or()` tambahan.
     const pattern = `%${searchTerm}%`;
     bookingsQuery = bookingsQuery.or(
       `customer_name.ilike.${pattern},customer_whatsapp.ilike.${pattern}`,
     );
   }
-  bookingsQuery = bookingsQuery.order("start_datetime", { ascending: false }).range(from, to);
+  // Tab ke depan naik (yang terdekat dulu), tab ke belakang turun.
+  const ascending = tab === "ACTION" || tab === "UPCOMING";
+  bookingsQuery = bookingsQuery.order("start_datetime", { ascending }).range(from, to);
 
   // Instant referensi "sekarang" -- dihitung SEKALI di sini (Server
   // Component, komponen async ini dijalankan sekali per request) lalu
@@ -88,10 +94,7 @@ export async function BookingsList({
     });
   }
 
-  // requireMerchant() sudah menjamin username terisi (kalau tidak, sudah
-  // di-redirect ke /onboarding sebelum sampai di sini).
-  const username = merchant.username;
-  const bookings = (bookingsResult.data ?? []) as BookingListItem[];
+  const bookings = (bookingsResult.data ?? []) as unknown as BookingListItem[];
   const totalCount = bookingsResult.count ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   // totalCount di atas sudah mencerminkan filter yang aktif (query yang
@@ -103,7 +106,7 @@ export async function BookingsList({
   // gagal (bukan cuma kalau memang kosong) -- karena itu cabang render di
   // bawah memeriksa bookingsResult.error LEBIH DULU, supaya "gagal memuat"
   // tidak pernah disalahartikan sebagai "belum ada booking".
-  const hasFilters = statusFilter !== null || searchTerm !== "";
+  const hasSearch = searchTerm !== "";
 
   // Halaman diminta di luar jangkauan (mis. merchant mengetik ?page=99
   // langsung, filter/ukuran halaman diubah sampai halaman lama jadi kosong)
@@ -114,10 +117,11 @@ export async function BookingsList({
   if (page > totalPages && totalCount > 0) {
     redirect(
       buildBookingsHref({
-        status: statusFilter ?? "",
+        tab,
         q: searchTerm,
         page: totalPages,
         size: pageSize,
+        b: selectedId,
       }),
     );
   }
@@ -138,7 +142,7 @@ export async function BookingsList({
         </EmptyHeader>
         <EmptyContent>
           <Button asChild variant="outline">
-            <Link href={ROUTES.bookings}>Muat ulang halaman</Link>
+            <Link href={buildBookingsHref({ tab, q: searchTerm, page, size: pageSize })}>Muat ulang halaman</Link>
           </Button>
         </EmptyContent>
       </Empty>
@@ -146,21 +150,18 @@ export async function BookingsList({
   }
 
   if (totalCount === 0) {
-    if (hasFilters) {
+    if (hasSearch) {
       return (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <SearchX />
             </EmptyMedia>
-            <EmptyTitle>Tidak ada hasil untuk filter ini</EmptyTitle>
-            <EmptyDescription>
-              Coba ubah kata kunci pencarian atau status filter.
-            </EmptyDescription>
+            <EmptyTitle>Tidak ada booking yang cocok dengan pencarian.</EmptyTitle>
           </EmptyHeader>
           <EmptyContent>
-            <Button asChild variant="outline">
-              <Link href={ROUTES.bookings}>Reset filter</Link>
+            <Button asChild variant="outline" className="h-11">
+              <Link href={buildBookingsHref({ tab, q: "", page: 1, size: pageSize })}>Hapus pencarian</Link>
             </Button>
           </EmptyContent>
         </Empty>
@@ -173,17 +174,12 @@ export async function BookingsList({
           <EmptyMedia variant="icon">
             <Inbox />
           </EmptyMedia>
-          <EmptyTitle>Belum ada booking</EmptyTitle>
-          <EmptyDescription>
-            Bagikan tautan halaman booking Anda supaya pelanggan bisa mulai memesan.
-          </EmptyDescription>
+          <EmptyTitle>{EMPTY_TEXT[tab]}</EmptyTitle>
         </EmptyHeader>
-        {username ? (
+        {tab === "UPCOMING" ? (
           <EmptyContent>
-            <Button asChild>
-              <a href={ROUTES.merchantPage(username)} target="_blank" rel="noreferrer">
-                Buka halaman booking Anda
-              </a>
+            <Button asChild className="h-11">
+              <Link href={ROUTES.newBooking}>Catat booking manual</Link>
             </Button>
           </EmptyContent>
         ) : null}
@@ -193,7 +189,13 @@ export async function BookingsList({
 
   return (
     <>
-      <BookingsTable bookings={bookings} nowMs={now.getTime()} />
+      <BookingsTable
+        rows={bookings}
+        nowMs={now.getTime()}
+        todayISO={jakartaDateISO(now)}
+        selectedId={selectedId}
+        hrefFor={(id) => buildBookingsHref({ tab, q: searchTerm, page, size: pageSize, b: id })}
+      />
 
       <DataTablePagination
         page={page}
@@ -207,8 +209,9 @@ export async function BookingsList({
         totalCount={totalCount}
         buildHref={(next) =>
           buildBookingsHref({
-            status: statusFilter ?? "",
+            tab,
             q: searchTerm,
+            b: selectedId,
             // Mengubah ukuran halaman TANPA menyebut halaman tujuan
             // (pemilih 10/20/50 di DataTablePagination) selalu kembali ke
             // halaman 1 -- halaman saat ini bisa saja di luar jangkauan

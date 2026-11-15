@@ -3,8 +3,10 @@
 // dan tanpa akses data, supaya bisa diuji langsung.
 
 import type { BookingListItem } from "@/app/dashboard/bookings/booking-state";
+import { ON_SITE_METHOD_LABEL } from "@/lib/booking/payment-mode";
 import {
   formatDateTime,
+  formatRupiah,
   formatTime,
   MONTHS_ID_SHORT,
   WEEKDAYS_ID,
@@ -120,4 +122,18 @@ export function rescheduleNoticeLink(
 ): string {
   const text = `Halo ${b.customer_name}, jadwal ${b.service_name} Anda sudah kami ubah ke ${formatDateTime(newStartISO)}. Terima kasih.`;
   return whatsappLink(b.customer_whatsapp, text);
+}
+
+/** Ringkasan pembayaran satu baris: teks utama + keterangan sisa/pelunasan. */
+export function paymentSummary(b: BookingListItem): { main: string; sub: string | null } {
+  const main =
+    b.amount_due_now > 0
+      ? `${b.amount_due_on_site > 0 ? "DP" : "Lunas"} ${formatRupiah(b.amount_due_now)}${b.amount_due_on_site > 0 ? " lunas" : ""}`
+      : "Bayar di tempat";
+  if (b.amount_due_on_site <= 0) return { main, sub: null };
+  if (b.paid_on_site_at) {
+    const method = b.paid_on_site_method ? ON_SITE_METHOD_LABEL[b.paid_on_site_method].toLowerCase() : "";
+    return { main, sub: `Lunas ${formatRupiah(b.amount_due_on_site)} ${method}`.trim() };
+  }
+  return { main, sub: `Sisa ${formatRupiah(b.amount_due_on_site)} di tempat` };
 }

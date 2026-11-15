@@ -8,7 +8,6 @@ import { test } from "node:test";
 
 import {
   bookingSearchSchema,
-  bookingStatusFilterSchema,
   cancelBookingSchema,
   checkoutSchema,
   createBookingRequestSchema,
@@ -128,25 +127,6 @@ test("bookingSearchSchema menolak percobaan injeksi filter .or() lewat koma", ()
   // kalau suatu saat validasinya kebobolan mengizinkan koma lewat.
   const injected = "x%,merchant_id.eq.11111111-1111-1111-1111-111111111111,x.ilike.%";
   const result = bookingSearchSchema.safeParse(injected);
-  assert.equal(result.success, false);
-});
-
-// --- bookingStatusFilterSchema (?status= di /dashboard/bookings) ----------
-
-test("bookingStatusFilterSchema menerima ketiga status booking", () => {
-  for (const status of ["PENDING", "PAID", "CANCELLED"]) {
-    assert.equal(bookingStatusFilterSchema.safeParse(status).success, true);
-  }
-});
-
-test("bookingStatusFilterSchema menerima CONFIRMED dan REQUESTED", () => {
-  for (const status of ["CONFIRMED", "REQUESTED"]) {
-    assert.equal(bookingStatusFilterSchema.safeParse(status).success, true);
-  }
-});
-
-test("bookingStatusFilterSchema menolak nilai tak dikenal (page.tsx memperlakukannya sebagai 'semua', bukan error)", () => {
-  const result = bookingStatusFilterSchema.safeParse("REFUNDED");
   assert.equal(result.success, false);
 });
 

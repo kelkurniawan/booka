@@ -13,7 +13,12 @@ import { test } from "node:test";
 
 import { REQUEST_EXPIRY_REASON } from "@/lib/booking/payment-mode";
 
-import { BOOKING_LIST_COLUMN_LIST, BOOKING_LIST_COLUMNS, getDisplayStatus } from "./booking-state";
+import {
+  BOOKING_LIST_COLUMN_LIST,
+  BOOKING_LIST_COLUMNS,
+  buildBookingsHref,
+  getDisplayStatus,
+} from "./booking-state";
 
 test("BOOKING_LIST_COLUMNS persis sama dengan BOOKING_LIST_COLUMN_LIST", () => {
   assert.equal(BOOKING_LIST_COLUMNS, BOOKING_LIST_COLUMN_LIST.join(", "));
@@ -72,5 +77,16 @@ test("getDisplayStatus: CONFIRMED tetap CONFIRMED walau expires_at lewat", () =>
   assert.equal(
     getDisplayStatus({ status: "CONFIRMED", expires_at: PAST, cancel_reason: null }, NOW),
     "CONFIRMED",
+  );
+});
+
+test("buildBookingsHref: semua default menghasilkan path polos", () => {
+  assert.equal(buildBookingsHref({ tab: "UPCOMING", q: "", page: 1, size: 20 }), "/dashboard/bookings");
+});
+
+test("buildBookingsHref: memuat tab, q, page, size, dan b", () => {
+  assert.equal(
+    buildBookingsHref({ tab: "ACTION", q: "ayu", page: 2, size: 50, b: "x" }),
+    "/dashboard/bookings?tab=tindakan&q=ayu&page=2&size=50&b=x",
   );
 });
