@@ -38,8 +38,7 @@ export const PerluTindakan: Story = {
   ),
 };
 export const Hp390: Story = {
-  parameters: { viewport: { defaultViewport: "mobile1" } },
-  decorators: [(Story) => <div style={{ width: 390 }}><Story /></div>],
+  globals: { viewport: { value: "hp", isRotated: false } },
   render: () => (
     <BookingsTable rows={AGENDA_ROWS.slice(0, 3)} nowMs={NOW_MS} todayISO={TODAY} selectedId={null} hrefFor={hrefFor} />
   ),

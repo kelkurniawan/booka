@@ -21,7 +21,7 @@ export function Agenda({
 }: {
   rows: BookingListItem[];
   nowMs: number;
-  onAttend: (id: string) => Promise<ActionResult>;
+  onAttend: (id: string, attended: boolean) => Promise<ActionResult>;
 }) {
   const lineAt = nowLineIndex(rows, nowMs);
   return (
@@ -58,7 +58,7 @@ function AgendaItem({
   booking: BookingListItem;
   nowMs: number;
   showLine: boolean;
-  onAttend: (id: string) => Promise<ActionResult>;
+  onAttend: (id: string, attended: boolean) => Promise<ActionResult>;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -69,7 +69,7 @@ function AgendaItem({
   function attend() {
     setError(null);
     start(async () => {
-      const result = await onAttend(b.id);
+      const result = await onAttend(b.id, true);
       if (result.ok) router.refresh();
       else setError(result.message ?? "Gagal menyimpan. Coba lagi.");
     });

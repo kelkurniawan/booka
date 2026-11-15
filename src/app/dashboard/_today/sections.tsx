@@ -44,6 +44,7 @@ const getActionRows = cache(async (merchantId: string): Promise<BookingListItem[
   const { data, error } = await supabase
     .rpc("bookings_in_tab", { p_tab: "ACTION" })
     .select(BOOKING_LIST_COLUMNS)
+    .eq("merchant_id", merchantId)
     .order("start_datetime", { ascending: true });
   if (error) {
     console.error("bookings_in_tab(ACTION) gagal", { merchantId, error });
@@ -77,10 +78,7 @@ export async function ActionSection() {
   const { user } = await requireMerchant();
   const rows = await getActionRows(user.id);
   if (!rows) return <LoadError name="daftar tindakan" />;
-  const isPast = (b: BookingListItem) => {
-    const k = actionKind(b);
-    return k === "ATTENDANCE" || k === "ON_SITE_UNPAID";
-  };
+  const isPast = (b: BookingListItem) => actionKind(b) === "ATTENDANCE";
   return (
     <ActionList
       items={rows.filter((b) => !isPast(b)).slice(0, 5)}
@@ -96,7 +94,7 @@ export async function AgendaSection() {
   const { user } = await requireMerchant();
   const rows = await getTodayRows(user.id);
   if (!rows) return <LoadError name="agenda" />;
-  return <Agenda rows={rows} nowMs={nowMs} onAttend={(id) => markAttendance(id, true)} />;
+  return <Agenda rows={rows} nowMs={nowMs} onAttend={markAttendance} />;
 }
 
 export async function OnSiteSection() {
