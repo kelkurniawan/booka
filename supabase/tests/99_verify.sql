@@ -2900,14 +2900,15 @@ update public.merchants set subscription_tier = 'PRO'
 insert into public.availability (merchant_id, day_of_week, start_time, end_time)
 select '35353535-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
 
--- Layanan 0003 meniru layanan lama yang dibuat sebelum Zod menolak harga < 1500.
+-- Layanan 0003 dan 0007 meniru layanan lama yang dibuat sebelum Zod menolak harga < 1500.
 insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value) values
   ('35353535-5e5e-0000-0000-000000000001', '35353535-0000-0000-0000-000000000001', 'Gratis', 0, 60, 'FULL', null, null),
   ('35353535-5e5e-0000-0000-000000000002', '35353535-0000-0000-0000-000000000001', 'DP 1 persen', 100000, 60, 'DEPOSIT', 'PERCENT', 1),
   ('35353535-5e5e-0000-0000-000000000003', '35353535-0000-0000-0000-000000000001', 'Harga lama', 1000, 60, 'FULL', null, null),
   ('35353535-5e5e-0000-0000-000000000004', '35353535-0000-0000-0000-000000000001', 'DP 30 persen', 99999, 60, 'DEPOSIT', 'PERCENT', 30),
   ('35353535-5e5e-0000-0000-000000000005', '35353535-0000-0000-0000-000000000001', 'Permintaan', 200000, 60, 'REQUEST', null, null),
-  ('35353535-5e5e-0000-0000-000000000006', '35353535-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null);
+  ('35353535-5e5e-0000-0000-000000000006', '35353535-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null),
+  ('35353535-5e5e-0000-0000-000000000007', '35353535-0000-0000-0000-000000000001', 'Permintaan lama', 1000, 60, 'REQUEST', null, null);
 
 -- Sama dengan cb33/check33, untuk merchant 35.
 create or replace function pg_temp.cb35(p_service integer, p_slot integer, p_phone text, p_can_charge boolean default true)
@@ -2949,6 +2950,10 @@ select pg_temp.check35('t35b DEPOSIT 1% -> PENDING 1500/98500', 2, 1, '+62813350
 select pg_temp.expect_fail_code(
   $q$select * from pg_temp.cb35(3, 2, '+6281335000003')$q$,
   'BK022', 't35c FULL 1000 di bawah minimum QRIS');
+-- REQUEST tanpa DP ditagih seluruh harga setelah disetujui, jadi ikut ditolak.
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb35(7, 10, '+6281335000010')$q$,
+  'BK022', 't35c REQUEST tanpa DP 1000 di bawah minimum QRIS');
 
 -- 35d. DP di atas minimum tidak berubah: 99999 x 30% = 30000.
 select pg_temp.check35('t35d DEPOSIT 30% dari 99999 -> 30000/69999', 4, 3, '+6281335000004', 'PENDING', 30000, 69999, 'DEPOSIT');

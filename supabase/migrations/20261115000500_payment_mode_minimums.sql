@@ -5,7 +5,8 @@
 --   a) PENDING dengan bayar sekarang 0 (layanan gratis) menjadi CONFIRMED,
 --      jadi tidak pernah ditagih dan tidak butuh koneksi payment (BK021).
 --   b) DP (DEPOSIT, atau REQUEST ber-DP) minimal min(harga, 1500).
---   c) PENDING dengan bayar sekarang < 1500 ditolak BK022.
+--   c) Bayar sekarang 1..1499 ditolak BK022, termasuk REQUEST yang baru
+--      ditagih setelah disetujui.
 --   d) Batas booking aktif per nomor (BK020) juga berlaku untuk booking
 --      gratis, bukan hanya ON_SITE dan REQUEST: tanpa itu siapa pun bisa
 --      mengisi semua slot layanan gratis tanpa membayar.
@@ -144,7 +145,8 @@ begin
   -- MIN_ONLINE_CHARGE = 1500 Rupiah, sama dengan src/lib/booking/payment-mode.ts.
   -- Batas minimum QR Xendit; Zod menolak harga 1..1499 untuk layanan baru,
   -- ini menjaga layanan lama yang dibuat sebelum aturan itu.
-  if v_status = 'PENDING' and v_due_now < 1500 then
+  -- Juga REQUESTED: persetujuan mengubahnya ke PENDING dengan nominal yang sama.
+  if v_due_now > 0 and v_due_now < 1500 then
     raise exception 'Nominal terlalu kecil untuk QRIS' using errcode = 'BK022';
   end if;
 
