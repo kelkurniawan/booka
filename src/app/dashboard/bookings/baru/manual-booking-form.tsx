@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { jakartaDateISO } from "@/lib/booking/slots";
 import { ROUTES } from "@/lib/routes";
 
 import { createManualBooking } from "../actions";
@@ -21,21 +20,23 @@ const SELECT_CLASS =
 
 export function ManualBookingForm({
   username,
+  todayISO,
   services,
   staff,
   action = createManualBooking,
 }: {
   username: string;
+  /** Hari ini (WIB), dihitung di server. */
+  todayISO: string;
   services: ServiceOption[];
   staff: { id: string; name: string }[];
   /** Bisa diganti di Storybook. */
   action?: (input: ManualBookingInput) => Promise<ManualBookingResult>;
 }) {
   const router = useRouter();
-  const [today] = useState(() => jakartaDateISO(new Date()));
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
   const [staffId, setStaffId] = useState("");
-  const [dateISO, setDateISO] = useState(today);
+  const [dateISO, setDateISO] = useState(todayISO);
   const [startISO, setStartISO] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
@@ -66,7 +67,10 @@ export function ManualBookingForm({
     <form onSubmit={submit} className="flex max-w-xl flex-col gap-5">
       <div className="flex flex-col gap-2">
         <Label htmlFor="mb-service">Layanan</Label>
-        <select id="mb-service" className={SELECT_CLASS} value={serviceId} onChange={(e) => setServiceId(e.target.value)}>
+        <select id="mb-service" className={SELECT_CLASS} value={serviceId} onChange={(e) => {
+            setServiceId(e.target.value);
+            setStartISO(null);
+          }}>
           {services.map((s) => (
             <option key={s.id} value={s.id}>
               {s.name} ({s.duration_minutes} menit)
@@ -77,7 +81,10 @@ export function ManualBookingForm({
       {staff.length > 0 ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="mb-staff">Staf</Label>
-          <select id="mb-staff" className={SELECT_CLASS} value={staffId} onChange={(e) => setStaffId(e.target.value)}>
+          <select id="mb-staff" className={SELECT_CLASS} value={staffId} onChange={(e) => {
+              setStaffId(e.target.value);
+              setStartISO(null);
+            }}>
             <option value="">Siapa saja</option>
             {staff.map((s) => (
               <option key={s.id} value={s.id}>
@@ -93,13 +100,17 @@ export function ManualBookingForm({
           id="mb-date"
           type="date"
           className="min-h-11"
-          min={today}
+          min={todayISO}
           value={dateISO}
-          onChange={(e) => e.target.value && setDateISO(e.target.value)}
+          onChange={(e) => {
+            if (!e.target.value) return;
+            setDateISO(e.target.value);
+            setStartISO(null);
+          }}
         />
       </div>
       <div className="flex flex-col gap-2">
-        <Label>Jam</Label>
+        <Label id="mb-jam-label">Jam</Label>
         <SlotField
           username={username}
           serviceId={serviceId || null}
@@ -107,6 +118,7 @@ export function ManualBookingForm({
           dateISO={dateISO}
           value={startISO}
           onChange={setStartISO}
+          labelledBy="mb-jam-label"
         />
       </div>
       <div className="flex flex-col gap-2">

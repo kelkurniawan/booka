@@ -13,6 +13,7 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { requireMerchant } from "@/lib/auth/session";
+import { jakartaDateISO } from "@/lib/booking/slots";
 import { loadPublicStaff } from "@/lib/booking/staff";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -61,6 +62,7 @@ export default async function NewBookingPage() {
       ) : (
         <ManualBookingForm
           username={merchant.username}
+          todayISO={jakartaDateISO(new Date())}
           services={services}
           staff={staff.map((s) => ({ id: s.id, name: s.name }))}
         />

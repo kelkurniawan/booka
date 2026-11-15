@@ -18,6 +18,7 @@ export function SlotField({
   dateISO,
   value,
   onChange,
+  labelledBy,
 }: {
   username: string;
   serviceId: string | null;
@@ -25,6 +26,8 @@ export function SlotField({
   dateISO: string;
   value: string | null;
   onChange: (startISO: string | null) => void;
+  /** id elemen label untuk radiogroup. */
+  labelledBy?: string;
 }) {
   const [attempt, setAttempt] = useState(0);
   const key = `${username}|${serviceId}|${staffId}|${dateISO}|${attempt}`;
@@ -83,7 +86,7 @@ export function SlotField({
     return <p className="text-muted-foreground text-sm">Tidak ada jam kosong di tanggal ini.</p>;
   }
   return (
-    <div role="radiogroup" aria-label="Jam" className="flex flex-col gap-3">
+    <div role="radiogroup" aria-labelledby={labelledBy} aria-label={labelledBy ? undefined : "Jam"} className="flex flex-col gap-3">
       {groupSlotsByPeriod(state.slots).map(({ period, slots }) => (
         <div key={period} className="flex flex-col gap-2">
           <p className="text-sm font-medium">{SLOT_PERIOD_LABEL[period]}</p>

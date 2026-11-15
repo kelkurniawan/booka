@@ -18,14 +18,16 @@ const meta = {
   title: "Dashboard/Booking manual",
   component: ManualBookingForm,
   parameters: { nextjs: { appDirectory: true } },
-  decorators: [
-    (Story) => {
-      globalThis.fetch = async () => Response.json({ slots });
-      return <Story />;
-    },
-  ],
+  beforeEach: () => {
+    const original = globalThis.fetch;
+    globalThis.fetch = async () => Response.json({ slots });
+    return () => {
+      globalThis.fetch = original;
+    };
+  },
   args: {
     username: "demo",
+    todayISO: "2030-01-07",
     services,
     staff: [],
     action: async (): Promise<ManualBookingResult> => ({ ok: true, id: "x" }),

@@ -9,12 +9,15 @@ const slots = ["09:00", "10:00", "13:00", "15:30", "19:00"].map((label) => ({
   endUtc: `2030-01-07T${label}:00.000Z`,
 }));
 
-function withFetch(impl: () => Promise<Response>) {
-  const decorator = (Story: () => React.JSX.Element) => {
+/** Pasang fetch tiruan sebelum render; dipulihkan otomatis setelah story selesai. */
+function mockFetch(impl: () => Promise<Response>) {
+  return () => {
+    const original = globalThis.fetch;
     globalThis.fetch = impl;
-    return <Story />;
+    return () => {
+      globalThis.fetch = original;
+    };
   };
-  return decorator;
 }
 
 const meta = {
@@ -26,8 +29,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Terisi: Story = { decorators: [withFetch(async () => Response.json({ slots }))] };
-export const Memuat: Story = { decorators: [withFetch(() => new Promise<Response>(() => {}))] };
-export const Kosong: Story = { decorators: [withFetch(async () => Response.json({ slots: [] }))] };
-export const Gagal: Story = { decorators: [withFetch(async () => new Response("{}", { status: 500 }))] };
+export const Terisi: Story = { beforeEach: mockFetch(async () => Response.json({ slots })) };
+export const Memuat: Story = { beforeEach: mockFetch(() => new Promise<Response>(() => {})) };
+export const Kosong: Story = { beforeEach: mockFetch(async () => Response.json({ slots: [] })) };
+export const Gagal: Story = { beforeEach: mockFetch(async () => new Response("{}", { status: 500 })) };
 export const BelumPilihLayanan: Story = { args: { serviceId: null } };
