@@ -2,19 +2,66 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireMerchant } from "@/lib/auth/session";
 import { PageHeader } from "@/components/layout/page-header";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { parseTab } from "@/lib/booking/dashboard";
 import { ROUTES } from "@/lib/routes";
+import { createClient } from "@/lib/supabase/server";
 import { bookingSearchSchema } from "@/lib/validations/booking";
 
 import { getTabCounts } from "../queries";
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./booking-state";
+import { cancelBooking, decideRequest, markAttendance, markPaidOnSite, rescheduleBooking } from "./actions";
+import { BookingDetailPanel } from "./booking-detail-panel";
+import { BookingDetailShell } from "./booking-detail-shell";
+import {
+  BOOKING_LIST_COLUMNS,
+  buildBookingsHref,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  type BookingListItem,
+} from "./booking-state";
+import type { TimelineNotification } from "./booking-timeline";
 import { BookingTabs } from "./booking-tabs";
 import { BookingsFilters } from "./bookings-filters";
 import { BookingsList } from "./bookings-list";
 
 export const metadata: Metadata = { title: "Booking" };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Booking untuk panel `?b=`; null bila bukan uuid, tak ditemukan, atau milik merchant lain. */
+async function loadSelectedBooking(rawId: string | undefined, merchantId: string): Promise<BookingListItem | null> {
+  if (!rawId || !UUID_RE.test(rawId)) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(BOOKING_LIST_COLUMNS)
+    .eq("id", rawId)
+    .eq("merchant_id", merchantId)
+    .maybeSingle();
+  if (error) {
+    console.error("[dashboard/bookings] gagal memuat booking terpilih", { merchantId, error });
+    return null;
+  }
+  return (data as unknown as BookingListItem | null) ?? null;
+}
+
+/** Riwayat pesan satu booking; null bila gagal dimuat. */
+async function loadNotifications(bookingId: string, merchantId: string): Promise<TimelineNotification[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notification_log")
+    .select("kind, channel, status, created_at")
+    .eq("booking_id", bookingId)
+    .eq("merchant_id", merchantId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("[dashboard/bookings] gagal memuat riwayat pesan", { merchantId, bookingId, error });
+    return null;
+  }
+  return data;
+}
 
 /**
  * Shell halaman Booking -- SENGAJA tidak meng-`await` query apa pun di
@@ -35,6 +82,7 @@ export default async function BookingsPage({
   searchParams: Promise<{ tab?: string; q?: string; page?: string; size?: string; b?: string }>;
 }) {
   const rawParams = await searchParams;
+  const { user, merchant } = await requireMerchant();
 
   // Tab tak dikenal jatuh ke "Akan datang".
   const tab = parseTab(rawParams.tab);
@@ -71,6 +119,11 @@ export default async function BookingsPage({
     ? sizeParam
     : DEFAULT_PAGE_SIZE;
 
+  const selected = await loadSelectedBooking(rawParams.b, user.id);
+  const notifications = selected ? await loadNotifications(selected.id, user.id) : null;
+  const nowMs = new Date().getTime();
+  const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
+
   return (
     <>
       <PageHeader
@@ -96,18 +149,39 @@ export default async function BookingsPage({
         </p>
       ) : null}
 
-      <Suspense
-        key={`${tab}|${searchTerm}|${page}|${pageSize}`}
-        fallback={<TableSkeleton rows={pageSize} columns={5} firstColumnTwoLine />}
-      >
-        <BookingsList
-          tab={tab}
-          searchTerm={searchTerm}
-          page={page}
-          pageSize={pageSize}
-          selectedId={rawParams.b ?? null}
-        />
-      </Suspense>
+      <div className={selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6" : undefined}>
+        <Suspense
+          key={`${tab}|${searchTerm}|${page}|${pageSize}`}
+          fallback={<TableSkeleton rows={pageSize} columns={5} firstColumnTwoLine />}
+        >
+          <BookingsList
+            tab={tab}
+            searchTerm={searchTerm}
+            page={page}
+            pageSize={pageSize}
+            selectedId={selected?.id ?? null}
+          />
+        </Suspense>
+
+        {selected ? (
+          <BookingDetailShell closeHref={closeHref}>
+            <BookingDetailPanel
+              key={selected.id}
+              booking={selected}
+              nowMs={nowMs}
+              username={merchant.username}
+              notifications={notifications}
+              actions={{
+                cancel: cancelBooking,
+                decide: decideRequest,
+                markPaid: markPaidOnSite,
+                attend: markAttendance,
+                reschedule: rescheduleBooking,
+              }}
+            />
+          </BookingDetailShell>
+        ) : null}
+      </div>
     </>
   );
 }

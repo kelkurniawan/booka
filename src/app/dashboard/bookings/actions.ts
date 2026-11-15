@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
+import { z } from "zod";
 
 import { notifyBookingCreated, notifyRequestDecided } from "@/lib/notify/dispatch";
 import { findChargeProvider } from "@/lib/payments/charge-booking";
@@ -15,6 +16,7 @@ import { cancelBookingSchema } from "@/lib/validations/booking";
 import {
   manualBookingErrorMessage,
   manualBookingSchema,
+  rescheduleErrorMessage,
   type ManualBookingInput,
   type ManualBookingResult,
 } from "./manual-booking";
@@ -70,7 +72,7 @@ export async function cancelBooking(id: string): Promise<CancelBookingResult> {
     };
   }
 
-  revalidatePath(ROUTES.bookings);
+  revalidatePath(ROUTES.dashboard, "layout");
   return { ok: true };
 }
 
@@ -131,7 +133,7 @@ export async function decideRequest(id: string, approve: boolean): Promise<Cance
   if (error) return { ok: false, message: rpcErrorMessage(error.code) };
 
   after(() => notifyRequestDecided(parsed.data.id));
-  revalidatePath(ROUTES.bookings);
+  revalidatePath(ROUTES.dashboard, "layout");
   return { ok: true };
 }
 
@@ -153,7 +155,7 @@ export async function markPaidOnSite(
   });
   if (error) return { ok: false, message: rpcErrorMessage(error.code) };
 
-  revalidatePath(ROUTES.bookings);
+  revalidatePath(ROUTES.dashboard, "layout");
   return { ok: true };
 }
 
@@ -169,7 +171,24 @@ export async function markAttendance(id: string, attended: boolean): Promise<Can
   });
   if (error) return { ok: false, message: rpcErrorMessage(error.code) };
 
-  revalidatePath(ROUTES.bookings);
+  revalidatePath(ROUTES.dashboard, "layout");
+  return { ok: true };
+}
+
+/** Jadwal ulang oleh merchant; batas 3 kali dan bentrok ditegakkan RPC. */
+export async function rescheduleBooking(id: string, newStartISO: string): Promise<CancelBookingResult> {
+  const parsed = cancelBookingSchema.safeParse({ id });
+  const start = z.iso.datetime({ offset: true }).safeParse(newStartISO);
+  if (!parsed.success || !start.success) return { ok: false, message: "Jadwal tidak valid." };
+
+  const { supabase } = await requireUser();
+  const { error } = await supabase.rpc("reschedule_booking_by_merchant", {
+    p_booking_id: parsed.data.id,
+    p_new_start: start.data,
+  });
+  if (error) return { ok: false, message: rescheduleErrorMessage(error.code) };
+
+  revalidatePath(ROUTES.dashboard, "layout");
   return { ok: true };
 }
 
