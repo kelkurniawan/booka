@@ -6,7 +6,9 @@ import type {
   SubscriptionTier,
 } from "@/types/database";
 
-/** Paket yang boleh mengirim pengingat ke pelanggan (Keputusan 12). */
+import { jakartaDateISO, jakartaWallClockToUtc } from "@/lib/booking/slots";
+
+/** Paket yang boleh mengirim pengingat ke pelanggan (Keputusan 16). */
 export const REMINDER_TIERS: SubscriptionTier[] = ["PRO", "STUDIO"];
 
 export type ReminderOffset = "DAY_BEFORE" | "SAME_DAY";
@@ -52,4 +54,29 @@ export function reminderChannels(
   if (s.reminder_email && p?.email) channels.push("EMAIL");
   if (s.reminder_push && hasPush) channels.push("PUSH");
   return channels;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SEND_TIME = "08:00"; // cron harian 01:00 UTC (Keputusan 1)
+const SAME_DAY_LEAD_MS = 30 * 60 * 1000; // sama dengan sameDayRange di window.ts
+
+/**
+ * Offset yang MASIH bisa terkirim untuk satu booking pada waktu `nowMs`.
+ * H-1: jam kirim 08.00 WIB di hari sebelumnya harus belum lewat. Hari H: jam
+ * kirim 08.00 WIB hari itu belum lewat dan booking mulai paling cepat 08.30.
+ * Booking yang sudah selesai tidak punya offset terjangkau.
+ */
+export function reachableOffsets(
+  startISO: string,
+  endISO: string,
+  nowMs: number,
+): { dayBefore: boolean; sameDay: boolean } {
+  const startMs = Date.parse(startISO);
+  if (Date.parse(endISO) <= nowMs) return { dayBefore: false, sameDay: false };
+  const dayBeforeSend = jakartaWallClockToUtc(jakartaDateISO(new Date(startMs - DAY_MS)), SEND_TIME).getTime();
+  const sameDaySend = jakartaWallClockToUtc(jakartaDateISO(new Date(startMs)), SEND_TIME).getTime();
+  return {
+    dayBefore: dayBeforeSend > nowMs,
+    sameDay: sameDaySend > nowMs && startMs >= sameDaySend + SAME_DAY_LEAD_MS,
+  };
 }
