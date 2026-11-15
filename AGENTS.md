@@ -55,6 +55,10 @@ F2 selesai: cara bayar per layanan (`FULL`, `DEPOSIT`, `ON_SITE`, `REQUEST`),
 status `CONFIRMED`/`REQUESTED`, `merchant_settings`, minimum QRIS Rp1.500
 (`src/lib/booking/payment-mode.ts` mencerminkan `create_booking`), aksi merchant
 di detail booking, dan rute bayar `/api/pesanan/[token]/bayar`.
+F3 selesai: dashboard dimulai dari Hari ini, halaman Booking bertab dengan panel
+detail (`?b=`), booking manual `/dashboard/bookings/baru`, jadwal ulang oleh
+merchant, sidebar berkelompok dan nav bawah HP. Batas anti-spam: 50 booking
+manual per 24 jam, 3 jadwal ulang merchant per booking (DECISIONS #31).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
