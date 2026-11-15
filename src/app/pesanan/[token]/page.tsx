@@ -10,6 +10,7 @@ import {
   policyLines,
   type ManageSettings,
 } from "@/lib/booking/customer-manage";
+import { ROUTES } from "@/lib/routes";
 import { REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTheme } from "@/lib/theme/resolve";
@@ -210,6 +211,7 @@ export async function generateMetadata({
   // bocor lewat judul tab/riwayat browser yang bisa dilihat orang lain.
   return {
     title: "Status booking",
+    manifest: ROUTES.bookingManifest(token),
     robots: { index: false, follow: false },
   };
 }

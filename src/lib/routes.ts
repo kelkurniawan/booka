@@ -43,6 +43,9 @@ export const ROUTES = {
   bookingReschedule: (token: string) => `/pesanan/${token}/ubah-jadwal`,
   bookingReminders: (token: string) => `/pesanan/${token}/pengingat`,
   bookingRescheduleApi: (token: string) => `/api/pesanan/${token}/ubah-jadwal`,
+  serviceWorker: "/sw.js",
+  bookingPushApi: (token: string) => `/api/pesanan/${token}/push`,
+  bookingManifest: (token: string) => `/api/pesanan/${token}/manifest`,
   bookingCancelApi: (token: string) => `/api/pesanan/${token}/batal`,
 } as const;
 
