@@ -72,10 +72,12 @@ export function BookingStatusView({
         />
       ) : booking.status === "REQUESTED" ? (
         <Requested booking={booking} merchantName={merchantName} />
-      ) : booking.payment_url ? (
-        <Pending booking={booking} />
-      ) : (
+      ) : booking.payment_mode === "REQUEST" && !booking.payment_url ? (
+        // Hanya permintaan yang disetujui yang menunggu pelanggan menekan Bayar;
+        // PENDING lain tanpa QR tetap memakai cadangan "muat ulang" di Pending.
         <Approved token={token} booking={booking} />
+      ) : (
+        <Pending booking={booking} />
       )}
     </BookingPageShell>
   );
