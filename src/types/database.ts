@@ -271,8 +271,12 @@ export type NotificationKind =
   | "BOOKING_CONFIRMED_CUSTOMER"
   | "BOOKING_REQUESTED_MERCHANT"
   | "BOOKING_APPROVED_CUSTOMER"
-  | "BOOKING_REJECTED_CUSTOMER";
-export type NotificationChannel = "EMAIL" | "WHATSAPP";
+  | "BOOKING_REJECTED_CUSTOMER"
+  | "REMINDER_CUSTOMER_SAME_DAY"
+  | "BOOKING_RESCHEDULED_MERCHANT"
+  | "BOOKING_CANCELLED_MERCHANT";
+export type NotificationChannel = "EMAIL" | "WHATSAPP" | "PUSH";
+export type ContactChannel = "WHATSAPP" | "PHONE" | "EMAIL" | "INSTAGRAM" | "THREADS" | "X" | "TIKTOK";
 export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
 
 /**
@@ -325,6 +329,8 @@ export type Booking = {
   source: BookingSource;
   /** Jumlah jadwal ulang oleh merchant; maksimal 3 (BK036). */
   merchant_reschedule_count: number;
+  /** Jumlah ubah jadwal oleh pelanggan; dibatasi merchant_settings.max_reschedules (BK043). */
+  reschedule_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -336,6 +342,33 @@ export type MerchantSettings = {
   /** null = tanpa batas. */
   max_active_per_phone: number | null;
   deposit_after_no_show: boolean;
+  allow_customer_reschedule: boolean;
+  /** 0..168 jam sebelum jadwal. */
+  reschedule_min_hours: number;
+  /** 1..5. */
+  max_reschedules: number;
+  allow_customer_cancel: boolean;
+  /** 0..168 jam sebelum jadwal. */
+  cancel_min_hours: number;
+  /** Maksimal 500 karakter. */
+  policy_text: string | null;
+  /** E.164, mis. +6281234567890. */
+  contact_phone: string | null;
+  contact_email: string | null;
+  /** Username tanpa @, pola ^[A-Za-z0-9._]{1,30}$. */
+  contact_instagram: string | null;
+  contact_threads: string | null;
+  contact_x: string | null;
+  contact_tiktok: string | null;
+  contact_hidden: ContactChannel[];
+  /** Format HH:MM:SS; keduanya null atau keduanya terisi dengan reply_from < reply_until. */
+  reply_from: string | null;
+  reply_until: string | null;
+  reminder_whatsapp: boolean;
+  reminder_email: boolean;
+  reminder_push: boolean;
+  reminder_day_before: boolean;
+  reminder_same_day: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -554,6 +587,26 @@ export type Database = {
             | "auto_confirm_on_site"
             | "max_active_per_phone"
             | "deposit_after_no_show"
+            | "allow_customer_reschedule"
+            | "reschedule_min_hours"
+            | "max_reschedules"
+            | "allow_customer_cancel"
+            | "cancel_min_hours"
+            | "policy_text"
+            | "contact_phone"
+            | "contact_email"
+            | "contact_instagram"
+            | "contact_threads"
+            | "contact_x"
+            | "contact_tiktok"
+            | "contact_hidden"
+            | "reply_from"
+            | "reply_until"
+            | "reminder_whatsapp"
+            | "reminder_email"
+            | "reminder_push"
+            | "reminder_day_before"
+            | "reminder_same_day"
           >
         >;
         Relationships: [Relationship<"merchant_id", "merchants">];
@@ -766,6 +819,23 @@ export type Database = {
         Args: { p_booking_id: string; p_new_start: string };
         Returns: undefined;
       };
+      /**
+       * Ubah jadwal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
+       * dikelola, BK041 tidak diizinkan, BK042 batas waktu lewat, BK043 kesempatan habis,
+       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01 seperti jadwal ulang merchant.
+       */
+      reschedule_booking: {
+        Args: { p_token: string; p_new_start: string };
+        Returns: { booking_id: string; old_start: string }[];
+      };
+      /**
+       * Batal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
+       * dibatalkan, BK044 tidak diizinkan, BK045 batas waktu lewat.
+       */
+      cancel_booking_by_customer: {
+        Args: { p_token: string };
+        Returns: { booking_id: string }[];
+      };
       /** Merchant menyetujui/menolak booking REQUESTED. BK030 tidak ditemukan, BK031 kedaluwarsa. */
       decide_booking_request: {
         Args: { p_booking_id: string; p_approve: boolean };
@@ -830,6 +900,7 @@ export type Database = {
       domain_status: DomainStatus;
       notification_channel: NotificationChannel;
       notification_status: NotificationStatus;
+      contact_channel: ContactChannel;
     };
     CompositeTypes: { [_ in never]: never };
   };

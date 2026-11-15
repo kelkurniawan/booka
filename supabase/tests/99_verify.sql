@@ -3513,3 +3513,350 @@ select
          or has_function_privilege('anon', 'public.dashboard_week_summary()', 'EXECUTE')
        then 'FAIL t37g anon bisa memanggil RPC'
        else 'OK   t37g anon tidak bisa memanggil RPC' end as t37g3;
+
+-- ===========================================================================
+-- 40. Kebijakan dan kontak merchant (20261116000200)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('40404040-0000-0000-0000-000000000001', 'kelola40-a@example.com', '{}'::jsonb),
+  ('40404040-0000-0000-0000-000000000002', 'kelola40-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'kelola-40', subscription_tier = 'PRO'
+  where id = '40404040-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id = '40404040-0000-0000-0000-000000000002';
+
+-- Merchant 0001 buka setiap hari 09:00-17:00.
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '40404040-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
+  ('40404040-5e5e-0000-0000-000000000001', '40404040-0000-0000-0000-000000000001', 'Layanan 40', 100000, 60, 'ON_SITE', true);
+
+-- Token akses tetap: repeat(huruf, 48).
+create or replace function pg_temp.tok40(p_char text) returns text language sql immutable as $$
+  select repeat(p_char, 48);
+$$;
+
+-- Booking 60 menit milik merchant 0001, disisipkan langsung.
+create or replace function pg_temp.ins40(p_char text, p_status public.booking_status, p_start timestamptz,
+  p_expires timestamptz default null)
+returns uuid language sql as $$
+  insert into public.bookings (merchant_id, service_id, service_name, service_price, duration_minutes,
+    start_datetime, end_datetime, customer_name, customer_whatsapp, status, expires_at,
+    amount_due_now, amount_due_on_site, payment_mode, access_token)
+  values ('40404040-0000-0000-0000-000000000001', '40404040-5e5e-0000-0000-000000000001', 'Layanan 40', 100000, 60,
+    p_start, p_start + interval '60 minutes', 'Pelanggan 40', '+62814040000' || ascii(p_char), p_status,
+    coalesce(p_expires, now() + interval '15 minutes'), 0, 100000, 'ON_SITE', pg_temp.tok40(p_char))
+  returning id;
+$$;
+
+create or replace function pg_temp.id40(p_char text) returns uuid language sql as $$
+  select id from public.bookings where access_token = pg_temp.tok40(p_char);
+$$;
+
+-- 40a. Default kebijakan (Keputusan 2) dan pengingat.
+select case when not allow_customer_reschedule and reschedule_min_hours = 24 and max_reschedules = 1
+             and not allow_customer_cancel and cancel_min_hours = 24
+             and policy_text is null and contact_phone is null and contact_email is null
+             and contact_instagram is null and contact_threads is null and contact_x is null and contact_tiktok is null
+             and contact_hidden = '{}' and reply_from is null and reply_until is null
+             and reminder_whatsapp and reminder_email and reminder_push and reminder_day_before
+             and not reminder_same_day
+            then 'OK   t40a default kebijakan, kontak, dan pengingat'
+            else 'FAIL t40a default kebijakan/kontak/pengingat salah' end as t40a
+from public.merchant_settings where merchant_id = '40404040-0000-0000-0000-000000000001';
+
+-- 40b. Check constraint.
+select pg_temp.expect_fail_code($q$update public.merchant_settings set max_reschedules = 0
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b max_reschedules = 0');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set reschedule_min_hours = 169
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b reschedule_min_hours = 169');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set contact_instagram = 'a b'
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b contact_instagram berspasi');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set contact_phone = '0812'
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b contact_phone bukan E.164');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set contact_email = 'bukan'
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b contact_email tanpa @');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set reply_from = '09:00'
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b reply_from tanpa reply_until');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set reply_from = '20:00', reply_until = '09:00'
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b reply_from setelah reply_until');
+select pg_temp.expect_fail_code($q$update public.merchant_settings set policy_text = repeat('x', 501)
+  where merchant_id = '40404040-0000-0000-0000-000000000001'$q$, '23514', 't40b policy_text 501 karakter');
+
+-- 40c. authenticated hanya bisa mengubah baris miliknya.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '40404040-0000-0000-0000-000000000001';
+with u as (
+  update public.merchant_settings
+    set allow_customer_cancel = true, contact_instagram = 'kelola.40', reminder_same_day = true
+    where merchant_id = '40404040-0000-0000-0000-000000000001'
+    returning 1)
+select case when count(*) = 1 then 'OK   t40c merchant mengubah kebijakan miliknya'
+            else 'FAIL t40c ' || count(*) || ' baris milik sendiri berubah' end as t40c1
+from u;
+with u as (
+  update public.merchant_settings set allow_customer_cancel = true
+    where merchant_id = '40404040-0000-0000-0000-000000000002'
+    returning 1)
+select case when count(*) = 0 then 'OK   t40c baris merchant lain tidak berubah'
+            else 'FAIL t40c ' || count(*) || ' baris merchant lain berubah' end as t40c2
+from u;
+commit;
+select case when allow_customer_cancel and contact_instagram = 'kelola.40' and reminder_same_day
+            then 'OK   t40c perubahan tersimpan'
+            else 'FAIL t40c perubahan tidak tersimpan' end as t40c3
+from public.merchant_settings where merchant_id = '40404040-0000-0000-0000-000000000001';
+update public.merchant_settings set allow_customer_cancel = false, contact_instagram = null, reminder_same_day = false
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+
+-- 40d. Hak akses kolom.
+select
+  case when has_column_privilege('anon', 'public.merchant_settings', 'policy_text', 'SELECT')
+         or has_column_privilege('anon', 'public.merchant_settings', 'contact_email', 'SELECT')
+         or has_column_privilege('anon', 'public.merchant_settings', 'contact_phone', 'SELECT')
+       then 'FAIL t40d anon bisa membaca kebijakan/kontak'
+       else 'OK   t40d anon tidak bisa membaca kebijakan/kontak' end as t40d1,
+  case when has_column_privilege('anon', 'public.bookings', 'reschedule_count', 'SELECT')
+       then 'FAIL t40d anon bisa membaca reschedule_count'
+       else 'OK   t40d anon tidak bisa membaca reschedule_count' end as t40d2,
+  case when has_column_privilege('authenticated', 'public.bookings', 'reschedule_count', 'UPDATE')
+       then 'FAIL t40d authenticated bisa UPDATE reschedule_count'
+       else 'OK   t40d authenticated tidak bisa UPDATE reschedule_count' end as t40d3;
+
+-- 40e. Segmen /sw dicadangkan.
+select case when exists (select 1 from public.reserved_usernames where name = 'sw')
+            then 'OK   t40e sw ada di reserved_usernames'
+            else 'FAIL t40e sw belum dicadangkan' end as t40e;
+
+-- ===========================================================================
+-- 41. Ubah jadwal oleh pelanggan (20261116000200)
+-- ===========================================================================
+
+update public.merchant_settings
+  set allow_customer_reschedule = true, reschedule_min_hours = 24, max_reschedules = 1
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+
+select pg_temp.ins40('a', 'CONFIRMED', pg_temp.jakarta_future(3, 1, '10:00'));
+select pg_temp.ins40('b', 'CONFIRMED', pg_temp.jakarta_future(1, 2, '10:00'));
+select pg_temp.ins40('c', 'CONFIRMED', pg_temp.jakarta_future(1, 3, '10:00'));
+select pg_temp.ins40('d', 'CONFIRMED', now() + interval '5 hours');
+select pg_temp.ins40('e', 'PENDING', pg_temp.jakarta_future(1, 4, '10:00'));
+select pg_temp.ins40('g', 'REQUESTED', pg_temp.jakarta_future(1, 5, '10:00'), now() + interval '1 hour');
+select pg_temp.ins40('h', 'CANCELLED', pg_temp.jakarta_future(1, 6, '10:00'));
+select pg_temp.ins40('i', 'CONFIRMED', pg_temp.jakarta_future(1, 7, '10:00'));
+update public.bookings set attended_at = now() where access_token = pg_temp.tok40('i');
+select pg_temp.ins40('j', 'PAID', pg_temp.jakarta_future(1, 8, '10:00'));
+select pg_temp.ins40('k', 'CONFIRMED', pg_temp.jakarta_future(1, 9, '10:00'));
+select pg_temp.ins40('l', 'CONFIRMED', pg_temp.jakarta_future(1, 10, '10:00'));
+
+insert into public.notification_log (booking_id, merchant_id, kind, channel, status)
+select pg_temp.id40('a'), '40404040-0000-0000-0000-000000000001', k::public.notification_kind, 'WHATSAPP', 'SENT'
+from unnest(array['REMINDER_CUSTOMER', 'REMINDER_CUSTOMER_SAME_DAY', 'BOOKING_RESCHEDULED_MERCHANT',
+                  'BOOKING_CONFIRMED_CUSTOMER']) k;
+insert into public.notification_log (booking_id, merchant_id, kind, channel, status)
+select pg_temp.id40('k'), '40404040-0000-0000-0000-000000000001', k::public.notification_kind, 'WHATSAPP', 'SENT'
+from unnest(array['REMINDER_CUSTOMER_SAME_DAY', 'BOOKING_CONFIRMED_CUSTOMER']) k;
+
+-- Panggil reschedule_booking; kembalikan "id|old_start" atau "ERR <sqlstate>".
+create or replace function pg_temp.rs40(p_char text, p_new timestamptz) returns text language plpgsql as $$
+declare r record;
+begin
+  select * into r from public.reschedule_booking(pg_temp.tok40(p_char), p_new);
+  return r.booking_id || '|' || r.old_start;
+exception when others then
+  return 'ERR ' || sqlstate || ' ' || sqlerrm;
+end $$;
+
+create or replace function pg_temp.rs40sql(p_char text, p_new timestamptz) returns text language sql as $$
+  select format('select * from public.reschedule_booking(%L, %L)', pg_temp.tok40(p_char), p_new);
+$$;
+
+-- 41a. CONFIRMED X ke Y: kembalian (id, X), durasi tetap, penghitung naik, pengingat dihapus.
+begin;
+set local role service_role;
+select case when pg_temp.rs40('a', pg_temp.jakarta_future(4, 1, '11:00'))
+                 = pg_temp.id40('a') || '|' || pg_temp.jakarta_future(3, 1, '10:00')
+            then 'OK   t41a reschedule_booking mengembalikan (id, jam lama)'
+            else 'FAIL t41a kembalian reschedule_booking salah' end as t41a1;
+commit;
+select case when start_datetime = pg_temp.jakarta_future(4, 1, '11:00')
+             and end_datetime - start_datetime = interval '60 minutes' and reschedule_count = 1
+            then 'OK   t41a jam pindah, durasi tetap 60 menit, reschedule_count = 1'
+            else 'FAIL t41a ' || start_datetime || ' - ' || end_datetime || ' count ' || reschedule_count end as t41a2
+from public.bookings where access_token = pg_temp.tok40('a');
+select case when count(*) = 1 and bool_and(kind = 'BOOKING_CONFIRMED_CUSTOMER')
+            then 'OK   t41a log pengingat dan pemberitahuan ubah jadwal dihapus, konfirmasi tetap'
+            else 'FAIL t41a notification_log ' || count(*) || ' baris' end as t41a3
+from public.notification_log where booking_id = pg_temp.id40('a');
+
+-- 41b-41g. Penolakan.
+begin;
+set local role service_role;
+select pg_temp.expect_fail_code(pg_temp.rs40sql('a', pg_temp.jakarta_future(4, 1, '13:00')),
+  'BK043', 't41b ubah jadwal kedua melewati max_reschedules');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('b', now() + interval '2 hours'),
+  'BK046', 't41e jadwal baru 2 jam lagi (min 24)');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('b', pg_temp.jakarta_future(1, 3, '10:00')),
+  '23P01', 't41f ke slot booking CONFIRMED lain');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('b', pg_temp.jakarta_future(1, 2, '20:00')),
+  'BK001', 't41f ke 20:00 WIB');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('d', pg_temp.jakarta_future(1, 2, '14:00')),
+  'BK042', 't41d booking mulai 5 jam lagi (min 24)');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('e', pg_temp.jakarta_future(1, 4, '14:00')),
+  'BK040', 't41g booking PENDING');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('g', pg_temp.jakarta_future(1, 5, '14:00')),
+  'BK040', 't41g booking REQUESTED');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('h', pg_temp.jakarta_future(1, 6, '14:00')),
+  'BK040', 't41g booking CANCELLED');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('i', pg_temp.jakarta_future(1, 7, '14:00')),
+  'BK040', 't41g booking yang kehadirannya sudah dicatat');
+select pg_temp.expect_fail_code(pg_temp.rs40sql('f', pg_temp.jakarta_future(1, 2, '14:00')),
+  'BK040', 't41g token tidak dikenal');
+commit;
+
+update public.merchant_settings set reschedule_min_hours = 0
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+begin;
+set local role service_role;
+select pg_temp.expect_fail_code(pg_temp.rs40sql('b', now() - interval '1 hour'),
+  'P0006', 't41e min 0, jadwal baru di masa lalu');
+commit;
+update public.merchant_settings set allow_customer_reschedule = false, reschedule_min_hours = 24
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+begin;
+set local role service_role;
+select pg_temp.expect_fail_code(pg_temp.rs40sql('b', pg_temp.jakarta_future(1, 2, '14:00')),
+  'BK041', 't41c merchant tidak mengizinkan ubah jadwal');
+commit;
+update public.merchant_settings set allow_customer_reschedule = true
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+select case when start_datetime = pg_temp.jakarta_future(1, 2, '10:00') and reschedule_count = 0
+            then 'OK   t41b-g percobaan gagal tidak mengubah jam dan penghitung'
+            else 'FAIL t41b-g booking b berubah: ' || start_datetime || ' count ' || reschedule_count end as t41g
+from public.bookings where access_token = pg_temp.tok40('b');
+
+-- 41h. PAID sama seperti CONFIRMED.
+begin;
+set local role service_role;
+select pg_temp.expect_ok(pg_temp.rs40sql('j', pg_temp.jakarta_future(1, 8, '14:00')), 't41h ubah jadwal booking PAID');
+commit;
+select case when start_datetime = pg_temp.jakarta_future(1, 8, '14:00') and status = 'PAID' and reschedule_count = 1
+            then 'OK   t41h PAID pindah ke 14:00, tetap PAID, reschedule_count = 1'
+            else 'FAIL t41h ' || status || ' ' || start_datetime || ' count ' || reschedule_count end as t41h
+from public.bookings where access_token = pg_temp.tok40('j');
+
+-- 41i. Jadwal ulang merchant lewat helper yang sama.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '40404040-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id40('k'), pg_temp.jakarta_future(1, 9, '12:00')),
+  't41i jadwal ulang oleh merchant');
+commit;
+select case when start_datetime = pg_temp.jakarta_future(1, 9, '12:00') and reschedule_count = 0
+             and merchant_reschedule_count = 1
+            then 'OK   t41i merchant: reschedule_count tetap 0, merchant_reschedule_count = 1'
+            else 'FAIL t41i ' || start_datetime || ' count ' || reschedule_count
+              || ' merchant ' || merchant_reschedule_count end as t41i1
+from public.bookings where access_token = pg_temp.tok40('k');
+select case when count(*) = 1 and bool_and(kind = 'BOOKING_CONFIRMED_CUSTOMER')
+            then 'OK   t41i pengingat hari H dihapus oleh jadwal ulang merchant'
+            else 'FAIL t41i notification_log ' || count(*) || ' baris' end as t41i2
+from public.notification_log where booking_id = pg_temp.id40('k');
+
+-- 41j. Hak akses.
+select
+  case when has_function_privilege('anon', 'public.reschedule_booking(text, timestamptz)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.reschedule_booking(text, timestamptz)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.cancel_booking_by_customer(text)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.cancel_booking_by_customer(text)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.move_booking_slot(uuid, uuid, timestamptz)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.move_booking_slot(uuid, uuid, timestamptz)', 'EXECUTE')
+       then 'FAIL t41j anon/authenticated bisa EXECUTE RPC pelanggan atau move_booking_slot'
+       else 'OK   t41j RPC pelanggan dan move_booking_slot tertutup untuk anon/authenticated' end as t41j1,
+  case when has_function_privilege('service_role', 'public.reschedule_booking(text, timestamptz)', 'EXECUTE')
+        and has_function_privilege('service_role', 'public.cancel_booking_by_customer(text)', 'EXECUTE')
+       then 'OK   t41j service_role bisa EXECUTE RPC pelanggan'
+       else 'FAIL t41j service_role tidak bisa EXECUTE RPC pelanggan' end as t41j2;
+
+-- 41l. Geser 30 menit di hari yang sama: tidak bentrok dengan dirinya sendiri.
+begin;
+set local role service_role;
+select pg_temp.expect_ok(pg_temp.rs40sql('l', pg_temp.jakarta_future(1, 10, '10:30')), 't41l geser 10:00 ke 10:30');
+commit;
+select case when start_datetime = pg_temp.jakarta_future(1, 10, '10:30')
+            then 'OK   t41l jam mulai pindah ke 10:30'
+            else 'FAIL t41l jam mulai ' || start_datetime end as t41l
+from public.bookings where access_token = pg_temp.tok40('l');
+
+-- ===========================================================================
+-- 42. Batal oleh pelanggan (20261116000200)
+-- ===========================================================================
+
+update public.merchant_settings set allow_customer_cancel = true, cancel_min_hours = 24
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+
+select pg_temp.ins40('m', 'CONFIRMED', pg_temp.jakarta_future(2, 2, '10:00'));
+select pg_temp.ins40('o', 'CONFIRMED', pg_temp.jakarta_future(2, 3, '10:00'));
+select pg_temp.ins40('p', 'CONFIRMED', now() + interval '7 hours');
+select pg_temp.ins40('q', 'REQUESTED', pg_temp.jakarta_future(2, 4, '10:00'), now() + interval '1 hour');
+select pg_temp.ins40('r', 'REQUESTED', now() - interval '1 hour', now() + interval '1 hour');
+select pg_temp.ins40('s', 'PENDING', pg_temp.jakarta_future(2, 5, '10:00'));
+select pg_temp.ins40('t', 'CANCELLED', pg_temp.jakarta_future(2, 6, '10:00'));
+select pg_temp.ins40('u', 'CONFIRMED', pg_temp.jakarta_future(2, 7, '10:00'));
+update public.bookings set no_show_at = now() where access_token = pg_temp.tok40('u');
+select pg_temp.ins40('v', 'PAID', pg_temp.jakarta_future(2, 8, '10:00'));
+
+create or replace function pg_temp.cc40sql(p_char text) returns text language sql as $$
+  select format('select * from public.cancel_booking_by_customer(%L)', pg_temp.tok40(p_char));
+$$;
+
+-- 42a. CONFIRMED dibatalkan, slot langsung lepas.
+begin;
+set local role service_role;
+select case when (select booking_id from public.cancel_booking_by_customer(pg_temp.tok40('m'))) = pg_temp.id40('m')
+            then 'OK   t42a cancel_booking_by_customer mengembalikan id booking'
+            else 'FAIL t42a kembalian cancel_booking_by_customer salah' end as t42a1;
+commit;
+select case when status = 'CANCELLED' and cancelled_at is not null and cancel_reason = 'Dibatalkan pelanggan'
+            then 'OK   t42a CONFIRMED -> CANCELLED dengan alasan pelanggan'
+            else 'FAIL t42a ' || status || ' ' || coalesce(cancel_reason, 'NULL') end as t42a2
+from public.bookings where access_token = pg_temp.tok40('m');
+select pg_temp.expect_ok($q$select pg_temp.ins40('n', 'CONFIRMED', pg_temp.jakarta_future(2, 2, '10:00'))$q$,
+  't42a booking baru di slot yang dibatalkan');
+
+-- 42b-42d. Penolakan.
+update public.merchant_settings set allow_customer_cancel = false
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+begin;
+set local role service_role;
+select pg_temp.expect_fail_code(pg_temp.cc40sql('o'), 'BK044', 't42b merchant tidak mengizinkan batal');
+select pg_temp.expect_ok(pg_temp.cc40sql('q'), 't42c REQUESTED masa depan tetap bisa batal');
+commit;
+update public.merchant_settings set allow_customer_cancel = true
+  where merchant_id = '40404040-0000-0000-0000-000000000001';
+begin;
+set local role service_role;
+select pg_temp.expect_fail_code(pg_temp.cc40sql('p'), 'BK045', 't42b booking mulai 7 jam lagi (min 24)');
+select pg_temp.expect_fail_code(pg_temp.cc40sql('r'), 'BK040', 't42c REQUESTED yang sudah mulai');
+select pg_temp.expect_fail_code(pg_temp.cc40sql('s'), 'BK040', 't42d booking PENDING');
+select pg_temp.expect_fail_code(pg_temp.cc40sql('t'), 'BK040', 't42d booking CANCELLED');
+select pg_temp.expect_fail_code(pg_temp.cc40sql('u'), 'BK040', 't42d booking no-show');
+select pg_temp.expect_fail_code(pg_temp.cc40sql('f'), 'BK040', 't42d token tidak dikenal');
+select pg_temp.expect_ok(pg_temp.cc40sql('v'), 't42e batal booking PAID');
+commit;
+select case when status = 'CANCELLED' then 'OK   t42c REQUESTED masa depan jadi CANCELLED'
+            else 'FAIL t42c REQUESTED jadi ' || status end as t42c
+from public.bookings where access_token = pg_temp.tok40('q');
+select case when status = 'CANCELLED' and cancel_reason = 'Dibatalkan pelanggan'
+            then 'OK   t42e PAID jadi CANCELLED'
+            else 'FAIL t42e PAID jadi ' || status end as t42e
+from public.bookings where access_token = pg_temp.tok40('v');
+select case when count(*) filter (where status = 'CANCELLED') = 0
+            then 'OK   t42b-d booking yang ditolak tidak berubah'
+            else 'FAIL t42b-d ' || count(*) filter (where status = 'CANCELLED') || ' booking ikut batal' end as t42d
+from public.bookings where access_token in (pg_temp.tok40('o'), pg_temp.tok40('p'), pg_temp.tok40('u'));
