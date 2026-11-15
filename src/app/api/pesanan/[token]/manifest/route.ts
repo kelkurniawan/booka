@@ -26,6 +26,6 @@ export async function GET(
       display: "standalone",
       background_color: "#ffffff",
     }),
-    { headers: { "content-type": "application/manifest+json" } },
+    { headers: { "content-type": "application/manifest+json", "cache-control": "private, no-store" } },
   );
 }

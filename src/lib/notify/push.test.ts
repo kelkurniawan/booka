@@ -22,6 +22,10 @@ test("isAllowedPushEndpoint: host lain, http, dan alamat internal ditolak", () =
     "https://169.254.169.254/latest",
     "https://localhost/x",
     "bukan url",
+    "https://user:pw@fcm.googleapis.com/x",
+    "https://fcm.googleapis.com:8443/x",
+    "https://127.0.0.1/x",
+    "https://[::1]/x",
   ]) {
     assert.equal(isAllowedPushEndpoint(url), false, url);
   }

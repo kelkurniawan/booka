@@ -15,6 +15,8 @@ export type PushConfig = { publicKey: string; privateKey: string; subject: strin
 export function pushConfig(): PushConfig | null {
   const { vapidPublicKey, vapidPrivateKey, vapidSubject } = serverEnv();
   if (!vapidPublicKey || !vapidPrivateKey || !vapidSubject) return null;
+  // Subject salah hanya mematikan push; tidak boleh merusak serverEnv() milik pembayaran.
+  if (!vapidSubject.startsWith("mailto:") && !vapidSubject.startsWith("https://")) return null;
   return { publicKey: vapidPublicKey, privateKey: vapidPrivateKey, subject: vapidSubject };
 }
 
@@ -40,6 +42,7 @@ export function isAllowedPushEndpoint(endpoint: string): boolean {
     return false;
   }
   if (url.protocol !== "https:") return false;
+  if (url.username || url.password || url.port) return false;
   // Cocokkan di batas label: "evilfcm.googleapis.com" tidak boleh lolos.
   return PUSH_HOST_SUFFIXES.some((s) => url.hostname === s || url.hostname.endsWith(`.${s}`));
 }
@@ -65,6 +68,10 @@ export async function sendPush(
   sub: StoredPushSubscription,
   payload: PushPayload,
 ): Promise<SendResult & { gone?: boolean }> {
+  // Data lama di DB tidak dipercaya: cek ulang sebelum server menembak endpoint.
+  if (!isAllowedPushEndpoint(sub.endpoint)) {
+    return { ok: false, reason: "push: endpoint tidak diizinkan", gone: true };
+  }
   try {
     await sendNotification(sub, JSON.stringify(payload), {
       TTL: TTL_SECONDS,

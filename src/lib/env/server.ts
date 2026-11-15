@@ -56,13 +56,7 @@ const serverEnvSchema = z.object({
    */
   vapidPublicKey: z.string().min(1).optional(),
   vapidPrivateKey: z.string().min(1).optional(),
-  vapidSubject: z
-    .string()
-    .refine(
-      (v) => v.startsWith("mailto:") || v.startsWith("https://"),
-      'VAPID_SUBJECT harus diawali "mailto:" atau "https://"',
-    )
-    .optional(),
+  vapidSubject: z.string().min(1).optional(),
 
   /**
    * Notifikasi. Semuanya opsional: tanpa nilai, kanal yang bersangkutan

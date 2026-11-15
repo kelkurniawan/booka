@@ -20,7 +20,7 @@ function keyToBytes(key: string): Uint8Array<ArrayBuffer> {
 
 export async function subscribePush(token: string, vapidPublicKey: string): Promise<Result> {
   try {
-    const registration = await navigator.serviceWorker.register(ROUTES.serviceWorker);
+    const registration = await navigator.serviceWorker.register(ROUTES.serviceWorker, { scope: "/pesanan/" });
     if ((await Notification.requestPermission()) !== "granted") {
       return { ok: false, message: "Izin notifikasi ditolak. Ubah di pengaturan browser." };
     }

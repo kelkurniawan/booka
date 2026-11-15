@@ -15,6 +15,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * access_token lalu merchant_id. Token tidak pernah dikembalikan.
  */
 
+const MAX_BODY_BYTES = 4096;
+const MAX_DEVICES_PER_BOOKING = 5;
+
 const NOT_FOUND = () => NextResponse.json({ error: "Pesanan tidak ditemukan" }, { status: 404 });
 
 async function loadBooking(token: string) {
@@ -33,7 +36,17 @@ export async function POST(
   const { token } = await params;
   if (!/^[0-9a-f]{48}$/.test(token)) return NOT_FOUND();
 
-  const body: unknown = await request.json().catch(() => null);
+  // Langganan sah jauh di bawah 4 KB; tolak sebelum membaca/parse.
+  const tooLarge = () => NextResponse.json({ error: "Langganan notifikasi tidak valid." }, { status: 400 });
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return tooLarge();
+  const text = await request.text().catch(() => "");
+  if (text.length > MAX_BODY_BYTES) return tooLarge();
+  let body: unknown = null;
+  try {
+    body = JSON.parse(text);
+  } catch {
+    // body tetap null -> ditolak schema
+  }
   const parsed = pushSubscriptionSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Langganan notifikasi tidak valid." }, { status: 400 });
@@ -71,12 +84,27 @@ export async function POST(
     return NextResponse.json({ error: "Notifikasi HP belum disiapkan." }, { status: 409 });
   }
 
+  const hash = endpointHash(sub.endpoint);
+  // Batasi perangkat per booking supaya pemegang token tidak bisa menimbun baris.
+  const { data: existing, error: countError } = await admin
+    .from("push_subscriptions")
+    .select("endpoint_hash")
+    .eq("booking_id", booking.id)
+    .eq("merchant_id", booking.merchant_id);
+  if (countError) {
+    console.error("[api/pesanan/push] gagal menghitung langganan", { bookingId: booking.id, error: countError });
+    return NextResponse.json({ error: "Gagal menyimpan langganan" }, { status: 500 });
+  }
+  if (existing.length >= MAX_DEVICES_PER_BOOKING && !existing.some((r) => r.endpoint_hash === hash)) {
+    return NextResponse.json({ error: "Batas perangkat untuk booking ini tercapai." }, { status: 409 });
+  }
+
   try {
     const { error: upsertError } = await admin.from("push_subscriptions").upsert(
       {
         booking_id: booking.id,
         merchant_id: booking.merchant_id,
-        endpoint_hash: endpointHash(sub.endpoint),
+        endpoint_hash: hash,
         subscription_enc: encryptSecret(JSON.stringify(sub), {
           merchantId: booking.merchant_id,
           bookingId: booking.id,
