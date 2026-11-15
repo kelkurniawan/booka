@@ -58,7 +58,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason";
+  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
 
 /** Paket yang mendapat reminder H-1 (PRD bagian 1: "WhatsApp Reminder" di Pro). */
 const REMINDER_TIERS: Merchant["subscription_tier"][] = ["PRO", "STUDIO"];

@@ -10,6 +10,8 @@
 export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
 export type BookingStatus = "PENDING" | "PAID" | "CANCELLED" | "CONFIRMED" | "REQUESTED";
 export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
+/** ONLINE dari halaman publik, MANUAL dicatat merchant dari dashboard. */
+export type BookingSource = "ONLINE" | "MANUAL";
 export type DepositType = "PERCENT" | "FIXED";
 export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
@@ -320,6 +322,7 @@ export type Booking = {
   paid_on_site_method: OnSitePaymentMethod | null;
   attended_at: string | null;
   no_show_at: string | null;
+  source: BookingSource;
   created_at: string;
   updated_at: string;
 };
@@ -510,11 +513,13 @@ export type Database = {
           | "paid_on_site_method"
           | "attended_at"
           | "no_show_at"
+          | "source"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "source"
               | "payment_mode"
               | "amount_due_now"
               | "amount_due_on_site"
@@ -710,8 +715,29 @@ export type Database = {
           p_staff_id?: string | null;
           /** false bila merchant tidak punya koneksi payment ACTIVE (BK021 bila booking perlu bayar online). */
           p_can_charge?: boolean;
+          /** MANUAL: bayar di tempat, langsung CONFIRMED, tanpa BK020/BK021. */
+          p_source?: BookingSource;
         };
         Returns: Booking[];
+      };
+      /**
+       * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login;
+       * error slot sama dengan create_booking.
+       */
+      create_manual_booking: {
+        Args: {
+          p_service_id: string;
+          p_start_datetime: string;
+          p_customer_name: string;
+          p_customer_whatsapp: string;
+          p_staff_id?: string | null;
+        };
+        Returns: { id: string }[];
+      };
+      /** Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK001 di luar jam, P0006 lampau, 23P01 bentrok. */
+      reschedule_booking_by_merchant: {
+        Args: { p_booking_id: string; p_new_start: string };
+        Returns: undefined;
       };
       /** Merchant menyetujui/menolak booking REQUESTED. BK030 tidak ditemukan, BK031 kedaluwarsa. */
       decide_booking_request: {
@@ -760,6 +786,7 @@ export type Database = {
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
       payment_mode: PaymentMode;
+      booking_source: BookingSource;
       deposit_type: DepositType;
       on_site_payment_method: OnSitePaymentMethod;
       payment_provider: PaymentProvider;
