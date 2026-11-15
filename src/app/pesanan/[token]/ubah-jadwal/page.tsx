@@ -45,6 +45,7 @@ const REASON_ERROR = { OFF: "BK041", STATUS: "BK040", DEADLINE: "BK042", LIMIT: 
 
 export default async function RescheduleBookingPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
+  if (!/^[0-9a-f]{48}$/.test(token)) notFound();
   const admin = createAdminClient();
 
   const { data: booking, error: bookingError } = await admin
@@ -100,9 +101,6 @@ export default async function RescheduleBookingPage({ params }: { params: Promis
           <p className="text-muted-foreground text-sm text-pretty">
             {customerManageErrorMessage(REASON_ERROR[reason])}
           </p>
-          <Button asChild variant="outline" className="min-h-11 w-full">
-            <Link href={backHref}>Hubungi merchant</Link>
-          </Button>
           <Button asChild className="min-h-11 w-full">
             <Link href={backHref}>Kembali ke booking</Link>
           </Button>

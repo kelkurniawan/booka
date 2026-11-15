@@ -28,6 +28,10 @@ test("batal: REQUESTED selalu boleh sebelum mulai, PENDING tidak", () => {
   assert.deepEqual(manageState(b, s, NOW).cancel, { allowed: true, deadline: "2026-11-20T03:00:00.000Z" });
   assert.deepEqual(manageState({ ...b, start_datetime: "2026-11-16T20:00:00Z" }, s, NOW).cancel, { allowed: false, reason: "DEADLINE" });
 });
+test("policyLines REQUESTED hanya menyebut belum ada pembayaran", () => {
+  assert.deepEqual(policyLines({ ...b, status: "REQUESTED" }, { ...s, allow_customer_cancel: false }, "X"), ["Belum ada pembayaran."]);
+});
+
 test("policyLines memakai policy_text atau baris pengembalian", () => {
   assert.equal(policyLines({ ...b, amount_due_now: 100000 }, s, "Rias by Sekar").at(-1), "Soal pengembalian pembayaran, hubungi Rias by Sekar.");
   assert.equal(policyLines(b, { ...s, policy_text: "DP tidak dikembalikan." }, "X").at(-1), "DP tidak dikembalikan.");

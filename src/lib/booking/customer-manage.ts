@@ -77,6 +77,8 @@ export function manageState(b: ManageBooking, s: ManageSettings, nowMs: number):
 
 /** Baris kebijakan untuk halaman pelanggan. Tenggat dihitung dari setelan, meski booking sudah lewat tenggat. */
 export function policyLines(b: ManageBooking, s: ManageSettings, merchantName: string): string[] {
+  // REQUESTED boleh dibatalkan tanpa kebijakan (Keputusan 4): belum ada uang dan belum ada janji slot.
+  if (b.status === "REQUESTED") return ["Belum ada pembayaran."];
   const startMs = Date.parse(b.start_datetime);
   const lines: string[] = [];
   if (s.allow_customer_reschedule) {

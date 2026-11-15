@@ -22,10 +22,16 @@ export function CancelBookingButton({ token, policy }: { token: string; policy: 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // 409: keadaan booking berubah. Dialog tetap terbuka menampilkan pesannya; tampilan dimuat ulang saat ditutup.
+  const [stale, setStale] = useState(false);
+
   function onOpenChange(next: boolean) {
     if (busy) return;
     setOpen(next);
-    if (!next) setError(null);
+    if (!next) {
+      setError(null);
+      if (stale) router.refresh();
+    }
   }
 
   async function cancel() {
@@ -43,8 +49,7 @@ export function CancelBookingButton({ token, policy }: { token: string; policy: 
             ? body.error
             : "Gagal membatalkan. Coba lagi.",
         );
-        // 409: keadaan booking berubah; muat ulang supaya tombol mengikuti.
-        if (response.status === 409) router.refresh();
+        if (response.status === 409) setStale(true);
       }
     } catch {
       setError("Gagal membatalkan, periksa koneksi lalu coba lagi.");

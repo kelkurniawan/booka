@@ -69,7 +69,7 @@ export function ContactSettingsForm({
                 ) : (
                   <span className="text-muted-foreground">Belum diisi </span>
                 )}
-                <Link href={ROUTES.settings} className="text-foreground underline underline-offset-4">
+                <Link href={`${ROUTES.settings}#profil`} className="text-foreground underline underline-offset-4">
                   Ubah di Profil
                 </Link>
               </p>

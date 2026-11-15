@@ -8,6 +8,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 
 const bodySchema = z.object({ startUtc: z.iso.datetime({ offset: true }) });
 
+const MAX_BODY_BYTES = 4096;
+
 /**
  * POST /api/pesanan/[token]/ubah-jadwal
  *
@@ -26,9 +28,19 @@ export async function POST(
     return NextResponse.json({ error: "Pesanan tidak ditemukan" }, { status: 404 });
   }
 
-  const body = bodySchema.safeParse(await request.json().catch(() => null));
+  const invalid = () => NextResponse.json({ error: "Jadwal baru tidak valid" }, { status: 400 });
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return invalid();
+  const text = await request.text().catch(() => "");
+  if (text.length > MAX_BODY_BYTES) return invalid();
+  let json: unknown = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    // json tetap null -> ditolak schema
+  }
+  const body = bodySchema.safeParse(json);
   if (!body.success) {
-    return NextResponse.json({ error: "Jadwal baru tidak valid" }, { status: 400 });
+    return invalid();
   }
 
   const { data, error } = await createAdminClient().rpc("reschedule_booking", {

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { ChevronLeft } from "lucide-react";
 
 import { DateStrip } from "@/components/booking-page/date-strip";
 import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
@@ -115,6 +116,13 @@ export function RescheduleForm({
   return (
     <div className="flex flex-col gap-6">
       <header className="flex flex-col gap-1">
+        <Link
+          href={ROUTES.bookingStatus(token)}
+          aria-label="Kembali ke booking Anda"
+          className="-ml-3 inline-flex size-11 items-center justify-center"
+        >
+          <ChevronLeft aria-hidden className="size-5" />
+        </Link>
         <h1 className="text-2xl font-semibold tracking-tight text-balance">Ubah jadwal</h1>
         <p className="text-muted-foreground text-sm">{`${serviceName}, ${code}`}</p>
         <p className="text-sm text-pretty">

@@ -44,7 +44,7 @@ export function SettingsForm({
   }, [state]);
 
   return (
-    <form action={formAction} className="flex max-w-lg flex-col gap-6" noValidate>
+    <form id="profil" action={formAction} className="flex max-w-lg scroll-mt-4 flex-col gap-6" noValidate>
       <Field data-invalid={Boolean(state.fieldErrors?.full_name)}>
         <FieldLabel htmlFor="full_name">Nama usaha</FieldLabel>
         <Input
