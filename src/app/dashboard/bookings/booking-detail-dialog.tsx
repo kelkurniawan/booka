@@ -61,6 +61,8 @@ export function BookingDetailDialog({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [confirmReject, setConfirmReject] = useState(false);
+  // Lunas di tempat tidak bisa dibatalkan, jadi metode yang dipilih dikonfirmasi dulu.
+  const [confirmMethod, setConfirmMethod] = useState<keyof typeof ON_SITE_METHOD_LABEL | null>(null);
 
   const startMs = new Date(booking.start_datetime).getTime();
   const live = booking.status === "PAID" || booking.status === "CONFIRMED";
@@ -76,6 +78,7 @@ export function BookingDetailDialog({
       const result = await action();
       if (result.ok) {
         setConfirmReject(false);
+        setConfirmMethod(null);
         onOpenChange(false);
       } else {
         setError(result.message ?? "Gagal menyimpan. Coba lagi.");
@@ -248,19 +251,49 @@ export function BookingDetailDialog({
 
         {onSiteOpen ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm">Tandai lunas di tempat:</span>
-            {(Object.keys(ON_SITE_METHOD_LABEL) as (keyof typeof ON_SITE_METHOD_LABEL)[]).map(
-              (method) => (
+            {confirmMethod ? (
+              <>
+                <span className="text-sm">
+                  Tandai lunas {formatRupiah(booking.amount_due_on_site)} dengan{" "}
+                  {ON_SITE_METHOD_LABEL[confirmMethod]}?
+                </span>
                 <Button
-                  key={method}
                   variant="outline"
                   size="sm"
+                  className="min-h-11"
                   disabled={pending}
-                  onClick={() => run(() => markPaidOnSite(booking.id, method))}
+                  onClick={() => setConfirmMethod(null)}
                 >
-                  {ON_SITE_METHOD_LABEL[method]}
+                  Batal
                 </Button>
-              ),
+                <Button
+                  size="sm"
+                  className="min-h-11"
+                  disabled={pending}
+                  onClick={() => run(() => markPaidOnSite(booking.id, confirmMethod))}
+                >
+                  {pending ? <Spinner /> : null}
+                  Ya
+                </Button>
+              </>
+            ) : (
+              <>
+                <span className="text-sm">Tandai lunas di tempat:</span>
+                {(Object.keys(ON_SITE_METHOD_LABEL) as (keyof typeof ON_SITE_METHOD_LABEL)[]).map(
+                  (method) => (
+                    <Button
+                      key={method}
+                      variant="outline"
+                      size="sm"
+                      className="min-h-11"
+                      disabled={pending}
+                      onClick={() => setConfirmMethod(method)}
+                    >
+                      {ON_SITE_METHOD_LABEL[method]}
+                    </Button>
+                  ),
+                )}
+              </>
             )}
           </div>
         ) : null}
@@ -270,6 +303,7 @@ export function BookingDetailDialog({
             <Button
               variant="outline"
               size="sm"
+              className="min-h-11"
               disabled={pending || !canAttend}
               onClick={() => run(() => markAttendance(booking.id, true))}
             >
@@ -278,6 +312,7 @@ export function BookingDetailDialog({
             <Button
               variant="outline"
               size="sm"
+              className="min-h-11"
               disabled={pending || !canNoShow}
               onClick={() => run(() => markAttendance(booking.id, false))}
             >
@@ -287,6 +322,8 @@ export function BookingDetailDialog({
               <span className="text-muted-foreground text-xs">
                 Kehadiran bisa ditandai mulai 1 jam sebelum jadwal.
               </span>
+            ) : !canNoShow ? (
+              <span className="text-muted-foreground text-xs">Bisa ditandai mulai jam jadwal.</span>
             ) : null}
           </div>
         ) : null}

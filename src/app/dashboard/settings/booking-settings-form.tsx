@@ -93,7 +93,7 @@ export function BookingSettingsForm({
             />
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-sm">
+          <div className="flex min-h-11 flex-wrap items-center gap-2 text-sm">
             <input
               id="limit_toggle"
               type="checkbox"
@@ -101,7 +101,10 @@ export function BookingSettingsForm({
               onChange={(e) => setLimited(e.target.checked)}
               className="size-4"
             />
-            <label htmlFor="limit_toggle">Satu nomor WhatsApp maksimal</label>
+            {/* Label setinggi 44px jadi area sentuh kotak centang. */}
+            <label htmlFor="limit_toggle" className="inline-flex min-h-11 items-center">
+              Satu nomor WhatsApp maksimal
+            </label>
             <Input
               name="max_active_per_phone"
               type="number"
@@ -116,7 +119,7 @@ export function BookingSettingsForm({
             <span>booking aktif</span>
           </div>
 
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex min-h-11 items-center gap-2 text-sm">
             <input
               id="deposit_after_no_show"
               name="deposit_after_no_show"
@@ -124,7 +127,7 @@ export function BookingSettingsForm({
               defaultChecked={settings.deposit_after_no_show}
               className="size-4"
             />
-            <label htmlFor="deposit_after_no_show">
+            <label htmlFor="deposit_after_no_show" className="flex min-h-11 flex-1 items-center">
               Nomor yang pernah tidak datang wajib bayar di muka di booking berikutnya
             </label>
           </div>
