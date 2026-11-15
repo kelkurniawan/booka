@@ -28,6 +28,10 @@ import {
   customerReminderWhatsapp,
   merchantPaidEmail,
   merchantPaidWhatsapp,
+  merchantCustomerCancelledEmail,
+  merchantCustomerCancelledWhatsapp,
+  merchantRescheduledEmail,
+  merchantRescheduledWhatsapp,
   type BookingMessageData,
 } from "./templates";
 import { sendWhatsapp, type SendResult, type WhatsappConfig } from "./whatsapp";
@@ -290,6 +294,28 @@ export async function notifyRequestDecided(bookingId: string): Promise<void> {
       await toCustomer(ctx, "BOOKING_REJECTED_CUSTOMER", customerRejectedWhatsapp);
   } catch (error) {
     console.error("[notify] notifyRequestDecided gagal", { bookingId, error });
+  }
+}
+
+export type CustomerChange = { type: "RESCHEDULED"; oldStart: string } | { type: "CANCELLED" };
+
+/** Pelanggan mengubah jadwal atau membatalkan sendiri: kabari merchant lewat email + WA. Tidak pernah melempar. */
+export async function notifyCustomerChange(bookingId: string, change: CustomerChange): Promise<void> {
+  try {
+    const ctx = await loadForNotify(bookingId);
+    if (!ctx) return;
+    const messages =
+      change.type === "RESCHEDULED"
+        ? toMerchant(
+            ctx,
+            "BOOKING_RESCHEDULED_MERCHANT",
+            (d) => merchantRescheduledEmail(d, change.oldStart),
+            (d) => merchantRescheduledWhatsapp(d, change.oldStart),
+          )
+        : toMerchant(ctx, "BOOKING_CANCELLED_MERCHANT", merchantCustomerCancelledEmail, merchantCustomerCancelledWhatsapp);
+    await Promise.all(messages);
+  } catch (error) {
+    console.error("[notify] notifyCustomerChange gagal", { bookingId, error });
   }
 }
 

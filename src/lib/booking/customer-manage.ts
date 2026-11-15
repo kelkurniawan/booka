@@ -109,6 +109,7 @@ const ERROR_MESSAGES = new Map<string, string>([
   ["BK044", "Merchant tidak mengizinkan pembatalan lewat halaman ini."],
   ["BK045", "Batas waktu pembatalan sudah lewat."],
   ["BK046", "Jadwal baru terlalu dekat. Pilih jam yang lebih jauh."],
+  ["BK003", "Staf untuk booking ini sudah tidak tersedia. Silakan hubungi merchant."],
   ["23P01", "Jam itu baru saja terisi. Pilih jam lain."],
   ["BK001", "Jam itu di luar jam buka. Pilih jam lain."],
   ["P0006", "Jam itu sudah lewat. Pilih jam lain."],

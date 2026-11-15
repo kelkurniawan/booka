@@ -13,6 +13,7 @@ import {
   rescheduleNoticeLink,
   whatsappLink,
 } from "@/lib/booking/dashboard";
+import { bookingCode } from "@/lib/booking/customer-manage";
 import { ON_SITE_METHOD_LABEL } from "@/lib/booking/payment-mode";
 import { jakartaDateISO } from "@/lib/booking/slots";
 import { formatDateTime, formatRupiah, formatSchedule } from "@/lib/format";
@@ -134,6 +135,9 @@ export function BookingDetailPanel({
         >
           {booking.customer_name}
         </h2>
+        <p className="text-muted-foreground text-sm">
+          Kode {bookingCode(booking.id)}
+        </p>
         <p className="text-muted-foreground text-sm">
           {booking.customer_whatsapp}
         </p>

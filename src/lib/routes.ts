@@ -40,6 +40,10 @@ export const ROUTES = {
   merchantPage: (username: string) => `/${username}`,
   bookingStatus: (token: string) => `/pesanan/${token}`,
   bookingPay: (token: string) => `/api/pesanan/${token}/bayar`,
+  bookingReschedule: (token: string) => `/pesanan/${token}/ubah-jadwal`,
+  bookingReminders: (token: string) => `/pesanan/${token}/pengingat`,
+  bookingRescheduleApi: (token: string) => `/api/pesanan/${token}/ubah-jadwal`,
+  bookingCancelApi: (token: string) => `/api/pesanan/${token}/batal`,
 } as const;
 
 /** Rute yang mensyaratkan sesi login. */

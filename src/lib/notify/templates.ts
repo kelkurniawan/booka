@@ -284,3 +284,27 @@ export function customerRejectedWhatsapp(data: BookingMessageData): string {
     contactLine(data, "Untuk jadwal lain, hubungi"),
   ]);
 }
+
+function rescheduledLine(data: BookingMessageData, oldStart: string): string {
+  return `*${data.customerName}* mengubah jadwal *${data.serviceName}* dari ${formatDateTime(oldStart)} ke ${formatDateTime(data.startDatetime)}.`;
+}
+
+function cancelledLine(data: BookingMessageData): string {
+  return `*${data.customerName}* membatalkan *${data.serviceName}* untuk ${formatDateTime(data.startDatetime)}. Slotnya sudah kosong lagi.`;
+}
+
+export function merchantRescheduledWhatsapp(data: BookingMessageData, oldStart: string): string {
+  return `${rescheduledLine(data, oldStart)}\n\nLihat di dashboard: ${data.dashboardUrl}`;
+}
+
+export function merchantRescheduledEmail(data: BookingMessageData, oldStart: string): EmailMessage {
+  return simpleEmail(`Jadwal diubah pelanggan: ${data.serviceName}`, rescheduledLine(data, oldStart), [], data);
+}
+
+export function merchantCustomerCancelledWhatsapp(data: BookingMessageData): string {
+  return `${cancelledLine(data)}\n\nLihat di dashboard: ${data.dashboardUrl}`;
+}
+
+export function merchantCustomerCancelledEmail(data: BookingMessageData): EmailMessage {
+  return simpleEmail(`Booking dibatalkan pelanggan: ${data.serviceName}`, cancelledLine(data), [], data);
+}

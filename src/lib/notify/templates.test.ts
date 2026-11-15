@@ -15,6 +15,10 @@ import {
   customerReminderWhatsapp,
   merchantPaidEmail,
   merchantPaidWhatsapp,
+  merchantRescheduledEmail,
+  merchantRescheduledWhatsapp,
+  merchantCustomerCancelledEmail,
+  merchantCustomerCancelledWhatsapp,
   waLink,
   type BookingMessageData,
 } from "./templates";
@@ -147,4 +151,31 @@ test("pesan terkonfirmasi menulis Bayar di tempat hanya bila ada sisa di tempat"
 
 test("subjek email booking dibayar tanpa em dash", () => {
   assert.doesNotMatch(merchantPaidEmail(base).subject, /—/);
+});
+
+test("template perubahan oleh pelanggan memuat nama, layanan, jadwal, tautan dashboard, tanpa karakter terlarang", () => {
+  const oldStart = "2026-08-18T09:00:00.000Z"; // Selasa 18 Agustus 16:00 WIB
+  const outputs = [
+    merchantRescheduledWhatsapp(base, oldStart),
+    merchantRescheduledEmail(base, oldStart).text,
+    merchantRescheduledEmail(base, oldStart).subject,
+    merchantRescheduledEmail(base, oldStart).html,
+    merchantCustomerCancelledWhatsapp(base),
+    merchantCustomerCancelledEmail(base).text,
+    merchantCustomerCancelledEmail(base).subject,
+    merchantCustomerCancelledEmail(base).html,
+  ];
+  for (const out of outputs) assert.doesNotMatch(out, /—|·/);
+  for (const out of [outputs[0], outputs[1], outputs[4], outputs[5]]) {
+    assert.match(out, /Rina/);
+    assert.match(out, /Makeup Wisuda/);
+    assert.ok(out.includes(base.dashboardUrl));
+  }
+  for (const out of [outputs[0], outputs[1]]) {
+    assert.match(out, /Selasa, 18 Agustus 2026 pukul 16:00/);
+    assert.match(out, /Rabu, 19 Agustus 2026 pukul 17:30/);
+  }
+  assert.match(outputs[2], /^Jadwal diubah pelanggan: Makeup Wisuda$/);
+  assert.match(outputs[6], /^Booking dibatalkan pelanggan: Makeup Wisuda$/);
+  assert.match(outputs[4], /Slotnya sudah kosong lagi\./);
 });
