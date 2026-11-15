@@ -20,6 +20,8 @@ const preview: Preview = {
     ),
   ],
   parameters: {
+    // Semua komponen app memakai next/navigation (App Router), bukan pages router.
+    nextjs: { appDirectory: true },
     viewport: {
       options: {
         hp: {
