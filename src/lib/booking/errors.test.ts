@@ -65,3 +65,15 @@ test("errcode null/undefined -> 500, pesan generik", () => {
   assert.equal(mapBookingError(null).status, 500);
   assert.equal(mapBookingError(undefined).status, 500);
 });
+
+test("BK050-BK056 (voucher) -> status dan pesan sesuai", () => {
+  assert.equal(mapBookingError("BK050").status, 404);
+  assert.equal(mapBookingError("BK050").message, "Kode voucher tidak ditemukan atau sudah tidak berlaku.");
+  assert.equal(mapBookingError("BK051").status, 409);
+  assert.equal(mapBookingError("BK052").message, "Kuota voucher ini sudah habis.");
+  assert.equal(mapBookingError("BK053").message, "Nomor WhatsApp ini sudah memakai voucher ini.");
+  assert.equal(mapBookingError("BK054").message, "Harga layanan belum memenuhi minimal transaksi voucher ini.");
+  assert.equal(mapBookingError("BK055").status, 409);
+  assert.equal(mapBookingError("BK055").message, "Voucher ini tidak berlaku untuk layanan yang dipilih.");
+  assert.equal(mapBookingError("BK056").message, "Voucher ini khusus pelanggan baru.");
+});

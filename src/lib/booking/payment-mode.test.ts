@@ -101,3 +101,13 @@ test("paymentLabel memakai teks M1", () => {
   assert.equal(paymentLabel(svc({ payment_mode: "ON_SITE" }), manual), "Bayar di tempat");
   assert.equal(paymentLabel(svc({ payment_mode: "REQUEST" }), on), "Ajukan dulu");
 });
+
+test("computeAmounts memotong harga dengan diskon voucher", () => {
+  const dp = svc({ payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: 30 });
+  // Harga efektif 350000 - 70000 = 280000; DP 30% = 84000.
+  assert.deepEqual(computeAmounts(dp, "DEPOSIT", 70000), { dueNow: 84000, dueOnSite: 196000 });
+  // Diskon penuh: harga efektif 0.
+  assert.deepEqual(computeAmounts(svc(), "FULL", 350000), { dueNow: 0, dueOnSite: 0 });
+  // Tanpa argumen ketiga sama dengan diskon 0.
+  assert.deepEqual(computeAmounts(dp, "DEPOSIT"), computeAmounts(dp, "DEPOSIT", 0));
+});

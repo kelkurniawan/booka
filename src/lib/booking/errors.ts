@@ -80,6 +80,41 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Nominal pembayaran terlalu kecil untuk QRIS. Hubungi merchant.",
   },
+  // create_booking / evaluate_voucher: kode voucher tidak ada, nonaktif, atau sudah dihapus.
+  BK050: {
+    status: 404,
+    message: "Kode voucher tidak ditemukan atau sudah tidak berlaku.",
+  },
+  // evaluate_voucher: di luar periode berlaku voucher.
+  BK051: {
+    status: 409,
+    message: "Voucher ini belum berlaku atau sudah berakhir.",
+  },
+  // evaluate_voucher: kuota pemakaian voucher sudah habis.
+  BK052: {
+    status: 409,
+    message: "Kuota voucher ini sudah habis.",
+  },
+  // create_booking: nomor WhatsApp ini sudah pernah memakai voucher ini.
+  BK053: {
+    status: 409,
+    message: "Nomor WhatsApp ini sudah memakai voucher ini.",
+  },
+  // evaluate_voucher: harga layanan di bawah minimal belanja voucher.
+  BK054: {
+    status: 409,
+    message: "Harga layanan belum memenuhi minimal transaksi voucher ini.",
+  },
+  // evaluate_voucher: voucher terbatas pada layanan lain.
+  BK055: {
+    status: 409,
+    message: "Voucher ini tidak berlaku untuk layanan yang dipilih.",
+  },
+  // evaluate_voucher: voucher hanya untuk pelanggan baru.
+  BK056: {
+    status: 409,
+    message: "Voucher ini khusus pelanggan baru.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {

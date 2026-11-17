@@ -38,7 +38,9 @@ export function effectivePaymentMode(
 }
 
 /**
- * Nominal bayar sekarang dan di tempat untuk mode efektif tertentu. PERCENT
+ * Nominal bayar sekarang dan di tempat untuk mode efektif tertentu. `discount`
+ * adalah potongan voucher (0 bila tanpa voucher); harga efektif = harga - discount,
+ * sama dengan 20261117000200. PERCENT
  * dibulatkan dengan Math.round (setengah ke atas), sama dengan round() di SQL
  * untuk nilai positif. DP tidak pernah di bawah MIN_ONLINE_CHARGE kecuali
  * harganya sendiri lebih kecil. `price` dan `deposit_value` dibungkus Number() karena
@@ -47,8 +49,9 @@ export function effectivePaymentMode(
 export function computeAmounts(
   service: ServicePayment,
   mode: PaymentMode,
+  discount?: number,
 ): { dueNow: number; dueOnSite: number } {
-  const price = Number(service.price);
+  const price = Number(service.price) - (discount ?? 0);
   const depositValue = Number(service.deposit_value);
   let dueNow: number;
   if (mode === "ON_SITE") {
