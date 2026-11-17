@@ -31,7 +31,10 @@ export type ThemePreset =
   | "PASTEL"
   | "BERANI"
   | "ELEGAN";
-export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE";
+export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE" | "MOTION";
+export type ButtonStyle = "FILLED" | "OUTLINE" | "SOFT";
+export type BackgroundMotion = "BENTUK" | "GELOMBANG" | "AURORA" | "PARTIKEL";
+export type MotionSpeed = "SLOW" | "NORMAL";
 export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RAPI";
 export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
@@ -164,6 +167,13 @@ export type MerchantTheme = {
   font_pair: FontPair | null;
   text_scale: TextScale;
   corner_style: CornerStyle | null;
+  logo_path: string | null;
+  cover_path: string | null;
+  button_style: ButtonStyle;
+  section_order: string[];
+  hidden_sections: string[];
+  background_motion: BackgroundMotion;
+  background_motion_speed: MotionSpeed;
   created_at: string;
   updated_at: string;
 };

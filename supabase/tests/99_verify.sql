@@ -4688,3 +4688,119 @@ select case when (select count(*) from public.merchant_banners
                     and target_voucher_id is null and target_service_id is null) = 2
             then 'OK   t48g target dihapus: id target null, banner tetap'
             else 'FAIL t48g banner hilang atau target tidak null' end as t48g;
+
+-- ===========================================================================
+-- 50. Tema: kolom merek, susunan, gerak (20261118000200)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('50505050-0000-0000-0000-000000000001', 'tema50-a@example.com', '{}'::jsonb),
+  ('50505050-0000-0000-0000-000000000002', 'tema50-b@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO'
+  where id = '50505050-0000-0000-0000-000000000001';
+select case when (select subscription_tier from public.merchants where id = '50505050-0000-0000-0000-000000000001') = 'PRO'
+             and (select subscription_tier from public.merchants where id = '50505050-0000-0000-0000-000000000002') = 'STARTER'
+            then 'OK   t50-pra tier merchant uji benar'
+            else 'FAIL t50-pra tier merchant uji salah -- t50 sampai t52 tidak bermakna' end as t50_pra;
+
+-- t50a: nilai bawaan.
+insert into public.merchant_themes (merchant_id, preset)
+  values ('50505050-0000-0000-0000-000000000001', 'BERSIH');
+select case when (select button_style = 'FILLED' and section_order = '{PROMO,SERVICES,FAQ}'
+                         and hidden_sections = '{}' and background_motion = 'BENTUK'
+                         and background_motion_speed = 'SLOW' and logo_path is null and cover_path is null
+                  from public.merchant_themes where merchant_id = '50505050-0000-0000-0000-000000000001')
+            then 'OK   t50a nilai bawaan kolom baru'
+            else 'FAIL t50a nilai bawaan kolom baru salah' end as t50a;
+
+-- t50b: constraint.
+select pg_temp.expect_fail_code(format($q$update public.merchant_themes set %s
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, c), '23514', 't50b ' || c)
+from unnest(array[
+  $c$section_order = '{PROMO,SERVICES}'$c$,
+  $c$section_order = '{PROMO,PROMO,FAQ}'$c$,
+  $c$section_order = '{PROMO,SERVICES,KONTAK}'$c$,
+  $c$section_order = '{PROMO,SERVICES,FAQ,FAQ}'$c$,
+  $c$section_order = array['PROMO',null,'FAQ']$c$,
+  $c$section_order = '{{PROMO,SERVICES,FAQ}}'$c$,
+  $c$hidden_sections = '{SERVICES}'$c$,
+  $c$hidden_sections = '{GALERI}'$c$,
+  $c$logo_path = '50505050-0000-0000-0000-000000000002/logo-a.webp'$c$,
+  $c$cover_path = '50505050-0000-0000-0000-000000000001/../x.webp'$c$,
+  $c$logo_path = '50505050-0000-0000-0000-000000000001/a".webp'$c$
+]) as c;
+
+-- t50c: nilai sah diterima.
+select pg_temp.expect_ok($q$update public.merchant_themes set
+  section_order = '{FAQ,PROMO,SERVICES}', hidden_sections = '{PROMO,FAQ}',
+  logo_path = '50505050-0000-0000-0000-000000000001/logo-ab12cd34.webp',
+  cover_path = '50505050-0000-0000-0000-000000000001/cover-ab12cd34.webp',
+  background_style = 'MOTION', background_motion = 'GELOMBANG', background_motion_speed = 'NORMAL'
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, 't50c nilai sah kolom baru');
+
+-- ===========================================================================
+-- 51. Tema: paket untuk kolom baru (20261118000200)
+-- ===========================================================================
+
+-- t51a: STARTER boleh logo, susunan, sembunyikan bagian.
+select pg_temp.expect_ok($q$insert into public.merchant_themes
+  (merchant_id, preset, logo_path, section_order, hidden_sections)
+  values ('50505050-0000-0000-0000-000000000002', 'BERSIH',
+          '50505050-0000-0000-0000-000000000002/logo-ab12cd34.webp', '{FAQ,SERVICES,PROMO}', '{PROMO}')$q$,
+  't51a STARTER logo, susunan, sembunyikan bagian');
+-- t51b: STARTER ditolak untuk fitur Pro.
+select pg_temp.expect_fail_code(format($q$update public.merchant_themes set %s
+  where merchant_id = '50505050-0000-0000-0000-000000000002'$q$, c), 'P0001', 't51b ' || c)
+from unnest(array[
+  $c$cover_path = '50505050-0000-0000-0000-000000000002/cover-ab12cd34.webp'$c$,
+  $c$button_style = 'OUTLINE'$c$,
+  $c$background_style = 'MOTION'$c$
+]) as c;
+-- t51c: nilai netral diterima.
+select pg_temp.expect_ok($q$update public.merchant_themes set cover_path = null, button_style = 'FILLED'
+  where merchant_id = '50505050-0000-0000-0000-000000000002'$q$, 't51c STARTER sampul kosong dan tombol FILLED');
+
+-- t51d: turun paket, simpan bagian lain tetap boleh, sampul tetap.
+update public.merchant_themes set cover_path = '50505050-0000-0000-0000-000000000001/cover-ab12cd34.webp',
+  button_style = 'SOFT', background_style = 'SOLID'
+  where merchant_id = '50505050-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'STARTER' where id = '50505050-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$update public.merchant_themes set corner_style = 'BULAT'
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, 't51d turun paket simpan bagian lain');
+select case when (select cover_path is not null from public.merchant_themes
+                  where merchant_id = '50505050-0000-0000-0000-000000000001')
+            then 'OK   t51d sampul tetap setelah turun paket'
+            else 'FAIL t51d sampul hilang setelah turun paket' end as t51d;
+-- t51e: masih STARTER: ganti sampul atau gaya ditolak, kosongkan boleh.
+select pg_temp.expect_fail_code($q$update public.merchant_themes
+  set cover_path = '50505050-0000-0000-0000-000000000001/cover-zz99.webp'
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, 'P0001', 't51e ganti sampul');
+select pg_temp.expect_fail_code($q$update public.merchant_themes set button_style = 'OUTLINE'
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, 'P0001', 't51e ganti gaya tombol');
+select pg_temp.expect_ok($q$update public.merchant_themes set cover_path = null
+  where merchant_id = '50505050-0000-0000-0000-000000000001'$q$, 't51e kosongkan sampul');
+update public.merchants set subscription_tier = 'PRO' where id = '50505050-0000-0000-0000-000000000001';
+
+-- ===========================================================================
+-- 52. Tema: hak akses kolom baru (20261118000200)
+-- ===========================================================================
+
+select case when bool_and(has_column_privilege('anon', 'public.merchant_themes', c, 'SELECT'))
+            then 'OK   t52a anon bisa SELECT kolom baru' else 'FAIL t52a anon tidak bisa SELECT kolom baru' end as t52a
+from unnest(array['logo_path', 'cover_path', 'button_style', 'section_order', 'hidden_sections',
+                  'background_motion', 'background_motion_speed']) as c;
+select case when not has_column_privilege('anon', 'public.merchant_themes', 'cover_path', 'UPDATE')
+            then 'OK   t52a anon tidak bisa UPDATE cover_path' else 'FAIL t52a anon bisa UPDATE cover_path' end as t52a2;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '50505050-0000-0000-0000-000000000001';
+with u as (update public.merchant_themes set button_style = 'OUTLINE'
+           where merchant_id = '50505050-0000-0000-0000-000000000001' returning 1)
+select case when (select count(*) from u) = 1
+            then 'OK   t52b pemilik ubah button_style 1 baris' else 'FAIL t52b pemilik gagal ubah button_style' end as t52b1;
+with u as (update public.merchant_themes set button_style = 'OUTLINE'
+           where merchant_id = '50505050-0000-0000-0000-000000000002' returning 1)
+select case when (select count(*) from u) = 0
+            then 'OK   t52b merchant lain 0 baris' else 'FAIL t52b merchant lain berubah' end as t52b2;
+rollback;

@@ -57,6 +57,13 @@ const TEMA_KOSONG: DraftTema = {
   font_pair: null,
   text_scale: "SEDANG",
   corner_style: null,
+  logo_path: null,
+  cover_path: null,
+  button_style: "FILLED",
+  section_order: ["PROMO", "SERVICES", "FAQ"],
+  hidden_sections: [],
+  background_motion: "BENTUK",
+  background_motion_speed: "SLOW",
 };
 
 const SKALA: { nilai: TextScale; label: string }[] = [
@@ -125,6 +132,13 @@ export function AppearanceEditor({
           font_pair: temaAwal.font_pair,
           text_scale: temaAwal.text_scale,
           corner_style: temaAwal.corner_style,
+          logo_path: temaAwal.logo_path,
+          cover_path: temaAwal.cover_path,
+          button_style: temaAwal.button_style,
+          section_order: temaAwal.section_order,
+          hidden_sections: temaAwal.hidden_sections,
+          background_motion: temaAwal.background_motion,
+          background_motion_speed: temaAwal.background_motion_speed,
         }
       : TEMA_KOSONG,
   );

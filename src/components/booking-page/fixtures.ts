@@ -82,6 +82,13 @@ export function sampleTheme(preset: ThemePreset): ResolvedTheme {
     font_pair: null,
     text_scale: "SEDANG",
     corner_style: null,
+    logo_path: null,
+    cover_path: null,
+    button_style: "FILLED",
+    section_order: ["PROMO", "SERVICES", "FAQ"],
+    hidden_sections: [],
+    background_motion: "BENTUK",
+    background_motion_speed: "SLOW",
     created_at: waktu,
     updated_at: waktu,
   };
