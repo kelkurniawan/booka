@@ -36,6 +36,7 @@ export const ROUTES = {
   floorPlan: "/dashboard/denah",
   staff: "/dashboard/staf",
   staffClipApi: "/api/staff/clip",
+  usernameCheck: "/api/username-check",
   payments: "/dashboard/payments",
   billing: "/dashboard/billing",
   domain: "/dashboard/domain",

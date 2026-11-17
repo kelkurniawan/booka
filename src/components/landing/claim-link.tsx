@@ -1,20 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { ROUTES } from "@/lib/routes";
-import { USERNAME_MAX, USERNAME_MIN } from "@/lib/validations/merchant";
+import { USERNAME_CHECK_MESSAGES, type UsernameCheckResult } from "@/lib/marketing/username-check";
+import { USERNAME_MAX } from "@/lib/validations/merchant";
+
+export type CheckFn = (slug: string, signal: AbortSignal) => Promise<UsernameCheckResult>;
 
 /**
- * Elemen utama halaman depan: tautan booking merchant, dibentuk sambil diketik.
+ * Tautan booking merchant, dibentuk sambil diketik, dengan cek ketersediaan
+ * sungguhan lewat /api/username-check. Endpoint itu sengaja publik: setiap
+ * username merchant sudah publik lewat /<username> dan sitemap.xml, jadi tidak
+ * ada yang bisa "dipanen"; yang dijaga adalah beban database (rate limit di RPC).
  *
- * Ketersediaan username TIDAK dicek di sini. Pengecekan butuh sesi login, dan
- * membuka endpoint-nya untuk publik akan mengizinkan siapa pun memanen daftar
- * username yang sudah terpakai. Yang divalidasi hanya formatnya; ketersediaan
- * diperiksa di halaman onboarding setelah merchant masuk.
+ * Status yang tampil hanya balasan server untuk slug yang sedang tertulis.
  */
+const DEBOUNCE_MS = 400;
+
+const defaultCheck: CheckFn = async (slug, signal) => {
+  const res = await fetch(`${ROUTES.usernameCheck}?u=${encodeURIComponent(slug)}`, { signal });
+  return res.json();
+};
+
 /** Spasi jadi tanda hubung, sisanya dibuang. Contoh: "Studio Mawar!" -> "studio-mawar" */
 function toSlug(raw: string) {
   return raw
@@ -25,68 +34,89 @@ function toSlug(raw: string) {
     .slice(0, USERNAME_MAX);
 }
 
-export function ClaimLink({ host }: { host: string }) {
+export function ClaimLink({ host, check = defaultCheck }: { host: string; check?: CheckFn }) {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [slug, setSlug] = useState("");
+  // Hasil disimpan bersama slug-nya; dipakai hanya bila slug masih sama.
+  const [reply, setReply] = useState<{ slug: string; result: UsernameCheckResult } | null>(null);
 
-  // Tanda hubung di ujung dibiarkan selama mengetik, lalu dirapikan saat kirim
-  // — supaya tidak muncul peringatan tiap kali merchant baru menekan spasi.
+  // Tanda hubung di ujung dibiarkan selama mengetik, dirapikan saat kirim.
   const trimmed = slug.replace(/^-+|-+$/g, "");
-  const hint =
-    trimmed.length > 0 && trimmed.length < USERNAME_MIN
-      ? `Minimal ${USERNAME_MIN} karakter`
-      : null;
+
+  useEffect(() => {
+    if (!trimmed) return;
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+      check(trimmed, controller.signal)
+        .then((result) => {
+          if (!controller.signal.aborted) setReply({ slug: trimmed, result });
+        })
+        .catch((err: unknown) => {
+          if (controller.signal.aborted || (err as Error)?.name === "AbortError") return;
+          setReply({
+            slug: trimmed,
+            result: { status: "error", message: USERNAME_CHECK_MESSAGES.error },
+          });
+        });
+    }, DEBOUNCE_MS);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [trimmed, check]);
+
+  const current = trimmed && reply?.slug === trimmed ? reply.result : null;
+  const blocked =
+    current?.status === "taken" || current?.status === "reserved" || current?.status === "invalid";
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    const next =
-      trimmed && !hint
-        ? `${ROUTES.onboarding}?u=${encodeURIComponent(trimmed)}`
-        : ROUTES.onboarding;
+    if (blocked) {
+      inputRef.current?.focus();
+      return;
+    }
+    const next = trimmed
+      ? `${ROUTES.onboarding}?u=${encodeURIComponent(trimmed)}`
+      : ROUTES.onboarding;
     router.push(`${ROUTES.signup}?next=${encodeURIComponent(next)}`);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-      <div className="border-foreground focus-within:ring-foreground/20 flex flex-col border-2 focus-within:ring-4 sm:flex-row sm:items-stretch">
-        <label htmlFor="claim-slug" className="sr-only">
-          Nama tautan booking Anda
-        </label>
-
-        {/* Skala tipe dinaikkan bertahap: di layar kecil, prefix host memakan
-            lebar dan membuat slug yang diketik terpotong. */}
-        <div className="flex min-w-0 flex-1 items-baseline gap-0 px-4 py-4 font-mono text-base sm:px-5 sm:py-5 sm:text-xl md:text-2xl">
-          <span className="text-muted-foreground shrink-0 select-none">{host}/</span>
+    <form
+      action={ROUTES.signup}
+      method="get"
+      aria-label="Klaim tautan Marky"
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-3"
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
+        <label className="flex min-w-0 flex-1 flex-wrap items-baseline px-4 py-3 [overflow-wrap:anywhere]">
+          <span aria-hidden className="shrink-0 select-none opacity-70">
+            {host}/
+          </span>
           <input
-            id="claim-slug"
+            ref={inputRef}
             value={slug}
             onChange={(event) => setSlug(toSlug(event.target.value))}
-            placeholder="studio-mawar"
+            aria-label={`Nama tautan setelah ${host}/`}
+            placeholder="nama-anda"
             maxLength={USERNAME_MAX}
             autoCapitalize="none"
             autoComplete="off"
             spellCheck={false}
-            aria-describedby={hint ? "claim-hint" : undefined}
-            aria-invalid={Boolean(hint)}
-            className="placeholder:text-muted-foreground/50 w-full min-w-0 bg-transparent outline-none"
+            aria-invalid={blocked}
+            aria-describedby="claim-status"
+            className="min-w-0 flex-1 bg-transparent outline-none"
           />
-        </div>
-
-        <button
-          type="submit"
-          className="bg-foreground text-background focus-visible:ring-foreground/30 flex shrink-0 items-center justify-center gap-2 px-6 py-4 text-sm font-medium tracking-wide focus-visible:ring-4 focus-visible:outline-none sm:py-0"
-        >
-          Ambil tautan ini
-          <ArrowRight className="size-4" aria-hidden />
+        </label>
+        <button type="submit" className="btn btn--ink min-h-11">
+          Klaim tautan
         </button>
       </div>
 
-      <p
-        id="claim-hint"
-        role={hint ? "alert" : undefined}
-        className="text-muted-foreground font-mono text-xs"
-      >
-        {hint ?? "Gratis selamanya untuk 10 transaksi per bulan. Tanpa kartu kredit."}
+      <p id="claim-status" role="status" className="min-h-[1.5em] text-sm">
+        {current?.message}
       </p>
     </form>
   );
