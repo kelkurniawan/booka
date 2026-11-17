@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
-  not_configured: "OAuth Connect belum aktif — kredensial partner belum dikonfigurasi.",
+  not_configured: "OAuth Connect belum aktif: kredensial partner belum dikonfigurasi.",
   denied: "Anda membatalkan proses menghubungkan akun.",
   invalid_state: "Sesi OAuth kedaluwarsa atau tidak valid. Silakan coba hubungkan lagi.",
   token_exchange_failed: "Gagal menukar kode OAuth dengan token. Coba lagi.",

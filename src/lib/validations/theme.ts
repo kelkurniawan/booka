@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { MEDIA_LIMITS } from "@/lib/media/limits";
+import { HIDEABLE_SECTIONS, PAGE_SECTIONS } from "@/lib/theme/sections";
 
 const HEX = /^#[0-9a-f]{6}$/;
 
@@ -23,11 +24,36 @@ const teksOpsional = z
   .nullable()
   .default(null);
 
+/** Permutasi persis PAGE_SECTIONS. Kosong (field tidak dikirim) memakai urutan bawaan. */
+const urutanBagian = z
+  .string()
+  .default(PAGE_SECTIONS.join(","))
+  .transform((nilai) => nilai.split(",").map((kunci) => kunci.trim()))
+  .refine(
+    (kunci) => kunci.length === PAGE_SECTIONS.length && PAGE_SECTIONS.every((s) => kunci.includes(s)),
+    { message: "Susunan halaman tidak lengkap. Muat ulang halaman lalu coba lagi." },
+  );
+
+/** Bagian yang disembunyikan: subset unik HIDEABLE_SECTIONS, boleh kosong. */
+const bagianTersembunyi = z
+  .string()
+  .default("")
+  .transform((nilai) => (nilai === "" ? [] : nilai.split(",").map((kunci) => kunci.trim())))
+  .superRefine((kunci, ctx) => {
+    if (kunci.includes("SERVICES")) {
+      ctx.addIssue({ code: "custom", message: "Bagian Layanan selalu tampil." });
+    } else if (kunci.some((k) => !(HIDEABLE_SECTIONS as readonly string[]).includes(k))) {
+      ctx.addIssue({ code: "custom", message: "Bagian tidak dikenali." });
+    } else if (new Set(kunci).size !== kunci.length) {
+      ctx.addIssue({ code: "custom", message: "Bagian tidak boleh disebutkan dua kali." });
+    }
+  });
+
 export const themeSchema = z
   .object({
     preset: z.enum(["BERSIH", "HANGAT", "MALAM", "PASTEL", "BERANI", "ELEGAN"]),
     accent: hexOpsional,
-    background_style: z.enum(["SOLID", "GRADIENT", "IMAGE"]),
+    background_style: z.enum(["SOLID", "GRADIENT", "IMAGE", "MOTION"]),
     background_color: hexOpsional,
     background_image_path: teksOpsional,
     background_overlay: z.coerce
@@ -41,6 +67,13 @@ export const themeSchema = z
       .default(null),
     text_scale: z.enum(["KECIL", "SEDANG", "BESAR"]),
     corner_style: z.enum(["TAJAM", "LEMBUT", "BULAT"]).nullable().default(null),
+    logo_path: teksOpsional,
+    cover_path: teksOpsional,
+    button_style: z.enum(["FILLED", "OUTLINE", "SOFT"]).default("FILLED"),
+    section_order: urutanBagian,
+    hidden_sections: bagianTersembunyi,
+    background_motion: z.enum(["BENTUK", "GELOMBANG", "AURORA", "PARTIKEL"]).default("BENTUK"),
+    background_motion_speed: z.enum(["SLOW", "NORMAL"]).default("SLOW"),
   })
   // Cermin constraint merchant_themes_image_requires_path. Ditolak di sini juga
   // supaya merchant dapat pesan yang bisa dibaca, bukan galat Postgres mentah.

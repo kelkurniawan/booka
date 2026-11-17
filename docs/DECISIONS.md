@@ -520,3 +520,101 @@ path dialihkan ke domain Marky.
 
 Spek F0 menyebut Storybook 9. Yang terpasang Storybook 10 dengan
 `@storybook/nextjs-vite`, karena itu versi yang mendukung Next 16 dan Vite 8.
+
+## 31. Batas booking manual dan jadwal ulang oleh merchant
+
+Merchant maksimal membuat 50 booking `MANUAL` per 24 jam bergulir (BK035, semua status termasuk `CANCELLED`) dan menjadwal ulang satu booking maksimal 3 kali (BK036, `merchant_reschedule_count`), supaya akun merchant tidak bisa dipakai membanjiri notifikasi ke nomor pelanggan; angkanya mungkin perlu diskalakan per paket nanti.
+
+## 32. Target sentuh 44px hanya untuk layar sentuh
+
+Sidebar desktop memakai baris shadcn `h-8` karena dipakai dengan pointer; target 44px berlaku di layar sentuh (`max-md`, navigasi bawah dan panel booking). Tidak ada baris 44px di sidebar desktop.
+
+## 33. Keputusan F4: pengingat, push, dan lisensi web-push
+
+Pengingat hanya punya dua offset, H-1 dan pagi hari jadwal, karena cron Vercel Hobby jalan sekali sehari pukul 08.00 WIB. Tampilan ke pelanggan memangkas offset ke yang masih terjangkau (`reachableOffsets`): H-1 hanya bila 08.00 WIB hari sebelumnya belum lewat, hari H hanya bila 08.00 WIB hari itu belum lewat dan booking mulai paling cepat 08.30. Booking yang sudah selesai tidak menampilkan pengingat. Cron memproses maksimal 1000 booking per offset per jalan dan mencatat peringatan bila batas tercapai. Payload web push membawa path saja, bukan URL absolut, karena `sw.js` hanya membuka origin sendiri. Pembatalan booking `REQUESTED` oleh pelanggan tidak menampilkan baris kebijakan selain "Belum ada pembayaran." (Keputusan 4 rencana F4). Pustaka `web-push` berlisensi MPL-2.0 (copyleft per berkas): dipakai apa adanya sebagai dependensi npm tanpa memodifikasi sumbernya, sehingga tidak ada kewajiban membuka kode Marky.
+
+## 34. Promosi: banner dan voucher
+
+Voucher dan banner hanya untuk Pro dan Studio. Trigger `enforce_promo_tier` menjaga tulis, pembaca menjaga tampilan: merchant yang turun ke Starter tetap menyimpan barisnya, tetapi banner tidak tampil, `public_vouchers` kosong, dan kode apa pun ditolak sebagai tidak ditemukan (`BK050`). Polanya sama dengan tema berbayar dan `resolveTheme()`.
+
+Tidak ada tabel `voucher_redemptions`. Booking adalah buku besarnya (`voucher_id`, salinan `voucher_code`, `discount_amount`), dan pemakaian dihitung di dalam `create_booking` setelah advisory lock per merchant, sehingga dua pelanggan yang berebut kuota terakhir terserialisasi. Karena hitungannya turunan, booking yang dibatalkan atau kedaluwarsa otomatis membebaskan pemakaian tanpa trigger pelepas; `PAID` dan `CONFIRMED` tetap dihitung selamanya.
+
+Rumus diskon: persen dibulatkan setengah ke atas dan dibatasi `max_discount`, nominal apa adanya, keduanya dibatasi harga. Bila harga awal minimal Rp1.500 dan harga akhir jatuh di Rp1 sampai Rp1.499, diskon dikurangi sampai harga akhir tepat Rp1.500 (minimum QRIS). Harga akhir Rp0 boleh dan menjadi `CONFIRMED`. DP dan semua aturan F2 memakai harga setelah diskon.
+
+Kode rahasia hanya bisa dipakai dengan kode persis, lewat `POST /api/vouchers/check` (10 percobaan per hash IP dan merchant per 15 menit, gagal tertutup dengan 503) atau `create_booking`. Route cek tidak menerima nomor WhatsApp supaya tidak bisa dipakai menebak apakah suatu nomor pernah jadi pelanggan.
+
+Batas 3 banner tayang bersamaan ditegakkan trigger `enforce_banner_live_limit` di database, bukan hanya di form. Draf dan banner yang sudah berakhir tidak dihitung, jadi banner terjadwal berikutnya tetap bisa disimpan.
+
+Banner di halaman publik tidak berputar otomatis: baris gulir horizontal dengan `scroll-snap`, banner berikutnya mengintip. Tanpa timer, tanpa tombol jeda, tanpa urusan reduced motion.
+
+Anon hanya punya hak kolom tertentu di `merchant_banners` (tanpa `published` dan timestamp). Query publik karena itu tidak boleh memakai kolom di luar daftar itu, termasuk di `order()`: urutan pemecah seri memakai `id`, bukan `created_at`.
+
+## 35. Tampilan lanjutan: merek, susunan, latar bergerak
+
+Bagian halaman yang bisa disusun hanya `PROMO`, `SERVICES`, dan `FAQ`, karena hanya itu yang benar-benar ada di halaman publik. Kepala profil selalu paling atas, watermark selalu paling bawah, dan `SERVICES` tidak bisa disembunyikan. Database menyimpan urutan sebagai permutasi persis tiga kunci (constraint tanpa fungsi), sedangkan pembaca `visibleSections()` tetap menormalkan, supaya fase berikutnya yang menambah bagian cukup memperbarui constraint. Urutan dirender di dalam `BookingFlow` pada langkah 1, karena tombol banner memegang state alur.
+
+Logo dan susunan untuk semua paket; foto sampul, gaya tombol selain `FILLED`, dan latar `MOTION` untuk Pro dan Studio. Trigger `enforce_theme_tier` hanya menolak perubahan ke nilai premium, bukan nilai lama: merchant yang turun paket tetap bisa menyimpan bagian lain tanpa menghapus sampulnya, dan `resolveTheme()` memangkasnya saat baca.
+
+Berkas tema lama (logo, sampul, background) dihapus server setelah upsert berhasil, bukan sebelumnya, supaya halaman publik tidak pernah menunjuk berkas yang hilang. Unggahan yang belum pernah tersimpan dan diganti lagi langsung dihapus dari browser.
+
+Latar bergerak adalah satu lapisan `fixed` di belakang seluruh halaman; semua teks dan kontrol duduk di permukaan solid, jadi kontras tetap dihitung terhadap kartu. Di layar lebar, pola selain gelombang ditaruh di kolom 440 px yang sama dengan isi halaman. Bentuk memakai mesin `seek(t)` murni (loop 12 detik, hanya `translate`/`rotate`/`scale`; morf `border-radius` dari kanvas dibuang karena bukan properti kompositor). Gelombang, Aurora, dan Partikel animasi CSS `transform`/`opacity`.
+
+Gerakan berhenti saat `prefers-reduced-motion`, hemat data, dan tab tersembunyi; tombol jeda 44 px selalu tersedia selama gerakan bisa berjalan, dan Bentuk melanjutkan dari posisi jeda. Lapisan dimuat malas lewat `next/dynamic` hanya untuk tema `MOTION` (sekitar 4,4 KB gzip), warna dasar dirender server sehingga tidak ada pergeseran tata letak.
+
+Warna teks tombol `FILLED` ikut dijaga minimal 4,5:1 dengan `ensureContrast`, karena pemilih hitam/putih bawaan tidak menjamin rasio itu pada aksen bernada tengah (preset Hangat).
+
+## 36. Profil staf: foto dan klip
+
+Profil staf (peran, perkenalan, keahlian, foto, klip) tinggal di kolom `staff`, bukan tabel baru, karena satu staf punya tepat satu profil. Hanya Studio yang punya staf, jadi seluruh fitur ikut paket itu.
+
+Klip mentah (GIF atau video) tidak pernah disajikan ke pelanggan. Browser mengunggahnya ke bucket privat `staff-clip-uploads`, lalu `/api/staff/clip` mengubahnya dengan `ffmpeg-static` menjadi MP4 bisu maksimal 5 detik plus poster JPG di `merchant-media`, dan menghapus berkas mentah apa pun hasilnya. GIF besar dan berat; MP4 jauh lebih kecil dan bisa ditahan saat reduced motion. `motion_path` hanya bisa ditulis `service_role`, supaya klien tidak bisa menunjuk berkas yang tidak pernah diproses.
+
+Unggahan mentah dibatasi policy storage: hanya merchant Studio, hanya ke folder staf miliknya sendiri, dengan nama dan ekstensi yang sama dengan yang diterima route. Route memeriksa sesi dan `Content-Length` sebelum membaca badan, menjalankan ffmpeg tanpa shell dengan whitelist protokol (`file`) dan format, batas waktu 45 detik, dan encoder dibatasi 2 utas. Diterima sadar: berkas mentah yang diunggah tetapi tidak pernah dikirim ke route akan tertinggal di bucket privat (tidak terbaca siapa pun); bila menumpuk, tambahkan pembersih terjadwal.
+
+Klip diputar sekali tanpa suara dengan tombol "Putar lagi", bukan loop, sehingga tidak ada gerakan lebih dari 5 detik yang butuh tombol jeda. Saat reduced motion atau hemat data, hanya poster yang tampil dan MP4 tidak diminta sama sekali. Jam kosong terdekat tiap staf datang dari `/api/slots/nearest` (satu panggilan `get_booked_ranges` untuk 14 hari).
+
+Isi langkah 2 dan 3 alur booking kini selalu berada di kartu solid, karena latar bergerak F6 ada di belakang seluruh halaman.
+
+## 37. Restoran: kapasitas kursi dan meja
+
+`merchant_settings.table_mode` punya tiga nilai: `NONE` (bawaan, satu booking per slot seperti layanan biasa), `AREA` (total kursi per jam, tanpa denah), dan `TABLE` (per meja, pelanggan memilih meja atau "Pilihkan untuk saya"). Merchant yang tidak menyalakannya tidak berubah sama sekali: `bookings_no_overlap` hanya berlaku untuk booking `capacity_mode = 'NONE'`, dan semua baris lama bernilai itu.
+
+Layanan reservasi ditandai lewat `seat_duration_minutes` (lama duduk) plus rentang `party_min`/`party_max`. Kursi dan meja dihitung di dalam `create_booking`, `create_manual_booking`, dan `move_booking_slot`, di bawah advisory lock merchant yang sama dan setelah membersihkan booking kedaluwarsa, sehingga dua pelanggan yang berebut kursi atau meja terakhir terserialisasi. Meja juga dijaga eksklusi per meja di database sebagai jaring kedua. Semua parameter baru `create_booking` punya default null, jadi kode aplikasi lama tetap jalan selama jeda antara migration dan deploy.
+
+Denah hanya ditulis lewat `save_dining_layout` (atomik, di bawah kunci merchant). Urutannya upsert dulu, baru hapus, supaya meja yang dipindah ke area baru tidak ikut terhapus kaskade bersama area lamanya. Penghapusan meja atau area yang masih punya reservasi mendatang ditolak (`BK062`). Meja yang bertumpuk di satu area ditolak di validasi form. `anon` membaca ketersediaan hanya lewat `get_seat_availability` dan `get_table_status`, yang mengembalikan jam, jumlah, dan status saja, tanpa data pelanggan lain.
+
+Reservasi gratis mengikuti artboard ResData: tanpa pemilih voucher dan tanpa ringkasan harga Rp 0. Penanda ruangan (Jendela, Pintu, Kasir) dan slot "Penuh" dicoret tidak dibangun. Baris "Lebih dari N? Lihat Paket acara" dibangun umum sebagai "Lihat layanan lain" yang kembali ke daftar layanan, karena tidak setiap restoran punya layanan paket acara.
+
+Diterima sadar: pemilih jam saat jadwal ulang menghitung kursi atau meja milik booking itu sendiri, sehingga jam yang sebenarnya muat (misalnya menggeser 30 menit) bisa tidak tampil. `move_booking_slot` sendiri menghitung dengan benar; perbaikannya parameter pengecualian booking di `get_seat_availability` bila keluhan muncul.
+
+## 38. Panduan merchant baru
+
+Checklist "Panduan memulai" (6 langkah) dihitung dari data sungguhan lewat satu panggilan `onboarding_state()`, bukan dari centang manual: layanan ada, jam buka ada, cara menerima uang siap (gateway terhubung ATAU semua layanan aktif bayar di tempat atau ajukan dulu, supaya merchant tanpa gateway tidak disuruh menghubungkannya), tampilan pernah disimpan, tautan pernah dibagikan, dan booking pertama masuk. Aturannya ada di modul murni `src/lib/guide/guide.ts` supaya bisa diuji tanpa database.
+
+Progres yang bukan data (tur sudah dilihat, checklist disembunyikan, tautan sudah disalin) disimpan di `merchant_onboarding_progress`, satu baris per merchant, hanya bisa dibaca pemiliknya dan hanya ditulis lewat `save_onboarding_progress`. Klien tidak punya hak INSERT/UPDATE langsung.
+
+Tur coachmark memakai `Dialog` Radix dengan target `data-tour`: fokus terkunci di kartu, Enter maju, Esc menutup, gulir halaman dikembalikan. Tur Hari ini mulai sendiri sekali untuk merchant baru, lima langkah di desktop dan empat di HP (kartu di atas nav bawah). Langkah yang targetnya tidak ada (misalnya fitur paket Pro atau Studio untuk merchant Starter) dilewati, jadi Starter hanya melihat langkah ringkasan di halaman itu.
+
+Semua teks panduan ada di satu modul `src/lib/guide/content.ts` dan ditulis dari perilaku halaman yang sebenarnya, bukan dari rencana; `content.test.ts` memeriksa bahwa setiap target tur benar-benar terpasang di kode. Halaman yang berubah wajib memperbarui teksnya. Slot video tiap halaman sengaja kosong ("Video panduan belum tersedia.") sampai videonya dibuat; tidak ada durasi atau angka karangan.
+
+## 39. Landing page Marky dan SEO
+
+Halaman pemasaran pindah ke route group `(marketing)` dengan layout sendiri, sehingga font dan token Coral landing tidak menyentuh dashboard, halaman booking, atau halaman legal. `/` dan enam `/untuk/<slug>` dirender statis saat build; satu-satunya permintaan dinamis adalah cek username.
+
+General Sans di-host sendiri (`src/assets/fonts/general-sans/`, ITF Free Font License yang mengizinkan pemakaian komersial dan self-host; berkas lisensi ikut di-commit). Font memakai `display: "optional"`, bukan `swap`: H1 tidak digambar ulang saat font tiba, jadi kunjungan pertama di jaringan lambat bisa memakai font cadangan, dan kunjungan berikutnya memakai General Sans dari cache.
+
+Cek ketersediaan username dibuka untuk publik karena setiap username merchant memang sudah publik lewat `/<username>` dan sitemap. Yang dijaga adalah beban database: RPC `check_username_claim` (hanya `service_role`) mencatat percobaan per hash IP dan menolak setelah 30 cek per 10 menit. IP diambil dari `x-forwarded-for`, yang di Vercel ditulis ulang oleh platform sehingga tidak bisa dipalsukan pengunjung; IP kosong (hanya terjadi di luar Vercel) dibiarkan lewat seperti rate limit booking. Formulir hanya menampilkan status dari server untuk slug yang sedang tertulis.
+
+Kontak (WhatsApp, Instagram, Threads, X, TikTok) dan email penyelenggara datang dari konfigurasi; ikon yang nilainya masih penanda tidak dirender, jadi tidak ada tautan mati. Perbandingan paket satu sumber di `src/lib/plans.ts`. Tombol paket jujur: pendaftaran selalu mulai di Starter.
+
+Klaim di landing disesuaikan dengan produk, bukan sebaliknya: pengingat H-1 plus pagi hari jadwal (opsional) hanya untuk Pro dan Studio, pindah jadwal oleh pelanggan hanya bila merchant mengizinkan, dan perubahan paket dibantu tim Marky (tidak ada "ganti paket kapan saja"). Pemilih contoh (usaha, pesan, paket) memakai radio bawaan plus CSS `:has()` tanpa JS, dan semua panel ada di HTML supaya terbaca mesin pencari.
+
+HeroMotion berulang (pengecualian atas arahan "satu gerakan saat dimuat") dengan tombol jeda, hanya `transform`/`opacity`, berhenti saat reduced motion, hemat data, dan tab tersembunyi; server merender frame diam slip Lunas.
+
+Anggaran kinerja Lighthouse mobile tidak tercapai sepenuhnya: Performance 88 (target 90), LCP simulasi sekitar 3,8 detik (target 2,5 detik), padahal LCP teramati sekitar 50 ms dan desktop 100. Angka simulasi sama dengan baseline landing lama (89, 3,85 detik), karena bebannya JS seluruh aplikasi (terutama klien Sentry di root layout), bukan landing. Transfer skrip 315 KB, di bawah anggaran baseline plus 25 KB. Perbaikan berikutnya: muat klien Sentry hanya bila DSN diisi.
+
+Pemeriksaan desain F10: review anti-slop (commit `57b92d4`) menemukan tiga FAIL yang sudah diperbaiki (tautan teks di kaki halaman dan kebijakan kini 44 px; deretan kartu kembar di "Kebijakan singkat" dan halaman `/untuk/*` diganti daftar bergaris). Hallmark sloplint (render) belum dijalankan karena menjalankan kode dari repo luar perlu izin pemilik proyek.
+
+## 40. Masa awal gratis
+
+Produk masih tahap awal, jadi semua merchant mendapat akses penuh gratis; pemilik berencana menagih per layanan nanti. Migration `20261123000100_free_early_access.sql` menjadikan `STUDIO` default `merchants.subscription_tier` dan menaikkan merchant yang sudah ada. Seluruh pengecekan tier (trigger, RPC, halaman) sengaja tidak disentuh dan terbuka otomatis karena tier = STUDIO. Untuk menagih lagi: ubah tier per merchant, kembalikan default kolom lewat migration baru, dan set `EARLY_ACCESS_FREE` di `src/lib/plans.ts` ke `false`. Konstanta itu hanya mengatur catatan "Semua fitur gratis selama masa awal." di landing, `/dashboard/billing`, dan `PromoUpsell`; tabel harga tetap tampil. `/syarat` diberi satu kalimat soal masa awal. Tidak ada alur pembayaran baru. Fixture `supabase/tests/99_verify.sql` bagian 1-70 memasang default sementara ke STARTER; bagian 71 memulihkan STUDIO dan mengujinya.

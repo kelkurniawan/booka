@@ -104,20 +104,4 @@ function TableSkeleton({
   )
 }
 
-function ListSkeleton({ rows = 5 }: { rows?: number }) {
-  return (
-    <>
-      <span className="sr-only">Memuat…</span>
-      <ul data-slot="list-skeleton" aria-hidden="true" className="divide-y">
-        {Array.from({ length: rows }).map((_, index) => (
-          <li key={index} className="flex flex-col gap-1.5 py-3 first:pt-0 last:pb-0">
-            <Skeleton className="h-4 w-48" />
-            <Skeleton className="h-4 w-32" />
-          </li>
-        ))}
-      </ul>
-    </>
-  )
-}
-
-export { StatCardsSkeleton, TableSkeleton, ListSkeleton }
+export { StatCardsSkeleton, TableSkeleton }

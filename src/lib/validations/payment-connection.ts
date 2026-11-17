@@ -23,7 +23,7 @@ export const manualKeySchema = z.object({
   serverKey: z
     .string()
     .trim()
-    .min(10, "Server Key terlalu pendek — periksa lagi dari dashboard provider Anda")
+    .min(10, "Server Key terlalu pendek. Periksa lagi dari dashboard provider Anda")
     .max(500, "Server Key terlalu panjang"),
   environment: z.enum(PAYMENT_ENVIRONMENTS, "Pilih Sandbox atau Production"),
   webhookToken: z

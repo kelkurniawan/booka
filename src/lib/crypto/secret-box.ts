@@ -44,24 +44,21 @@ const SUPPORTED_VERSIONS = new Set([CURRENT_VERSION]);
  * ciphertext merchant A yang disalin ke baris merchant B akan gagal
  * verifikasi authTag karena AAD-nya tidak cocok.
  */
-export type SecretContext = {
-  merchantId: string;
-  provider: PaymentProvider;
-  /**
-   * "webhook_token" ditambahkan untuk menyimpan token verifikasi webhook
-   * Xendit (lihat supabase/migrations/20260813120100_webhook_token_credential.sql)
-   * terpisah dari Secret Key charge. Ciphertext lama untuk
-   * access_token/refresh_token tidak terpengaruh -- AAD hanya perlu cocok
-   * per field, bukan per versi enum.
-   */
-  field: "access_token" | "refresh_token" | "webhook_token";
-};
+export type SecretContext =
+  | {
+      merchantId: string;
+      provider: PaymentProvider;
+      // "webhook_token": token verifikasi webhook Xendit, terpisah dari Secret Key
+      // charge (migration 20260813120100). AAD cocok per field, bukan per versi enum.
+      field: "access_token" | "refresh_token" | "webhook_token";
+    }
+  /** Langganan web push pelanggan: terikat ke booking, bukan ke penyedia. */
+  | { merchantId: string; bookingId: string; field: "push_subscription" };
 
 function buildAad(context: SecretContext): Buffer {
-  return Buffer.from(
-    `${context.merchantId}:${context.provider}:${context.field}`,
-    "utf8",
-  );
+  // AAD pembayaran tidak boleh berubah: ciphertext lama harus tetap terbaca.
+  const middle = "bookingId" in context ? context.bookingId : context.provider;
+  return Buffer.from(`${context.merchantId}:${middle}:${context.field}`, "utf8");
 }
 
 function getKey(): Buffer {

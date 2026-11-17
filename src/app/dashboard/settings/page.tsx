@@ -5,8 +5,19 @@ import { requireMerchant } from "@/lib/auth/session";
 import { serverEnv } from "@/lib/env/server";
 import { createClient } from "@/lib/supabase/server";
 
+import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
+
+import { DEFAULT_CONTACT } from "@/lib/booking/contact";
+import { DEFAULT_MANAGE_SETTINGS } from "@/lib/booking/customer-manage";
+import { DEFAULT_REMINDER_SETTINGS } from "@/lib/notify/reminder-plan";
+
 import { AccountSection } from "./account-section";
+import { BookingSettingsForm } from "./booking-settings-form";
+import { ContactSettingsForm } from "./contact-settings-form";
+import { CustomerPolicyForm } from "./customer-policy-form";
+import { ReminderSettingsForm } from "./reminder-settings-form";
 import { SettingsForm } from "./settings-form";
+
 
 export const metadata: Metadata = { title: "Pengaturan" };
 
@@ -26,6 +37,22 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .maybeSingle();
 
+  const [{ data: settingsRow }, { data: onSite }] = await Promise.all([
+    supabase
+      .from("merchant_settings")
+      .select(
+        "allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show, allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day",
+      )
+      .eq("merchant_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("services")
+      .select("id, name")
+      .eq("merchant_id", user.id)
+      .eq("payment_mode", "ON_SITE")
+      .order("sort_order", { ascending: true }),
+  ]);
+
   return (
     <>
       <PageHeader
@@ -38,6 +65,19 @@ export default async function SettingsPage() {
         defaultBio={profile?.bio ?? ""}
         defaultWhatsapp={profile?.whatsapp_number ?? ""}
         defaultUsername={merchant.username}
+      />
+      <BookingSettingsForm
+        settings={settingsRow ?? DEFAULT_MERCHANT_SETTINGS}
+        onSiteServices={onSite ?? []}
+      />
+      <CustomerPolicyForm settings={{ ...DEFAULT_MANAGE_SETTINGS, ...settingsRow }} />
+      <ContactSettingsForm
+        settings={{ ...DEFAULT_CONTACT, ...settingsRow }}
+        whatsapp={profile?.whatsapp_number ?? null}
+      />
+      <ReminderSettingsForm
+        settings={{ ...DEFAULT_REMINDER_SETTINGS, ...settingsRow }}
+        tier={merchant.subscription_tier}
       />
       <AccountSection username={merchant.username} />
     </>

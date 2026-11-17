@@ -30,6 +30,7 @@ export async function sendEmail(
         subject: message.subject,
         text: message.text,
         html: message.html,
+        ...(message.attachments ? { attachments: message.attachments } : {}),
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });

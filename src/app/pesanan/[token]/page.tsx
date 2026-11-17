@@ -1,16 +1,23 @@
 import { cache } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, XCircle } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
-import { QrisCode } from "@/components/qris-code";
-import { formatDateTime, formatRupiah, formatTime } from "@/lib/format";
-import { ROUTES } from "@/lib/routes";
+import { contactLinks, contactWhatsappText, DEFAULT_CONTACT, replyHoursLabel, type ContactSettings } from "@/lib/booking/contact";
+import {
+  bookingCode,
+  DEFAULT_MANAGE_SETTINGS,
+  manageState,
+  policyLines,
+  type ManageSettings,
+} from "@/lib/booking/customer-manage";
+import { clientEnv } from "@/lib/env/client";
+import { DEFAULT_REMINDER_SETTINGS, reachableOffsets, REMINDER_TIERS } from "@/lib/notify/reminder-plan";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { resolveTheme } from "@/lib/theme/resolve";
+import type { BookingReminderPrefs, MerchantSettings, MerchantTheme, SubscriptionTier } from "@/types/database";
 
-import { BookingLiveStatus } from "./booking-live-status";
+import { PushPrompt } from "./push-prompt";
+import { BookingStatusView, type BookingPageRow, type ReminderView } from "./booking-status-view";
 
 /**
  * I3 -- halaman ini TIDAK PERNAH boleh disajikan dari full route cache
@@ -34,24 +41,20 @@ type BookingPageParams = { token: string };
  * propnya nanti diteruskan ke komponen client di bawah.
  */
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at" as const;
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count, voucher_code, discount_amount, party_size, table_label, customer_note, capacity_mode" as const;
 
-type BookingPageRow = {
-  id: string;
-  merchant_id: string;
-  service_name: string;
-  service_price: number;
-  start_datetime: string;
-  customer_name: string;
-  status: "PENDING" | "PAID" | "CANCELLED";
-  payment_url: string | null;
-  paid_at: string | null;
-  cancelled_at: string | null;
-  cancel_reason: string | null;
-  expires_at: string;
+const SETTINGS_COLUMNS =
+  "allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day" as const;
+
+type SettingsRow = ManageSettings & ContactSettings & Pick<MerchantSettings, "reminder_whatsapp" | "reminder_email" | "reminder_push" | "reminder_day_before" | "reminder_same_day">;
+
+type MerchantInfo = {
+  username: string | null;
+  whatsapp_number: string | null;
+  full_name: string | null;
+  subscription_tier: SubscriptionTier;
+  merchant_themes?: MerchantTheme | MerchantTheme[] | null;
 };
-
-type MerchantInfo = { username: string | null; full_name: string | null };
 
 /**
  * `createAdminClient()` (service role, melewati RLS) -- halaman ini dibuka
@@ -89,7 +92,7 @@ const getBookingPageData = cache(async (token: string) => {
 
   const { data: merchant, error: merchantError } = await admin
     .from("merchants")
-    .select("username, full_name")
+    .select("username, whatsapp_number, full_name, subscription_tier, merchant_themes(*)")
     .eq("id", booking.merchant_id)
     .maybeSingle<MerchantInfo>();
 
@@ -117,10 +120,68 @@ const getBookingPageData = cache(async (token: string) => {
   // seperti CANCELLED: cron pembatalan mungkin belum sempat jalan, tapi
   // pelanggan yang membuka tautan ini setelah waktunya habis tidak boleh
   // terus melihat "menunggu pembayaran".
+  const nowMs = Date.now();
   const isExpiredPending =
-    booking.status === "PENDING" && Date.now() >= new Date(booking.expires_at).getTime();
+    (booking.status === "PENDING" || booking.status === "REQUESTED") && nowMs >= new Date(booking.expires_at).getTime();
 
-  return { booking, merchant, isExpiredPending };
+  // Query tambahan gagal -> default, halaman booking tetap tampil. Semua difilter merchant_id.
+  const [settingsRes, prefsRes, pushRes] = await Promise.all([
+    admin.from("merchant_settings").select(SETTINGS_COLUMNS).eq("merchant_id", booking.merchant_id).maybeSingle<SettingsRow>(),
+    admin
+      .from("booking_reminder_prefs")
+      .select("whatsapp, email, day_before, same_day")
+      .eq("merchant_id", booking.merchant_id)
+      .eq("booking_id", booking.id)
+      .maybeSingle<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>(),
+    admin
+      .from("push_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("merchant_id", booking.merchant_id)
+      .eq("booking_id", booking.id),
+  ]);
+  for (const [name, res] of [["merchant_settings", settingsRes], ["booking_reminder_prefs", prefsRes], ["push_subscriptions", pushRes]] as const) {
+    if (res.error) console.error(`[pesanan-page] gagal memuat ${name}`, { merchantId: booking.merchant_id, error: res.error });
+  }
+  const settings: SettingsRow = settingsRes.data ?? { ...DEFAULT_MANAGE_SETTINGS, ...DEFAULT_CONTACT, ...DEFAULT_REMINDER_SETTINGS };
+  const prefs = prefsRes.data;
+  const hasPush = (pushRes.count ?? 0) > 0;
+
+  const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
+  const code = bookingCode(booking.id);
+  // Keputusan 17: kanal efektif = dinyalakan merchant DAN dipilih pelanggan.
+  const reminderOn = REMINDER_TIERS.includes(merchant.subscription_tier) &&
+    (booking.status === "PAID" || booking.status === "CONFIRMED") &&
+    Date.parse(booking.end_datetime) > nowMs &&
+    (settings.reminder_whatsapp || settings.reminder_email || settings.reminder_push);
+  // Hanya offset yang masih bisa terkirim (jam kirim belum lewat), supaya tampilan tidak menjanjikan pengingat yang tak akan datang.
+  const reachable = reachableOffsets(booking.start_datetime, booking.end_datetime, nowMs);
+  const reminders: ReminderView | null = reminderOn
+    ? {
+        whatsapp: settings.reminder_whatsapp && (prefs?.whatsapp ?? true),
+        email: settings.reminder_email && !!prefs?.email,
+        push: settings.reminder_push && hasPush,
+        channelsOffered: { whatsapp: settings.reminder_whatsapp, email: settings.reminder_email, push: settings.reminder_push },
+        offsets: {
+          dayBefore: (prefs?.day_before ?? settings.reminder_day_before) && reachable.dayBefore,
+          sameDay: (prefs?.same_day ?? settings.reminder_same_day) && reachable.sameDay,
+        },
+      }
+    : null;
+  const whatsappText = contactWhatsappText({
+    merchantName, customerName: booking.customer_name, code, startISO: booking.start_datetime,
+  });
+  const links = contactLinks(merchant.whatsapp_number, settings, whatsappText);
+  const contact = { ...links, replyHours: replyHoursLabel(settings) };
+  const manage = manageState(booking, settings, nowMs);
+  const policy = policyLines(booking, settings, merchantName);
+
+  // merchant_themes bisa objek (relasi 1-1) atau array satu elemen; sama
+  // seperti src/app/[username]/page.tsx.
+  const themeRaw = merchant.merchant_themes;
+  const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
+  const theme = resolveTheme(merchant.subscription_tier, themeRow);
+
+  return { booking, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders };
 });
 
 export async function generateMetadata({
@@ -156,177 +217,27 @@ export default async function BookingStatusPage({
     notFound();
   }
 
-  const { booking, merchant, isExpiredPending } = data;
-  const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
+  const { booking, merchant, merchantName, theme, isExpiredPending, code, manage, policy, contact, reminders } = data;
+  const vapidPublicKey = clientEnv().vapidPublicKey;
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-8 px-4 py-10">
-      <header className="flex flex-col items-center gap-1 text-center">
-        <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-          Marky
-        </span>
-        <h1 className="text-xl font-semibold tracking-tight text-balance">{merchantName}</h1>
-      </header>
-
-      {booking.status === "PAID" ? (
-        <PaidReceipt booking={booking} merchant={merchant} />
-      ) : booking.status === "CANCELLED" || isExpiredPending ? (
-        <ExpiredOrCancelled booking={booking} merchant={merchant} />
-      ) : (
-        <PendingPayment booking={booking} merchantName={merchantName} />
-      )}
-    </div>
-  );
-}
-
-function PaidReceipt({ booking, merchant }: { booking: BookingPageRow; merchant: MerchantInfo }) {
-  const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
-
-  return (
-    <div className="border-border flex flex-col items-center gap-4 border p-6 text-center">
-      <CheckCircle2 className="size-10" aria-hidden />
-      <div className="flex flex-col gap-1">
-        <span className="font-medium">Pembayaran berhasil</span>
-        <p className="text-muted-foreground text-sm text-pretty">
-          Booking kamu di {merchantName} sudah dikonfirmasi. Simpan halaman ini sebagai bukti.
-        </p>
-      </div>
-
-      <dl className="border-border flex w-full flex-col gap-3 border-t pt-4 text-left text-sm">
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Layanan</dt>
-          <dd className="text-right font-medium text-balance">{booking.service_name}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Jadwal</dt>
-          <dd className="text-right font-medium text-balance">
-            {formatDateTime(booking.start_datetime)}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Nominal DP</dt>
-          <dd className="font-medium">{formatRupiah(Number(booking.service_price))}</dd>
-        </div>
-        {booking.paid_at ? (
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted-foreground shrink-0">Dibayar</dt>
-            <dd className="text-right font-medium text-balance">
-              {formatDateTime(booking.paid_at)}
-            </dd>
-          </div>
-        ) : null}
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Merchant</dt>
-          <dd className="text-right font-medium text-balance">{merchantName}</dd>
-        </div>
-      </dl>
-
-      {merchant.username ? (
-        <Link
-          href={ROUTES.merchantPage(merchant.username)}
-          className="text-muted-foreground hover:text-foreground text-xs underline underline-offset-4"
-        >
-          Kembali ke halaman {merchantName}
-        </Link>
-      ) : null}
-    </div>
-  );
-}
-
-function ExpiredOrCancelled({
-  booking,
-  merchant,
-}: {
-  booking: BookingPageRow;
-  merchant: MerchantInfo;
-}) {
-  const merchantName = merchant.full_name ?? merchant.username ?? "Merchant";
-
-  return (
-    <div className="border-border flex flex-col items-center gap-3 border p-6 text-center">
-      <XCircle className="text-destructive size-10" aria-hidden />
-      <div className="flex flex-col gap-1">
-        <span className="font-medium">
-          {booking.status === "CANCELLED" ? "Booking dibatalkan" : "Waktu pembayaran habis"}
-        </span>
-        <p className="text-muted-foreground text-sm text-pretty">
-          Slot ini sudah dilepas kembali.
-          {booking.cancel_reason ? ` ${booking.cancel_reason}.` : ""} Silakan pesan ulang untuk
-          memilih jadwal baru.
-        </p>
-      </div>
-
-      {merchant.username ? (
-        <Button asChild variant="outline">
-          <Link href={ROUTES.merchantPage(merchant.username)}>Pesan ulang di {merchantName}</Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function PendingPayment({
-  booking,
-  merchantName,
-}: {
-  booking: BookingPageRow;
-  merchantName: string;
-}) {
-  return (
-    <div className="flex flex-col gap-6">
-      {/* Blok QR + nominal + instruksi diteruskan sebagai children ke
-          BookingLiveStatus (BUKAN dirender langsung di sini) -- I4:
-          begitu polling klien mengonfirmasi status terminal (PAID/
-          CANCELLED), BookingLiveStatus berhenti menampilkan children ini
-          sama sekali, supaya kode QR yang sudah lunas tidak terus terlihat
-          mengundang dipindai lagi selama round-trip router.refresh(). */}
-      <BookingLiveStatus bookingId={booking.id} expiresAt={booking.expires_at}>
-        <div className="flex flex-col items-center gap-3">
-          <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-            Menunggu pembayaran
-          </span>
-
-          {booking.payment_url ? (
-            <QrisCode payload={booking.payment_url} />
-          ) : (
-            <div className="border-border flex w-full max-w-[320px] flex-col gap-2 border border-dashed p-6 text-center">
-              <p className="text-sm text-pretty">
-                Kode pembayaran belum tersedia. Coba muat ulang halaman ini.
-              </p>
-            </div>
-          )}
-
-          <span className="text-2xl font-semibold">
-            {formatRupiah(Number(booking.service_price))}
-          </span>
-          <p className="text-muted-foreground text-center text-xs text-pretty">
-            Buka aplikasi e-wallet atau m-banking, pilih menu &ldquo;Bayar&rdquo; atau
-            &ldquo;Scan QRIS&rdquo;, lalu pindai kode di atas sebelum{" "}
-            {formatTime(booking.expires_at)} WIB.
-          </p>
-        </div>
-      </BookingLiveStatus>
-
-      <dl className="border-border flex flex-col gap-3 border-t pt-4 text-sm">
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Layanan</dt>
-          <dd className="text-right font-medium text-balance">{booking.service_name}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Jadwal</dt>
-          <dd className="text-right font-medium text-balance">
-            {formatDateTime(booking.start_datetime)}
-          </dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Nama</dt>
-          <dd className="text-right font-medium text-balance">{booking.customer_name}</dd>
-        </div>
-        <div className="flex items-baseline justify-between gap-3">
-          <dt className="text-muted-foreground shrink-0">Merchant</dt>
-          <dd className="text-right font-medium text-balance">{merchantName}</dd>
-        </div>
-      </dl>
-    </div>
+    <BookingStatusView
+      token={token}
+      booking={booking}
+      merchantName={merchantName}
+      merchantUsername={merchant.username}
+      theme={theme}
+      isExpiredPending={isExpiredPending}
+      code={code}
+      manage={manage}
+      policy={policy}
+      contact={contact}
+      reminders={reminders}
+      pushPrompt={
+        reminders?.channelsOffered.push && !reminders.push && (reminders.offsets.dayBefore || reminders.offsets.sameDay) && vapidPublicKey ? (
+          <PushPrompt token={token} bookingId={booking.id} vapidPublicKey={vapidPublicKey} offsets={reminders.offsets} />
+        ) : null
+      }
+    />
   );
 }

@@ -1,3 +1,5 @@
+import { PageGuideButton } from "@/components/guide/page-guide-button";
+
 export function PageHeader({
   title,
   description,
@@ -15,7 +17,10 @@ export function PageHeader({
           <p className="text-muted-foreground text-sm">{description}</p>
         ) : null}
       </div>
-      {action}
+      <div className="flex items-center gap-2">
+        <PageGuideButton />
+        {action}
+      </div>
     </div>
   );
 }

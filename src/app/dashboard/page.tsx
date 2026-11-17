@@ -4,70 +4,84 @@ import { Suspense } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { StatCardsSkeleton } from "@/components/ui/skeletons";
+import { requireMerchant } from "@/lib/auth/session";
+import { formatLongDate } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 
-import { OverviewStats } from "./overview-stats";
+import { CopyLinkButton } from "./_today/copy-link-button";
+import {
+  ActionSection,
+  ActionSkeleton,
+  AgendaSection,
+  AgendaSkeleton,
+  GettingStartedSection,
+  GettingStartedSkeleton,
+  OnSiteSection,
+  SideSkeleton,
+  WeekSection,
+} from "./_today/sections";
 import { ProfileNudge } from "./profile-nudge";
 import { SetupAlerts } from "./setup-alerts";
-import { UpcomingBookings, UpcomingBookingsSkeleton } from "./upcoming-bookings";
 
-export const metadata: Metadata = {
-  title: "Ringkasan",
-};
+export const metadata: Metadata = { title: "Hari ini" };
 
-/**
- * Shell halaman Ringkasan -- SENGAJA tidak meng-`await` query apa pun di
- * sini. Tiap bagian yang butuh data (alert setup, kartu statistik, jadwal
- * terdekat) adalah komponen async terpisah yang dibungkus <Suspense>, jadi
- * header halaman langsung tampil dan tiap bagian streaming begitu query-nya
- * sendiri selesai -- lihat overview-stats.tsx, setup-alerts.tsx,
- * upcoming-bookings.tsx, dan queries.ts untuk query yang dibagi di antara
- * komponen-komponen itu supaya tidak dobel.
- *
- * SetupAlerts dan ProfileNudge tidak diberi fallback skeleton: bentuk
- * keduanya dinamis (nol atau satu kartu) sehingga skeleton kotak apa pun
- * akan menyesatkan atau memicu layout shift begitu kontennya muncul.
- * SetupAlerts berbagi cache() dengan OverviewStats (lihat queries.ts) jadi
- * biasanya selesai bersamaan dengan kartu statistik. ProfileNudge terpisah
- * dengan sengaja -- urusannya pengenalan usaha, bukan kesiapan halaman
- * booking -- lihat komentar di profile-nudge.tsx.
- *
- * UpcomingBookings SEBALIKNYA punya bentuk box tetap (satu Card dengan
- * judul + deskripsi + area list), jadi fallback-nya UpcomingBookingsSkeleton
- * (co-located di upcoming-bookings.tsx) sengaja meniru Card/CardHeader/
- * CardContent yang sama persis -- supaya saat konten asli streaming masuk,
- * tinggi kotaknya tidak berubah dan tombol "Lihat semua booking" di
- * bawahnya tidak ikut bergeser.
- */
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { merchant } = await requireMerchant();
+  const pagePath = ROUTES.merchantPage(merchant.username);
+
   return (
     <>
       <PageHeader
-        title="Ringkasan"
-        description="Kondisi akun dan jadwal terdekat Anda."
+        title="Hari ini"
+        description={formatLongDate(new Date())}
+        action={
+          <div className="flex items-center gap-2">
+            <Button
+              asChild
+              variant="outline"
+              className="hidden h-11 md:inline-flex"
+            >
+              <Link href={pagePath} target="_blank" rel="noopener noreferrer">
+                Lihat halaman
+              </Link>
+            </Button>
+            <Button asChild className="hidden h-11 md:inline-flex" data-tour="new-booking">
+              <Link href={ROUTES.newBooking}>Booking manual</Link>
+            </Button>
+            <CopyLinkButton path={pagePath} />
+          </div>
+        }
       />
 
       <Suspense fallback={null}>
         <SetupAlerts />
       </Suspense>
 
+      <Suspense fallback={<GettingStartedSkeleton />}>
+        <GettingStartedSection />
+      </Suspense>
+
       <Suspense fallback={null}>
         <ProfileNudge />
       </Suspense>
 
-      <Suspense fallback={<StatCardsSkeleton />}>
-        <OverviewStats />
-      </Suspense>
-
-      <Suspense fallback={<UpcomingBookingsSkeleton />}>
-        <UpcomingBookings />
-      </Suspense>
-
-      <div>
-        <Button asChild variant="outline">
-          <Link href={ROUTES.bookings}>Lihat semua booking</Link>
-        </Button>
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="space-y-6">
+          <Suspense fallback={<ActionSkeleton />}>
+            <ActionSection />
+          </Suspense>
+          <Suspense fallback={<AgendaSkeleton />}>
+            <AgendaSection />
+          </Suspense>
+        </div>
+        <div className="space-y-6">
+          <Suspense fallback={<SideSkeleton />}>
+            <OnSiteSection />
+          </Suspense>
+          <Suspense fallback={<SideSkeleton />}>
+            <WeekSection />
+          </Suspense>
+        </div>
       </div>
     </>
   );

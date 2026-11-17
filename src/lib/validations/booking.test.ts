@@ -8,11 +8,11 @@ import { test } from "node:test";
 
 import {
   bookingSearchSchema,
-  bookingStatusFilterSchema,
   cancelBookingSchema,
   checkoutSchema,
   createBookingRequestSchema,
   customerNameSchema,
+  voucherCodeSchema,
 } from "./booking";
 
 const VALID_INPUT = {
@@ -131,19 +131,6 @@ test("bookingSearchSchema menolak percobaan injeksi filter .or() lewat koma", ()
   assert.equal(result.success, false);
 });
 
-// --- bookingStatusFilterSchema (?status= di /dashboard/bookings) ----------
-
-test("bookingStatusFilterSchema menerima ketiga status booking", () => {
-  for (const status of ["PENDING", "PAID", "CANCELLED"]) {
-    assert.equal(bookingStatusFilterSchema.safeParse(status).success, true);
-  }
-});
-
-test("bookingStatusFilterSchema menolak nilai tak dikenal (page.tsx memperlakukannya sebagai 'semua', bukan error)", () => {
-  const result = bookingStatusFilterSchema.safeParse("REFUNDED");
-  assert.equal(result.success, false);
-});
-
 // --- cancelBookingSchema (Server Action cancelBooking) ---------------------
 
 test("cancelBookingSchema menerima uuid valid", () => {
@@ -154,4 +141,34 @@ test("cancelBookingSchema menerima uuid valid", () => {
 test("cancelBookingSchema menolak id yang bukan uuid", () => {
   const result = cancelBookingSchema.safeParse({ id: "bukan-uuid" });
   assert.equal(result.success, false);
+});
+
+// --- voucherCodeSchema -------------------------------------------------------
+
+test("voucherCodeSchema memangkas dan mengkapitalkan kode", () => {
+  assert.equal(voucherCodeSchema.parse("  wisuda20 "), "WISUDA20");
+});
+
+test("voucherCodeSchema menolak kode dengan tanda hubung atau terlalu pendek", () => {
+  assert.equal(voucherCodeSchema.safeParse("AB-1").success, false);
+});
+
+test("createBookingRequestSchema: voucherCode hilang jadi null", () => {
+  const parsed = createBookingRequestSchema.parse({ ...VALID_INPUT, username: "toko" });
+  assert.equal(parsed.voucherCode, null);
+});
+
+test("createBookingRequestSchema: field reservasi baru default null", () => {
+  const parsed = createBookingRequestSchema.parse({ ...VALID_INPUT, username: "toko" });
+  assert.equal(parsed.partySize, null);
+  assert.equal(parsed.areaId, null);
+  assert.equal(parsed.tableId, null);
+  assert.equal(parsed.customerNote, null);
+});
+
+test("createBookingRequestSchema: customerNote kosong jadi null, partySize 0 dan catatan 301 ditolak", () => {
+  const base = { ...VALID_INPUT, username: "toko" };
+  assert.equal(createBookingRequestSchema.parse({ ...base, customerNote: "  " }).customerNote, null);
+  assert.equal(createBookingRequestSchema.safeParse({ ...base, partySize: 0 }).success, false);
+  assert.equal(createBookingRequestSchema.safeParse({ ...base, customerNote: "a".repeat(301) }).success, false);
 });

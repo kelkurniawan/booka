@@ -4,7 +4,7 @@ import { CalendarOff } from "lucide-react";
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
-import { BookingServiceCard } from "@/components/booking-page/service-card";
+import { DesktopHandoff } from "@/components/booking-page/desktop-handoff";
 import {
   Empty,
   EmptyDescription,
@@ -12,18 +12,24 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import type { PaymentSettings } from "@/lib/booking/payment-mode";
 import type { PublicStaff } from "@/lib/booking/staff";
+import { publicMediaUrl } from "@/lib/media/url";
+import { clipPosterPath } from "@/lib/media/staff-paths";
 import { ROUTES } from "@/lib/routes";
+import { siteUrl } from "@/lib/site";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type {
   Availability,
   Merchant,
   MerchantFaq,
+  PublicBanner,
+  PublicVoucher,
   Service,
   ServiceMedia,
 } from "@/types/database";
 
-import { BookingSeam } from "./booking-seam";
+import { BookingFlow, type RestaurantInfo } from "./booking-flow";
 
 export type BookingPageViewProps = {
   merchant: Pick<
@@ -36,6 +42,10 @@ export type BookingPageViewProps = {
   availability: Pick<Availability, "day_of_week">[];
   staff: PublicStaff[];
   faqs: MerchantFaq[];
+  paymentSettings: PaymentSettings;
+  restaurant: RestaurantInfo;
+  banners: PublicBanner[];
+  vouchers: PublicVoucher[];
 };
 
 /**
@@ -50,6 +60,10 @@ export function BookingPageView({
   availability,
   staff,
   faqs,
+  paymentSettings,
+  restaurant,
+  banners,
+  vouchers,
 }: BookingPageViewProps) {
   const name = merchant.full_name ?? merchant.username;
   // Staf dengan jam sendiri membuat halaman bisa menerima pesanan walau jam
@@ -64,42 +78,43 @@ export function BookingPageView({
         name={name}
         bio={merchant.bio}
         avatarUrl={merchant.avatar_url}
+        theme={theme}
       />
 
       {canAcceptBookings ? (
-        <section aria-labelledby="layanan-heading" className="flex flex-col gap-4">
-          <h2
-            id="layanan-heading"
-            className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase"
-          >
-            Layanan
-          </h2>
-
-          <ul className="flex flex-col gap-3">
-            {services.map((service, index) => (
-              <BookingServiceCard
-                key={service.id}
-                service={service}
-                media={mediaByService[service.id] ?? []}
-                eager={index === 0}
-              />
-            ))}
-          </ul>
-
-          <BookingSeam
-            merchantId={merchant.id}
+        <>
+          <BookingFlow
             username={merchant.username}
+            merchantName={name}
             services={services}
+            mediaByService={mediaByService}
             availability={availability}
+            paymentSettings={paymentSettings}
+            restaurant={restaurant}
+            banners={banners}
+            vouchers={vouchers}
+            sections={theme.sections}
+            faq={<BookingFaqSection faqs={faqs} />}
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,
+              role: member.role,
+              bio: member.bio,
+              tags: member.tags,
+              photoUrl: member.photoPath ? publicMediaUrl(member.photoPath) : null,
+              motionUrl: member.motionPath ? publicMediaUrl(member.motionPath) : null,
+              posterUrl: member.motionPath ? publicMediaUrl(clipPosterPath(member.motionPath)) : null,
               days: [...new Set(member.availability.map((row) => row.day_of_week))],
             }))}
           />
-        </section>
-      ) : (
-        <Empty className="border">
+          <DesktopHandoff url={new URL(ROUTES.merchantPage(merchant.username), siteUrl()).toString()} />
+        </>
+      ) : null}
+
+      {!canAcceptBookings
+        ? theme.sections.map((key) =>
+            key === "SERVICES" ? (
+              <Empty key={key} className="bg-card border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <CalendarOff />
@@ -110,9 +125,11 @@ export function BookingPageView({
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      )}
-
-      <BookingFaqSection faqs={faqs} />
+            ) : key === "FAQ" ? (
+              <BookingFaqSection key={key} faqs={faqs} />
+            ) : null,
+          )
+        : null}
 
       {faqs.length > 0 ? (
         <script
@@ -138,7 +155,7 @@ export function BookingPageView({
       {merchant.subscription_tier === "STARTER" ? (
         <Link
           href={ROUTES.home}
-          className="text-muted-foreground hover:text-foreground mt-auto self-center text-xs"
+          className="text-muted-foreground hover:text-foreground bg-card mt-auto self-center rounded-full px-3 py-1 text-xs"
         >
           Dibuat dengan Marky
         </Link>

@@ -1,43 +1,90 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 
+import { requireMerchant } from "@/lib/auth/session";
 import { PageHeader } from "@/components/layout/page-header";
-import { StatCardsSkeleton, TableSkeleton } from "@/components/ui/skeletons";
-import { bookingSearchSchema, bookingStatusFilterSchema } from "@/lib/validations/booking";
-import type { BookingStatus } from "@/types/database";
+import { TableSkeleton } from "@/components/ui/skeletons";
+import { parseTab } from "@/lib/booking/dashboard";
+import { ROUTES } from "@/lib/routes";
+import { createClient } from "@/lib/supabase/server";
+import { bookingSearchSchema } from "@/lib/validations/booking";
 
-import { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS } from "./booking-state";
+import { getTabCounts } from "../queries";
+import { cancelBooking, decideRequest, markAttendance, markPaidOnSite, rescheduleBooking } from "./actions";
+import { BookingDetailPanel } from "./booking-detail-panel";
+import { BookingDetailShell } from "./booking-detail-shell";
+import {
+  BOOKING_LIST_COLUMNS,
+  buildBookingsHref,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  type BookingListItem,
+} from "./booking-state";
+import type { TimelineNotification } from "./booking-timeline";
+import { BookingTabs } from "./booking-tabs";
 import { BookingsFilters } from "./bookings-filters";
 import { BookingsList } from "./bookings-list";
-import { BookingsSummary } from "./bookings-summary";
 
-export const metadata: Metadata = { title: "Booking masuk" };
+export const metadata: Metadata = { title: "Booking" };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Booking untuk panel `?b=`; null bila bukan uuid, tak ditemukan, atau milik merchant lain. */
+async function loadSelectedBooking(rawId: string | undefined, merchantId: string): Promise<BookingListItem | null> {
+  if (!rawId || !UUID_RE.test(rawId)) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select(BOOKING_LIST_COLUMNS)
+    .eq("id", rawId)
+    .eq("merchant_id", merchantId)
+    .maybeSingle();
+  if (error) {
+    console.error("[dashboard/bookings] gagal memuat booking terpilih", { merchantId, error });
+    return null;
+  }
+  return (data as unknown as BookingListItem | null) ?? null;
+}
+
+/** Riwayat pesan satu booking; null bila gagal dimuat. */
+async function loadNotifications(bookingId: string, merchantId: string): Promise<TimelineNotification[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("notification_log")
+    .select("kind, channel, status, created_at")
+    .eq("booking_id", bookingId)
+    .eq("merchant_id", merchantId)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.error("[dashboard/bookings] gagal memuat riwayat pesan", { merchantId, bookingId, error });
+    return null;
+  }
+  return data;
+}
 
 /**
- * Shell halaman Booking masuk -- SENGAJA tidak meng-`await` query apa pun di
- * sini (pola yang sama dengan dashboard/page.tsx, lihat komentarnya).
- * Kartu ringkasan (BookingsSummary) dan tabel yang dipaginasi (BookingsList)
- * adalah komponen async terpisah, masing-masing dibungkus <Suspense>, jadi
- * header + filter langsung tampil dan tiap bagian streaming begitu query-nya
- * sendiri selesai.
+ * Shell halaman Booking. Yang di-`await` di sini hanya query kecil (jumlah
+ * badge tab dan booking terpilih, paralel); daftar yang dipaginasi
+ * (BookingsList) adalah komponen async yang dibungkus <Suspense>, jadi
+ * header + tab + pencarian langsung tampil.
  *
  * `key` pada <Suspense> pembungkus BookingsList SENGAJA berubah tiap kali
  * status/pencarian/halaman/ukuran halaman berubah -- itu yang membuat React
  * me-remount boundary-nya (menampilkan TableSkeleton lagi) tiap kali
- * kombinasi filter/paginasi berubah, TANPA ikut membuat kartu ringkasan di
- * atasnya berkedip (boundary-nya terpisah dan key-nya tidak berubah untuk
- * perubahan yang sama).
+ * kombinasi filter/paginasi berubah, TANPA ikut membuat tab dan pencarian di
+ * atasnya berkedip (boundary-nya terpisah).
  */
 export default async function BookingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; size?: string }>;
+  searchParams: Promise<{ tab?: string; q?: string; page?: string; size?: string; b?: string }>;
 }) {
   const rawParams = await searchParams;
+  const { user, merchant } = await requireMerchant();
 
-  // Status tak dikenal diperlakukan sebagai "semua status", bukan error.
-  const statusParsed = bookingStatusFilterSchema.safeParse(rawParams.status);
-  const statusFilter: BookingStatus | null = statusParsed.success ? statusParsed.data : null;
+  // Tab tak dikenal jatuh ke "Akan datang".
+  const tab = parseTab(rawParams.tab);
 
   // Pencarian yang gagal validasi (kepanjangan, atau mengandung karakter
   // yang berarti khusus di filter PostgREST) diperlakukan sebagai "tanpa
@@ -70,47 +117,69 @@ export default async function BookingsPage({
     ? sizeParam
     : DEFAULT_PAGE_SIZE;
 
+  const [counts, selected] = await Promise.all([getTabCounts(), loadSelectedBooking(rawParams.b, user.id)]);
+  const notifications = selected ? await loadNotifications(selected.id, user.id) : null;
+  const nowMs = new Date().getTime();
+  const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
+
   return (
     <>
       <PageHeader
-        title="Booking masuk"
-        description="Semua pesanan yang masuk lewat halaman booking Anda."
+        title="Booking"
+        action={
+          <Link
+            href={ROUTES.newBooking}
+            className="bg-primary text-primary-foreground hidden h-11 items-center rounded-lg px-4 text-sm font-medium md:inline-flex"
+          >
+            Booking manual
+          </Link>
+        }
       />
 
-      <Suspense fallback={<StatCardsSkeleton className="sm:grid-cols-3" />}>
-        <BookingsSummary />
-      </Suspense>
+      <BookingTabs active={tab} counts={counts} q={searchTerm} size={pageSize} />
 
-      {/* key={q}: lihat catatan di bookings-filters.tsx -- ini yang membuat
-          state input lokalnya ikut ter-reset saat q di URL berubah dari
-          luar komponen, tanpa perlu useEffect yang men-setState prop ke
-          state (dilarang aturan react-hooks/set-state-in-effect). */}
-      <BookingsFilters key={rawParams.q ?? ""} status={rawParams.status ?? ""} q={rawParams.q ?? ""} />
+      {/* key={q}: lihat catatan di bookings-filters.tsx. */}
+      <BookingsFilters key={rawParams.q ?? ""} q={rawParams.q ?? ""} />
 
       {searchError ? (
-        <p className="text-destructive text-sm" role="alert">
+        <p className="text-muted-foreground text-sm" role="alert">
           {searchError}
         </p>
       ) : null}
 
-      <Suspense
-        key={`${statusFilter ?? ""}|${searchTerm}|${page}|${pageSize}`}
-        // rows={pageSize}: fallback default TableSkeleton (8 baris) jauh
-        // lebih pendek dari tabel asli (sampai pageSize baris, lihat
-        // bookings-list.tsx) -- geser sebanyak itu tiap kali filter/halaman
-        // berubah adalah persis jank yang mau dihindari dengan memberi
-        // <Suspense> ini `key` yang berubah. pageSize di sini sudah
-        // divalidasi/di-default di atas, jadi selalu salah satu dari
-        // PAGE_SIZE_OPTIONS.
-        //
-        // columns={6}, firstColumnTwoLine: cocokkan header BookingsTable
-        // (Jadwal, Pelanggan, Layanan, Nilai, Status, kolom aksi) di
-        // bookings-table.tsx -- kolom Jadwal aslinya dua baris (tanggal di
-        // atas jam).
-        fallback={<TableSkeleton rows={pageSize} columns={6} firstColumnTwoLine />}
-      >
-        <BookingsList statusFilter={statusFilter} searchTerm={searchTerm} page={page} pageSize={pageSize} />
-      </Suspense>
+      <div className={selected ? "lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6" : undefined}>
+        <Suspense
+          key={`${tab}|${searchTerm}|${page}|${pageSize}`}
+          fallback={<TableSkeleton rows={pageSize} columns={5} firstColumnTwoLine />}
+        >
+          <BookingsList
+            tab={tab}
+            searchTerm={searchTerm}
+            page={page}
+            pageSize={pageSize}
+            selectedId={selected?.id ?? null}
+          />
+        </Suspense>
+
+        {selected ? (
+          <BookingDetailShell closeHref={closeHref}>
+            <BookingDetailPanel
+              key={selected.id}
+              booking={selected}
+              nowMs={nowMs}
+              username={merchant.username}
+              notifications={notifications}
+              actions={{
+                cancel: cancelBooking,
+                decide: decideRequest,
+                markPaid: markPaidOnSite,
+                attend: markAttendance,
+                reschedule: rescheduleBooking,
+              }}
+            />
+          </BookingDetailShell>
+        ) : null}
+      </div>
     </>
   );
 }

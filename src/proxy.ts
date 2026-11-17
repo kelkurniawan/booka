@@ -31,9 +31,12 @@ export const config = {
      * Jalankan pada semua path kecuali:
      *   - aset build Next.js (_next/static, _next/image)
      *   - favicon dan berkas statis di /public
+     *   - /sw.js: service worker web push harus disajikan apa adanya dari
+     *     root; tanpa pengecualian ini ia dihitung sebagai halaman
+     *     /[username] dan melewati updateSession (Keputusan 14)
      *   - route handler di /api (menangani sesinya sendiri; membiarkannya
      *     lewat sini akan menambah satu round-trip ke Auth per webhook)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|sw\\.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|webmanifest)$).*)",
   ],
 };

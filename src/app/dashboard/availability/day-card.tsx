@@ -97,7 +97,7 @@ function AddSlotForm({ day }: { day: DayOfWeek }) {
             aria-invalid={Boolean(state.fieldErrors?.start_time)}
           />
         </Field>
-        <span className="text-muted-foreground pb-2 text-sm">–</span>
+        <span className="text-muted-foreground pb-2 text-sm">sampai</span>
         <Field data-invalid={Boolean(state.fieldErrors?.end_time)} className="flex-1">
           <FieldLabel htmlFor={`end_time_${day}`} className="sr-only">
             Jam selesai
@@ -146,7 +146,7 @@ function SlotRow({ slot }: { slot: Availability }) {
   return (
     <li className="flex items-center justify-between rounded-md border px-3 py-2 text-sm">
       <span>
-        {slot.start_time.slice(0, 5)}–{slot.end_time.slice(0, 5)}
+        {slot.start_time.slice(0, 5)} sampai {slot.end_time.slice(0, 5)}
       </span>
       <Button
         type="button"

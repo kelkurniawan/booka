@@ -33,6 +33,10 @@ const JAM: WizardAnswers = {
 };
 
 describe("progres", () => {
+  it("kunci draf wizard tetap di sessionStorage", () => {
+    assert.equal(storageKey("user-a"), "booka:onboarding:user-a");
+  });
+
   it("menghitung empat langkah wajib saja", () => {
     assert.equal(REQUIRED_STEP_COUNT, 4);
     assert.equal(requiredStepNumber("usaha"), 1);

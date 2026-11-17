@@ -11,7 +11,14 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { BOOKING_LIST_COLUMN_LIST, BOOKING_LIST_COLUMNS } from "./booking-state";
+import { REQUEST_EXPIRY_REASON } from "@/lib/booking/payment-mode";
+
+import {
+  BOOKING_LIST_COLUMN_LIST,
+  BOOKING_LIST_COLUMNS,
+  buildBookingsHref,
+  getDisplayStatus,
+} from "./booking-state";
 
 test("BOOKING_LIST_COLUMNS persis sama dengan BOOKING_LIST_COLUMN_LIST", () => {
   assert.equal(BOOKING_LIST_COLUMNS, BOOKING_LIST_COLUMN_LIST.join(", "));
@@ -34,4 +41,52 @@ test("BOOKING_LIST_COLUMN_LIST tidak menyebut access_token, payment_url, merchan
       `BOOKING_LIST_COLUMN_LIST tidak boleh menyebut ${forbidden}`,
     );
   }
+});
+
+// --- getDisplayStatus: status baru fitur cara bayar -------------------------
+
+const NOW = Date.parse("2026-11-15T10:00:00Z");
+const PAST = "2026-11-15T09:00:00Z";
+const FUTURE = "2026-11-15T11:00:00Z";
+
+test("getDisplayStatus: REQUESTED yang expires_at-nya lewat tampil EXPIRED", () => {
+  assert.equal(
+    getDisplayStatus({ status: "REQUESTED", expires_at: PAST, cancel_reason: null }, NOW),
+    "EXPIRED",
+  );
+});
+
+test("getDisplayStatus: REQUESTED yang masih hidup tetap REQUESTED", () => {
+  assert.equal(
+    getDisplayStatus({ status: "REQUESTED", expires_at: FUTURE, cancel_reason: null }, NOW),
+    "REQUESTED",
+  );
+});
+
+test("getDisplayStatus: CANCELLED karena permintaan tak dijawab tampil EXPIRED", () => {
+  assert.equal(
+    getDisplayStatus(
+      { status: "CANCELLED", expires_at: PAST, cancel_reason: REQUEST_EXPIRY_REASON },
+      NOW,
+    ),
+    "EXPIRED",
+  );
+});
+
+test("getDisplayStatus: CONFIRMED tetap CONFIRMED walau expires_at lewat", () => {
+  assert.equal(
+    getDisplayStatus({ status: "CONFIRMED", expires_at: PAST, cancel_reason: null }, NOW),
+    "CONFIRMED",
+  );
+});
+
+test("buildBookingsHref: semua default menghasilkan path polos", () => {
+  assert.equal(buildBookingsHref({ tab: "UPCOMING", q: "", page: 1, size: 20 }), "/dashboard/bookings");
+});
+
+test("buildBookingsHref: memuat tab, q, page, size, dan b", () => {
+  assert.equal(
+    buildBookingsHref({ tab: "ACTION", q: "ayu", page: 2, size: 50, b: "x" }),
+    "/dashboard/bookings?tab=tindakan&q=ayu&page=2&size=50&b=x",
+  );
 });

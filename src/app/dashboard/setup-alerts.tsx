@@ -1,43 +1,29 @@
 import Link from "next/link";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { requireMerchant } from "@/lib/auth/session";
+import { CHECKLIST_COPY } from "@/lib/guide/content";
+import { buildChecklist } from "@/lib/guide/guide";
 import { ROUTES } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/server";
 
-import { getActivePaymentConnections, getQuotaUsage, getServiceCount } from "./queries";
+import { getOnboardingState, getQuotaUsage } from "./queries";
 
 /**
- * Alert kuota habis + daftar langkah setup yang belum selesai. Query jumlah
- * layanan, koneksi pembayaran, dan kuota dibagi lewat queries.ts (cache())
- * dengan OverviewStats, yang butuh angka yang sama persis -- lihat komentar
- * di queries.ts. Query jam kerja (availability) khusus dipakai di sini saja.
+ * Alert kuota habis + langkah setup yang belum selesai. Daftar setup hanya
+ * tampil setelah checklist "Panduan memulai" disembunyikan, supaya tidak
+ * menggandakannya; aturannya sama (buildChecklist).
  */
 export async function SetupAlerts() {
-  const { user } = await requireMerchant();
-  const supabase = await createClient();
-
-  const [quota, services, availabilityCount, connections] = await Promise.all([
-    getQuotaUsage(),
-    getServiceCount(user.id),
-    supabase
-      .from("availability")
-      .select("id", { count: "exact", head: true })
-      .eq("merchant_id", user.id),
-    getActivePaymentConnections(user.id),
-  ]);
+  const [quota, state] = await Promise.all([getQuotaUsage(), getOnboardingState()]);
 
   const { used, limit } = quota;
   const quotaFull = limit !== null && used >= limit;
-  const workingHours = availabilityCount.count ?? 0;
-  const hasPayment = connections.length > 0;
 
-  const setupSteps = [
-    { done: services > 0, label: "Tambahkan minimal satu layanan", href: ROUTES.services },
-    { done: workingHours > 0, label: "Atur jam kerja mingguan", href: ROUTES.availability },
-    { done: hasPayment, label: "Hubungkan akun pembayaran", href: ROUTES.payments },
-  ];
-  const pendingSteps = setupSteps.filter((step) => !step.done);
+  const pendingSteps =
+    state && state.checklistDismissedAt !== null
+      ? buildChecklist(state.facts, state.stepsCompleted).filter(
+          (item) => !item.done && ["SERVICE", "HOURS", "PAYMENT"].includes(item.key),
+        )
+      : [];
 
   return (
     <>
@@ -61,9 +47,12 @@ export async function SetupAlerts() {
           <AlertDescription>
             <ul className="space-y-1">
               {pendingSteps.map((step) => (
-                <li key={step.href}>
-                  <Link href={step.href} className="underline underline-offset-4">
-                    {step.label}
+                <li key={step.key}>
+                  <Link
+                    href={CHECKLIST_COPY[step.key].ctaHref ?? ROUTES.dashboard}
+                    className="underline underline-offset-4"
+                  >
+                    {CHECKLIST_COPY[step.key].title}
                   </Link>
                 </li>
               ))}

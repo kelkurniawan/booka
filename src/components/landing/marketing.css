@@ -1,0 +1,230 @@
+/* Kerangka pemasaran Marky (tema Coral, Hallmark v2.0.0). Semua warna, ukuran,
+   dan font landing hanya lewat token di bawah. Token disalin dari kanvas
+   Main.dc.html; hanya font yang berbeda (General Sans, Geist Mono). */
+.marketing {
+  --color-paper: oklch(97% 0.006 55);
+  --color-paper-2: oklch(94.5% 0.007 55);
+  --color-paper-3: oklch(91.5% 0.009 55);
+  --color-ink: oklch(21% 0.012 38);
+  --color-ink-2: oklch(29% 0.013 40);
+  --color-muted: oklch(47% 0.013 45);
+  --color-rule: oklch(87% 0.009 55);
+  --color-rule-2: oklch(81% 0.011 55);
+  --color-accent: oklch(74% 0.125 30);
+  --color-accent-ink: oklch(21% 0.012 38);
+  --color-accent-2: oklch(54% 0.165 29);
+  --color-focus: oklch(54% 0.17 30);
+  --color-cotton: oklch(98.8% 0.0045 80);
+  --color-cotton-2: oklch(97% 0.006 70);
+  --color-desk: oklch(94.3% 0.008 64);
+  --color-print: oklch(23% 0.012 38);
+  --color-board: oklch(22% 0.011 40);
+  --color-board-type: oklch(96.5% 0.006 70);
+  --color-board-muted: oklch(76% 0.01 60);
+  --color-board-rule: oklch(34% 0.012 40);
+  --color-paid: oklch(55.5% 0.15 33);
+  --color-chat: oklch(95.5% 0.03 150);
+  --shade: 32% 0.03 50;
+  --lit: 100% 0.005 80;
+  --deep: 7% 0.01 40;
+  --font-display: var(--font-general-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-display);
+  --font-outlier: var(--font-geist-mono), ui-monospace, monospace;
+  --radius-card: 8px;
+  --radius-input: 6px;
+  --radius-stock: 8px;
+  --edge-stock: inset 0 1px 0 oklch(var(--lit) / 0.9), inset 0 -1px 0 oklch(var(--shade) / 0.07), 0 0 0 0.5px oklch(var(--shade) / 0.22), 0 1px 0 oklch(var(--shade) / 0.12);
+  --cast-stock: 6px 5px 10px -6px oklch(var(--shade) / 0.3);
+  --cast-stock-lift: 12px 10px 18px -8px oklch(var(--shade) / 0.3);
+  --cast-deep: 10px 12px 24px -10px oklch(var(--deep) / 0.6);
+  --press-groove: inset 1px 1.5px 2px oklch(var(--shade) / 0.16), inset -1px -1px 0 oklch(var(--lit) / 0.9), 0 0 0 0.5px oklch(var(--shade) / 0.2);
+  --tracking-display: -0.03em;
+  --display-weight: 600;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
+  --space-2xl: 64px;
+  --space-3xl: 96px;
+  --space-4xl: 144px;
+  --text-small: 15px;
+  --text-body: 17px;
+  --text-lead: 21px;
+  --text-title: 24px;
+  --text-section: clamp(36px, 4.4vw, 56px);
+  --text-display: clamp(48px, 7vw, 96px);
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.55;
+  color-scheme: light;
+  overflow-x: clip;
+  caret-color: var(--color-focus);
+}
+.marketing ::selection { background: var(--color-accent); color: var(--color-accent-ink); }
+.marketing a { color: var(--color-ink); text-decoration-color: var(--color-rule-2); text-underline-offset: 3px; }
+.marketing a:hover { text-decoration-color: var(--color-accent-2); }
+.marketing button, .marketing a, .marketing input { font-family: inherit; }
+.marketing :focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.marketing h1, .marketing h2, .marketing h3 {
+  font-weight: var(--display-weight);
+  letter-spacing: var(--tracking-display);
+  overflow-wrap: break-word;
+  min-width: 0;
+  margin: 0;
+  text-wrap: balance;
+}
+.marketing .wrap { max-width: 1240px; margin: 0 auto; padding-inline: clamp(20px, 4vw, 48px); }
+.marketing .fig { font-family: var(--font-outlier); font-variant-numeric: tabular-nums; }
+.marketing .desk {
+  background-color: var(--color-desk);
+  background-image: radial-gradient(90% 120% at 0% 30%, var(--color-cotton), transparent 62%);
+}
+.marketing .stock {
+  background-color: var(--color-cotton);
+  background-image: linear-gradient(100deg, var(--color-cotton), var(--color-cotton-2) 45%, var(--color-cotton));
+  color: var(--color-print);
+  box-shadow: var(--edge-stock), var(--cast-stock);
+  border-radius: var(--radius-stock);
+}
+.marketing .btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-height: 48px; padding: 0 var(--space-lg); border: 0;
+  border-radius: var(--radius-stock); font-size: 16px; font-weight: 500;
+  text-decoration: none; cursor: pointer;
+  transition: transform var(--dur-short) var(--ease-out), box-shadow var(--dur-short) var(--ease-out);
+}
+.marketing .btn--card {
+  background: var(--color-cotton); color: var(--color-print);
+  text-shadow: 0.5px 0.75px 0 var(--color-cotton);
+  box-shadow: var(--edge-stock), var(--cast-stock);
+}
+.marketing .btn--ink {
+  background: var(--color-board); color: var(--color-board-type);
+  text-shadow: 0 -0.75px 0 var(--color-ink); box-shadow: var(--cast-stock);
+}
+.marketing .btn:hover { transform: translateY(-1px); box-shadow: var(--edge-stock), var(--cast-stock-lift); }
+.marketing .btn:active { transform: translateY(1px); }
+.marketing .btn:disabled, .marketing .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Pemilih radio asli: kontrol terlihat adalah label, input hanya sr-only. */
+.marketing .groove {
+  display: inline-flex; flex-wrap: wrap; gap: var(--space-xs); padding: var(--space-xs);
+  border-radius: 12px; background: var(--color-paper-2); box-shadow: var(--press-groove);
+}
+.marketing .groove label {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 0 var(--space-md);
+  border-radius: 9px; background: transparent; color: var(--color-muted);
+  font-size: var(--text-small); font-weight: 500; cursor: pointer;
+  transition: transform var(--dur-micro) var(--ease-out), color var(--dur-micro);
+}
+.marketing .groove label:has(input:checked) {
+  background: var(--color-cotton); color: var(--color-print);
+  box-shadow: var(--edge-stock), var(--cast-stock);
+}
+.marketing .groove label:has(input:focus-visible) { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+.marketing .groove--board { background: var(--color-ink-2); box-shadow: none; }
+.marketing .groove--board label { color: var(--color-board-muted); }
+.marketing .groove--board label:has(input:checked) { background: var(--color-board-type); color: var(--color-print); box-shadow: none; }
+.marketing [data-switch]:has([data-switch-input][value="0"]:checked) [data-panel]:not([data-panel="0"]),
+.marketing [data-switch]:has([data-switch-input][value="1"]:checked) [data-panel]:not([data-panel="1"]),
+.marketing [data-switch]:has([data-switch-input][value="2"]:checked) [data-panel]:not([data-panel="2"]),
+.marketing [data-switch]:has([data-switch-input][value="3"]:checked) [data-panel]:not([data-panel="3"]) { display: none; }
+
+.marketing .paid { font-weight: 700; color: var(--color-paid); filter: url(#press); display: inline-block; }
+.marketing .masthead { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+.marketing .masthead-links { display: flex; gap: var(--space-lg); }
+.marketing .masthead-login { display: inline; }
+.marketing .menu-btn, .marketing .menu-panel, .marketing .cta-short { display: none; }
+.marketing .price-mobile { display: none; }
+.marketing .hero-motion-band { display: none; }
+.marketing summary { list-style: none; cursor: pointer; }
+.marketing summary::-webkit-details-marker { display: none; }
+.marketing details[open] .q-mark { transform: rotate(45deg); }
+.marketing .q-mark { transition: transform var(--dur-short) var(--ease-out); }
+
+/* Meja hero: yang bergerak hanya sekali, lalu diam. */
+.marketing .chat { transform: rotate(-4deg); }
+.marketing .slip { transform: rotate(2.5deg); }
+.marketing .stamp { transform: rotate(-8deg); }
+@media (prefers-reduced-motion: no-preference) {
+  .marketing .chat { animation: mk-chat-in 700ms var(--ease-out) 200ms both; }
+  .marketing .bubble { animation: mk-fade-up 380ms var(--ease-out) both; animation-delay: calc(700ms + var(--i) * 520ms); }
+  .marketing .slip { animation: mk-slip-in 900ms var(--ease-out) 2500ms both; }
+  .marketing .stamp { animation: mk-press 420ms cubic-bezier(0.3, 0, 0.2, 1) 4300ms both; }
+}
+@keyframes mk-chat-in { from { opacity: 0; transform: translate(-24px, 16px) rotate(-7deg); } to { opacity: 1; transform: rotate(-4deg); } }
+@keyframes mk-fade-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+@keyframes mk-slip-in { from { opacity: 0; transform: translate(60px, 30px) rotate(9deg); } to { opacity: 1; transform: rotate(2.5deg); } }
+@keyframes mk-press {
+  0% { opacity: 0; transform: scale(1.6) rotate(-14deg); }
+  70% { opacity: 1; transform: scale(0.96) rotate(-8deg); }
+  100% { opacity: 1; transform: scale(1) rotate(-8deg); }
+}
+
+@media (max-width: 720px) {
+  .marketing { --space-2xl: 40px; --space-3xl: 56px; --space-4xl: 72px; }
+  .marketing .masthead-links, .marketing .masthead-login, .marketing .cta-long { display: none; }
+  .marketing .menu-btn { display: inline-flex; }
+  .marketing .cta-short { display: inline; }
+  .marketing .menu-panel[data-open="true"] { display: flex; }
+  .marketing .price-table, .marketing .price-foot { display: none !important; }
+  .marketing .price-mobile { display: flex; }
+  .marketing .hero-motion-bg { display: none; }
+  .marketing .hero-motion-band { display: block; width: calc(100% - 2 * clamp(20px, 4vw, 48px)); overflow: hidden; padding: 8px 0; border-radius: 16px; background: var(--color-desk); }
+  .marketing .agenda-stack { height: auto !important; display: flex; flex-direction: column; gap: var(--space-sm); }
+  .marketing .agenda-stack > div { position: static !important; }
+  .marketing .slip { padding-bottom: 64px !important; }
+  .marketing .slip .stamp { bottom: 12px !important; }
+}
+
+/* HeroMotion: posisi statis, hanya transform dan opacity yang digerakkan dari ref. */
+.marketing .hm-shell { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; }
+.marketing .hero-motion-bg { position: absolute; top: 0; left: 0; right: 0; height: 760px; z-index: -1; pointer-events: none; }
+.marketing .hm-root { position: relative; width: 100%; overflow: hidden; text-align: left; font-family: var(--font-display); color: var(--color-print); }
+.marketing .hm-wide { height: 760px; }
+.marketing .hm-compact { aspect-ratio: 390 / 260; max-height: 312px; }
+.marketing .hm-stage { position: absolute; left: 50%; top: 0; transform-origin: 50% 0; transform: translateX(-50%); }
+.marketing .hm-stage > * { will-change: transform; }
+.marketing .hm-card { padding: 12px 14px; box-sizing: border-box; border-radius: 8px; background: var(--color-cotton); box-shadow: 0 0 0 0.5px oklch(var(--shade) / 0.22), var(--cast-stock); display: flex; flex-direction: column; gap: 2px; }
+.marketing .hm-s1 { padding: 14px 16px; gap: 10px; transform: rotate(-3deg); }
+.marketing .hm-s4 { padding: 16px; gap: 8px; transform: rotate(2deg); }
+.marketing .hm-mono { font-family: var(--font-outlier); font-size: 13px; color: var(--color-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.marketing .hm-note strong { font-size: 14px; }
+.marketing .hm-label { position: absolute; left: 10px; top: 50px; font-size: 12px; color: var(--color-muted); }
+.marketing .hm-label-s { font-size: 12px; color: var(--color-muted); }
+.marketing .hm-strong { font-weight: 600; font-size: 14px; }
+.marketing .hm-rule { height: 1px; background: var(--color-print); }
+.marketing .hm-btn { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--color-paper-3); color: var(--color-print); }
+.marketing .hm-btn-on { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--color-ink); color: var(--color-cotton); }
+.marketing .hm-track { position: absolute; left: 10px; right: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--color-paper-3); }
+.marketing .hm-fill { position: absolute; left: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--color-ink); transform-origin: left; }
+.marketing .hm-tip { position: absolute; top: 0; left: 0; padding: 2px 8px; border-radius: 6px; background: var(--color-ink); color: var(--color-cotton); font-family: var(--font-outlier); font-size: 12px; white-space: nowrap; }
+.marketing .hm-stamp { position: absolute; right: 12px; bottom: 6px; font-weight: 700; color: var(--color-paid); }
+.marketing .hm-hero { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 999px; background: var(--color-ink); box-shadow: 4px 6px 10px -4px oklch(var(--shade) / 0.5); }
+.marketing .hm-pause { min-height: 44px; padding: 0 var(--space-sm); border: 0; background: transparent; color: var(--color-muted); font-size: var(--text-small); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Bagian halaman depan. */
+.marketing .claim-form label { min-height: 48px; align-items: center; border: 1px solid var(--color-muted); border-radius: var(--radius-input); background: var(--color-cotton); font-size: 16px; }
+.marketing .claim-form input { color: var(--color-print); font-size: 16px; font-weight: 600; min-height: 44px; }
+.marketing .btn--wrap { height: auto; padding-block: var(--space-sm); text-align: center; max-width: 100%; overflow-wrap: anywhere; }
+.marketing .price-mobile .groove { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: stretch; }
+.marketing .price-mobile .groove label { justify-content: center; }
+.marketing .note { font-size: 12px; color: var(--color-muted); overflow-wrap: anywhere; }
+
+/* Daftar bergaris: judul di kiri, isi di kanan, garis tipis antarbaris (pengganti deretan kartu kembar). */
+.marketing .ruled-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-rule-2); }
+.marketing .ruled-list > li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-sm) var(--space-xl); padding: var(--space-lg) 0; border-bottom: 1px solid var(--color-rule-2); }
+.marketing .ruled-list h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.marketing .ruled-list p { margin: 0; max-width: 60ch; color: var(--color-ink-2); }
+@media (max-width: 720px) { .marketing .ruled-list > li { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tautan teks di kaki halaman dan kebijakan: target sentuh 44px (DESIGN.md). */
+.marketing footer nav a, .marketing #kebijakan p a { display: inline-flex; align-items: center; min-height: 44px; }

@@ -4,7 +4,8 @@
  * WAJIB sama persis dengan constraint `service_media_path_scoped`,
  * `service_media_poster_path_scoped`, dan
  * `merchant_themes_background_path_scoped` di migration
- * 20260821000100_harden_media_and_faqs.sql. Yang di database adalah yang
+ * 20260821000100_harden_media_and_faqs.sql, serta `merchant_banners_image_path`
+ * di migration 20261117000300_merchant_banners.sql (folder `<merchant_id>/banner/`). Yang di database adalah yang
  * benar-benar mengikat; yang di sini ada supaya merchant mendapat pesan yang
  * bisa dibaca sebelum requestnya sampai ke Postgres.
  *

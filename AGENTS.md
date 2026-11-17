@@ -46,8 +46,66 @@ reminder H-1, idempoten lewat `notification_log` — panduan di
 `docs/NOTIFIKASI.md`. Fitur Studio: Analitik, multi-staf (kalender per staf,
 DECISIONS #28), dan domain sendiri (verifikasi TXT di `_marky.<domain>`, routing
 di `src/proxy.ts`, DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
+Masa awal gratis: merchant baru dan lama bertier STUDIO, flag `EARLY_ACCESS_FREE` (DECISIONS #40).
 
 Redesign mengikuti `DESIGN.md` dan spec `docs/superpowers/specs/2026-11-14-marky-redesign-design.md`.
+F1 selesai: `/[username]` kini alur tiga langkah (`BookingFlow` di
+`src/app/[username]/booking-flow.tsx`, komponen murni di
+`src/components/booking-page/`), dan `/pesanan/[token]` memakai tema merchant.
+F2 selesai: cara bayar per layanan (`FULL`, `DEPOSIT`, `ON_SITE`, `REQUEST`),
+status `CONFIRMED`/`REQUESTED`, `merchant_settings`, minimum QRIS Rp1.500
+(`src/lib/booking/payment-mode.ts` mencerminkan `create_booking`), aksi merchant
+di detail booking, dan rute bayar `/api/pesanan/[token]/bayar`.
+F3 selesai: dashboard dimulai dari Hari ini, halaman Booking bertab dengan panel
+detail (`?b=`), booking manual `/dashboard/bookings/baru`, jadwal ulang oleh
+merchant, sidebar berkelompok dan nav bawah HP. Batas anti-spam: 50 booking
+manual per 24 jam, 3 jadwal ulang merchant per booking (DECISIONS #31).
+F4 selesai: pelanggan bisa ubah jadwal, batal, hubungi merchant, dan atur
+pengingat dari `/pesanan/[token]` (rute token di `src/app/api/pesanan/[token]/*`),
+pengingat H-1 dan pagi hari H lewat WhatsApp, email, dan web push (VAPID,
+`public/sw.js`), kebijakan merchant di Pengaturan (DECISIONS #33).
+F5 selesai: voucher publik dan rahasia (`vouchers`, divalidasi `evaluate_voucher`
+di dalam `create_booking`, DP dari harga setelah diskon, anon hanya lewat
+`public_vouchers`, cek kode lewat `/api/vouchers/check` dengan rate limit) dan
+banner promosi (`merchant_banners`, maksimal 3 tayang ditegakkan trigger, gambar
+di `{merchant_id}/banner/`), keduanya Pro dan Studio, editor di
+`/dashboard/promosi` (DECISIONS #34).
+F6 selesai: logo (semua paket), foto sampul, gaya tombol, dan latar bergerak
+(Pro dan Studio) di `merchant_themes`, susunan bagian `PROMO`/`SERVICES`/`FAQ`
+lewat `section_order` dan `hidden_sections`, latar bergerak penuh di belakang
+halaman (`motion-background.tsx`, dimuat malas, mesin `seek(t)` di
+`src/lib/theme/motion.ts`, berhenti saat reduced motion, hemat data, tab
+tersembunyi, dan punya tombol jeda), editor di `/dashboard/halaman`
+(DECISIONS #35).
+F7 selesai: profil staf (peran, perkenalan, keahlian, foto, klip) di kolom
+`staff` (`motion_path` hanya ditulis `service_role`), bucket privat
+`staff-clip-uploads` untuk klip mentah, route `/api/staff/clip` dengan
+`ffmpeg-static` (MP4 bisu maksimal 5 detik, poster JPG, GIF tidak pernah
+disajikan), `/api/slots/nearest`, dan kartu "Dengan siapa?" di
+`staff-picker.tsx` yang menghormati reduced motion dan hemat data
+(DECISIONS #36).
+F8 selesai: reservasi restoran. `table_mode` di `merchant_settings` (bawaan
+`NONE`), layanan reservasi lewat `seat_duration_minutes` dan rentang tamu,
+kursi per slot atau per meja dihitung di `create_booking`/`move_booking_slot`
+di bawah kunci merchant, `bookings_no_overlap` hanya untuk
+`capacity_mode = 'NONE'` plus eksklusi per meja, denah ditulis hanya lewat
+`save_dining_layout`, `anon` membaca lewat `get_seat_availability`/
+`get_table_status`, editor di `/dashboard/denah` (DECISIONS #37).
+F9 selesai: checklist "Panduan memulai" di Hari ini dihitung dari data lewat
+`onboarding_state()` (aturan di `src/lib/guide/guide.ts`), progres di
+`merchant_onboarding_progress` yang hanya ditulis `save_onboarding_progress`,
+tur coachmark Radix `Dialog` dengan target `data-tour`, panel "Panduan halaman
+ini" di setiap halaman dashboard. Semua teks di `src/lib/guide/content.ts`
+wajib diperbarui saat halaman berubah; `content.test.ts` memeriksa target
+(DECISIONS #38).
+F10 selesai: landing di route group `(marketing)` dengan token Coral di
+`src/components/landing/marketing.css` dan General Sans self-host di
+`src/assets/fonts/general-sans/`; teks di `src/lib/marketing/*`, paket dan
+perbandingan di `src/lib/plans.ts`; halaman `/untuk/<slug>` dari
+`industries.ts` (segmen `untuk` dicadangkan); cek klaim lewat
+`/api/username-check` dan RPC `check_username_claim` dengan rate limit; OG,
+JSON-LD, dan sitemap dari data yang sama (DECISIONS #39). Semua host di landing
+berasal dari `NEXT_PUBLIC_APP_URL`, jadi env itu wajib benar di produksi.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

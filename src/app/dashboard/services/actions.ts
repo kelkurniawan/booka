@@ -16,6 +16,10 @@ import type { ServiceFormState } from "./service-state";
 const LIMIT_MESSAGE =
   "Paket Starter hanya mengizinkan 1 layanan. Upgrade paket untuk menambah layanan lagi.";
 
+/** Pesan ramah untuk constraint check services_deposit_* (23514). */
+const DEPOSIT_MESSAGE =
+  "Besar DP tidak valid. Persen 1 sampai 90, atau nominal tetap yang lebih kecil dari harga.";
+
 function toFieldErrors(error: z.ZodError): ServiceFormState {
   const fieldErrors: ServiceFormState["fieldErrors"] = {};
   for (const issue of error.issues) {
@@ -24,7 +28,12 @@ function toFieldErrors(error: z.ZodError): ServiceFormState {
       key === "name" ||
       key === "description" ||
       key === "price" ||
-      key === "duration_minutes"
+      key === "duration_minutes" ||
+      key === "deposit_type" ||
+      key === "deposit_value" ||
+      key === "partyMin" ||
+      key === "partyMax" ||
+      key === "seatDurationMinutes"
     ) {
       fieldErrors[key] ??= issue.message;
     }
@@ -38,6 +47,13 @@ function parseServiceForm(formData: FormData) {
     description: formData.get("description") ?? "",
     price: formData.get("price"),
     duration_minutes: formData.get("duration_minutes"),
+    payment_mode: formData.get("payment_mode") ?? undefined,
+    deposit_type: formData.get("deposit_type") ?? "",
+    deposit_value: formData.get("deposit_value") ?? "",
+    partyMin: formData.get("partyMin") ?? "",
+    partyMax: formData.get("partyMax") ?? "",
+    // Kotak "Reservasi meja" mati: lama duduk tidak terkirim, jadi null.
+    seatDurationMinutes: formData.get("seatDurationMinutes") ?? "",
   });
 }
 
@@ -63,6 +79,12 @@ export async function createService(
       description: parsed.data.description,
       price: parsed.data.price,
       duration_minutes: parsed.data.duration_minutes,
+      payment_mode: parsed.data.payment_mode,
+      deposit_type: parsed.data.deposit_type,
+      deposit_value: parsed.data.deposit_value,
+      party_min: parsed.data.partyMin,
+      party_max: parsed.data.partyMax,
+      seat_duration_minutes: parsed.data.seatDurationMinutes,
     })
     .select("id")
     .single();
@@ -72,6 +94,7 @@ export async function createService(
     if (error.code === "P0001") {
       return { status: "error", message: LIMIT_MESSAGE, limitReached: true };
     }
+    if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
     return { status: "error", message: "Gagal menyimpan layanan. Coba lagi." };
   }
 
@@ -104,6 +127,12 @@ export async function updateService(
       description: parsed.data.description,
       price: parsed.data.price,
       duration_minutes: parsed.data.duration_minutes,
+      payment_mode: parsed.data.payment_mode,
+      deposit_type: parsed.data.deposit_type,
+      deposit_value: parsed.data.deposit_value,
+      party_min: parsed.data.partyMin,
+      party_max: parsed.data.partyMax,
+      seat_duration_minutes: parsed.data.seatDurationMinutes,
     })
     .eq("id", id)
     // RLS sudah membatasi ke merchant pemilik, tapi filter eksplisit ini
@@ -112,6 +141,7 @@ export async function updateService(
     .eq("merchant_id", user.id);
 
   if (error) {
+    if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
     return { status: "error", message: "Gagal menyimpan perubahan. Coba lagi." };
   }
 

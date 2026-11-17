@@ -61,6 +61,98 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Jam tersebut sudah lewat. Silakan pilih waktu lain.",
   },
+  // create_booking: nomor WhatsApp sudah mencapai batas booking aktif
+  // (max_active_per_phone), untuk ON_SITE, REQUEST, dan booking gratis.
+  BK020: {
+    status: 409,
+    message:
+      "Nomor WhatsApp ini sudah mencapai batas booking aktif di merchant ini. Selesaikan atau batalkan booking sebelumnya dulu.",
+  },
+  // create_booking: mode efektif butuh pembayaran online tapi merchant belum
+  // menyambungkan payment gateway (koneksi ACTIVE).
+  BK021: {
+    status: 409,
+    message: "Merchant belum mengaktifkan pembayaran",
+  },
+  // create_booking: nominal bayar sekarang di bawah minimum QRIS (layanan
+  // lama yang harganya 1..1499, dibuat sebelum Zod menolaknya).
+  BK022: {
+    status: 409,
+    message: "Nominal pembayaran terlalu kecil untuk QRIS. Hubungi merchant.",
+  },
+  // create_booking / evaluate_voucher: kode voucher tidak ada, nonaktif, atau sudah dihapus.
+  BK050: {
+    status: 404,
+    message: "Kode voucher tidak ditemukan atau sudah tidak berlaku.",
+  },
+  // evaluate_voucher: di luar periode berlaku voucher.
+  BK051: {
+    status: 409,
+    message: "Voucher ini belum berlaku atau sudah berakhir.",
+  },
+  // evaluate_voucher: kuota pemakaian voucher sudah habis.
+  BK052: {
+    status: 409,
+    message: "Kuota voucher ini sudah habis.",
+  },
+  // create_booking: nomor WhatsApp ini sudah pernah memakai voucher ini.
+  BK053: {
+    status: 409,
+    message: "Nomor WhatsApp ini sudah memakai voucher ini.",
+  },
+  // evaluate_voucher: harga layanan di bawah minimal belanja voucher.
+  BK054: {
+    status: 409,
+    message: "Harga layanan belum memenuhi minimal transaksi voucher ini.",
+  },
+  // evaluate_voucher: voucher terbatas pada layanan lain.
+  BK055: {
+    status: 409,
+    message: "Voucher ini tidak berlaku untuk layanan yang dipilih.",
+  },
+  // evaluate_voucher: voucher hanya untuk pelanggan baru.
+  BK056: {
+    status: 409,
+    message: "Voucher ini khusus pelanggan baru.",
+  },
+  // enforce_banner_target: target banner bukan voucher publik atau layanan milik merchant ini.
+  BK057: {
+    status: 409,
+    message: "Target banner harus voucher publik atau layanan milik Anda sendiri.",
+  },
+  // guard_banner_voucher_visibility: voucher yang dituju banner dijadikan rahasia.
+  BK058: {
+    status: 409,
+    message: "Voucher ini dipakai banner. Ganti target banner dulu sebelum menjadikannya rahasia.",
+  },
+  // create_booking / move_booking_slot: kapasitas kursi atau meja habis untuk
+  // jumlah tamu itu di jam itu (Keputusan 6-8 F8).
+  BK060: {
+    status: 409,
+    message: "Tempat untuk jumlah tamu ini sudah penuh di jam tersebut, silakan pilih jam lain.",
+  },
+  // create_booking: meja pilihan pelanggan tidak tersedia atau tidak cocok.
+  BK061: {
+    status: 409,
+    message:
+      "Meja yang dipilih sudah terisi atau tidak cocok untuk jumlah tamu ini. Pilih meja lain atau Pilihkan untuk saya.",
+  },
+  // save_dining_layout: meja atau area masih punya reservasi mendatang.
+  BK062: {
+    status: 409,
+    message:
+      "Meja atau area ini masih punya reservasi mendatang. Pindahkan reservasinya dulu, lalu hapus.",
+  },
+  // create_booking: jumlah tamu di luar rentang layanan.
+  BK063: {
+    status: 422,
+    message: "Jumlah tamu di luar batas layanan ini.",
+  },
+  // save_dining_layout: denah melanggar batas atau aturan (nama ganda, gabungan tidak cocok).
+  BK064: {
+    status: 422,
+    message: "Denah meja tidak valid. Periksa jumlah, nama, dan gabungan meja, lalu coba lagi.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {
@@ -78,4 +170,27 @@ const DEFAULT_MAPPING: BookingErrorMapping = {
 export function mapBookingError(code: string | null | undefined): BookingErrorMapping {
   if (!code) return DEFAULT_MAPPING;
   return ERROR_MAP[code] ?? DEFAULT_MAPPING;
+}
+
+/** True bila errcode ada di peta (dipakai route untuk menyertakan `code` di respons). */
+export function isKnownBookingError(code: string | null | undefined): code is string {
+  return !!code && Object.hasOwn(ERROR_MAP, code);
+}
+
+const VOUCHER_PRIVACY_MAPPING: BookingErrorMapping = {
+  status: 409,
+  message: "Voucher tidak berlaku untuk booking ini. Lepas voucher untuk melanjutkan.",
+};
+
+/**
+ * Untuk POST /api/bookings (publik, tanpa login). BK053 (nomor sudah memakai)
+ * dan BK056 (bukan pelanggan baru) disatukan jadi satu respons tanpa `code`,
+ * supaya pesan berbeda tidak membocorkan riwayat nomor WhatsApp orang lain.
+ */
+export function mapPublicBookingError(code: string | null | undefined): {
+  mapped: BookingErrorMapping;
+  code: string | undefined;
+} {
+  if (code === "BK053" || code === "BK056") return { mapped: VOUCHER_PRIVACY_MAPPING, code: undefined };
+  return { mapped: mapBookingError(code), code: isKnownBookingError(code) ? code : undefined };
 }

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { INDUSTRIES } from "@/lib/marketing/industries";
 import { ROUTES } from "@/lib/routes";
 import { siteUrl } from "@/lib/site";
 import { createPublicClient } from "@/lib/supabase/server";
@@ -22,6 +23,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: url(ROUTES.home), changeFrequency: "weekly", priority: 1 },
     { url: url(ROUTES.terms), changeFrequency: "yearly", priority: 0.2 },
     { url: url(ROUTES.privacy), changeFrequency: "yearly", priority: 0.2 },
+    ...INDUSTRIES.map((i) => ({
+      url: url(ROUTES.industry(i.slug)),
+      changeFrequency: "monthly" as const,
+      priority: 0.7,
+    })),
   ];
 
   try {

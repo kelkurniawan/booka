@@ -7,7 +7,7 @@
  * functions". Karena itu tipe dan nilai awalnya tinggal di modul biasa ini.
  */
 
-type FieldName = "name" | "description" | "price" | "duration_minutes";
+type FieldName = "name" | "description" | "price" | "duration_minutes" | "deposit_type" | "deposit_value" | "partyMin" | "partyMax" | "seatDurationMinutes";
 
 export type ServiceFormState = {
   status: "idle" | "error" | "success";

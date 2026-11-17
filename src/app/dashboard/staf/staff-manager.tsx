@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Clock, Plus, Trash2 } from "lucide-react";
+import { Clock, Plus, Trash2, UserRound } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,13 +23,16 @@ import type { DayOfWeek } from "@/types/database";
 import {
   createStaff,
   deleteStaff,
+  removeStaffClip,
+  updateStaffProfile,
   saveStaffHours,
   updateStaff,
   type StaffActionResult,
 } from "./actions";
+import { StaffProfileDialog, type StaffProfileRow } from "./staff-profile-dialog";
 
 type Hours = { day_of_week: DayOfWeek; start_time: string; end_time: string };
-type StaffRow = { id: string; name: string; is_active: boolean; hours: Hours[] };
+type StaffRow = StaffProfileRow & { is_active: boolean; hours: Hours[] };
 
 const DAYS: { day: DayOfWeek; label: string }[] = [
   { day: 1, label: "Senin" },
@@ -54,14 +57,25 @@ function hoursSummary(hours: Hours[]): string {
   if (hours.length === 0) return "Ikut jam kerja usaha";
   return [...hours]
     .sort((a, b) => a.day_of_week - b.day_of_week)
-    .map((h) => `${DAYS[h.day_of_week - 1].label.slice(0, 3)} ${h.start_time}–${h.end_time}`)
+    .map((h) => `${DAYS[h.day_of_week - 1].label.slice(0, 3)} ${h.start_time} sampai ${h.end_time}`)
     .join(", ");
 }
 
-export function StaffManager({ staff }: { staff: StaffRow[] }) {
+export function StaffManager({
+  staff,
+  merchantId,
+  themeStyle,
+}: {
+  staff: StaffRow[];
+  merchantId: string;
+  themeStyle: React.CSSProperties;
+}) {
   const [name, setName] = useState("");
   const [pending, startTransition] = useTransition();
   const [editingHours, setEditingHours] = useState<StaffRow | null>(null);
+  const [editingProfileId, setEditingProfileId] = useState<string | null>(null);
+  // Dicari dari daftar terbaru supaya dialog ikut data hasil revalidate.
+  const editingProfile = staff.find((member) => member.id === editingProfileId) ?? null;
 
   function handleAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -92,12 +106,28 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
           Belum ada staf. Selama kosong, semua booking masuk ke satu kalender seperti biasa.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3" data-tour="staff-list">
           {staff.map((member) => (
-            <StaffCard key={member.id} member={member} onEditHours={() => setEditingHours(member)} />
+            <StaffCard
+              key={member.id}
+              member={member}
+              onEditHours={() => setEditingHours(member)}
+              onEditProfile={() => setEditingProfileId(member.id)}
+            />
           ))}
         </div>
       )}
+
+      {editingProfile ? (
+        <StaffProfileDialog
+          merchantId={merchantId}
+          member={editingProfile}
+          themeStyle={themeStyle}
+          saveProfile={updateStaffProfile}
+          removeClip={removeStaffClip}
+          onClose={() => setEditingProfileId(null)}
+        />
+      ) : null}
 
       {editingHours ? (
         <HoursDialog member={editingHours} onClose={() => setEditingHours(null)} />
@@ -106,7 +136,15 @@ export function StaffManager({ staff }: { staff: StaffRow[] }) {
   );
 }
 
-function StaffCard({ member, onEditHours }: { member: StaffRow; onEditHours: () => void }) {
+function StaffCard({
+  member,
+  onEditHours,
+  onEditProfile,
+}: {
+  member: StaffRow;
+  onEditHours: () => void;
+  onEditProfile: () => void;
+}) {
   const [name, setName] = useState(member.name);
   const [pending, startTransition] = useTransition();
   const dirty = name.trim() !== member.name;
@@ -151,7 +189,10 @@ function StaffCard({ member, onEditHours }: { member: StaffRow; onEditHours: () 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-muted-foreground text-sm">{hoursSummary(member.hours)}</p>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={onEditHours}>
+            <Button variant="outline" className="min-h-11" onClick={onEditProfile}>
+              <UserRound /> Profil
+            </Button>
+            <Button variant="outline" className="min-h-11" onClick={onEditHours}>
               <Clock /> Atur jam
             </Button>
             <Button
@@ -247,7 +288,7 @@ function HoursDialog({ member, onClose }: { member: StaffRow; onClose: () => voi
                   onChange={(event) => patch(row.day, { start: event.target.value })}
                   aria-label={`Jam mulai ${DAYS[row.day - 1].label}`}
                 />
-                <span aria-hidden>–</span>
+                <span aria-hidden>sampai</span>
                 <Input
                   type="time"
                   value={row.end}

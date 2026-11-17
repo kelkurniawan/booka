@@ -41,7 +41,7 @@ type PeriodKey = keyof typeof PERIODS;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function percent(value: number | null): string {
-  return value === null ? "–" : `${Math.round(value * 100)}%`;
+  return value === null ? "-" : `${Math.round(value * 100)}%`;
 }
 
 export default async function AnalyticsPage({
@@ -90,10 +90,10 @@ export default async function AnalyticsPage({
   const { data, error } = await supabase
     .from("bookings")
     .select(
-      "status, service_name, service_price, created_at, paid_at, start_datetime, customer_whatsapp, staff_name",
+      "status, service_name, service_price, created_at, paid_at, amount_due_now, amount_due_on_site, paid_on_site_at, start_datetime, customer_whatsapp, staff_name",
     )
     .eq("merchant_id", user.id)
-    .or(`created_at.gte.${from.toISOString()},paid_at.gte.${from.toISOString()}`)
+    .or(`created_at.gte.${from.toISOString()},paid_at.gte.${from.toISOString()},paid_on_site_at.gte.${from.toISOString()}`)
     .limit(20000);
 
   if (error) {
@@ -108,7 +108,7 @@ export default async function AnalyticsPage({
     <>
       <PageHeader
         title="Analitik"
-        description="Dihitung dari booking yang DP-nya sudah dibayar, dalam waktu Indonesia Barat."
+        description="Dihitung dari booking yang terkonfirmasi atau sudah dibayar, dalam waktu Indonesia Barat."
       />
 
       <nav className="flex gap-1" aria-label="Periode">
@@ -127,17 +127,21 @@ export default async function AnalyticsPage({
         ))}
       </nav>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat label="Pendapatan DP" value={formatRupiah(summary.revenue)} hint={`${period.label} terakhir`} />
-        <Stat label="Booking dibayar" value={`${summary.paidCount}`} hint={`dari ${summary.createdCount} pesanan dibuat`} />
-        <Stat label="Tingkat bayar" value={percent(summary.payRate)} hint="Pesanan yang DP-nya dibayar" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="analytics-summary">
+        <Stat
+          label="Uang diterima"
+          value={formatRupiah(summary.revenue)}
+          hint="DP atau pelunasan online ditambah pelunasan di tempat, menurut tanggal uang diterima."
+        />
+        <Stat label="Booking terkonfirmasi" value={`${summary.paidCount}`} hint={`dari ${summary.createdCount} pesanan dibuat`} />
+        <Stat label="Tingkat konfirmasi" value={percent(summary.payRate)} hint="Pesanan yang terkonfirmasi atau sudah dibayar" />
         <Stat label="Pelanggan kembali" value={percent(summary.repeatCustomerRate)} hint="Membayar lebih dari sekali" />
       </div>
 
       <Card>
         <CardHeader>
           <CardTitle>Pendapatan per {bucketWord}</CardTitle>
-          <CardDescription>Menurut tanggal DP dibayar.</CardDescription>
+          <CardDescription>Menurut tanggal uang diterima.</CardDescription>
         </CardHeader>
         <CardContent>
           <ColumnChart
@@ -160,18 +164,18 @@ export default async function AnalyticsPage({
             <CardDescription>Lima teratas menurut pendapatan.</CardDescription>
           </CardHeader>
           <CardContent>
-            <BreakdownTable rows={summary.topServices} empty="Belum ada layanan yang dibayar." />
+            <BreakdownTable rows={summary.topServices} empty="Belum ada uang diterima dari layanan." />
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle>Hari tersibuk</CardTitle>
-            <CardDescription>Jumlah booking dibayar menurut hari jadwalnya.</CardDescription>
+            <CardDescription>Jumlah booking terkonfirmasi menurut hari jadwalnya.</CardDescription>
           </CardHeader>
           <CardContent>
             <ColumnChart
-              caption="Jumlah booking dibayar per hari dalam seminggu"
+              caption="Jumlah booking terkonfirmasi per hari dalam seminggu"
               height={120}
               unit="count"
               data={summary.byWeekday.map((count, index) => ({
@@ -189,7 +193,7 @@ export default async function AnalyticsPage({
         <Card>
           <CardHeader>
             <CardTitle>Per staf</CardTitle>
-            <CardDescription>Booking dibayar yang ditangani tiap staf.</CardDescription>
+            <CardDescription>Booking terkonfirmasi yang ditangani tiap staf.</CardDescription>
           </CardHeader>
           <CardContent>
             <BreakdownTable rows={summary.byStaff} empty="" />

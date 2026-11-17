@@ -8,7 +8,19 @@
  */
 
 export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
-export type BookingStatus = "PENDING" | "PAID" | "CANCELLED";
+export type BookingStatus = "PENDING" | "PAID" | "CANCELLED" | "CONFIRMED" | "REQUESTED";
+export type TableMode = "NONE" | "AREA" | "TABLE";
+export type DiningTableShape = "ROUND" | "RECT";
+export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
+/** ONLINE dari halaman publik, MANUAL dicatat merchant dari dashboard. */
+export type BookingSource = "ONLINE" | "MANUAL";
+export type DepositType = "PERCENT" | "FIXED";
+export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
+export type VoucherKind = "PERCENT" | "FIXED";
+export type VoucherVisibility = "PUBLIC" | "PRIVATE";
+export type BannerSource = "TEMPLATE" | "IMAGE";
+export type BannerColor = "ACCENT" | "DARK" | "SOFT";
+export type BannerTarget = "VOUCHER" | "SERVICE" | "URL";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
@@ -21,7 +33,10 @@ export type ThemePreset =
   | "PASTEL"
   | "BERANI"
   | "ELEGAN";
-export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE";
+export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE" | "MOTION";
+export type ButtonStyle = "FILLED" | "OUTLINE" | "SOFT";
+export type BackgroundMotion = "BENTUK" | "GELOMBANG" | "AURORA" | "PARTIKEL";
+export type MotionSpeed = "SLOW" | "NORMAL";
 export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RAPI";
 export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
@@ -139,6 +154,34 @@ export type PublicMerchant = Pick<
   "id" | "username" | "full_name" | "bio" | "avatar_url" | "subscription_tier"
 >;
 
+/** Langkah checklist yang tidak bisa dibuktikan data; ditandai manual. */
+export type ManualStepKey = "PAGE" | "SHARE";
+
+export type GuidePageKey =
+  | "today"
+  | "bookings"
+  | "analytics"
+  | "services"
+  | "availability"
+  | "floor_plan"
+  | "staff"
+  | "payments"
+  | "appearance"
+  | "promo"
+  | "domain"
+  | "billing"
+  | "settings";
+
+/** Progres panduan. Klien hanya membaca; tulis lewat save_onboarding_progress. */
+export type MerchantOnboardingProgress = {
+  merchant_id: string;
+  steps_completed: ManualStepKey[];
+  tours_seen: GuidePageKey[];
+  checklist_dismissed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Tema halaman publik. Barisnya OPSIONAL -- merchant tanpa baris memakai tema
  * default. `font_pair` dan `corner_style` null berarti "ikut preset".
@@ -154,6 +197,13 @@ export type MerchantTheme = {
   font_pair: FontPair | null;
   text_scale: TextScale;
   corner_style: CornerStyle | null;
+  logo_path: string | null;
+  cover_path: string | null;
+  button_style: ButtonStyle;
+  section_order: string[];
+  hidden_sections: string[];
+  background_motion: BackgroundMotion;
+  background_motion_speed: MotionSpeed;
   created_at: string;
   updated_at: string;
 };
@@ -167,6 +217,14 @@ export type Service = {
   duration_minutes: number;
   is_active: boolean;
   sort_order: number;
+  payment_mode: PaymentMode;
+  deposit_type: DepositType | null;
+  deposit_value: number | null;
+  /** Keduanya null atau keduanya terisi (1..200); bila terisi, jumlah tamu wajib. */
+  party_min: number | null;
+  party_max: number | null;
+  /** Terisi = layanan reservasi (15..480 menit), memakai kapasitas restoran. */
+  seat_duration_minutes: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -221,6 +279,12 @@ export type Staff = {
   name: string;
   is_active: boolean;
   sort_order: number;
+  role: string | null;
+  bio: string | null;
+  tags: string[];
+  photo_path: string | null;
+  motion_path: string | null;
+  show_motion: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -258,8 +322,17 @@ export type MerchantDomain = {
 export type NotificationKind =
   | "BOOKING_PAID_MERCHANT"
   | "BOOKING_PAID_CUSTOMER"
-  | "REMINDER_CUSTOMER";
-export type NotificationChannel = "EMAIL" | "WHATSAPP";
+  | "REMINDER_CUSTOMER"
+  | "BOOKING_CONFIRMED_MERCHANT"
+  | "BOOKING_CONFIRMED_CUSTOMER"
+  | "BOOKING_REQUESTED_MERCHANT"
+  | "BOOKING_APPROVED_CUSTOMER"
+  | "BOOKING_REJECTED_CUSTOMER"
+  | "REMINDER_CUSTOMER_SAME_DAY"
+  | "BOOKING_RESCHEDULED_MERCHANT"
+  | "BOOKING_CANCELLED_MERCHANT";
+export type NotificationChannel = "EMAIL" | "WHATSAPP" | "PUSH";
+export type ContactChannel = "WHATSAPP" | "PHONE" | "EMAIL" | "INSTAGRAM" | "THREADS" | "X" | "TIKTOK";
 export type NotificationStatus = "PENDING" | "SENT" | "FAILED" | "SKIPPED";
 
 /**
@@ -276,6 +349,26 @@ export type NotificationLog = {
   detail: string | null;
   created_at: string;
   updated_at: string;
+};
+
+export type BookingReminderPrefs = {
+  booking_id: string;
+  merchant_id: string;
+  whatsapp: boolean;
+  email: string | null;
+  day_before: boolean | null;
+  same_day: boolean | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type PushSubscriptionRow = {
+  id: string;
+  booking_id: string;
+  merchant_id: string;
+  endpoint_hash: string;
+  subscription_enc: string;
+  created_at: string;
 };
 
 export type Booking = {
@@ -302,6 +395,168 @@ export type Booking = {
   staff_id: string | null;
   /** Snapshot nama staf saat booking dibuat, sama alasannya dengan service_name. */
   staff_name: string | null;
+  payment_mode: PaymentMode;
+  amount_due_now: number;
+  amount_due_on_site: number;
+  paid_on_site_at: string | null;
+  paid_on_site_method: OnSitePaymentMethod | null;
+  attended_at: string | null;
+  no_show_at: string | null;
+  source: BookingSource;
+  /** Jumlah jadwal ulang oleh merchant; maksimal 3 (BK036). */
+  merchant_reschedule_count: number;
+  /** Jumlah ubah jadwal oleh pelanggan; dibatasi merchant_settings.max_reschedules (BK043). */
+  reschedule_count: number;
+  /** null bila booking tanpa voucher atau vouchernya sudah dihapus. */
+  voucher_id: string | null;
+  /** Salinan kode voucher; tetap ada walau vouchernya dihapus. */
+  voucher_code: string | null;
+  /** service_price = amount_due_now + amount_due_on_site + discount_amount. */
+  discount_amount: number;
+  party_size: number | null;
+  area_id: string | null;
+  table_id: string | null;
+  joined_table_id: string | null;
+  /** Snapshot "D5" atau "D5 + D6", tetap terbaca setelah meja dihapus. */
+  table_label: string | null;
+  customer_note: string | null;
+  /** Cara booking ini memakai tempat; menentukan eksklusi yang berlaku. */
+  capacity_mode: TableMode;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Voucher = {
+  id: string;
+  merchant_id: string;
+  code: string;
+  kind: VoucherKind;
+  value: number;
+  max_discount: number | null;
+  min_spend: number | null;
+  service_ids: string[] | null;
+  quota: number | null;
+  per_phone_limit: number | null;
+  new_customer_only: boolean;
+  visibility: VoucherVisibility;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Kolom yang dibuka public_vouchers() untuk pemilih di halaman booking. */
+export type PublicVoucher = Pick<
+  Voucher,
+  | "id"
+  | "code"
+  | "kind"
+  | "value"
+  | "max_discount"
+  | "min_spend"
+  | "service_ids"
+  | "ends_at"
+  | "per_phone_limit"
+  | "new_customer_only"
+>;
+
+/** Banner promosi. TEMPLATE: title wajib, tanpa gambar. IMAGE: image_path + alt_text, tanpa teks. */
+export type MerchantBanner = {
+  id: string;
+  merchant_id: string;
+  source: BannerSource;
+  tag_text: string | null;
+  title: string | null;
+  body: string | null;
+  color: BannerColor;
+  /** `<merchant_id>/banner/<nama berkas>` di Storage. */
+  image_path: string | null;
+  alt_text: string | null;
+  /** Terisi tepat bila target_kind terisi. */
+  cta_text: string | null;
+  target_kind: BannerTarget | null;
+  /** Null juga bila voucher/layanan targetnya sudah dihapus. */
+  target_voucher_id: string | null;
+  target_service_id: string | null;
+  target_url: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Kolom yang boleh dibaca anon; hanya banner yang sedang tayang. */
+export type PublicBanner = Omit<MerchantBanner, "published" | "created_at" | "updated_at">;
+
+export type MerchantSettings = {
+  merchant_id: string;
+  allow_pay_on_site: boolean;
+  auto_confirm_on_site: boolean;
+  /** null = tanpa batas. */
+  max_active_per_phone: number | null;
+  deposit_after_no_show: boolean;
+  allow_customer_reschedule: boolean;
+  /** 0..168 jam sebelum jadwal. */
+  reschedule_min_hours: number;
+  /** 1..5. */
+  max_reschedules: number;
+  allow_customer_cancel: boolean;
+  /** 0..168 jam sebelum jadwal. */
+  cancel_min_hours: number;
+  /** Maksimal 500 karakter. */
+  policy_text: string | null;
+  /** E.164, mis. +6281234567890. */
+  contact_phone: string | null;
+  contact_email: string | null;
+  /** Username tanpa @, pola ^[A-Za-z0-9._]{1,30}$. */
+  contact_instagram: string | null;
+  contact_threads: string | null;
+  contact_x: string | null;
+  contact_tiktok: string | null;
+  contact_hidden: ContactChannel[];
+  /** Format HH:MM:SS; keduanya null atau keduanya terisi dengan reply_from < reply_until. */
+  reply_from: string | null;
+  reply_until: string | null;
+  reminder_whatsapp: boolean;
+  reminder_email: boolean;
+  reminder_push: boolean;
+  reminder_day_before: boolean;
+  reminder_same_day: boolean;
+  table_mode: TableMode;
+  seats_per_slot: number | null;
+  /** 0..120 menit; 0 = kalimat penahanan meja tidak tampil. */
+  table_hold_minutes: number;
+  auto_join_tables: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiningArea = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+};
+
+export type DiningTable = {
+  id: string;
+  merchant_id: string;
+  area_id: string;
+  name: string;
+  min_seats: number;
+  max_seats: number;
+  shape: DiningTableShape;
+  grid_x: number;
+  grid_y: number;
+  grid_w: number;
+  grid_h: number;
+  note: string | null;
+  bookable_online: boolean;
+  joinable_with: string[];
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -374,6 +629,12 @@ export type Database = {
         Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      merchant_onboarding_progress: {
+        Row: MerchantOnboardingProgress;
+        Insert: never;
+        Update: never;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       merchant_profiles: {
         Row: MerchantProfile;
         Insert: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>> & {
@@ -384,8 +645,33 @@ export type Database = {
       };
       services: {
         Row: Service;
-        Insert: Omit<Service, "id" | Timestamps | "is_active" | "sort_order"> &
-          Partial<Pick<Service, "id" | "is_active" | "sort_order">>;
+        Insert: Omit<
+          Service,
+          | "id"
+          | Timestamps
+          | "is_active"
+          | "sort_order"
+          | "payment_mode"
+          | "deposit_type"
+          | "deposit_value"
+          | "party_min"
+          | "party_max"
+          | "seat_duration_minutes"
+        > &
+          Partial<
+            Pick<
+              Service,
+              | "id"
+              | "party_min"
+              | "party_max"
+              | "seat_duration_minutes"
+              | "is_active"
+              | "sort_order"
+              | "payment_mode"
+              | "deposit_type"
+              | "deposit_value"
+            >
+          >;
         Update: Partial<Omit<Service, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
@@ -417,8 +703,33 @@ export type Database = {
       staff: {
         Row: Staff;
         Insert: Pick<Staff, "merchant_id" | "name"> &
-          Partial<Pick<Staff, "id" | "is_active" | "sort_order">>;
-        Update: Partial<Pick<Staff, "name" | "is_active" | "sort_order">>;
+          Partial<
+            Pick<
+              Staff,
+              | "id"
+              | "is_active"
+              | "sort_order"
+              | "role"
+              | "bio"
+              | "tags"
+              | "photo_path"
+              | "show_motion"
+            >
+          >;
+        Update: Partial<
+          Pick<
+            Staff,
+            | "name"
+            | "is_active"
+            | "sort_order"
+            | "role"
+            | "bio"
+            | "tags"
+            | "photo_path"
+            | "motion_path" // hanya service_role yang lolos grant kolom
+            | "show_motion"
+          >
+        >;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       staff_availability: {
@@ -443,6 +754,25 @@ export type Database = {
           Relationship<"merchant_id", "merchants">,
         ];
       };
+      booking_reminder_prefs: {
+        Row: BookingReminderPrefs;
+        Insert: Pick<BookingReminderPrefs, "booking_id" | "merchant_id"> &
+          Partial<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>;
+        Update: Partial<Pick<BookingReminderPrefs, "whatsapp" | "email" | "day_before" | "same_day">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      push_subscriptions: {
+        Row: PushSubscriptionRow;
+        Insert: Pick<PushSubscriptionRow, "booking_id" | "merchant_id" | "endpoint_hash" | "subscription_enc">;
+        Update: Partial<Pick<PushSubscriptionRow, "subscription_enc">>;
+        Relationships: [
+          Relationship<"booking_id", "bookings">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
       bookings: {
         Row: Booking;
         Insert: Omit<
@@ -455,11 +785,49 @@ export type Database = {
           | "cancelled_at"
           | "cancel_reason"
           | "access_token"
+          | "payment_mode"
+          | "amount_due_now"
+          | "amount_due_on_site"
+          | "paid_on_site_at"
+          | "paid_on_site_method"
+          | "attended_at"
+          | "no_show_at"
+          | "source"
+          | "merchant_reschedule_count"
+          | "voucher_id"
+          | "voucher_code"
+          | "discount_amount"
+          | "party_size"
+          | "area_id"
+          | "table_id"
+          | "joined_table_id"
+          | "table_label"
+          | "customer_note"
+          | "capacity_mode"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "party_size"
+              | "area_id"
+              | "table_id"
+              | "joined_table_id"
+              | "table_label"
+              | "customer_note"
+              | "capacity_mode"
+              | "source"
+              | "merchant_reschedule_count"
+              | "voucher_id"
+              | "voucher_code"
+              | "discount_amount"
+              | "payment_mode"
+              | "amount_due_now"
+              | "amount_due_on_site"
+              | "paid_on_site_at"
+              | "paid_on_site_method"
+              | "attended_at"
+              | "no_show_at"
               | "status"
               | "expires_at"
               | "paid_at"
@@ -471,6 +839,104 @@ export type Database = {
         Relationships: [
           Relationship<"merchant_id", "merchants">,
           Relationship<"service_id", "services">,
+        ];
+      };
+      vouchers: {
+        Row: Voucher;
+        Insert: Omit<
+          Voucher,
+          | "id"
+          | Timestamps
+          | "max_discount"
+          | "min_spend"
+          | "service_ids"
+          | "quota"
+          | "per_phone_limit"
+          | "new_customer_only"
+          | "visibility"
+          | "starts_at"
+          | "ends_at"
+        > &
+          Partial<
+            Pick<
+              Voucher,
+              | "max_discount"
+              | "min_spend"
+              | "service_ids"
+              | "quota"
+              | "per_phone_limit"
+              | "new_customer_only"
+              | "visibility"
+              | "starts_at"
+              | "ends_at"
+            >
+          >;
+        Update: Partial<Omit<Voucher, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_banners: {
+        Row: MerchantBanner;
+        Insert: Pick<MerchantBanner, "merchant_id" | "source"> &
+          Partial<Omit<MerchantBanner, "id" | "merchant_id" | "source" | Timestamps>>;
+        Update: Partial<Omit<MerchantBanner, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [
+          Relationship<"merchant_id", "merchants">,
+          Relationship<"target_voucher_id", "vouchers">,
+          Relationship<"target_service_id", "services">,
+        ];
+      };
+      merchant_settings: {
+        Row: MerchantSettings;
+        Insert: Pick<MerchantSettings, "merchant_id">;
+        Update: Partial<
+          Pick<
+            MerchantSettings,
+            | "allow_pay_on_site"
+            | "auto_confirm_on_site"
+            | "max_active_per_phone"
+            | "deposit_after_no_show"
+            | "allow_customer_reschedule"
+            | "reschedule_min_hours"
+            | "max_reschedules"
+            | "allow_customer_cancel"
+            | "cancel_min_hours"
+            | "policy_text"
+            | "contact_phone"
+            | "contact_email"
+            | "contact_instagram"
+            | "contact_threads"
+            | "contact_x"
+            | "contact_tiktok"
+            | "contact_hidden"
+            | "reply_from"
+            | "reply_until"
+            | "reminder_whatsapp"
+            | "reminder_email"
+            | "reminder_push"
+            | "reminder_day_before"
+            | "reminder_same_day"
+            | "table_mode"
+            | "seats_per_slot"
+            | "table_hold_minutes"
+            | "auto_join_tables"
+          >
+        >;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      // Denah hanya ditulis lewat RPC save_dining_layout.
+      dining_areas: {
+        Row: DiningArea;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      dining_tables: {
+        Row: DiningTable;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"merchant_id", "merchants">,
+          Relationship<"area_id", "dining_areas">,
         ];
       };
       payment_connections: {
@@ -521,6 +987,85 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Cek klaim username dari landing. Hanya service_role. */
+      check_username_claim: {
+        Args: { p_username: string; p_ip_hash: string };
+        Returns: string;
+      };
+      /** Fakta kesiapan merchant + progres panduan. Hanya authenticated. */
+      onboarding_state: {
+        Args: Record<string, never>;
+        Returns: {
+          has_service: boolean;
+          has_hours: boolean;
+          has_active_payment: boolean;
+          needs_online_payment: boolean;
+          page_customized: boolean;
+          has_online_booking: boolean;
+          steps_completed: ManualStepKey[];
+          tours_seen: GuidePageKey[];
+          checklist_dismissed_at: string | null;
+        }[];
+      };
+      /** Simpan progres panduan; argumen null tidak mengubah kolomnya. */
+      save_onboarding_progress: {
+        Args: {
+          p_step?: ManualStepKey | null;
+          p_tour?: GuidePageKey | null;
+          p_dismissed?: boolean | null;
+        };
+        Returns: undefined;
+      };
+      /** Voucher publik yang hidup; anon boleh memanggil. */
+      public_vouchers: {
+        Args: { p_merchant_id: string };
+        Returns: PublicVoucher[];
+      };
+      /** Cek kode untuk route /api/vouchers/check (service_role). Syarat hanya terisi bila reason null. */
+      check_voucher: {
+        Args: { p_merchant_id: string; p_code: string; p_service_id: string };
+        Returns: {
+          code: string | null;
+          kind: VoucherKind | null;
+          value: number | null;
+          max_discount: number | null;
+          min_spend: number | null;
+          service_ids: string[] | null;
+          discount: number | null;
+          reason: string | null;
+        }[];
+      };
+      /** Pemakaian voucher merchant yang login dan ringkasan bulan WIB berjalan. */
+      voucher_stats: {
+        Args: Record<string, never>;
+        Returns: { voucher_id: string; used: number; month_discount: number; month_bookings: number }[];
+      };
+      /** 10 cek kode per (hash IP, merchant) per 15 menit (service_role). */
+      check_voucher_rate_limit: {
+        Args: { p_ip_hash: string; p_merchant_id: string };
+        Returns: boolean;
+      };
+      prune_push_subscriptions: { Args: Record<string, never>; Returns: number };
+      bookings_in_tab: {
+        Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
+        // Seperti BookingListItem (booking-state.ts) tapi merchant_id tetap ada agar
+        // .eq("merchant_id", ...) lolos tipe. access_token dan payment_url sengaja tidak ada.
+        Returns: Omit<Booking, "access_token" | "payment_url" | "updated_at">[];
+      };
+      dashboard_tab_counts: {
+        Args: Record<string, never>;
+        Returns: { action_count: number; upcoming_count: number }[];
+      };
+      dashboard_week_summary: {
+        Args: Record<string, never>;
+        Returns: {
+          bookings: number;
+          online_revenue: number;
+          on_site_revenue: number;
+          no_show: number;
+          attendance_marked: number;
+        }[];
+      };
       /**
        * Mengganti seluruh FAQ merchant yang sedang login dalam satu
        * statement, sehingga penghapusan lama dan penyisipan baru berhasil
@@ -546,6 +1091,43 @@ export type Database = {
       get_booked_ranges: {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string; staff_id: string | null }[];
+      };
+      get_seat_availability: {
+        Args: {
+          p_username: string;
+          p_service_id: string;
+          p_party_size: number;
+          /** Tanpa default di SQL: selalu kirim, null bila tidak memilih area. */
+          p_area_id: string | null;
+          p_starts: string[];
+        };
+        Returns: { start_datetime: string; available: boolean; tables_left: number | null }[];
+      };
+      get_table_status: {
+        Args: { p_username: string; p_service_id: string; p_start: string; p_party_size: number };
+        Returns: { table_id: string; status: "FREE" | "TAKEN" | "TOO_SMALL" | "TOO_LARGE" }[];
+      };
+      save_dining_layout: {
+        Args: {
+          p_areas: { id: string; name: string; sort_order: number }[];
+          p_tables: {
+            id: string;
+            area_id: string;
+            name: string;
+            min_seats: number;
+            max_seats: number;
+            shape: DiningTableShape;
+            grid_x: number;
+            grid_y: number;
+            grid_w: number;
+            grid_h: number;
+            note: string | null;
+            bookable_online: boolean;
+            joinable_with: string[];
+            sort_order: number;
+          }[];
+        };
+        Returns: undefined;
       };
       /**
        * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
@@ -632,8 +1214,78 @@ export type Database = {
           p_customer_whatsapp: string;
           /** Null = "siapa saja" untuk merchant Studio; diabaikan untuk paket lain. */
           p_staff_id?: string | null;
+          /** false bila merchant tidak punya koneksi payment ACTIVE (BK021 bila booking perlu bayar online). */
+          p_can_charge?: boolean;
+          /** MANUAL: bayar di tempat, langsung CONFIRMED, tanpa BK020/BK021. */
+          p_source?: BookingSource;
+          /** Null atau kosong = tanpa voucher; diabaikan untuk MANUAL. Ditolak BK050..BK056. */
+          p_voucher_code?: string | null;
+          /** Wajib bila layanan punya party_max (BK063). */
+          p_party_size?: number | null;
+          /** Hanya layanan reservasi di mode TABLE. BK060 penuh, BK061 meja pilihan tidak tersedia. */
+          p_area_id?: string | null;
+          p_table_id?: string | null;
+          p_customer_note?: string | null;
         };
         Returns: Booking[];
+      };
+      /**
+       * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login,
+       * BK035 lebih dari 50 per 24 jam; error slot sama dengan create_booking.
+       */
+      create_manual_booking: {
+        Args: {
+          p_service_id: string;
+          p_start_datetime: string;
+          p_customer_name: string;
+          p_customer_whatsapp: string;
+          p_staff_id?: string | null;
+          p_party_size?: number | null;
+          /** Booking manual boleh memakai meja yang tidak bookable_online. */
+          p_table_id?: string | null;
+          p_customer_note?: string | null;
+        };
+        Returns: { id: string }[];
+      };
+      /**
+       * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
+       * BK003 staf nonaktif, BK001 di luar jam, P0006 lampau, 23P01 bentrok.
+       */
+      reschedule_booking_by_merchant: {
+        Args: { p_booking_id: string; p_new_start: string };
+        Returns: undefined;
+      };
+      /**
+       * Ubah jadwal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
+       * dikelola, BK041 tidak diizinkan, BK042 batas waktu lewat, BK043 kesempatan habis,
+       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01 seperti jadwal ulang merchant.
+       */
+      reschedule_booking: {
+        Args: { p_token: string; p_new_start: string };
+        Returns: { booking_id: string; old_start: string }[];
+      };
+      /**
+       * Batal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
+       * dibatalkan, BK044 tidak diizinkan, BK045 batas waktu lewat.
+       */
+      cancel_booking_by_customer: {
+        Args: { p_token: string };
+        Returns: { booking_id: string }[];
+      };
+      /** Merchant menyetujui/menolak booking REQUESTED. BK030 tidak ditemukan, BK031 kedaluwarsa. */
+      decide_booking_request: {
+        Args: { p_booking_id: string; p_approve: boolean };
+        Returns: { id: string; status: BookingStatus }[];
+      };
+      /** Tandai sisa pembayaran diterima di tempat. BK032 bila tidak memenuhi syarat. */
+      mark_booking_paid_on_site: {
+        Args: { p_booking_id: string; p_method: OnSitePaymentMethod };
+        Returns: undefined;
+      };
+      /** Catat hadir atau tidak datang. BK033 bila belum waktunya atau status tidak cocok. */
+      mark_booking_attendance: {
+        Args: { p_booking_id: string; p_attended: boolean };
+        Returns: undefined;
       };
       /**
        * Menyimpan seluruh hasil wizard onboarding dalam satu transaksi:
@@ -664,8 +1316,19 @@ export type Database = {
       };
     };
     Enums: {
+      voucher_kind: VoucherKind;
+      voucher_visibility: VoucherVisibility;
+      banner_source: BannerSource;
+      banner_color: BannerColor;
+      banner_target: BannerTarget;
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
+      table_mode: TableMode;
+      dining_table_shape: DiningTableShape;
+      payment_mode: PaymentMode;
+      booking_source: BookingSource;
+      deposit_type: DepositType;
+      on_site_payment_method: OnSitePaymentMethod;
       payment_provider: PaymentProvider;
       connection_status: ConnectionStatus;
       connection_mode: ConnectionMode;
@@ -680,6 +1343,7 @@ export type Database = {
       domain_status: DomainStatus;
       notification_channel: NotificationChannel;
       notification_status: NotificationStatus;
+      contact_channel: ContactChannel;
     };
     CompositeTypes: { [_ in never]: never };
   };

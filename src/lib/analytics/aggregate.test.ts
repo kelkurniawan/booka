@@ -16,6 +16,9 @@ function booking(overrides: Partial<AnalyticsBooking>): AnalyticsBooking {
     service_price: 50000,
     created_at: "2026-10-02T03:00:00Z",
     paid_at: "2026-10-02T03:05:00Z",
+    amount_due_now: overrides.service_price ?? 50000,
+    amount_due_on_site: 0,
+    paid_on_site_at: null,
     // Senin 5 Okt 10:00 WIB.
     start_datetime: "2026-10-05T03:00:00Z",
     customer_whatsapp: "+6281100000001",
@@ -99,4 +102,31 @@ test("tanpa booking: rasio null, bukan 0 atau NaN", () => {
   assert.equal(summary.payRate, null);
   assert.equal(summary.repeatCustomerRate, null);
   assert.equal(summary.series.length, 1);
+});
+
+test("PAID DP: pendapatan = DP, ditambah sisa bila lunas di tempat dalam periode", () => {
+  const dp = { amount_due_now: 105000, amount_due_on_site: 245000, service_price: 350000 };
+  assert.equal(aggregateBookings([booking(dp)], range, "day").revenue, 105000);
+  const lunas = booking({ ...dp, paid_on_site_at: "2026-10-05T04:00:00Z" });
+  const summary = aggregateBookings([lunas], range, "day");
+  assert.equal(summary.revenue, 350000);
+  assert.equal(summary.series.find((p) => p.key === "2026-10-05")?.revenue, 245000);
+  assert.equal(summary.paidCount, 1);
+});
+
+test("CONFIRMED: 1 terkonfirmasi, pendapatan hanya setelah lunas di tempat", () => {
+  const base = { status: "CONFIRMED" as const, paid_at: null, amount_due_now: 0, amount_due_on_site: 450000, service_price: 450000 };
+  const belum = aggregateBookings([booking(base)], range, "day");
+  assert.equal(belum.revenue, 0);
+  assert.equal(belum.paidCount, 1);
+  const lunas = aggregateBookings([booking({ ...base, paid_on_site_at: "2026-10-05T04:00:00Z" })], range, "day");
+  assert.equal(lunas.revenue, 450000);
+});
+
+test("REQUESTED hanya masuk createdCount", () => {
+  const summary = aggregateBookings([booking({ status: "REQUESTED", paid_at: null })], range, "day");
+  assert.equal(summary.createdCount, 1);
+  assert.equal(summary.paidCount, 0);
+  assert.equal(summary.revenue, 0);
+  assert.equal(summary.payRate, 0);
 });

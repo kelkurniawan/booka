@@ -50,6 +50,11 @@ const nextConfig: NextConfig = {
   // dan hanya memberi tahu penyerang versi kerangka kerja yang dipakai.
   poweredByHeader: false,
 
+  // Binary ffmpeg tidak bisa dibundel; harus dimuat dari node_modules.
+  serverExternalPackages: ["ffmpeg-static"],
+  // output: "standalone" hanya membawa berkas yang terlacak, jadi binary disebut eksplisit.
+  outputFileTracingIncludes: { "/api/staff/clip": ["./node_modules/ffmpeg-static/ffmpeg"] },
+
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];
   },

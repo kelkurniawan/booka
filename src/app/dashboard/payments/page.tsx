@@ -91,7 +91,7 @@ export default async function PaymentsPage({
       />
       <OAuthStatusToast connected={connected} oauthError={oauthError} provider={errorProvider} />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2" data-tour="payment-providers">
         {cards.map(({ provider, connection, maskedCredential, isUsedForBooking }) => (
           <ProviderCard
             key={provider}

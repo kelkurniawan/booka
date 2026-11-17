@@ -19,6 +19,12 @@ export const MEDIA_LIMITS = {
   serviceImageMaxSide: 800,
   maxServiceImages: 5,
   maxFaqs: 10,
+  /** Klip staf: tipe mentah yang boleh diunggah merchant sebelum diubah ke MP4. */
+  clipTypes: ["image/gif", "video/mp4", "video/webm", "video/quicktime"],
+  /** = file_size_limit bucket staff-clip-uploads (20261119000100). */
+  clipMaxBytes: 8 * 1024 * 1024,
+  clipMaxSeconds: 5,
+  clipMaxSide: 480,
 } as const;
 
 export function validateImageFile(file: { type: string; size: number }): string | null {
@@ -43,6 +49,24 @@ export function validateVideoFile(
   }
   if (durationSeconds > MEDIA_LIMITS.videoMaxSeconds) {
     return "Durasi video maksimal 30 detik.";
+  }
+  return null;
+}
+
+/** Durasi null = tidak tercatat (diperiksa ulang di server; keluaran tetap dipotong 5 detik). */
+export function validateClipFile(
+  file: { type: string; size: number },
+  durationSeconds: number | null,
+): string | null {
+  if (!MEDIA_LIMITS.clipTypes.includes(file.type as never)) {
+    return "Format klip harus GIF, MP4, WebM, atau MOV.";
+  }
+  if (file.size > MEDIA_LIMITS.clipMaxBytes) {
+    return "Ukuran klip maksimal 8MB.";
+  }
+  // 0,1 detik toleransi: jeda bingkai GIF membuat durasi terbaca sedikit lebih panjang.
+  if (durationSeconds !== null && durationSeconds > MEDIA_LIMITS.clipMaxSeconds + 0.1) {
+    return "Durasi klip maksimal 5 detik.";
   }
   return null;
 }

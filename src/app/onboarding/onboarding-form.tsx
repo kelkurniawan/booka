@@ -203,7 +203,7 @@ export function OnboardingForm({
           <FieldError>{usernameError}</FieldError>
         ) : (
           <FieldDescription>
-            3–30 karakter. Huruf kecil, angka, dan tanda hubung. Bisa diubah nanti
+            3 sampai 30 karakter. Huruf kecil, angka, dan tanda hubung. Bisa diubah nanti
             di Pengaturan.
           </FieldDescription>
         )}

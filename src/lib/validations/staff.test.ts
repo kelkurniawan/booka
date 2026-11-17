@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { staffHoursSchema, staffNameSchema } from "./staff";
+import { staffHoursSchema, staffNameSchema, staffProfileSchema } from "./staff";
 
 test("nama staf di-trim dan tidak boleh kosong", () => {
   assert.equal(staffNameSchema.parse("  Dewi "), "Dewi");
@@ -25,4 +25,36 @@ test("jam staf menolak jam selesai sebelum jam mulai", () => {
     { day_of_week: 2, start_time: "17:00", end_time: "09:00" },
   ]);
   assert.equal(result.success, false);
+});
+
+test("profil staf di-trim dan teks kosong menjadi null", () => {
+  assert.deepEqual(
+    staffProfileSchema.parse({
+      role: "  MUA ",
+      bio: "",
+      tags: [" Wisuda "],
+      photo_path: "",
+      show_motion: true,
+    }),
+    { role: "MUA", bio: null, tags: ["Wisuda"], photo_path: null, show_motion: true },
+  );
+});
+
+test("peran dan perkenalan menolak melebihi batas", () => {
+  const dasar = { role: "", bio: "", tags: [], photo_path: null, show_motion: false };
+  assert.equal(staffProfileSchema.safeParse({ ...dasar, role: "a".repeat(41) }).success, false);
+  assert.equal(staffProfileSchema.safeParse({ ...dasar, role: "a".repeat(40) }).success, true);
+  assert.equal(staffProfileSchema.safeParse({ ...dasar, bio: "a".repeat(141) }).success, false);
+  assert.equal(staffProfileSchema.safeParse({ ...dasar, bio: "a".repeat(140) }).success, true);
+});
+
+test("keahlian menolak lebih dari lima, dobel, baris baru, dan kosong", () => {
+  const dasar = { role: "", bio: "", photo_path: null, show_motion: false };
+  const cek = (tags: string[]) => staffProfileSchema.safeParse({ ...dasar, tags }).success;
+  assert.equal(cek(["a", "b", "c", "d", "e", "f"]), false);
+  assert.equal(cek(["Wisuda", "wisuda"]), false);
+  assert.equal(cek(["a\nb"]), false);
+  assert.equal(cek([""]), false);
+  assert.equal(cek(["a".repeat(25)]), false);
+  assert.equal(cek(["Wisuda", "Pengantin"]), true);
 });

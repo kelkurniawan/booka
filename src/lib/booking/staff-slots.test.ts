@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { computeStaffSlots, type StaffSchedule } from "./slots";
+import { computeStaffSlots, nearestStaffSlots, type StaffSchedule } from "./slots";
 
 // Tanggal jauh di depan supaya tidak pernah dianggap "sudah lewat".
 const dateISO = "2030-01-07"; // Senin
@@ -64,4 +64,49 @@ test("booking tanpa staf tidak mengunci kalender staf", () => {
     bookedRanges: [{ ...dewiAt9, staff_id: null }], staffId: "dewi", now,
   });
   assert.deepEqual(labels(slots), ["09:00", "10:00", "11:00"]);
+});
+
+// Senin 2026-11-16 08:00 WIB = 01:00 UTC.
+const nearestBase = {
+  fromDateISO: "2026-11-16",
+  days: 14,
+  durationMinutes: 60,
+  merchantAvailability: [1, 2, 3, 4, 5, 6].map((d) => ({
+    day_of_week: d as 1 | 2 | 3 | 4 | 5 | 6,
+    start_time: "09:00",
+    end_time: "17:00",
+  })),
+};
+const staffA: StaffSchedule = { id: "a", availability: [{ day_of_week: 1, start_time: "09:00", end_time: "12:00" }] };
+const staffB: StaffSchedule = { id: "b", availability: [] };
+const staffC: StaffSchedule = { id: "c", availability: [{ day_of_week: 7, start_time: "09:00", end_time: "10:00" }] };
+const aMonday9 = { start_datetime: "2026-11-16T02:00:00Z", end_datetime: "2026-11-16T03:00:00Z", staff_id: "a" };
+const cSundays = ["2026-11-22", "2026-11-29"].map((d) => ({
+  start_datetime: `${d}T02:00:00Z`, end_datetime: `${d}T03:00:00Z`, staff_id: "c",
+}));
+
+test("nearestStaffSlots: per staf, siapa saja, dan staf penuh", () => {
+  const nearest = nearestStaffSlots({
+    ...nearestBase, staff: [staffA, staffB, staffC], bookedRanges: [aMonday9, ...cSundays],
+    now: new Date("2026-11-16T01:00:00Z"),
+  });
+  assert.equal(nearest.a?.label, "10:00");
+  assert.equal(nearest.a?.dateISO, "2026-11-16");
+  assert.equal(nearest.any?.label, "09:00");
+  assert.equal(nearest.c, null);
+});
+
+test("nearestStaffSlots: tanpa staf hanya kunci any", () => {
+  const nearest = nearestStaffSlots({
+    ...nearestBase, staff: [], bookedRanges: [], now: new Date("2026-11-16T01:00:00Z"),
+  });
+  assert.deepEqual(Object.keys(nearest), ["any"]);
+});
+
+test("nearestStaffSlots: lewat jam kerja hari ini pindah ke Senin berikutnya", () => {
+  const nearest = nearestStaffSlots({
+    ...nearestBase, staff: [staffA], bookedRanges: [aMonday9], now: new Date("2026-11-16T05:30:00Z"),
+  });
+  assert.equal(nearest.a?.dateISO, "2026-11-23");
+  assert.equal(nearest.a?.label, "09:00");
 });

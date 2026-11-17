@@ -23,11 +23,9 @@ process.env.TOKEN_ENCRYPTION_KEY ??= Buffer.alloc(32, 7).toString("base64");
 // Import dinamis di dalam `before` (bukan top-level await) supaya file ini
 // tetap kompatibel dengan output CJS yang dipakai tsx ketika package.json
 // project tidak mendeklarasikan "type": "module".
-type SecretContext = {
-  merchantId: string;
-  provider: "MIDTRANS" | "XENDIT";
-  field: "access_token" | "refresh_token";
-};
+type SecretContext =
+  | { merchantId: string; provider: "MIDTRANS" | "XENDIT"; field: "access_token" | "refresh_token" }
+  | { merchantId: string; bookingId: string; field: "push_subscription" };
 let encryptSecret: (plaintext: string, context: SecretContext) => string;
 let decryptSecret: (payload: string, context: SecretContext) => string;
 
@@ -192,4 +190,13 @@ test("tanpa TOKEN_ENCRYPTION_KEY, encryptSecret melempar error berbahasa Indones
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test("payload push terikat ke booking: konteks booking lain gagal didekripsi", async () => {
+  const m = "11111111-1111-1111-1111-111111111111";
+  const a = { merchantId: m, bookingId: "aaaaaaaa-0000-0000-0000-000000000001", field: "push_subscription" } as const;
+  const b = { ...a, bookingId: "bbbbbbbb-0000-0000-0000-000000000002" };
+  const payload = encryptSecret("{}", a);
+  assert.equal(decryptSecret(payload, a), "{}");
+  assert.throws(() => decryptSecret(payload, b));
 });

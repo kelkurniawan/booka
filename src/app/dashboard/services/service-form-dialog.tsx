@@ -26,9 +26,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { mediaFileName, removeMedia, uploadMedia } from "@/lib/media/upload";
 import { ROUTES } from "@/lib/routes";
-import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
+import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types/database";
 
 import { attachServiceMedia, createService, updateService } from "./actions";
+import { PaymentModeField, type ServicePaymentSettings } from "./payment-mode-field";
+import { ReservationFields } from "./reservation-fields";
 import { ServiceMediaField, type DraftMedia } from "./service-media-field";
 import { INITIAL_SERVICE_FORM_STATE, type ServiceFormState } from "./service-state";
 
@@ -47,6 +49,8 @@ export function ServiceFormDialog({
   merchantId,
   tier,
   media = [],
+  settings,
+  tableMode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -54,6 +58,8 @@ export function ServiceFormDialog({
   merchantId: string;
   tier: SubscriptionTier;
   media?: ServiceMedia[];
+  settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   // Dipegang di sini, bukan di ServiceForm, supaya dialog sendiri bisa
   // menolak ditutup selagi submit atau unggahan draft masih berjalan --
@@ -95,6 +101,8 @@ export function ServiceFormDialog({
           merchantId={merchantId}
           tier={tier}
           media={media}
+          settings={settings}
+          tableMode={tableMode}
           pending={pending}
           startTransition={startTransition}
           mediaSibuk={mediaSibuk}
@@ -182,6 +190,8 @@ function ServiceForm({
   merchantId,
   tier,
   media,
+  settings,
+  tableMode,
   pending,
   startTransition,
   mediaSibuk,
@@ -192,6 +202,8 @@ function ServiceForm({
   merchantId: string;
   tier: SubscriptionTier;
   media: ServiceMedia[];
+  settings: ServicePaymentSettings;
+  tableMode: TableMode;
   /** Dipegang oleh ServiceFormDialog supaya dialog bisa menolak ditutup selagi ini true. */
   pending: boolean;
   startTransition: TransitionStartFunction;
@@ -210,6 +222,8 @@ function ServiceForm({
 
   const [state, setState] = useState<ServiceFormState>(INITIAL_SERVICE_FORM_STATE);
   const [draft, setDraft] = useState<DraftMedia[]>([]);
+  // Terkontrol hanya untuk pratinjau nominal DP di PaymentModeField.
+  const [price, setPrice] = useState(service?.price?.toString() ?? "");
 
   // Ref pelacak draft terbaru untuk cleanup unmount di bawah. Ditulis di
   // dalam efek (bukan saat render) supaya lolos aturan lint "Cannot access
@@ -318,7 +332,8 @@ function ServiceForm({
               inputMode="numeric"
               min={0}
               step={1000}
-              defaultValue={service?.price ?? ""}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
               placeholder="350000"
               required
               aria-invalid={Boolean(state.fieldErrors?.price)}
@@ -348,10 +363,19 @@ function ServiceForm({
             {state.fieldErrors?.duration_minutes ? (
               <FieldError>{state.fieldErrors.duration_minutes}</FieldError>
             ) : (
-              <FieldDescription>5–480 menit.</FieldDescription>
+              <FieldDescription>5 sampai 480 menit.</FieldDescription>
             )}
           </Field>
         </div>
+
+        <PaymentModeField
+          price={Number(price) || 0}
+          service={service}
+          settings={settings}
+          depositError={state.fieldErrors?.deposit_value ?? state.fieldErrors?.deposit_type}
+        />
+
+        <ReservationFields service={service} tableMode={tableMode} errors={state.fieldErrors} />
 
         {state.status === "error" && !state.fieldErrors ? (
           <Alert variant="destructive">

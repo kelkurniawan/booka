@@ -135,7 +135,7 @@ function ManualKeyForm({
           ) : (
             <FieldDescription>
               Ambil dari dashboard Xendit → Settings → Webhooks. Ini BUKAN Secret
-              Key di atas — token ini hanya dipakai untuk memverifikasi webhook
+              Key di atas. Token ini hanya dipakai untuk memverifikasi webhook
               pembayaran, bukan membuat kode QRIS. Kalau dikosongkan, webhook
               Xendit untuk merchant ini tidak akan bisa memverifikasi
               pembayaran sampai diisi lewat form ini lagi.

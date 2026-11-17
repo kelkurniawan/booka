@@ -37,7 +37,7 @@ export default async function AvailabilityPage() {
         title="Jam kerja"
         description="Rentang jam per hari yang tersedia untuk dipesan. Rentang yang tumpang tindih pada hari yang sama tidak diperbolehkan."
       />
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2" data-tour="hours-days">
         {ALL_DAYS.map((day) => (
           <DayCard
             key={day}

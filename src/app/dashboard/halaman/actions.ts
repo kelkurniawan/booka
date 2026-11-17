@@ -11,6 +11,7 @@ import { createClient } from "@/lib/supabase/server";
 import { faqListSchema, themeSchema } from "@/lib/validations/theme";
 
 import type { AppearanceFormState } from "./appearance-state";
+import { replacedMediaPaths, THEME_MEDIA_KEYS } from "./theme-media";
 
 /**
  * Trigger merchant_themes_enforce_tier melempar P0001 dengan pesan yang sudah
@@ -50,6 +51,13 @@ export async function updateTheme(
     font_pair: formData.get("font_pair") || null,
     text_scale: formData.get("text_scale"),
     corner_style: formData.get("corner_style") || null,
+    logo_path: formData.get("logo_path") ?? "",
+    cover_path: formData.get("cover_path") ?? "",
+    button_style: formData.get("button_style") ?? undefined,
+    section_order: formData.get("section_order") ?? undefined,
+    hidden_sections: formData.get("hidden_sections") ?? "",
+    background_motion: formData.get("background_motion") ?? undefined,
+    background_motion_speed: formData.get("background_motion_speed") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -65,25 +73,52 @@ export async function updateTheme(
     };
   }
 
-  // Path datang dari browser. Constraint merchant_themes_background_path_scoped
-  // sudah menahannya di database; dicek juga di sini supaya merchant mendapat
+  // Path datang dari browser. Constraint merchant_themes_*_path_scoped sudah
+  // menahannya di database; dicek juga di sini supaya merchant mendapat
   // kalimat yang bisa dibaca, bukan galat Postgres mentah.
-  const pathLatar = parsed.data.background_image_path;
-  if (pathLatar !== null && !isScopedMediaPath(pathLatar, user.id)) {
-    return {
-      status: "error",
-      message: PESAN_PATH_TIDAK_VALID,
-      fieldErrors: { background_image_path: PESAN_PATH_TIDAK_VALID },
-    };
+  for (const kunci of THEME_MEDIA_KEYS) {
+    const path = parsed.data[kunci];
+    if (path !== null && !isScopedMediaPath(path, user.id)) {
+      return {
+        status: "error",
+        message: PESAN_PATH_TIDAK_VALID,
+        fieldErrors: { [kunci]: PESAN_PATH_TIDAK_VALID },
+      };
+    }
   }
 
   const supabase = await createClient();
+
+  // Baris tersimpan dibaca dulu untuk tahu berkas mana yang kini tidak dirujuk.
+  // Kalau bacanya gagal, tidak ada yang dihapus: lebih baik berkas yatim
+  // daripada menghapus berkas yang masih dipakai.
+  const { data: tersimpan } = await supabase
+    .from("merchant_themes")
+    .select("background_image_path, logo_path, cover_path")
+    .eq("merchant_id", user.id)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("merchant_themes")
     .upsert({ merchant_id: user.id, ...parsed.data }, { onConflict: "merchant_id" });
 
   if (error) {
     return { status: "error", message: pesanDariError(error) };
+  }
+
+  // Dihapus hanya setelah simpan berhasil, supaya halaman publik tidak pernah
+  // menunjuk berkas yang sudah hilang. Galat hapus diabaikan: paling buruk
+  // berkas yatim tertinggal di bucket.
+  const dibuang = replacedMediaPaths(
+    {
+      background_image_path: tersimpan?.background_image_path ?? null,
+      logo_path: tersimpan?.logo_path ?? null,
+      cover_path: tersimpan?.cover_path ?? null,
+    },
+    parsed.data,
+  );
+  if (dibuang.length > 0) {
+    await supabase.storage.from(MEDIA_BUCKET).remove(dibuang);
   }
 
   segarkan(merchant.username);

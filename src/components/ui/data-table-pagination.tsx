@@ -58,7 +58,7 @@ export function DataTablePagination({
       className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <p className="text-muted-foreground text-sm">
-        Menampilkan {from}–{to} dari {totalCount}
+        Menampilkan {from} sampai {to} dari {totalCount}
       </p>
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1 text-sm">

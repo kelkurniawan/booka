@@ -33,9 +33,11 @@ import {
 } from "@/components/ui/table";
 import { formatDuration, formatRupiah } from "@/lib/format";
 import { removeMedia } from "@/lib/media/upload";
-import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
+import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types/database";
 
 import { deleteService, toggleServiceActive } from "./actions";
+import { paymentLabel } from "@/lib/booking/payment-mode";
+import type { ServicePaymentSettings } from "./payment-mode-field";
 import { ServiceFormDialog } from "./service-form-dialog";
 
 export function ServicesTable({
@@ -43,14 +45,18 @@ export function ServicesTable({
   merchantId,
   tier,
   mediaByService,
+  settings,
+  tableMode,
 }: {
   services: Service[];
   merchantId: string;
   tier: SubscriptionTier;
   mediaByService: Record<string, ServiceMedia[]>;
+  settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border" data-tour="service-list">
       <Table>
         <TableHeader>
           <TableRow>
@@ -69,6 +75,8 @@ export function ServicesTable({
               merchantId={merchantId}
               tier={tier}
               media={mediaByService[service.id] ?? []}
+              settings={settings}
+              tableMode={tableMode}
             />
           ))}
         </TableBody>
@@ -82,11 +90,15 @@ function ServiceRow({
   merchantId,
   tier,
   media,
+  settings,
+  tableMode,
 }: {
   service: Service;
   merchantId: string;
   tier: SubscriptionTier;
   media: ServiceMedia[];
+  settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -130,8 +142,16 @@ function ServiceRow({
               {service.description}
             </p>
           ) : null}
+          {service.party_min != null && service.party_max != null ? (
+            <p className="text-muted-foreground text-xs">
+              {service.party_min} sampai {service.party_max} orang
+            </p>
+          ) : null}
         </TableCell>
-        <TableCell className="whitespace-nowrap">{formatRupiah(service.price)}</TableCell>
+        <TableCell className="whitespace-nowrap">
+          {formatRupiah(service.price)}
+          <div className="text-muted-foreground text-xs">{paymentLabel(service, settings)}</div>
+        </TableCell>
         <TableCell className="whitespace-nowrap">
           {formatDuration(service.duration_minutes)}
         </TableCell>
@@ -188,6 +208,8 @@ function ServiceRow({
         merchantId={merchantId}
         tier={tier}
         media={media}
+        settings={settings}
+        tableMode={tableMode}
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

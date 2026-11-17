@@ -97,3 +97,20 @@ test("tanggal yang sudah lewat sama sekali tidak menghasilkan slot", () => {
 
   assert.equal(slots.length, 0);
 });
+
+test("stepMinutes: jam mulai tiap 30 menit untuk durasi 90, tanpa stepMinutes perilaku lama", () => {
+  const base = {
+    dateISO: "2026-08-03",
+    durationMinutes: 90,
+    availability: [{ day_of_week: 1, start_time: "17:00:00", end_time: "22:00:00" }] as AvailabilityWindow[],
+    bookedRanges: [],
+    now: jakartaWallClockToUtc("2026-08-01", "00:00"),
+  };
+  const stepped = computeFreeSlots({ ...base, stepMinutes: 30 }).map((s) => s.label);
+  assert.deepEqual(stepped.slice(0, 2), ["17:00", "17:30"]);
+  assert.equal(stepped.at(-1), "20:30");
+  assert.deepEqual(
+    computeFreeSlots(base).map((s) => s.label),
+    ["17:00", "18:30", "20:00"],
+  );
+});

@@ -39,7 +39,7 @@ function keBlob(canvas: HTMLCanvasElement): Promise<Blob> {
 
 export async function compressImage(
   file: File,
-  { maxSide, square }: { maxSide: number; square: boolean },
+  { maxSide, square, aspect }: { maxSide: number; square: boolean; aspect?: number },
 ): Promise<{ blob: Blob; width: number; height: number }> {
   const img = await muatGambar(file);
 
@@ -48,14 +48,17 @@ export async function compressImage(
   let sw = img.naturalWidth;
   let sh = img.naturalHeight;
 
-  if (square) {
+  const rasioPotong = aspect ?? (square ? 1 : null);
+  if (rasioPotong) {
     // Center-crop, bukan digepengkan: avatar selalu tampil dalam lingkaran,
     // jadi rasio yang salah langsung kelihatan.
-    const sisi = Math.min(sw, sh);
-    sx = (sw - sisi) / 2;
-    sy = (sh - sisi) / 2;
-    sw = sisi;
-    sh = sisi;
+    // `aspect` = lebar/tinggi; square sama dengan aspect 1.
+    const lebarBaru = Math.min(sw, sh * rasioPotong);
+    const tinggiBaru = lebarBaru / rasioPotong;
+    sx = (sw - lebarBaru) / 2;
+    sy = (sh - tinggiBaru) / 2;
+    sw = lebarBaru;
+    sh = tinggiBaru;
   }
 
   const rasio = Math.min(1, maxSide / Math.max(sw, sh));
