@@ -445,13 +445,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2750,14 +2750,14 @@ select case when staff_name = 'Bima'
 from public.bookings where customer_whatsapp = '+6281333000061';
 
 -- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
--- Sejak 20261117000200 signature terbarunya sembilan argumen (p_voucher_code).
+-- Sejak 20261120000200 signature terbarunya tiga belas argumen (F8 restoran).
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is null
-       then 'FAIL t33m signature sembilan argumen (20261117000200) tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
+       then 'FAIL t33m signature tiga belas argumen (20261120000200) tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
        then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
        then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
        else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
@@ -3311,15 +3311,15 @@ update public.staff set is_active = true where id = '36363636-57af-0000-0000-000
 
 -- 36l. Hak akses.
 select
-  case when has_function_privilege('anon', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE')
        then 'FAIL t36l anon bisa EXECUTE RPC merchant'
-       when not (has_function_privilege('authenticated', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+       when not (has_function_privilege('authenticated', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)', 'EXECUTE')
          and has_function_privilege('authenticated', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE'))
        then 'FAIL t36l authenticated tidak bisa EXECUTE RPC merchant'
        else 'OK   t36l RPC merchant hanya untuk authenticated' end as t36l1,
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
-         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
          or has_function_privilege('authenticated', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
        then 'FAIL t36l anon/authenticated bisa EXECUTE create_booking/reap_expired_bookings_for'
@@ -4467,16 +4467,16 @@ select case when status = 'CONFIRMED' and amount_due_on_site = service_price and
             else 'FAIL t47j manual -> ' || status || ' ' || amount_due_on_site || ' diskon ' || discount_amount end as t47j
 from public.bookings where customer_whatsapp = '+6281347000071';
 
--- 47k. Hak akses: signature sembilan argumen hanya untuk service_role.
+-- 47k. Hak akses: signature terbaru (sejak 20261120000200 tiga belas argumen) hanya untuk service_role.
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is null
-       then 'FAIL t47k signature sembilan argumen tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
+       then 'FAIL t47k signature terbaru tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
        then 'FAIL t47k anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
        then 'FAIL t47k service_role tidak bisa EXECUTE create_booking'
-       else 'OK   t47k create_booking sembilan argumen hanya untuk service_role' end as t47k1,
+       else 'OK   t47k create_booking terbaru hanya untuk service_role' end as t47k1,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
        then 'OK   t47k signature delapan argumen sudah dihapus'
        else 'FAIL t47k signature delapan argumen masih ada' end as t47k2;
@@ -5090,3 +5090,310 @@ set local request.jwt.claim.sub = '60606060-0000-0000-0000-000000000001';
 select case when (select count(*) from public.dining_tables) = 2
             then 'OK   t60f pemilik melihat semua mejanya' else 'FAIL t60f pemilik tidak melihat mejanya' end as t60f4;
 rollback;
+
+-- ===========================================================================
+-- 61. Restoran: create_booking kapasitas (20261120000200)
+-- ===========================================================================
+-- Merchant ...0001 restoran (PRO), ...0002 salon STUDIO dengan staf untuk
+-- regresi mode NONE. Tiap sub-bagian memakai minggu berbeda supaya beban
+-- kursi dan meja tidak saling bocor.
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('61616161-0000-0000-0000-000000000001', 'resto61-a@example.com', '{}'::jsonb),
+  ('61616161-0000-0000-0000-000000000002', 'resto61-b@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO', username = 'resto-61'
+  where id = '61616161-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'STUDIO', username = 'resto-61b'
+  where id = '61616161-0000-0000-0000-000000000002';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select m, d, '10:00', '23:00'
+from generate_series(1, 7) d,
+     unnest(array['61616161-0000-0000-0000-000000000001', '61616161-0000-0000-0000-000000000002']::uuid[]) m;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode,
+                             party_min, party_max, seat_duration_minutes) values
+  ('61616161-5e00-0000-0000-000000000001', '61616161-0000-0000-0000-000000000001', 'Reservasi meja', 0, 60, 'ON_SITE', 1, 12, 90),
+  ('61616161-5e00-0000-0000-000000000002', '61616161-0000-0000-0000-000000000001', 'Paket', 0, 120, 'ON_SITE', 15, 25, null),
+  ('61616161-5e00-0000-0000-000000000003', '61616161-0000-0000-0000-000000000001', 'Biasa', 0, 60, 'ON_SITE', null, null, null),
+  ('61616161-5e00-0000-0000-000000000004', '61616161-0000-0000-0000-000000000002', 'Potong', 0, 60, 'ON_SITE', null, null, null);
+insert into public.staff (id, merchant_id, name, sort_order) values
+  ('61616161-57af-0000-0000-000000000001', '61616161-0000-0000-0000-000000000002', 'A', 0),
+  ('61616161-57af-0000-0000-000000000002', '61616161-0000-0000-0000-000000000002', 'B', 1);
+insert into public.dining_areas (id, merchant_id, name) values
+  ('61616161-a000-0000-0000-000000000001', '61616161-0000-0000-0000-000000000001', 'Dalam');
+insert into public.dining_tables (id, merchant_id, area_id, name, min_seats, max_seats, grid_x, grid_y,
+                                  bookable_online, joinable_with, sort_order) values
+  ('61616161-7a00-0000-0000-000000000001', '61616161-0000-0000-0000-000000000001',
+   '61616161-a000-0000-0000-000000000001', 'T1', 2, 4, 0, 0, true, '{}', 0),
+  ('61616161-7a00-0000-0000-000000000002', '61616161-0000-0000-0000-000000000001',
+   '61616161-a000-0000-0000-000000000001', 'T2', 2, 4, 4, 0, true, '{61616161-7a00-0000-0000-000000000001}', 1),
+  ('61616161-7a00-0000-0000-000000000003', '61616161-0000-0000-0000-000000000001',
+   '61616161-a000-0000-0000-000000000001', 'T3', 4, 6, 8, 0, false, '{}', 2);
+
+-- Nomor unik per panggilan: batas booking aktif per nomor tidak ikut campur.
+create sequence pg_temp.phone61;
+
+-- Layanan: 1 reservasi, 2 paket, 3 biasa (merchant ...0001), 4 potong (...0002).
+create or replace function pg_temp.cb61(p_service integer, p_weeks integer, p_time text,
+  p_party integer default null, p_table uuid default null, p_staff uuid default null,
+  p_area uuid default null)
+returns setof public.bookings language plpgsql as $$
+begin
+  return query select * from public.create_booking(
+    case when p_service = 4 then '61616161-0000-0000-0000-000000000002'::uuid
+         else '61616161-0000-0000-0000-000000000001'::uuid end,
+    ('61616161-5e00-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    pg_temp.jakarta_future(3, p_weeks, p_time),
+    'Tamu 61', '+62813610' || lpad(nextval('pg_temp.phone61')::text, 5, '0'),
+    p_staff, true, 'ONLINE', null, p_party, p_area, p_table, null);
+end $$;
+
+create or replace function pg_temp.cb61sql(p_service integer, p_weeks integer, p_time text,
+  p_party integer default null, p_table text default null, p_staff text default null)
+returns text language sql as $$
+  select format('select * from pg_temp.cb61(%s, %s, %L, %s, %s, %s)', p_service, p_weeks, p_time,
+    coalesce(p_party::text, 'null'), coalesce(quote_literal(p_table), 'null'), coalesce(quote_literal(p_staff), 'null'));
+$$;
+
+-- t61a regresi salon (mode NONE, staf).
+select pg_temp.expect_ok(pg_temp.cb61sql(4, 1, '19:00', null, null, '61616161-57af-0000-0000-000000000001'),
+  't61a booking staf A 19:00');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(4, 1, '19:30', null, null, '61616161-57af-0000-0000-000000000001'),
+  '23P01', 't61a booking beririsan untuk staf A');
+select pg_temp.expect_ok(pg_temp.cb61sql(4, 1, '19:00'), 't61a siapa saja 19:00');
+select case when (select array_agg(staff_name order by staff_name) from public.bookings
+                  where merchant_id = '61616161-0000-0000-0000-000000000002') = array['A', 'B']
+             and (select bool_and(capacity_mode = 'NONE') from public.bookings
+                  where merchant_id = '61616161-0000-0000-0000-000000000002')
+            then 'OK   t61a siapa saja jatuh ke B, capacity_mode NONE'
+            else 'FAIL t61a staf atau capacity_mode salah' end as t61a,
+       case when (select array_agg(r.staff_id order by r.start_datetime, r.staff_id)
+                  from public.get_booked_ranges('resto-61b', pg_temp.jakarta_future(3, 1, '00:00'),
+                                                pg_temp.jakarta_future(3, 1, '23:59')) r)
+                 = array['61616161-57af-0000-0000-000000000001', '61616161-57af-0000-0000-000000000002']::uuid[]
+            then 'OK   t61a get_booked_ranges salon tidak berubah'
+            else 'FAIL t61a get_booked_ranges salon berubah' end as t61a2;
+
+-- t61b mode NONE di merchant restoran: layanan reservasi tetap slot eksklusif.
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 1, '19:00', 4), 't61b NONE reservasi 4 orang');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 1, '19:00', 2), '23P01', 't61b NONE reservasi kedua di jam sama');
+select case when party_size = 4 and capacity_mode = 'NONE' and end_datetime - start_datetime = interval '60 minutes'
+                 and table_id is null
+            then 'OK   t61b NONE: party_size tersimpan, durasi layanan 60 menit'
+            else 'FAIL t61b NONE -> ' || capacity_mode || ' ' || (end_datetime - start_datetime) end as t61b
+from public.bookings
+where merchant_id = '61616161-0000-0000-0000-000000000001'
+  and start_datetime = pg_temp.jakarta_future(3, 1, '19:00');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 1, '12:00'), 'BK063', 't61b tanpa jumlah tamu');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 1, '12:00', 13), 'BK063', 't61b 13 orang di atas rentang');
+
+-- t61c mode AREA, 10 kursi per slot.
+update public.merchant_settings set table_mode = 'AREA', seats_per_slot = 10
+  where merchant_id = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 2, '19:00', 4), 't61c AREA reservasi 4 orang pertama');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 2, '19:00', 4), 't61c AREA reservasi 4 orang kedua');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 2, '19:00', 4), 'BK060', 't61c AREA 4 orang ketiga melebihi 10 kursi');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 2, '19:00', 2), 't61c AREA 2 orang mengisi sisa kursi');
+select pg_temp.expect_ok(pg_temp.cb61sql(2, 2, '20:00', 20), 't61c Paket (slot eksklusif) beririsan dengan reservasi');
+select pg_temp.expect_ok(pg_temp.cb61sql(3, 2, '19:00'), 't61c layanan biasa beririsan dengan reservasi');
+select case when count(*) = 3 and bool_and(capacity_mode = 'AREA' and staff_id is null and table_id is null
+                                           and end_datetime - start_datetime = interval '90 minutes')
+            then 'OK   t61c AREA: tiga reservasi, 90 menit, tanpa staf'
+            else 'FAIL t61c AREA -> ' || count(*) end as t61c
+from public.bookings
+where merchant_id = '61616161-0000-0000-0000-000000000001'
+  and service_id = '61616161-5e00-0000-0000-000000000001'
+  and start_datetime = pg_temp.jakarta_future(3, 2, '19:00');
+
+-- t61d beban puncak, bukan jumlah irisan (Review Focus 5).
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 3, '18:00', 6), 't61d 6 orang 18:00');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 3, '19:30', 6), 't61d 6 orang 19:30');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 3, '19:00', 4), 't61d 4 orang 19:00 (puncak 10)');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 3, '19:00', 5), 'BK060', 't61d 5 orang 19:00 melebihi puncak');
+
+-- t61e mode TABLE.
+update public.merchant_settings set table_mode = 'TABLE', auto_join_tables = true
+  where merchant_id = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 4, '19:00', 4), 't61e TABLE 4 orang pertama');
+select case when table_id = '61616161-7a00-0000-0000-000000000001' and table_label = 'T1'
+                 and area_id = '61616161-a000-0000-0000-000000000001' and capacity_mode = 'TABLE'
+                 and joined_table_id is null
+            then 'OK   t61e pertama dapat T1' else 'FAIL t61e pertama -> ' || coalesce(table_label, 'NULL') end as t61e
+from public.bookings
+where merchant_id = '61616161-0000-0000-0000-000000000001' and start_datetime = pg_temp.jakarta_future(3, 4, '19:00');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 4, '19:00', 4), 't61e TABLE 4 orang kedua');
+select case when (select array_agg(table_label order by table_label) from public.bookings
+                  where merchant_id = '61616161-0000-0000-0000-000000000001'
+                    and start_datetime = pg_temp.jakarta_future(3, 4, '19:00')) = array['T1', 'T2']
+            then 'OK   t61e kedua dapat T2' else 'FAIL t61e kedua tidak dapat T2' end as t61e2;
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 4, '19:00', 4), 'BK060', 't61e ketiga online (T3 offline)');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(format($q$select * from public.create_manual_booking(
+    '61616161-5e00-0000-0000-000000000001', %L, 'Tamu manual', '+6281361099001', null, 4, null, 'Dekat jendela')$q$,
+    pg_temp.jakarta_future(3, 4, '19:00')), 't61e manual memakai meja offline');
+commit;
+select case when table_label = 'T3' and source = 'MANUAL' and customer_note = 'Dekat jendela'
+            then 'OK   t61e manual dapat T3' else 'FAIL t61e manual -> ' || coalesce(table_label, 'NULL') end as t61e3
+from public.bookings where customer_whatsapp = '+6281361099001';
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 4, '21:00', 4, '61616161-7a00-0000-0000-000000000001'),
+  't61e pilih T1 di 21:00');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 4, '21:00', 4, '61616161-7a00-0000-0000-000000000001'),
+  'BK061', 't61e pilih T1 lagi di 21:00');
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 4, '21:00', 1, '61616161-7a00-0000-0000-000000000003'),
+  'BK061', 't61e 1 orang pilih T3 (minimal 4)');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 4, '12:00', 7), 't61e 7 orang digabung');
+select case when table_id = '61616161-7a00-0000-0000-000000000001'
+                 and joined_table_id = '61616161-7a00-0000-0000-000000000002' and table_label = 'T1 + T2'
+            then 'OK   t61e gabungan T1 + T2' else 'FAIL t61e gabungan -> ' || coalesce(table_label, 'NULL') end as t61e4
+from public.bookings
+where merchant_id = '61616161-0000-0000-0000-000000000001' and start_datetime = pg_temp.jakarta_future(3, 4, '12:00');
+update public.merchant_settings set auto_join_tables = false
+  where merchant_id = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(pg_temp.cb61sql(1, 4, '14:00', 7), 'BK060', 't61e 7 orang tanpa gabung meja');
+update public.merchant_settings set auto_join_tables = true
+  where merchant_id = '61616161-0000-0000-0000-000000000001';
+
+-- t61f cadangan constraint untuk penulis yang lupa mengambil kunci.
+create or replace function pg_temp.ins61(p_time text, p_mode text, p_table text, p_joined text)
+returns text language sql as $$
+  select format($q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes,
+      start_datetime, end_datetime, customer_name, customer_whatsapp, capacity_mode, party_size, table_id, joined_table_id)
+    values ('61616161-0000-0000-0000-000000000001', 'Reservasi meja', 0, 90, %L, %L, 'Tamu 61f', '+6281361000999',
+      %L, 2, %s, %s)$q$,
+    pg_temp.jakarta_future(3, 5, p_time), pg_temp.jakarta_future(3, 5, p_time) + interval '90 minutes', p_mode,
+    coalesce(quote_literal(p_table), 'null'), coalesce(quote_literal(p_joined), 'null'));
+$$;
+select pg_temp.expect_ok(pg_temp.ins61('12:00', 'TABLE', '61616161-7a00-0000-0000-000000000001', null), 't61f T1 langsung');
+select pg_temp.expect_fail_code(pg_temp.ins61('12:30', 'TABLE', '61616161-7a00-0000-0000-000000000001', null),
+  '23P01', 't61f T1 beririsan langsung');
+select pg_temp.expect_ok(pg_temp.ins61('15:00', 'TABLE', '61616161-7a00-0000-0000-000000000001',
+  '61616161-7a00-0000-0000-000000000002'), 't61f T1 + T2 langsung');
+select pg_temp.expect_fail_code(pg_temp.ins61('15:30', 'TABLE', '61616161-7a00-0000-0000-000000000003',
+  '61616161-7a00-0000-0000-000000000002'), '23P01', 't61f gabungan T2 beririsan langsung');
+select pg_temp.expect_ok(pg_temp.ins61('18:00', 'AREA', null, null), 't61f AREA langsung pertama');
+select pg_temp.expect_ok(pg_temp.ins61('18:30', 'AREA', null, null), 't61f AREA langsung beririsan');
+
+-- t61g get_booked_ranges hanya rentang slot eksklusif.
+select case when (select count(*) from public.get_booked_ranges('resto-61', pg_temp.jakarta_future(3, 2, '00:00'),
+                                                                 pg_temp.jakarta_future(3, 2, '23:59'))) = 2
+             and (select count(*) from public.bookings where merchant_id = '61616161-0000-0000-0000-000000000001'
+                    and capacity_mode = 'AREA' and start_datetime = pg_temp.jakarta_future(3, 2, '19:00')) = 3
+            then 'OK   t61g get_booked_ranges: Paket dan Biasa saja'
+            else 'FAIL t61g get_booked_ranges memuat reservasi' end as t61g,
+       case when (select count(*) from public.get_booked_ranges('resto-61', pg_temp.jakarta_future(3, 4, '00:00'),
+                                                                 pg_temp.jakarta_future(3, 4, '23:59'))) = 0
+            then 'OK   t61g get_booked_ranges: reservasi TABLE tidak terlihat'
+            else 'FAIL t61g get_booked_ranges memuat reservasi TABLE' end as t61g2;
+
+-- t61h hak akses.
+select
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
+       then 'FAIL t61h signature tiga belas argumen tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+       then 'FAIL t61h anon/authenticated bisa EXECUTE create_booking'
+       when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is not null
+       then 'FAIL t61h signature sembilan argumen masih ada'
+       else 'OK   t61h create_booking tiga belas argumen tertutup, sembilan argumen hilang' end as t61h1,
+  case when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)') is null
+       then 'FAIL t61h create_manual_booking baru tidak ada'
+       when not has_function_privilege('authenticated', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)'), 'EXECUTE')
+         or has_function_privilege('anon', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)'), 'EXECUTE')
+       then 'FAIL t61h hak create_manual_booking salah'
+       when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid)') is not null
+       then 'FAIL t61h create_manual_booking lima argumen masih ada'
+       else 'OK   t61h create_manual_booking baru hanya authenticated' end as t61h2,
+  case when to_regprocedure('public.seats_in_use(uuid, timestamptz, timestamptz, uuid)') is null
+         or to_regprocedure('public.dining_table_busy(uuid, timestamptz, timestamptz, uuid)') is null
+         or to_regprocedure('public.pick_dining_tables(uuid, timestamptz, timestamptz, integer, uuid, uuid, boolean, uuid)') is null
+       then 'FAIL t61h helper kapasitas tidak ada'
+       when exists (select 1 from unnest(array['anon', 'authenticated']) r, unnest(array[
+                      'public.seats_in_use(uuid, timestamptz, timestamptz, uuid)',
+                      'public.dining_table_busy(uuid, timestamptz, timestamptz, uuid)',
+                      'public.pick_dining_tables(uuid, timestamptz, timestamptz, integer, uuid, uuid, boolean, uuid)']) f
+                    where has_function_privilege(r, to_regprocedure(f), 'EXECUTE'))
+       then 'FAIL t61h helper kapasitas bisa dipanggil anon/authenticated'
+       else 'OK   t61h helper kapasitas tertutup' end as t61h3;
+
+-- ===========================================================================
+-- 62. Restoran: pindah jadwal reservasi (20261120000200)
+-- ===========================================================================
+
+create or replace function pg_temp.id61(p_weeks integer, p_time text, p_table text)
+returns uuid language sql as $$
+  select id from public.bookings
+  where merchant_id = '61616161-0000-0000-0000-000000000001'
+    and start_datetime = pg_temp.jakarta_future(3, p_weeks, p_time)
+    and table_id = p_table::uuid;
+$$;
+
+create or replace function pg_temp.rs62(p_id uuid, p_weeks integer, p_time text)
+returns text language sql as $$
+  select format('select public.reschedule_booking_by_merchant(%L, %L)', p_id, pg_temp.jakarta_future(3, p_weeks, p_time));
+$$;
+
+-- Booking X (4 orang, T1 19:00) yang dipindah-pindah.
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 6, '19:00', 4), 't62 X di T1 19:00');
+create temp table x62 as select pg_temp.id61(6, '19:00', '61616161-7a00-0000-0000-000000000001') as id;
+grant select on x62 to authenticated;
+
+-- t62a pindah ke 20:00, T1 kosong: meja tetap.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.rs62((select id from x62), 6, '20:00'), 't62a pindah ke 20:00');
+commit;
+select case when table_label = 'T1' and start_datetime = pg_temp.jakarta_future(3, 6, '20:00')
+                 and end_datetime - start_datetime = interval '90 minutes'
+            then 'OK   t62a tetap T1' else 'FAIL t62a -> ' || coalesce(table_label, 'NULL') end as t62a
+from public.bookings where id = (select id from x62);
+
+-- t62b pindah ke jam yang T1 dipegang booking lain: dapat T2.
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 6, '12:00', 4, '61616161-7a00-0000-0000-000000000001'), 't62b Y di T1 12:00');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.rs62((select id from x62), 6, '12:00'), 't62b pindah ke 12:00');
+commit;
+select case when table_id = '61616161-7a00-0000-0000-000000000002' and table_label = 'T2'
+                 and start_datetime = pg_temp.jakarta_future(3, 6, '12:00')
+            then 'OK   t62b pindah ke T2' else 'FAIL t62b -> ' || coalesce(table_label, 'NULL') end as t62b
+from public.bookings where id = (select id from x62);
+
+-- t62c semua meja online cocok terisi: BK060, tidak ada yang berubah.
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 6, '15:00', 4), 't62c Z 15:00');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 6, '15:00', 4), 't62c W 15:00');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(pg_temp.rs62((select id from x62), 6, '15:00'), 'BK060', 't62c pindah ke jam penuh');
+commit;
+select case when table_label = 'T2' and start_datetime = pg_temp.jakarta_future(3, 6, '12:00')
+            then 'OK   t62c jam dan meja tidak berubah' else 'FAIL t62c booking berubah' end as t62c
+from public.bookings where id = (select id from x62);
+
+-- t62d geser 30 menit (beririsan dengan dirinya sendiri): meja tetap.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.rs62((select id from x62), 6, '12:30'), 't62d geser 30 menit');
+commit;
+select case when table_label = 'T2' and start_datetime = pg_temp.jakarta_future(3, 6, '12:30')
+            then 'OK   t62d tetap T2' else 'FAIL t62d -> ' || coalesce(table_label, 'NULL') end as t62d
+from public.bookings where id = (select id from x62);
+
+-- t62e mode AREA, 8 kursi.
+update public.merchant_settings set table_mode = 'AREA', seats_per_slot = 8
+  where merchant_id = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 7, '19:00', 6), 't62e 6 orang 19:00');
+select pg_temp.expect_ok(pg_temp.cb61sql(1, 7, '12:00', 4), 't62e E 4 orang 12:00');
+create temp table e62 as select id from public.bookings
+  where merchant_id = '61616161-0000-0000-0000-000000000001' and start_datetime = pg_temp.jakarta_future(3, 7, '12:00');
+grant select on e62 to authenticated;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(pg_temp.rs62((select id from e62), 7, '19:00'), 'BK060', 't62e pindah ke jam berisi 6 kursi');
+select pg_temp.expect_ok(pg_temp.rs62((select id from e62), 7, '15:00'), 't62e pindah ke jam kosong');
+commit;

@@ -1120,6 +1120,12 @@ export type Database = {
           p_source?: BookingSource;
           /** Null atau kosong = tanpa voucher; diabaikan untuk MANUAL. Ditolak BK050..BK056. */
           p_voucher_code?: string | null;
+          /** Wajib bila layanan punya party_max (BK063). */
+          p_party_size?: number | null;
+          /** Hanya layanan reservasi di mode TABLE. BK060 penuh, BK061 meja pilihan tidak tersedia. */
+          p_area_id?: string | null;
+          p_table_id?: string | null;
+          p_customer_note?: string | null;
         };
         Returns: Booking[];
       };
@@ -1134,6 +1140,10 @@ export type Database = {
           p_customer_name: string;
           p_customer_whatsapp: string;
           p_staff_id?: string | null;
+          p_party_size?: number | null;
+          /** Booking manual boleh memakai meja yang tidak bookable_online. */
+          p_table_id?: string | null;
+          p_customer_note?: string | null;
         };
         Returns: { id: string }[];
       };
