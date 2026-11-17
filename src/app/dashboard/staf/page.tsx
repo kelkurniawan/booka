@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/empty";
 import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
+import { themeToCssVars } from "@/lib/theme/css";
+import { resolveTheme } from "@/lib/theme/resolve";
 import { createClient } from "@/lib/supabase/server";
 
 import { StaffManager } from "./staff-manager";
@@ -50,10 +52,10 @@ export default async function StaffPage() {
   }
 
   const supabase = await createClient();
-  const [staffResult, hoursResult] = await Promise.all([
+  const [staffResult, hoursResult, themeResult] = await Promise.all([
     supabase
       .from("staff")
-      .select("id, name, is_active, sort_order")
+      .select("id, name, is_active, sort_order, role, bio, tags, photo_path, motion_path, show_motion")
       .eq("merchant_id", user.id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
@@ -61,12 +63,13 @@ export default async function StaffPage() {
       .from("staff_availability")
       .select("staff_id, day_of_week, start_time, end_time")
       .eq("merchant_id", user.id),
+    supabase.from("merchant_themes").select("*").eq("merchant_id", user.id).maybeSingle(),
   ]);
 
-  if (staffResult.error || hoursResult.error) {
+  if (staffResult.error || hoursResult.error || themeResult.error) {
     console.error("[staf] gagal memuat staf", {
       userId: user.id,
-      error: staffResult.error ?? hoursResult.error,
+      error: staffResult.error ?? hoursResult.error ?? themeResult.error,
     });
     throw new Error("Gagal memuat data staf.");
   }
@@ -86,9 +89,13 @@ export default async function StaffPage() {
     <>
       <PageHeader
         title="Staf"
-        description="Pelanggan bisa memilih staf atau 'Siapa saja'. Dua staf boleh melayani di jam yang sama."
+        description={'Profil ini tampil di bagian "Dengan siapa?" saat pelanggan memilih jadwal.'}
       />
-      <StaffManager staff={staff} />
+      <StaffManager
+        staff={staff}
+        merchantId={user.id}
+        themeStyle={themeToCssVars(resolveTheme(merchant.subscription_tier, themeResult.data))}
+      />
     </>
   );
 }

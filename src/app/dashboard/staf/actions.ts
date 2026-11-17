@@ -3,9 +3,19 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
+import { clipPosterPath, isStaffPhotoPath } from "@/lib/media/staff-paths";
+import { MEDIA_BUCKET } from "@/lib/media/url";
 import { ROUTES } from "@/lib/routes";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { staffHoursSchema, staffNameSchema, type StaffHoursInput } from "@/lib/validations/staff";
+import {
+  staffHoursSchema,
+  staffNameSchema,
+  staffProfileSchema,
+  type StaffHoursInput,
+  type StaffProfileInput,
+} from "@/lib/validations/staff";
 
 export type StaffActionResult = { ok: true } | { ok: false; message: string };
 
@@ -68,8 +78,30 @@ export async function updateStaff(
   return done();
 }
 
+/** Berkas staf di bucket publik: foto, klip MP4, dan posternya. */
+function staffFiles(row: { photo_path: string | null; motion_path: string | null }): string[] {
+  return [
+    row.photo_path,
+    row.motion_path,
+    row.motion_path ? clipPosterPath(row.motion_path) : null,
+  ].filter((path): path is string => Boolean(path));
+}
+
+/** Gagal menghapus berkas tidak menggagalkan aksi; yang tersisa hanya berkas yatim. */
+async function removeFiles(userId: string, paths: string[]) {
+  if (paths.length === 0) return;
+  const { error } = await createAdminClient().storage.from(MEDIA_BUCKET).remove(paths);
+  if (error) console.error("[staf] gagal menghapus berkas", { userId, error });
+}
+
 export async function deleteStaff(id: string): Promise<StaffActionResult> {
   const { supabase, userId } = await sessionClient();
+  const { data: lama } = await supabase
+    .from("staff")
+    .select("photo_path, motion_path")
+    .eq("id", id)
+    .eq("merchant_id", userId)
+    .maybeSingle();
   const { error } = await supabase.from("staff").delete().eq("id", id).eq("merchant_id", userId);
   if (error) {
     // 23503: masih dirujuk booking -- riwayatnya harus tetap menunjuk staf ini.
@@ -82,6 +114,57 @@ export async function deleteStaff(id: string): Promise<StaffActionResult> {
     console.error("[staf] gagal menghapus staf", { userId, error });
     return { ok: false, message: "Gagal menghapus staf. Coba lagi." };
   }
+  if (lama) await removeFiles(userId, staffFiles(lama));
+  return done();
+}
+
+export async function updateStaffProfile(
+  id: string,
+  input: StaffProfileInput,
+): Promise<StaffActionResult> {
+  const parsed = staffProfileSchema.safeParse(input);
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+
+  const { supabase, userId } = await sessionClient();
+  if (parsed.data.photo_path && !isStaffPhotoPath(parsed.data.photo_path, userId, id)) {
+    return { ok: false, message: PESAN_PATH_TIDAK_VALID };
+  }
+
+  const { error } = await supabase
+    .from("staff")
+    .update(parsed.data)
+    .eq("id", id)
+    .eq("merchant_id", userId);
+  if (error) {
+    if (error.code === "23514") return { ok: false, message: "Profil tidak valid. Periksa isiannya." };
+    console.error("[staf] gagal menyimpan profil", { userId, error });
+    return { ok: false, message: "Gagal menyimpan profil. Coba lagi." };
+  }
+  return done();
+}
+
+/** Mengosongkan motion_path (admin, difilter merchant_id) lalu menghapus MP4 dan posternya. */
+export async function removeStaffClip(id: string): Promise<StaffActionResult> {
+  const { supabase, userId } = await sessionClient();
+  const { data: lama } = await supabase
+    .from("staff")
+    .select("motion_path")
+    .eq("id", id)
+    .eq("merchant_id", userId)
+    .maybeSingle();
+  if (!lama?.motion_path) return done();
+
+  // motion_path hanya bisa ditulis service_role (Keputusan 3), jadi klien admin.
+  const { error } = await createAdminClient()
+    .from("staff")
+    .update({ motion_path: null })
+    .eq("id", id)
+    .eq("merchant_id", userId);
+  if (error) {
+    console.error("[staf] gagal menghapus klip", { userId, error });
+    return { ok: false, message: "Gagal menghapus klip. Coba lagi." };
+  }
+  await removeFiles(userId, staffFiles({ photo_path: null, motion_path: lama.motion_path }));
   return done();
 }
 
