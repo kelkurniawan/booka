@@ -29,7 +29,7 @@ import type {
   ServiceMedia,
 } from "@/types/database";
 
-import { BookingFlow } from "./booking-flow";
+import { BookingFlow, type RestaurantInfo } from "./booking-flow";
 
 export type BookingPageViewProps = {
   merchant: Pick<
@@ -43,6 +43,7 @@ export type BookingPageViewProps = {
   staff: PublicStaff[];
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
+  restaurant: RestaurantInfo;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
 };
@@ -60,6 +61,7 @@ export function BookingPageView({
   staff,
   faqs,
   paymentSettings,
+  restaurant,
   banners,
   vouchers,
 }: BookingPageViewProps) {
@@ -88,6 +90,7 @@ export function BookingPageView({
             mediaByService={mediaByService}
             availability={availability}
             paymentSettings={paymentSettings}
+            restaurant={restaurant}
             banners={banners}
             vouchers={vouchers}
             sections={theme.sections}

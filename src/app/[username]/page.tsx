@@ -17,6 +17,7 @@ import type {
 } from "@/types/database";
 
 import { BookingPageView } from "./booking-page-view";
+import type { RestaurantInfo } from "./booking-flow";
 
 type MerchantPageParams = { username: string };
 
@@ -91,10 +92,10 @@ const getMerchantPageData = cache(async (username: string) => {
       .select("*")
       .eq("merchant_id", onboardedMerchant.id)
       .order("sort_order", { ascending: true }),
-    // Anon hanya boleh membaca dua kolom ini.
+    // Anon hanya boleh membaca kolom ini.
     supabase
       .from("merchant_settings")
-      .select("allow_pay_on_site, auto_confirm_on_site")
+      .select("allow_pay_on_site, auto_confirm_on_site, table_mode, table_hold_minutes")
       .eq("merchant_id", onboardedMerchant.id)
       .maybeSingle(),
   ]);
@@ -153,10 +154,30 @@ const getMerchantPageData = cache(async (username: string) => {
 
   // Tanpa baris atau gagal baca: pakai bawaan. Label hanya petunjuk; server
   // yang menentukan hasil akhir saat booking dibuat.
-  const paymentSettings: PaymentSettings =
-    !settingsResult.error && settingsResult.data
-      ? settingsResult.data
-      : DEFAULT_PAYMENT_SETTINGS;
+  const settings = !settingsResult.error ? settingsResult.data : null;
+  const paymentSettings: PaymentSettings = settings
+    ? {
+        allow_pay_on_site: settings.allow_pay_on_site,
+        auto_confirm_on_site: settings.auto_confirm_on_site,
+      }
+    : DEFAULT_PAYMENT_SETTINGS;
+
+  // Area hanya dimuat di mode denah; gagal baca dianggap tanpa pilihan area.
+  const restaurant: RestaurantInfo = {
+    tableMode: settings?.table_mode ?? "NONE",
+    holdMinutes: settings?.table_hold_minutes ?? 15,
+    areas: [],
+  };
+  if (restaurant.tableMode === "TABLE") {
+    const { data: areas, error: areasError } = await supabase
+      .from("dining_areas")
+      .select("id, name")
+      .eq("merchant_id", onboardedMerchant.id)
+      .order("sort_order")
+      .order("name");
+    if (areasError) console.error("[booking-page] gagal memuat area", { username, error: areasError });
+    else restaurant.areas = areas ?? [];
+  }
 
   // Promo bukan isi wajib halaman: gagal baca dicatat lalu dianggap kosong.
   // Merchant Starter tidak punya promo, jadi tidak memicu query.
@@ -192,6 +213,7 @@ const getMerchantPageData = cache(async (username: string) => {
     banners,
     vouchers,
     paymentSettings,
+    restaurant,
     merchant: onboardedMerchant,
     staff,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
@@ -249,7 +271,7 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, banners, vouchers } =
+  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers } =
     data;
 
   return (
@@ -262,6 +284,7 @@ export default async function MerchantPublicPage({
       staff={staff}
       faqs={faqs}
       paymentSettings={paymentSettings}
+      restaurant={restaurant}
       banners={banners}
       vouchers={vouchers}
     />

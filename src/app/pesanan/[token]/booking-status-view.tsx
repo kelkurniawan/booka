@@ -12,7 +12,7 @@ import { REQUEST_EXPIRY_REASON, REQUEST_REJECT_REASON } from "@/lib/booking/paym
 import { formatDateTime, formatDayBlock, formatRupiah, formatSchedule, formatTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import type { ResolvedTheme } from "@/lib/theme/types";
-import type { BookingStatus, PaymentMode } from "@/types/database";
+import type { BookingStatus, PaymentMode, TableMode } from "@/types/database";
 
 import { BookingLiveStatus } from "./booking-live-status";
 import { CancelBookingButton } from "./cancel-booking-button";
@@ -45,6 +45,10 @@ export type BookingPageRow = {
   reschedule_count: number;
   voucher_code: string | null;
   discount_amount: number;
+  party_size: number | null;
+  table_label: string | null;
+  customer_note: string | null;
+  capacity_mode: TableMode;
 };
 
 export type ReminderView = {
@@ -154,6 +158,23 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/** Jumlah tamu, meja, dan catatan; hanya untuk booking yang menyimpannya. */
+function ReservationRows({ booking }: { booking: BookingPageRow }) {
+  return (
+    <>
+      {booking.party_size ? (
+        <Row label="Tamu">
+          {booking.capacity_mode !== "NONE"
+            ? `Meja untuk ${booking.party_size} orang`
+            : `${booking.party_size} orang`}
+        </Row>
+      ) : null}
+      {booking.table_label ? <Row label="Meja">{`Meja ${booking.table_label}`}</Row> : null}
+      {booking.customer_note ? <Row label="Catatan">{booking.customer_note}</Row> : null}
+    </>
+  );
+}
+
 /** Harga asli dan potongan voucher; hanya muncul bila ada diskon. */
 function VoucherRows({ booking }: { booking: BookingPageRow }) {
   if (!(booking.discount_amount > 0)) return null;
@@ -215,7 +236,9 @@ function Booked({
     <div className="flex flex-col gap-6">
       {confirmed ? (
         <div className="flex flex-col gap-1">
-          <h2 className="text-lg font-semibold">Jadwal sudah dipesan</h2>
+          <h2 className="text-lg font-semibold">
+            {booking.capacity_mode !== "NONE" ? "Meja sudah dipesan" : "Jadwal sudah dipesan"}
+          </h2>
           <p className="text-muted-foreground text-sm">
             Sampai jumpa, {booking.customer_name.split(" ")[0]}.
           </p>
@@ -238,6 +261,7 @@ function Booked({
         {confirmed ? onSiteRow : null}
         <Row label="Atas nama">{booking.customer_name}</Row>
         <Row label="Kode booking">{code}</Row>
+        <ReservationRows booking={booking} />
         <VoucherRows booking={booking} />
         {confirmed ? null : (
           <>
@@ -400,6 +424,7 @@ function Pending({ booking, contactButton }: { booking: BookingPageRow; contactB
         <Row label="Layanan">{booking.service_name}</Row>
         <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
         <Row label="Atas nama">{booking.customer_name}</Row>
+        <ReservationRows booking={booking} />
         <VoucherRows booking={booking} />
       </dl>
       {contactButton}
@@ -413,7 +438,8 @@ function Summary({ booking }: { booking: BookingPageRow }) {
       <Row label="Layanan">{booking.service_name}</Row>
       <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
       <Row label="Atas nama">{booking.customer_name}</Row>
-      <VoucherRows booking={booking} />
+      <ReservationRows booking={booking} />
+        <VoucherRows booking={booking} />
       {booking.amount_due_now > 0 ? (
         <Row label="Dibayar setelah disetujui">{formatRupiah(Number(booking.amount_due_now))}</Row>
       ) : null}

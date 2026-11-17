@@ -14,13 +14,15 @@ import { formatDateTime, formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 
 export function RescheduleForm({
-  token, username, serviceId, staffId, serviceName, code, currentStart,
+  token, username, serviceId, staffId, partySize, serviceName, code, currentStart,
   earliestNewStart, left, max, paidAmount, strip,
 }: {
   token: string;
   username: string;
   serviceId: string;
   staffId: string | null;
+  /** Terisi untuk booking ber-jumlah tamu; slot reservasi dihitung dari angka ini. */
+  partySize: number | null;
   serviceName: string;
   code: string;
   currentStart: string;
@@ -47,6 +49,7 @@ export function RescheduleForm({
     try {
       const params = new URLSearchParams({ username, serviceId, date: dateISO });
       if (staffId) params.set("staffId", staffId);
+      if (partySize) params.set("party", String(partySize));
       const response = await fetch(`/api/slots?${params.toString()}`);
       if (!response.ok) throw new Error("Gagal memuat jadwal");
       const body = (await response.json()) as { slots: FreeSlot[] };

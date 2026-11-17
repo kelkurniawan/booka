@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Minus, Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ export function GuestStepper({
   min: number;
   max: number;
   onChange: (n: number) => void;
-  hint?: string | null;
+  hint?: ReactNode;
 }) {
   return (
     <div
@@ -53,7 +54,7 @@ export function GuestStepper({
           </Button>
         </div>
       </div>
-      {hint ? <p className="text-muted-foreground text-sm">{hint}</p> : null}
+      {hint ? <div className="text-muted-foreground text-sm">{hint}</div> : null}
     </div>
   );
 }

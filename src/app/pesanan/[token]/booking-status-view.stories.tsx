@@ -19,6 +19,10 @@ const base: BookingPageRow = {
   attended_at: null,
   no_show_at: null,
   reschedule_count: 0,
+  party_size: null,
+  table_label: null,
+  customer_note: null,
+  capacity_mode: "NONE" as const,
 };
 const aturan = {
   ...DEFAULT_MANAGE_SETTINGS,
@@ -125,6 +129,19 @@ const ditolak = {
   status: "CANCELLED" as const,
   cancelled_at: "2026-11-20T09:00:00Z",
   cancel_reason: REQUEST_REJECT_REASON,
+};
+
+const reservasi = {
+  ...terkonfirmasi,
+  party_size: 4,
+  table_label: "D5",
+  customer_note: "Dekat jendela, ada kursi bayi.",
+  capacity_mode: "TABLE" as const,
+  service_name: "Reservasi meja",
+};
+export const ReservasiTerkonfirmasi: Story = { args: { booking: reservasi } };
+export const ReservasiMenungguTanpaMeja: Story = {
+  args: { booking: { ...permintaan, party_size: 6, capacity_mode: "AREA" as const, service_name: "Reservasi meja" } },
 };
 
 export const Terkonfirmasi: Story = { args: { booking: terkonfirmasi } };

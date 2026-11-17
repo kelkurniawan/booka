@@ -38,6 +38,7 @@ const meta = {
     username: "riasbysekar",
     serviceId: "svc-1",
     staffId: null,
+    partySize: null,
     serviceName: "Makeup Wisuda",
     code: "BK-7F3A21",
     currentStart: "2026-11-21T03:00:00Z",

@@ -32,6 +32,7 @@ const meta = {
     staff: [],
     faqs: sampleFaqs,
     paymentSettings: DEFAULT_PAYMENT_SETTINGS,
+    restaurant: { tableMode: "NONE", holdMinutes: 15, areas: [] },
     banners: [],
     vouchers: [],
   },
@@ -92,4 +93,47 @@ export const TombolLembut: Story = {
 
 export const LatarBergerak: Story = {
   args: { theme: sampleTheme("HANGAT", { background_style: "MOTION", background_motion: "AURORA" }) },
+};
+
+const layananRestoran: Service[] = [
+  {
+    ...sampleServices[0],
+    id: "svc-reservasi",
+    name: "Reservasi meja",
+    price: 0,
+    payment_mode: "ON_SITE",
+    duration_minutes: 90,
+    party_min: 1,
+    party_max: 12,
+    seat_duration_minutes: 90,
+  },
+  {
+    ...sampleServices[0],
+    id: "svc-ultah",
+    name: "Paket Ulang Tahun",
+    price: 1500000,
+    party_min: 15,
+    party_max: 25,
+  },
+];
+
+export const RestoranDenahMeja: Story = {
+  args: {
+    services: layananRestoran,
+    restaurant: {
+      tableMode: "TABLE",
+      holdMinutes: 15,
+      areas: [
+        { id: "a1", name: "Dalam" },
+        { id: "a2", name: "Teras" },
+      ],
+    },
+  },
+};
+
+export const RestoranTotalKursi: Story = {
+  args: {
+    services: layananRestoran,
+    restaurant: { tableMode: "AREA", holdMinutes: 15, areas: [] },
+  },
 };

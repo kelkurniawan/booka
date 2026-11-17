@@ -137,6 +137,10 @@ export const sampleBooking = {
   paid_on_site_at: null,
   voucher_code: null,
   discount_amount: 0,
+  party_size: null,
+  table_label: null,
+  customer_note: null,
+  capacity_mode: "NONE" as const,
 };
 
 /** Token contoh (48 hex) untuk story /pesanan/[token]. */

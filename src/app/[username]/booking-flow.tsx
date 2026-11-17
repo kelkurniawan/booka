@@ -14,7 +14,9 @@ import { toast } from "sonner";
 
 import { BookingSummary } from "@/components/booking-page/booking-summary";
 import { DateStrip } from "@/components/booking-page/date-strip";
+import { GuestStepper } from "@/components/booking-page/guest-stepper";
 import { PromoBanners } from "@/components/booking-page/promo-banners";
+import { ReservationCard } from "@/components/booking-page/reservation-card";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { BookingStepIndicator } from "@/components/booking-page/step-indicator";
 import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
@@ -24,7 +26,12 @@ import {
   type StaffOption,
 } from "@/components/booking-page/staff-picker";
 import {
+  TablePicker,
+  type TablePickerMode,
+} from "@/components/booking-page/table-picker";
+import {
   TimeSlotPicker,
+  type PickerSlot,
   type TimeSlotState,
 } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
@@ -36,6 +43,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   computeAmounts,
   effectivePaymentMode,
@@ -43,12 +51,16 @@ import {
   paymentLabel,
   type PaymentSettings,
 } from "@/lib/booking/payment-mode";
-import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
 import {
-  jakartaDateISO,
-  type FreeSlot,
-  type NearestSlot,
-} from "@/lib/booking/slots";
+  bookingErrorStep,
+  holdSentence,
+  isSeatService,
+  MAX_CUSTOMER_NOTE,
+  partyRangeLabel,
+  type TablePickerData,
+} from "@/lib/booking/reservation";
+import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
+import { jakartaDateISO, type NearestSlot } from "@/lib/booking/slots";
 import {
   computeDiscount,
   voucherIneligibleReason,
@@ -67,7 +79,15 @@ import type {
   PublicVoucher,
   Service,
   ServiceMedia,
+  TableMode,
 } from "@/types/database";
+
+/** Pengaturan restoran yang terlihat anon; `areas` hanya terisi di mode TABLE. */
+export type RestaurantInfo = {
+  tableMode: TableMode;
+  holdMinutes: number;
+  areas: { id: string; name: string }[];
+};
 
 export type BookingFlowProps = {
   username: string;
@@ -79,6 +99,7 @@ export type BookingFlowProps = {
   staff: (StaffOption & { days: DayOfWeek[] })[];
   /** Hanya petunjuk tampilan; server menentukan mode akhir saat booking dibuat. */
   paymentSettings: PaymentSettings;
+  restaurant: RestaurantInfo;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
   /** Urutan bagian halaman yang tampil (theme.sections). */
@@ -87,17 +108,20 @@ export type BookingFlowProps = {
   faq: ReactNode;
 };
 
-type Step = 1 | 2 | 3;
+/** 1 layanan, 2 jadwal, 3 meja (hanya reservasi mode TABLE), 4 data diri. */
+type Step = 1 | 2 | 3 | 4;
 
 const STEP_PARAM: Record<Step, string | null> = {
   1: null,
   2: "jadwal",
-  3: "data",
+  3: "meja",
+  4: "data",
 };
 const STEP_TITLE: Record<Step, string> = {
   1: "Pilih layanan",
   2: "Pilih jadwal",
-  3: "Data diri",
+  3: "Pilih meja",
+  4: "Data diri",
 };
 
 /** URL halaman ini dengan parameter `langkah` untuk `step`; query lain dan hash tetap. */
@@ -133,7 +157,21 @@ type CheckoutSubmitPayload = {
   customer_name: string;
   customer_whatsapp: string;
   voucherCode: string | null;
+  partySize: number | null;
+  areaId: string | null;
+  tableId: string | null;
+  customerNote: string | null;
 };
+
+/** Galat dari server; `code` dipakai alur reservasi untuk memilih langkah yang dibuka lagi. */
+class CheckoutError extends Error {
+  constructor(
+    message: string,
+    readonly code: string | undefined,
+  ) {
+    super(message);
+  }
+}
 
 /** Respons sukses `POST /api/bookings` -- lihat src/app/api/bookings/route.ts. */
 type CheckoutResult = {
@@ -143,7 +181,7 @@ type CheckoutResult = {
   bookingUrl: string;
 };
 
-type CheckoutErrorBody = { error?: string; issues?: unknown };
+type CheckoutErrorBody = { error?: string; code?: string; issues?: unknown };
 
 /**
  * `POST /api/bookings`. `merchantId` sengaja tidak dikirim: route resolve
@@ -171,7 +209,14 @@ async function submitCheckout(
       body && typeof body === "object" && "error" in body
         ? ((body as CheckoutErrorBody).error ?? null)
         : null;
-    throw new Error(message ?? "Gagal membuat booking, silakan coba lagi.");
+    const code =
+      body && typeof body === "object" && "code" in body
+        ? (body as CheckoutErrorBody).code
+        : undefined;
+    throw new CheckoutError(
+      message ?? "Gagal membuat booking, silakan coba lagi.",
+      code,
+    );
   }
 
   return body as CheckoutResult;
@@ -215,6 +260,7 @@ export function BookingFlow({
   availability,
   staff,
   paymentSettings,
+  restaurant,
   banners,
   vouchers,
   sections,
@@ -229,8 +275,19 @@ export function BookingFlow({
     services.length === 1 ? services[0].id : null,
   );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
-  const [selectedSlot, setSelectedSlot] = useState<FreeSlot | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<PickerSlot | null>(null);
   const [slotState, setSlotState] = useState<TimeSlotState>({ kind: "idle" });
+
+  // Reservasi restoran: jumlah tamu, area, meja, dan catatan.
+  const [partySize, setPartySize] = useState<number | null>(null);
+  const [areaId, setAreaId] = useState<string | null>(null);
+  const [tableMode, setTableMode] = useState<TablePickerMode>("auto");
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [tablesData, setTablesData] = useState<TablePickerData | null>(null);
+  const [tablesState, setTablesState] = useState<
+    "loading" | "ready" | "error"
+  >("loading");
+  const [customerNote, setCustomerNote] = useState("");
 
   const [customerName, setCustomerName] = useState("");
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
@@ -249,8 +306,15 @@ export function BookingFlow({
   const [nearestByService, setNearestByService] = useState<
     Record<string, Record<string, NearestSlot | null> | "error">
   >({});
+  const selectedService =
+    services.find((service) => service.id === selectedServiceId) ?? null;
+  // Reservasi tidak memakai staf (Keputusan 10 F8); meja hanya di mode TABLE.
+  const seat = selectedService
+    ? isSeatService(selectedService, restaurant.tableMode)
+    : false;
+  const hasTableStep = seat && restaurant.tableMode === "TABLE";
   const needNearest =
-    step === 2 && staff.length > 0 && selectedServiceId !== null;
+    step === 2 && staff.length > 0 && !seat && selectedServiceId !== null;
   const nearestLoaded =
     selectedServiceId !== null && selectedServiceId in nearestByService;
   useEffect(() => {
@@ -277,23 +341,19 @@ export function BookingFlow({
 
   // Hari buka mengikuti staf yang dipilih: staf dengan jam sendiri bisa
   // bekerja di hari usaha tutup, dan sebaliknya. "Siapa saja" = gabungan.
-  const openDays = useMemo(() => {
-    const merchantDays = availability.map((row) => row.day_of_week);
-    if (staff.length === 0) return new Set(merchantDays);
-    const candidates = selectedStaffId
+  // Tanpa useMemo: React Compiler menolak memo manual yang bergantung pada `seat`.
+  const merchantDays = availability.map((row) => row.day_of_week);
+  const dayCandidates = seat
+    ? []
+    : selectedStaffId
       ? staff.filter((m) => m.id === selectedStaffId)
       : staff;
-    return new Set(
-      candidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)),
-    );
-  }, [availability, staff, selectedStaffId]);
-  const strip = useMemo(
-    () => buildDateStrip(openDays, todayISO),
-    [openDays, todayISO],
+  const openDays = new Set(
+    dayCandidates.length === 0
+      ? merchantDays
+      : dayCandidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)),
   );
-
-  const selectedService =
-    services.find((service) => service.id === selectedServiceId) ?? null;
+  const strip = buildDateStrip(openDays, todayISO);
   const serviceNames = useMemo(
     () =>
       Object.fromEntries(services.map((service) => [service.id, service.name])),
@@ -324,9 +384,10 @@ export function BookingFlow({
 
     function onPopState() {
       const param = new URLSearchParams(window.location.search).get("langkah");
-      const wanted: Step = param === "data" ? 3 : param === "jadwal" ? 2 : 1;
+      const wanted: Step =
+        param === "data" ? 4 : param === "meja" ? 3 : param === "jadwal" ? 2 : 1;
       const { hasService, hasSlot } = selectionRef.current;
-      const max: Step = hasService && hasSlot ? 3 : hasService ? 2 : 1;
+      const max: Step = hasService && hasSlot ? 4 : hasService ? 2 : 1;
       const next = (wanted > max ? max : wanted) as Step;
       if (next !== wanted) {
         // Sejajarkan URL dengan langkah yang benar-benar ditampilkan.
@@ -363,6 +424,8 @@ export function BookingFlow({
     serviceId: string,
     dateISO: string,
     staffId: string | null,
+    party: number | null,
+    area: string | null,
   ) {
     const requestId = (requestIdRef.current += 1);
     setSlotState({ kind: "loading" });
@@ -373,9 +436,11 @@ export function BookingFlow({
         date: dateISO,
       });
       if (staffId) params.set("staffId", staffId);
+      if (party !== null) params.set("party", String(party));
+      if (area) params.set("areaId", area);
       const response = await fetch(`/api/slots?${params.toString()}`);
       if (!response.ok) throw new Error("Gagal memuat jadwal");
-      const body = (await response.json()) as { slots: FreeSlot[] };
+      const body = (await response.json()) as { slots: PickerSlot[] };
       if (requestIdRef.current !== requestId) return;
       setSlotState(
         body.slots.length === 0
@@ -398,6 +463,10 @@ export function BookingFlow({
     setSelectedServiceId(serviceId);
     resetSchedule();
     const next = services.find((service) => service.id === serviceId);
+    setPartySize(next?.party_max != null ? (next.party_min ?? 1) : null);
+    setAreaId(null);
+    setSelectedTableId(null);
+    setTableMode("auto");
     if (appliedVoucher && next) {
       const reason = voucherIneligibleReason(
         appliedVoucher,
@@ -456,7 +525,58 @@ export function BookingFlow({
     setSelectedDate(dateISO);
     setSelectedSlot(null);
     if (selectedServiceId)
-      void loadSlots(selectedServiceId, dateISO, selectedStaffId);
+      void loadSlots(
+        selectedServiceId,
+        dateISO,
+        seat ? null : selectedStaffId,
+        partySize,
+        areaId,
+      );
+  }
+
+  // Jumlah tamu atau area berubah: jam terpilih tidak lagi berlaku, muat ulang.
+  function handleChangeBooking(party: number | null, area: string | null) {
+    setPartySize(party);
+    setAreaId(area);
+    setSelectedSlot(null);
+    setSelectedTableId(null);
+    if (selectedServiceId && selectedDate)
+      void loadSlots(selectedServiceId, selectedDate, null, party, area);
+  }
+
+  // Status meja untuk jam dan jumlah tamu terpilih. `tablesRequestRef` menjaga urutan.
+  const tablesRequestRef = useRef(0);
+  async function loadTables(startUtc: string, party: number) {
+    if (!selectedServiceId) return;
+    const requestId = (tablesRequestRef.current += 1);
+    setTablesState("loading");
+    try {
+      const params = new URLSearchParams({
+        username,
+        serviceId: selectedServiceId,
+        start: startUtc,
+        party: String(party),
+      });
+      const response = await fetch(`/api/tables?${params.toString()}`);
+      if (!response.ok) throw new Error("Gagal memuat meja");
+      const body = (await response.json()) as TablePickerData;
+      if (tablesRequestRef.current !== requestId) return;
+      setTablesData(body);
+      setTablesState("ready");
+    } catch {
+      if (tablesRequestRef.current === requestId) setTablesState("error");
+    }
+  }
+
+  function handleScheduleNext() {
+    if (!hasTableStep || !selectedSlot) {
+      goForward(4);
+      return;
+    }
+    setSelectedTableId(null);
+    setTableMode("auto");
+    void loadTables(selectedSlot.startUtc, partySize ?? 1);
+    goForward(3);
   }
 
   async function handleCheckoutSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -465,10 +585,14 @@ export function BookingFlow({
 
     const result = checkoutSchema.safeParse({
       serviceId: selectedServiceId,
-      staffId: selectedStaffId,
+      staffId: seat ? null : selectedStaffId,
       startUtc: selectedSlot.startUtc,
       customer_name: customerName,
       customer_whatsapp: customerWhatsapp,
+      partySize,
+      areaId: seat ? areaId : null,
+      tableId: seat && tableMode === "pick" ? selectedTableId : null,
+      customerNote: customerNote || null,
     });
 
     if (!result.success) {
@@ -488,11 +612,15 @@ export function BookingFlow({
       const checkout = await submitCheckout({
         username,
         serviceId: result.data.serviceId,
-        staffId: result.data.staffId,
+        staffId: seat ? null : result.data.staffId,
         startUtc: result.data.startUtc,
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
         voucherCode: appliedVoucher?.code ?? null,
+        partySize: result.data.partySize,
+        areaId: result.data.areaId,
+        tableId: result.data.tableId,
+        customerNote: result.data.customerNote,
       });
       // Booking sudah permanen: arahkan ke /pesanan/[token], tempat QRIS atau
       // hasil akhir ditampilkan. Selalu ikuti bookingUrl: server yang
@@ -506,6 +634,19 @@ export function BookingFlow({
           : "Gagal membuat booking, silakan coba lagi.",
       );
       setSubmitting(false);
+      // Reservasi: kapasitas atau meja berubah selagi mengisi, buka langkah yang relevan.
+      const back = seat
+        ? bookingErrorStep(error instanceof CheckoutError ? error.code : undefined)
+        : null;
+      if (back === "meja" && hasTableStep) {
+        setSelectedTableId(null);
+        void loadTables(selectedSlot.startUtc, partySize ?? 1);
+        goForward(3);
+      } else if (back === "jadwal" && selectedDate) {
+        setSelectedSlot(null);
+        void loadSlots(selectedServiceId, selectedDate, null, partySize, areaId);
+        goForward(2);
+      }
     }
   }
 
@@ -544,7 +685,13 @@ export function BookingFlow({
     };
   }
 
-  const staffName = selectedStaffId
+  // Meja pilihan sendiri yang masih bebas; status dimuat ulang tiap masuk langkah Meja.
+  const pickedTable =
+    tablesData?.tables.find(
+      (t) => t.id === selectedTableId && t.status === "FREE",
+    ) ?? null;
+
+  const staffName = !seat && selectedStaffId
     ? staff.find((m) => m.id === selectedStaffId)?.name
     : null;
 
@@ -554,14 +701,31 @@ export function BookingFlow({
       className="bg-card border-border flex flex-col gap-3 border p-3"
       style={{ borderRadius: "var(--radius)" }}
     >
-      <BookingStepIndicator current={step} />
+      {seat && step !== 1 ? (
+        <BookingStepIndicator
+          current={
+            hasTableStep ? step - 1 : step === 4 ? 2 : 1
+          }
+          labels={
+            hasTableStep
+              ? ["Jadwal", "Meja", "Data diri"]
+              : ["Jadwal", "Data diri"]
+          }
+        />
+      ) : (
+        <BookingStepIndicator
+          current={step === 4 ? 3 : step}
+        />
+      )}
       <h2
         id="langkah-judul"
         ref={headingRef}
         tabIndex={-1}
         className="text-lg font-medium outline-none"
       >
-        {STEP_TITLE[step]}
+        {step === 2 && selectedService?.party_max != null
+          ? "Pilih jumlah tamu, tanggal, dan jam"
+          : STEP_TITLE[step]}
       </h2>
     </div>
   );
@@ -574,6 +738,14 @@ export function BookingFlow({
       onApplyVoucher={handleBannerApplyVoucher}
       onSelectService={handleBannerSelectService}
     />
+  );
+
+  // Layanan reservasi punya kartu sendiri (R1) di atas daftar layanan lain.
+  const seatServices = services.filter((service) =>
+    isSeatService(service, restaurant.tableMode),
+  );
+  const otherServices = services.filter(
+    (service) => !isSeatService(service, restaurant.tableMode),
   );
 
   const servicesSection = (
@@ -605,13 +777,26 @@ export function BookingFlow({
           {voucherNotice}
         </p>
       ) : null}
+      {seatServices.map((service) => (
+        <ReservationCard
+          key={service.id}
+          title={service.name}
+          partyLabel={partyRangeLabel(service)}
+          holdText={holdSentence(restaurant.holdMinutes)}
+          paymentLabel={paymentLabel(service, paymentSettings)}
+          onStart={() => {
+            handleSelectService(service.id);
+            goForward(2);
+          }}
+        />
+      ))}
       <div
         ref={serviceListRef}
         role="radiogroup"
         aria-labelledby="langkah-judul"
         className="flex scroll-mt-4 flex-col gap-3"
       >
-        {services.map((service, index) => (
+        {otherServices.map((service, index) => (
           <ServiceOptionCard
             key={service.id}
             service={service}
@@ -686,12 +871,66 @@ export function BookingFlow({
             ) : null}
           </div>
 
+          {selectedService.party_max != null && partySize !== null ? (
+            <GuestStepper
+              value={partySize}
+              min={selectedService.party_min ?? 1}
+              max={selectedService.party_max}
+              onChange={(n) => handleChangeBooking(n, areaId)}
+              hint={
+                partySize === selectedService.party_max &&
+                services.length > 1 ? (
+                  <Button
+                    type="button"
+                    variant="link"
+                    className="min-h-11 h-auto justify-start px-0"
+                    onClick={() => window.history.back()}
+                  >
+                    {`Lebih dari ${selectedService.party_max}? Lihat layanan lain.`}
+                  </Button>
+                ) : null
+              }
+            />
+          ) : null}
+
           {/* Permukaan solid: latar bergerak F6 tidak boleh berada langsung di bawah teks. */}
           <div
             className="bg-card border-border flex flex-col gap-6 border p-3"
             style={{ borderRadius: "var(--radius)" }}
           >
-            {staff.length > 0 ? (
+            {hasTableStep && restaurant.areas.length >= 2 ? (
+              <div className="flex flex-col gap-2">
+                <p id="area-label" className="text-sm font-medium">
+                  Area{" "}
+                  <span className="text-muted-foreground font-normal">
+                    (opsional)
+                  </span>
+                </p>
+                <div
+                  role="radiogroup"
+                  aria-labelledby="area-label"
+                  className="flex flex-wrap gap-2"
+                >
+                  {[{ id: null, name: "Bebas" }, ...restaurant.areas].map(
+                    (area) => (
+                      <Button
+                        key={area.id ?? "bebas"}
+                        type="button"
+                        role="radio"
+                        aria-checked={areaId === area.id}
+                        variant={areaId === area.id ? "default" : "outline"}
+                        className="min-h-11"
+                        onClick={() => handleChangeBooking(partySize, area.id)}
+                      >
+                        {area.name}
+                      </Button>
+                    ),
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {staff.length > 0 && !seat ? (
               <StaffPicker
                 staff={staff}
                 selectedId={selectedStaffId}
@@ -737,12 +976,56 @@ export function BookingFlow({
             }
             actionLabel="Lanjut"
             disabled={!selectedSlot}
-            onAction={() => goForward(3)}
+            onAction={handleScheduleNext}
           />
         </>
       ) : null}
 
-      {step === 3 &&
+      {step === 3 && hasTableStep && selectedService && selectedSlot ? (
+        <>
+          <div
+            className="bg-card border-border flex flex-col gap-1 border p-3"
+            style={{ borderRadius: "var(--radius)" }}
+          >
+            <p className="text-sm font-medium">
+              {partySize} orang
+              {selectedDate && selectedSlot
+                ? `, ${dateLabel(selectedDate)}, ${selectedSlot.label}`
+                : ""}
+            </p>
+          </div>
+          <TablePicker
+            data={tablesData}
+            state={tablesState}
+            mode={tableMode}
+            selectedTableId={selectedTableId}
+            guests={partySize ?? 1}
+            onModeChange={(m) => {
+              setTableMode(m);
+              if (m === "auto") setSelectedTableId(null);
+            }}
+            onSelect={setSelectedTableId}
+            onRetry={() => void loadTables(selectedSlot.startUtc, partySize ?? 1)}
+          />
+          <StickyActionBar
+            summary={
+              tableMode === "auto"
+                ? "Dipilihkan restoran"
+                : pickedTable
+                  ? `Meja ${pickedTable.name}`
+                  : "Pilih satu meja"
+            }
+            actionLabel="Lanjut"
+            disabled={
+              tablesState === "loading" ||
+              (tableMode === "pick" && !pickedTable)
+            }
+            onAction={() => goForward(4)}
+          />
+        </>
+      ) : null}
+
+      {step === 4 &&
       selectedService &&
       selectedDate &&
       selectedSlot &&
@@ -765,6 +1048,24 @@ export function BookingFlow({
               checkVoucherCode(username, selectedService.id, code)
             }
           />
+          {partySize !== null ? (
+            <div className="flex items-center justify-between gap-3 text-sm">
+              <p className="font-medium">
+                {partySize} orang
+                {seat && tableMode === "pick" && pickedTable
+                  ? `, Meja ${pickedTable.name}`
+                  : ""}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => goForward(2)}
+              >
+                Ubah
+              </Button>
+            </div>
+          ) : null}
           <BookingSummary
             rows={[
               { label: "Layanan", value: selectedService.name },
@@ -844,6 +1145,20 @@ export function BookingFlow({
             ) : null}
           </Field>
 
+          {selectedService.party_max != null ? (
+            <Field>
+              <FieldLabel htmlFor="customer_note">Catatan (opsional)</FieldLabel>
+              <Textarea
+                id="customer_note"
+                name="customer_note"
+                value={customerNote}
+                onChange={(event) => setCustomerNote(event.target.value)}
+                maxLength={MAX_CUSTOMER_NOTE}
+                rows={3}
+              />
+            </Field>
+          ) : null}
+
           <div className="text-muted-foreground flex flex-col gap-2 text-sm text-pretty">
             {payment.online ? (
               <p>
@@ -862,6 +1177,9 @@ export function BookingFlow({
             ) : null}
             {!payment.online && !payment.approval ? (
               <p>Tidak perlu bayar sekarang.</p>
+            ) : null}
+            {seat && payment.dueNow === 0 && holdSentence(restaurant.holdMinutes) ? (
+              <p>{holdSentence(restaurant.holdMinutes)}</p>
             ) : null}
             {payment.dueOnSite > 0 ? (
               <p>
@@ -883,7 +1201,9 @@ export function BookingFlow({
           <StickyActionBar
             type="submit"
             summary={selectedService.name}
-            actionLabel={payment.actionLabel}
+            actionLabel={
+              seat && !payment.online ? "Kirim reservasi" : payment.actionLabel
+            }
             busy={submitting}
           />
         </form>
