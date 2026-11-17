@@ -29,6 +29,14 @@ const ICONS: Record<ContactKind, ReactNode> = {
   threads: <span style={{ fontWeight: 700, fontSize: 18 }}>@</span>,
   x: <span style={{ fontWeight: 700, fontSize: 17 }}>X</span>,
   tiktok: svg(<path d="M9 12a4 4 0 1 0 4 4V3c.5 2.5 2.5 4.5 5 5" />),
+  discord: svg(
+    <>
+      <path d="M8 6.5c1.3-.5 2.6-.7 4-.7s2.7.2 4 .7c1.6 2.4 2.5 4.9 2.8 8.5-1 .8-2.1 1.3-3.3 1.7l-.8-1.4M8 6.5C6.4 8.9 5.5 11.4 5.2 15c1 .8 2.1 1.3 3.3 1.7l.8-1.4" />
+      <path d="M8.5 15.3c2.1.7 4.9.7 7 0" />
+      <circle cx="9.5" cy="11.5" r="1" />
+      <circle cx="14.5" cy="11.5" r="1" />
+    </>,
+  ),
 };
 
 const iconLink = {

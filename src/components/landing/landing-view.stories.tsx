@@ -41,6 +41,7 @@ export const KontakTerisi: Story = {
       threads: "akun",
       x: "akun",
       tiktok: "akun",
+      discord: "https://discord.gg/abc123",
     }),
   },
   render: (args) => <div style={{ width: 1280 }}><LandingView {...args} /></div>,

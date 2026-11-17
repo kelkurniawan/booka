@@ -14,15 +14,17 @@ export const MARKETING_CONTACT: {
   threads: string;
   x: string;
   tiktok: string;
+  discord: string; // URL undangan lengkap, mis. https://discord.gg/xxxx
 } = {
   whatsapp: "[NOMOR WHATSAPP MARKY]",
   instagram: "[AKUN INSTAGRAM]",
   threads: "[AKUN THREADS]",
   x: "[AKUN X]",
   tiktok: "[AKUN TIKTOK]",
+  discord: "[UNDANGAN DISCORD]",
 };
 
-export type ContactKind = "whatsapp" | "email" | "instagram" | "threads" | "x" | "tiktok";
+export type ContactKind = "whatsapp" | "email" | "instagram" | "threads" | "x" | "tiktok" | "discord";
 
 export type ContactLink = { kind: ContactKind; href: string; label: string };
 
@@ -31,6 +33,9 @@ export type ContactValues = typeof MARKETING_CONTACT & { email: string };
 function isFilled(value: string): boolean {
   return value.length > 0 && !LEGAL_PLACEHOLDER_PATTERN.test(value);
 }
+
+/** Hanya undangan resmi Discord yang dianggap terisi; URL lain ditolak supaya tidak tayang tautan keliru. */
+const DISCORD_INVITE = /^https:\/\/(discord\.gg|discord\.com\/invite)\/\S+$/;
 
 function handle(value: string): string {
   return value.replace(/^@/, "");
@@ -41,7 +46,7 @@ const defaultValues = (): ContactValues => ({
   email: LEGAL_IDENTITY.contactEmail,
 });
 
-/** Tautan kontak yang sudah terisi, berurutan WhatsApp, Email, Instagram, Threads, X, TikTok. */
+/** Tautan kontak yang sudah terisi, berurutan WhatsApp, Email, Instagram, Threads, X, TikTok, Discord. */
 export function contactLinks(values: ContactValues = defaultValues()): ContactLink[] {
   const candidates: (ContactLink | null)[] = [
     isFilled(values.whatsapp)
@@ -73,6 +78,9 @@ export function contactLinks(values: ContactValues = defaultValues()): ContactLi
           href: `https://www.tiktok.com/@${handle(values.tiktok)}`,
           label: "TikTok Marky",
         }
+      : null,
+    DISCORD_INVITE.test(values.discord)
+      ? { kind: "discord", href: values.discord, label: "Discord Marky" }
       : null,
   ];
   return candidates.filter((link): link is ContactLink => link !== null);

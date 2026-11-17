@@ -13,7 +13,7 @@ test("nilai bawaan belum terisi dan tidak menghasilkan tautan", () => {
   assert.equal(hasUnfilledMarketingContact(), true);
 });
 
-test("nilai terisi menghasilkan enam tautan berurutan", () => {
+test("nilai terisi menghasilkan tujuh tautan berurutan", () => {
   const links = contactLinks({
     whatsapp: "6281234567890",
     email: "halo@contoh.id",
@@ -21,6 +21,7 @@ test("nilai terisi menghasilkan enam tautan berurutan", () => {
     threads: "akun",
     x: "akun",
     tiktok: "akun",
+    discord: "https://discord.gg/abc123",
   });
   assert.deepEqual(
     links.map((link) => link.href),
@@ -31,6 +32,7 @@ test("nilai terisi menghasilkan enam tautan berurutan", () => {
       "https://www.threads.net/@akun",
       "https://x.com/akun",
       "https://www.tiktok.com/@akun",
+      "https://discord.gg/abc123",
     ],
   );
   assert.equal(hasUnfilledMarketingContact({
@@ -40,6 +42,7 @@ test("nilai terisi menghasilkan enam tautan berurutan", () => {
     threads: "akun",
     x: "akun",
     tiktok: "akun",
+    discord: "https://discord.gg/abc123",
   }), false);
 });
 
@@ -52,4 +55,22 @@ test("hanya nilai yang terisi yang menjadi tautan", () => {
 test("tidak ada href yang memuat penanda", () => {
   const links = contactLinks({ ...BLANK, whatsapp: "[NOMOR WHATSAPP MARKY]", x: "akun" });
   for (const link of links) assert.ok(!link.href.includes("["), link.href);
+});
+
+test("discord: undangan discord.gg dan discord.com/invite terisi", () => {
+  for (const url of ["https://discord.gg/abc123", "https://discord.com/invite/abc123"]) {
+    const links = contactLinks({ ...BLANK, discord: url });
+    assert.deepEqual(links, [{ kind: "discord", href: url, label: "Discord Marky" }]);
+  }
+});
+
+test("discord: penanda tidak menjadi tautan", () => {
+  assert.equal(MARKETING_CONTACT.discord, "[UNDANGAN DISCORD]");
+  assert.deepEqual(contactLinks({ ...BLANK, discord: "[UNDANGAN DISCORD]" }), []);
+});
+
+test("discord: URL non-Discord ditolak", () => {
+  for (const url of ["https://contoh.com/invite/abc", "http://discord.gg/abc", "discord.gg/abc", "https://discord.gg.evil.id/abc", "https://discord.gg/"]) {
+    assert.deepEqual(contactLinks({ ...BLANK, discord: url }), [], url);
+  }
 });

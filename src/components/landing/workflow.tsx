@@ -1,3 +1,4 @@
+import { planAvailability } from "@/lib/plans";
 import { AGENDA_EXAMPLE_ROWS, BIZ_EXAMPLES, QRIS_EXAMPLE_ROWS } from "@/lib/marketing/content";
 
 import { BizExampleCard } from "./biz-example-card";
@@ -19,12 +20,12 @@ const AGENDA_OFFSETS = [
 export function Workflow({ host }: { host: string }) {
   return (
     <section id="alur" aria-labelledby="alur-h" className="wrap" style={{ paddingTop: "var(--space-4xl)", paddingBottom: "var(--space-3xl)" }}>
-      <h2 id="alur-h" style={{ fontSize: "var(--text-section)", lineHeight: 1.04, maxWidth: "18ch" }}>Satu booking, dari tautan sampai kursi terisi.</h2>
+      <h2 id="alur-h" style={{ fontSize: "var(--text-section)", lineHeight: 1.04, maxWidth: "18ch" }}>Satu booking, dari tautan sampai hari H.</h2>
       <ol style={{ listStyle: "none", margin: "var(--space-2xl) 0 0", padding: 0, display: "flex", flexDirection: "column" }}>
         <li data-switch style={{ ...li, flexWrap: "wrap" }}>
           <div style={text}>
             <h3 style={h3}>1. Pelanggan membuka tautan di bio</h3>
-            <p style={lead}>Mereka melihat layanan, harga, dan jam yang masih kosong, dengan warna dan logo usaha Anda.</p>
+            <p style={lead}>Mereka melihat layanan, harga, dan jam yang masih kosong, dengan warna dan foto usaha Anda.</p>
             <RadioSwitch name="usaha" legend="Contoh usaha" options={BIZ_EXAMPLES.map((b) => b.label)} className="self-start" />
           </div>
           <div className="desk" style={stage}>
@@ -61,8 +62,8 @@ export function Workflow({ host }: { host: string }) {
             </div>
           </div>
           <div style={text}>
-            <h3 style={h3}>2. DP masuk ke rekening Anda</h3>
-            <p style={lead}>Lewat QRIS, tanpa menunggu bukti transfer. Untuk restoran atau barbershop, pilih bayar di tempat saja.</p>
+            <h3 style={h3}>2. DP masuk ke akun pembayaran Anda</h3>
+            <p style={lead}>Lewat QRIS, tanpa menunggu bukti transfer. Untuk restoran atau barbershop, layanan bisa diatur bayar di tempat.</p>
           </div>
         </li>
 
@@ -70,7 +71,7 @@ export function Workflow({ host }: { host: string }) {
           <div style={text}>
             <h3 style={h3}>3. Pengingat terkirim sendiri</h3>
             {/* Klaim dicocokkan dengan kode: pengingat H-1 dan pagi hari jadwal (reminder-plan.ts), paket Pro dan Studio (REMINDER_TIERS), pindah jadwal bila merchant mengizinkan (customer-policy-form.tsx). */}
-            <p style={lead}>Pengingat H-1, bisa ditambah pagi hari jadwal, lewat WhatsApp, email, atau notifikasi HP, untuk paket Pro dan Studio. Pelanggan bisa pindah jadwal sendiri bila Anda mengizinkan.</p>
+            <p style={lead}>Pengingat H-1 dikirim lewat WhatsApp, email, atau notifikasi HP, dan bisa ditambah pengingat pagi hari H. {planAvailability("Pro dan Studio")} Pelanggan bisa pindah jadwal sendiri bila Anda mengizinkan.</p>
           </div>
           <div className="desk" style={{ ...stage, flexDirection: "column", alignItems: "center", gap: "var(--space-md)" }}>
             <div className="stock" style={{ width: "100%", maxWidth: 360, padding: "var(--space-md) var(--space-lg)", transform: "rotate(-1.5deg)" }}>
@@ -96,7 +97,7 @@ export function Workflow({ host }: { host: string }) {
           </div>
           <div style={text}>
             <h3 style={h3}>4. Hari H, semua sudah tertata</h3>
-            <p style={lead}>Buka dashboard di HP: siapa datang, siapa sudah bayar, siapa ditagih di tempat.</p>
+            <p style={lead}>Dashboard di HP menunjukkan siapa yang datang, siapa yang sudah bayar, dan siapa yang membayar di tempat.</p>
           </div>
         </li>
       </ol>

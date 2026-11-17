@@ -23,6 +23,7 @@ const semua = contactLinks({
   threads: "akun",
   x: "akun",
   tiktok: "akun",
+  discord: "https://discord.gg/abc123",
 });
 
 export const MastheadHP: Story = {

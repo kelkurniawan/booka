@@ -1,4 +1,4 @@
-import { EARLY_ACCESS_DETAIL, EARLY_ACCESS_FREE, EARLY_ACCESS_NOTE, PLAN_COMPARISON, PLANS, type Plan } from "@/lib/plans";
+import { EARLY_ACCESS_DETAIL, EARLY_ACCESS_FREE, EARLY_ACCESS_NOTE, FUTURE_PRICE_HEADING, PLAN_COMPARISON, PLANS, type Plan } from "@/lib/plans";
 
 import { RadioSwitch, SwitchPanel } from "./radio-switch";
 
@@ -12,16 +12,16 @@ export function Pricing() {
     <section id="harga" aria-labelledby="harga-h" style={{ background: "var(--color-board)", color: "var(--color-board-type)" }}>
       <div className="wrap" style={{ paddingTop: "var(--space-4xl)", paddingBottom: "var(--space-4xl)", display: "flex", flexDirection: "column", gap: "var(--space-2xl)" }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: "var(--space-xl)" }}>
-          <h2 id="harga-h" style={{ fontSize: "var(--text-section)", lineHeight: 1.04, maxWidth: "14ch" }}>Mulai gratis, naik saat ramai.</h2>
+          <h2 id="harga-h" style={{ fontSize: "var(--text-section)", lineHeight: 1.04, maxWidth: "14ch" }}>{EARLY_ACCESS_FREE ? EARLY_ACCESS_NOTE : "Mulai gratis, naik saat ramai."}</h2>
           <p style={{ margin: 0, display: "flex", alignItems: "baseline", gap: "var(--space-sm)" }}>
             <span style={{ fontSize: "clamp(72px, 11vw, 168px)", fontWeight: 600, letterSpacing: "-0.05em", lineHeight: 0.85 }}>Rp0</span>
-            <span style={{ fontSize: "var(--text-title)", fontWeight: 500, ...muted }}>untuk mulai</span>
+            <span style={{ fontSize: "var(--text-title)", fontWeight: 500, ...muted }}>{EARLY_ACCESS_FREE ? "selama masa awal" : "untuk mulai"}</span>
           </p>
         </div>
 
         {EARLY_ACCESS_FREE ? (
           <p style={{ margin: 0, fontSize: "var(--text-body)" }}>
-            <strong>{EARLY_ACCESS_NOTE}</strong> <span style={muted}>{EARLY_ACCESS_DETAIL}</span>
+            <strong>{FUTURE_PRICE_HEADING}.</strong> <span style={muted}>{EARLY_ACCESS_DETAIL}</span>
           </p>
         ) : null}
 
@@ -54,7 +54,7 @@ export function Pricing() {
             </SwitchPanel>
           ))}
           {/* Klaim dicocokkan: perubahan paket ditangani manual tim Marky (dashboard/billing/page.tsx). */}
-          <span style={{ fontSize: "var(--text-small)", ...muted }}>Tanpa kartu kredit. Perubahan paket dibantu tim Marky.</span>
+          <span style={{ fontSize: "var(--text-small)", ...muted }}>{EARLY_ACCESS_FREE ? "Tanpa kartu kredit. Harga paket berlaku nanti." : "Tanpa kartu kredit. Perubahan paket dibantu tim Marky."}</span>
         </div>
 
         <div className="price-table" style={{ overflowX: "auto" }}>
