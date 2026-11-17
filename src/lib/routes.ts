@@ -34,6 +34,7 @@ export const ROUTES = {
   services: "/dashboard/services",
   availability: "/dashboard/availability",
   staff: "/dashboard/staf",
+  staffClipApi: "/api/staff/clip",
   payments: "/dashboard/payments",
   billing: "/dashboard/billing",
   domain: "/dashboard/domain",

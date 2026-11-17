@@ -637,6 +637,7 @@ export type Database = {
             | "bio"
             | "tags"
             | "photo_path"
+            | "motion_path" // hanya service_role yang lolos grant kolom
             | "show_motion"
           >
         >;

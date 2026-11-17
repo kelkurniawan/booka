@@ -4,7 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 import type { Database } from "@/types/database";
 
-const BUCKET = "merchant-media";
+import { CLIP_UPLOAD_BUCKET } from "./staff-paths";
+import { MEDIA_BUCKET } from "./url";
+
+const BUCKETS = [MEDIA_BUCKET, CLIP_UPLOAD_BUCKET];
 /** Batas `list()` Storage per halaman. */
 const PAGE_SIZE = 100;
 
@@ -18,6 +21,7 @@ const PAGE_SIZE = 100;
  */
 async function listMerchantFiles(
   admin: SupabaseClient<Database>,
+  bucket: string,
   merchantId: string,
 ): Promise<string[]> {
   const files: string[] = [];
@@ -27,7 +31,7 @@ async function listMerchantFiles(
     const folder = folders.pop()!;
     for (let offset = 0; ; offset += PAGE_SIZE) {
       const { data, error } = await admin.storage
-        .from(BUCKET)
+        .from(bucket)
         .list(folder, { limit: PAGE_SIZE, offset });
       if (error) throw error;
       for (const entry of data ?? []) {
@@ -53,10 +57,14 @@ export async function purgeMerchantMedia(
   admin: SupabaseClient<Database>,
   merchantId: string,
 ): Promise<number> {
-  const files = await listMerchantFiles(admin, merchantId);
-  for (let i = 0; i < files.length; i += PAGE_SIZE) {
-    const { error } = await admin.storage.from(BUCKET).remove(files.slice(i, i + PAGE_SIZE));
-    if (error) throw error;
+  let total = 0;
+  for (const bucket of BUCKETS) {
+    const files = await listMerchantFiles(admin, bucket, merchantId);
+    for (let i = 0; i < files.length; i += PAGE_SIZE) {
+      const { error } = await admin.storage.from(bucket).remove(files.slice(i, i + PAGE_SIZE));
+      if (error) throw error;
+    }
+    total += files.length;
   }
-  return files.length;
+  return total;
 }
