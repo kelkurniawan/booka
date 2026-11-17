@@ -38,7 +38,7 @@ export type BookingListItem = Omit<
  * compiler.
  */
 export const BOOKING_LIST_COLUMNS =
-  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, source, merchant_reschedule_count, voucher_code, discount_amount";
+  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, source, merchant_reschedule_count, voucher_code, discount_amount, party_size, table_label, customer_note";
 
 /**
  * Representasi array bertipe dari BOOKING_LIST_COLUMNS di atas -- typo atau
@@ -83,6 +83,9 @@ export const BOOKING_LIST_COLUMN_LIST: readonly (keyof BookingListItem)[] = [
   "merchant_reschedule_count",
   "voucher_code",
   "discount_amount",
+  "party_size",
+  "table_label",
+  "customer_note",
 ];
 
 export type CancelBookingResult = { ok: boolean; message?: string };

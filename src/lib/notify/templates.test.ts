@@ -208,3 +208,38 @@ test("push pengingat: judul, isi, url, dan tag per booking", () => {
   assert.ok(p.url.startsWith("/"));
   assert.equal(p.tag, `booking-${base.bookingId}`);
 });
+
+const reservasi: BookingMessageData = {
+  ...base,
+  partySize: 4,
+  tableLabel: "D5",
+  customerNote: "Ulang tahun",
+};
+
+test("pesan merchant reservasi memuat tamu, meja, dan catatan; pesan pelanggan tanpa catatan", () => {
+  for (const text of [
+    merchantPaidWhatsapp(reservasi),
+    merchantConfirmedWhatsapp(reservasi),
+    merchantRequestedWhatsapp(reservasi),
+    merchantPaidEmail(reservasi).text,
+    merchantConfirmedEmail(reservasi).text,
+    merchantRequestedEmail(reservasi).text,
+  ]) {
+    assert.match(text, /4 orang/);
+    assert.match(text, /D5/);
+    assert.match(text, /Ulang tahun/);
+  }
+  for (const text of [
+    customerPaidWhatsapp(reservasi),
+    customerConfirmedWhatsapp(reservasi),
+    customerApprovedWhatsapp(reservasi),
+  ]) {
+    assert.match(text, /4 orang, Meja D5/);
+    assert.doesNotMatch(text, /Ulang tahun/);
+  }
+});
+
+test("booking non-reservasi: pesan tidak memuat baris tamu atau meja", () => {
+  assert.doesNotMatch(merchantPaidWhatsapp(base), /orang|Meja/);
+  assert.doesNotMatch(customerConfirmedWhatsapp(base), /orang|Meja/);
+});

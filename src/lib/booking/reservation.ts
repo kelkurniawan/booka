@@ -98,3 +98,9 @@ export function bookingErrorStep(code: string | undefined): "meja" | "jadwal" | 
   if (code === "BK060" || code === "23P01" || code === "P0006") return "jadwal";
   return null;
 }
+
+/** Teks kecil di daftar booking: "4 orang, Meja D5". Null bila bukan reservasi. */
+export function seatText(b: { party_size: number | null; table_label: string | null }): string | null {
+  if (b.party_size === null) return null;
+  return b.table_label ? `${b.party_size} orang, Meja ${b.table_label}` : `${b.party_size} orang`;
+}

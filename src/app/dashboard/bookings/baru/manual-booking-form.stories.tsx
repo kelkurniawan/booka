@@ -37,6 +37,27 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const reservasi = {
+  id: "9d4a8172-5f6e-4a91-b23d-4e5f60718293",
+  name: "Reservasi meja",
+  duration_minutes: 90,
+  price: 0,
+  party_min: 1,
+  party_max: 12,
+  seat_duration_minutes: 90,
+};
+
+export const ReservasiModeMeja: Story = {
+  args: {
+    services: [reservasi],
+    tableMode: "TABLE",
+    tables: [
+      { id: "a1b2c3d4-0000-4000-8000-000000000001", name: "D1", max_seats: 2 },
+      { id: "a1b2c3d4-0000-4000-8000-000000000002", name: "D5", max_seats: 4 },
+    ],
+  },
+};
+
 export const TanpaStaf: Story = {};
 
 export const DenganStaf: Story = {

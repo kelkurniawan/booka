@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
 import { dayLabel, groupByJakartaDay, paymentSummary } from "@/lib/booking/dashboard";
+import { seatText } from "@/lib/booking/reservation";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +80,7 @@ export function BookingsTable({
                     <td className="px-4 py-3">
                       <p>{b.service_name}</p>
                       {b.staff_name ? <p className="text-muted-foreground">{b.staff_name}</p> : null}
+                      {seatText(b) ? <p className="text-muted-foreground">{seatText(b)}</p> : null}
                       {b.source === "MANUAL" ? <p className="text-muted-foreground">Manual</p> : null}
                     </td>
                     <td className="px-4 py-3">
@@ -113,6 +115,7 @@ export function BookingsTable({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-semibold">{b.customer_name}</span>
                       <span className="text-muted-foreground block truncate text-sm">{b.service_name}</span>
+                      {seatText(b) ? <span className="text-muted-foreground block truncate text-sm">{seatText(b)}</span> : null}
                     </span>
                     <StatusBadge booking={b} nowMs={nowMs} />
                   </Link>

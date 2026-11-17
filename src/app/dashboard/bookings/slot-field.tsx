@@ -10,11 +10,17 @@ import { cn } from "@/lib/utils";
 
 type Result = { kind: "error" } | { kind: "ready"; slots: FreeSlot[] };
 
-/** Pilih jam kosong dari /api/slots (sumber yang sama dengan halaman publik). */
+/**
+ * Pilih jam kosong dari /api/slots (sumber yang sama dengan halaman publik).
+ * shortcut: /api/slots (peran anon) hanya menghitung meja online, sedangkan
+ * create_manual_booking boleh memakai meja offline, jadi slot manual bisa
+ * terlihat penuh padahal ada meja offline; naik kelas bila merchant mengeluh.
+ */
 export function SlotField({
   username,
   serviceId,
   staffId,
+  partySize,
   dateISO,
   value,
   onChange,
@@ -23,6 +29,8 @@ export function SlotField({
   username: string;
   serviceId: string | null;
   staffId: string | null;
+  /** Jumlah tamu layanan reservasi; diteruskan ke /api/slots sebagai `party`. */
+  partySize?: number | null;
   dateISO: string;
   value: string | null;
   onChange: (startISO: string | null) => void;
@@ -30,7 +38,7 @@ export function SlotField({
   labelledBy?: string;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const key = `${username}|${serviceId}|${staffId}|${dateISO}|${attempt}`;
+  const key = `${username}|${serviceId}|${staffId}|${partySize ?? ""}|${dateISO}|${attempt}`;
   // Hasil dikunci ke parameter kueri; kunci beda berarti masih memuat.
   const [result, setResult] = useState<(Result & { key: string }) | null>(null);
   const state = result && result.key === key ? result : ({ kind: "loading" } as const);
@@ -40,6 +48,7 @@ export function SlotField({
     const controller = new AbortController();
     const params = new URLSearchParams({ username, serviceId, date: dateISO });
     if (staffId) params.set("staffId", staffId);
+    if (partySize) params.set("party", String(partySize));
     fetch(`/api/slots?${params}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body: { slots: FreeSlot[] }) => {
@@ -54,7 +63,7 @@ export function SlotField({
     return () => controller.abort();
     // `value`/`onChange` sengaja di luar dependensi: fetch hanya mengikuti parameter kueri.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, serviceId, staffId, dateISO, attempt]);
+  }, [username, serviceId, staffId, partySize, dateISO, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

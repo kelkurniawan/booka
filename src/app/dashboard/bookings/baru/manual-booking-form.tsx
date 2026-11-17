@@ -7,13 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { isSeatService, partyRangeLabel } from "@/lib/booking/reservation";
 import { ROUTES } from "@/lib/routes";
+import type { TableMode } from "@/types/database";
 
 import { createManualBooking } from "../actions";
 import { type ManualBookingInput, type ManualBookingResult, manualBookingErrorMessage } from "../manual-booking";
 import { SlotField } from "../slot-field";
 
-type ServiceOption = { id: string; name: string; duration_minutes: number; price: number };
+type ServiceOption = {
+  id: string;
+  name: string;
+  duration_minutes: number;
+  price: number;
+  party_min?: number | null;
+  party_max?: number | null;
+  seat_duration_minutes?: number | null;
+};
 
 const SELECT_CLASS =
   "border-input bg-background focus-visible:ring-ring/50 min-h-11 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-3";
@@ -23,6 +33,8 @@ export function ManualBookingForm({
   todayISO,
   services,
   staff,
+  tableMode = "NONE",
+  tables = [],
   action = createManualBooking,
 }: {
   username: string;
@@ -30,16 +42,28 @@ export function ManualBookingForm({
   todayISO: string;
   services: ServiceOption[];
   staff: { id: string; name: string }[];
+  tableMode?: TableMode;
+  /** Semua meja merchant, termasuk yang tidak bisa dipesan online. */
+  tables?: { id: string; name: string; max_seats: number }[];
   /** Bisa diganti di Storybook. */
   action?: (input: ManualBookingInput) => Promise<ManualBookingResult>;
 }) {
   const router = useRouter();
   const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [party, setParty] = useState("");
+  const service = services.find((s) => s.id === serviceId);
+  const needsParty = service?.party_max != null;
+  const partyNumber = needsParty && party ? Number(party) : null;
+  // Layanan reservasi tidak memakai staf (Keputusan 10 F8).
+  const seat = !!service && isSeatService({ seat_duration_minutes: service.seat_duration_minutes ?? null }, tableMode);
+  const showTables = seat && needsParty && tableMode === "TABLE";
   const [staffId, setStaffId] = useState("");
   const [dateISO, setDateISO] = useState(todayISO);
   const [startISO, setStartISO] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
+  const [tableId, setTableId] = useState("");
+  const [note, setNote] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   // Naik saat slot bentrok: me-remount SlotField supaya daftar jam diambil ulang.
   const [slotsRound, setSlotsRound] = useState(0);
@@ -47,6 +71,10 @@ export function ManualBookingForm({
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
+    if (needsParty && !partyNumber) {
+      setMessage("Isi jumlah tamu dulu.");
+      return;
+    }
     if (!startISO) {
       setMessage("Pilih jam dulu.");
       return;
@@ -55,15 +83,22 @@ export function ManualBookingForm({
     startTransition(async () => {
       const result = await action({
         serviceId,
-        staffId: staffId || null,
+        staffId: seat ? null : staffId || null,
         startISO,
         customerName: name,
         customerWhatsapp: whatsapp,
+        partySize: partyNumber,
+        tableId: showTables && tableId ? tableId : null,
+        customerNote: needsParty && note.trim() ? note.trim() : null,
       });
       if (result.ok) router.push(`${ROUTES.bookings}?tab=mendatang&b=${result.id}`);
       else {
         setMessage(result.message);
-        if (result.message === manualBookingErrorMessage("23P01")) {
+        if (
+          result.message === manualBookingErrorMessage("23P01") ||
+          result.message === manualBookingErrorMessage("BK060") ||
+          result.message === manualBookingErrorMessage("BK061")
+        ) {
           setStartISO(null);
           setSlotsRound((n) => n + 1);
         }
@@ -78,6 +113,7 @@ export function ManualBookingForm({
         <select id="mb-service" className={SELECT_CLASS} value={serviceId} onChange={(e) => {
             setServiceId(e.target.value);
             setStartISO(null);
+            setTableId("");
           }}>
           {services.map((s) => (
             <option key={s.id} value={s.id}>
@@ -86,7 +122,27 @@ export function ManualBookingForm({
           ))}
         </select>
       </div>
-      {staff.length > 0 ? (
+      {needsParty ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="mb-party">Jumlah tamu</Label>
+          <Input
+            id="mb-party"
+            type="number"
+            inputMode="numeric"
+            className="min-h-11"
+            min={service?.party_min ?? 1}
+            max={service?.party_max ?? 200}
+            value={party}
+            onChange={(e) => {
+              setParty(e.target.value);
+              setStartISO(null);
+            }}
+            required
+          />
+          {service ? <p className="text-muted-foreground text-sm">{partyRangeLabel({ party_min: service.party_min ?? null, party_max: service.party_max ?? null })}</p> : null}
+        </div>
+      ) : null}
+      {staff.length > 0 && !seat ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="mb-staff">Staf</Label>
           <select id="mb-staff" className={SELECT_CLASS} value={staffId} onChange={(e) => {
@@ -123,13 +179,27 @@ export function ManualBookingForm({
           key={slotsRound}
           username={username}
           serviceId={serviceId || null}
-          staffId={staffId || null}
+          staffId={seat ? null : staffId || null}
+          partySize={partyNumber}
           dateISO={dateISO}
           value={startISO}
           onChange={setStartISO}
           labelledBy="mb-jam-label"
         />
       </div>
+      {showTables ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="mb-table">Meja</Label>
+          <select id="mb-table" className={SELECT_CLASS} value={tableId} onChange={(e) => setTableId(e.target.value)}>
+            <option value="">Pilihkan otomatis</option>
+            {tables.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name} ({t.max_seats} kursi)
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor="mb-name">Nama pelanggan</Label>
         <Input id="mb-name" className="min-h-11" value={name} onChange={(e) => setName(e.target.value)} required />
@@ -147,6 +217,12 @@ export function ManualBookingForm({
           required
         />
       </div>
+      {needsParty ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="mb-note">Catatan (opsional)</Label>
+          <Input id="mb-note" className="min-h-11" maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} />
+        </div>
+      ) : null}
       <p className="text-muted-foreground text-sm">
         Dicatat sebagai bayar di tempat. Tandai lunas di detail booking setelah pelanggan membayar.
       </p>

@@ -33,6 +33,10 @@ export type BookingMessageData = {
   respondBefore: string | null;
   /** True bila sisa di tempat sudah ditandai lunas. */
   paidOnSite?: boolean;
+  /** Reservasi restoran: jumlah tamu, label meja ("D5"), catatan pelanggan. */
+  partySize?: number | null;
+  tableLabel?: string | null;
+  customerNote?: string | null;
 };
 
 export type EmailMessage = {
@@ -54,6 +58,25 @@ export function waLink(e164: string): string {
 
 function staffLine(data: BookingMessageData): string | null {
   return data.staffName ? `Staf: ${data.staffName}` : null;
+}
+
+/** "4 orang, Meja D5"; null bila bukan reservasi, jadi pesan lain tidak berubah. */
+function seatLine(data: BookingMessageData): string | null {
+  if (data.partySize == null) return null;
+  return data.tableLabel ? `${data.partySize} orang, Meja ${data.tableLabel}` : `${data.partySize} orang`;
+}
+
+function noteLine(data: BookingMessageData): string | null {
+  return data.customerNote ? `Catatan pelanggan: ${data.customerNote}` : null;
+}
+
+/** Baris tabel email; catatan hanya untuk merchant. */
+function seatRows(data: BookingMessageData, withNote: boolean): [string, string][] {
+  const rows: [string, string][] = [];
+  if (data.partySize != null) rows.push(["Tamu", `${data.partySize} orang`]);
+  if (data.tableLabel) rows.push(["Meja", data.tableLabel]);
+  if (withNote && data.customerNote) rows.push(["Catatan pelanggan", data.customerNote]);
+  return rows;
 }
 
 function onSiteRow(data: BookingMessageData): [string, string][] {
@@ -82,6 +105,7 @@ export function merchantPaidEmail(data: BookingMessageData): EmailMessage {
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
     ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
     ["Dibayar", formatRupiah(data.amountDueNow)],
@@ -121,6 +145,8 @@ export function merchantPaidWhatsapp(data: BookingMessageData): string {
     `*Booking baru sudah dibayar*`,
     `${data.serviceName} · ${when(data)}`,
     staffLine(data),
+    seatLine(data),
+    noteLine(data),
     `Pelanggan: ${data.customerName} (${data.customerWhatsapp})`,
     `Dibayar: ${formatRupiah(data.amountDueNow)}`,
     onSiteLine(data),
@@ -138,6 +164,7 @@ export function customerPaidWhatsapp(data: BookingMessageData): string {
     "",
     `Jadwal: ${when(data)}`,
     staffLine(data),
+    seatLine(data),
     "",
     `Detail dan bukti pembayaran: ${data.statusUrl}`,
     data.merchantWhatsapp ? `Pertanyaan? Hubungi ${data.merchantName}: ${waLink(data.merchantWhatsapp)}` : null,
@@ -218,6 +245,7 @@ export function merchantConfirmedEmail(data: BookingMessageData): EmailMessage {
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
     ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
     ...(data.amountDueOnSite > 0
@@ -238,6 +266,7 @@ export function merchantRequestedEmail(data: BookingMessageData): EmailMessage {
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
     ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
     ...(deadline(data) ? ([["Jawab sebelum", deadline(data)!]] as [string, string][]) : []),
@@ -282,6 +311,8 @@ export function merchantConfirmedWhatsapp(data: BookingMessageData): string {
     `*Booking baru terkonfirmasi*`,
     `${data.serviceName}, ${when(data)}`,
     staffLine(data),
+    seatLine(data),
+    noteLine(data),
     `Pelanggan: ${data.customerName} (${data.customerWhatsapp})`,
     data.amountDueOnSite > 0 ? `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}` : null,
     "",
@@ -295,6 +326,7 @@ export function customerConfirmedWhatsapp(data: BookingMessageData): string {
     "",
     `Jadwal: ${when(data)}`,
     staffLine(data),
+    seatLine(data),
     data.amountDueOnSite > 0 ? `Bayar di tempat: ${formatRupiah(data.amountDueOnSite)}` : null,
     "",
     `Detail booking: ${data.statusUrl}`,
@@ -307,6 +339,8 @@ export function merchantRequestedWhatsapp(data: BookingMessageData): string {
     `*Permintaan booking baru*`,
     `${data.serviceName}, ${when(data)}`,
     staffLine(data),
+    seatLine(data),
+    noteLine(data),
     `Pelanggan: ${data.customerName} (${data.customerWhatsapp})`,
     deadline(data) ? `Jawab sebelum: ${deadline(data)}` : null,
     "",
@@ -320,6 +354,7 @@ export function customerApprovedWhatsapp(data: BookingMessageData): string {
     "",
     `Jadwal: ${when(data)}`,
     staffLine(data),
+    seatLine(data),
     `Bayar sekarang: ${formatRupiah(data.amountDueNow)}`,
     onSiteLine(data),
     deadline(data) ? `Batas bayar: ${deadline(data)}` : null,

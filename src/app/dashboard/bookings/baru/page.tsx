@@ -26,19 +26,34 @@ export default async function NewBookingPage() {
   const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
 
-  const [servicesResult, staff] = await Promise.all([
+  const [servicesResult, staff, settingsResult, tablesResult] = await Promise.all([
     supabase
       .from("services")
-      .select("id, name, duration_minutes, price")
+      .select("id, name, duration_minutes, price, party_min, party_max, seat_duration_minutes")
       .eq("merchant_id", user.id)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     loadPublicStaff(supabase, user.id, merchant.subscription_tier),
+    supabase.from("merchant_settings").select("table_mode").eq("merchant_id", user.id).maybeSingle(),
+    // Semua meja, termasuk yang tidak bisa dipesan online: booking manual boleh memakainya.
+    supabase
+      .from("dining_tables")
+      .select("id, name, max_seats")
+      .eq("merchant_id", user.id)
+      .order("sort_order")
+      .order("name"),
   ]);
   const services = servicesResult.data ?? [];
   if (servicesResult.error) {
     console.error("booking manual: muat layanan gagal", { merchantId: user.id, error: servicesResult.error });
+  }
+
+  if (settingsResult.error || tablesResult.error) {
+    console.error("booking manual: muat pengaturan meja gagal", {
+      merchantId: user.id,
+      error: settingsResult.error ?? tablesResult.error,
+    });
   }
 
   return (
@@ -72,6 +87,8 @@ export default async function NewBookingPage() {
           todayISO={jakartaDateISO(new Date())}
           services={services}
           staff={staff.map((s) => ({ id: s.id, name: s.name }))}
+          tableMode={settingsResult.data?.table_mode ?? "NONE"}
+          tables={tablesResult.data ?? []}
         />
       )}
     </>

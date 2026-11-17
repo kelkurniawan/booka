@@ -9,6 +9,9 @@ export const manualBookingSchema = z.object({
   startISO: z.iso.datetime({ offset: true }),
   customerName: customerNameSchema,
   customerWhatsapp: customerWhatsappSchema,
+  partySize: z.number().int().min(1).max(200).nullable().default(null),
+  tableId: z.uuid().nullable().default(null),
+  customerNote: z.string().trim().max(300).nullable().default(null),
 });
 
 export type ManualBookingInput = z.input<typeof manualBookingSchema>;

@@ -59,6 +59,9 @@ export const PermintaanBerbayar: Story = { render: () => panel(REQUEST_ROW, []) 
 export const BayarDiTempatBelumLunas: Story = { render: () => panel(ON_SITE_UNPAID) };
 export const DpDenganSisaLunas: Story = { render: () => panel(PAID_DEPOSIT) };
 export const Dibatalkan: Story = { render: () => panel(CANCELLED) };
+const RESERVASI: BookingListItem = { ...ON_SITE_UNPAID, id: "r-1", service_name: "Reservasi meja", party_size: 4, table_label: "D5 + D6", customer_note: "Ulang tahun, minta kursi bayi", capacity_mode: "TABLE" };
+
+export const ReservasiBermeja: Story = { render: () => panel(RESERVASI, []) };
 export const Manual: Story = { render: () => panel(MANUAL, []) };
 export const RiwayatPesanGagal: Story = { render: () => panel(PAID_DEPOSIT, null) };
 export const Hp390DiDalamSheet: Story = {

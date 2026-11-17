@@ -9,6 +9,7 @@ import type { BookingListItem } from "@/app/dashboard/bookings/booking-state";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { attendanceWindow, nowLineIndex, paymentSummary } from "@/lib/booking/dashboard";
+import { seatText } from "@/lib/booking/reservation";
 import { formatTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 
@@ -93,6 +94,7 @@ function AgendaItem({
               {b.service_name}
               {b.staff_name ? `, ${b.staff_name}` : ""}
             </p>
+            {seatText(b) ? <p className="text-muted-foreground truncate text-sm">{seatText(b)}</p> : null}
           </div>
           <div className="col-start-2 text-sm sm:col-start-auto sm:text-right">
             <p>{pay.main}</p>

@@ -165,6 +165,24 @@ export function BookingDetailPanel({
             <dd>{booking.staff_name}</dd>
           </>
         ) : null}
+        {booking.party_size !== null ? (
+          <>
+            <dt className="text-muted-foreground">Tamu</dt>
+            <dd>{booking.party_size} orang</dd>
+          </>
+        ) : null}
+        {booking.table_label ? (
+          <>
+            <dt className="text-muted-foreground">Meja</dt>
+            <dd>{booking.table_label}</dd>
+          </>
+        ) : null}
+        {booking.customer_note ? (
+          <>
+            <dt className="text-muted-foreground">Catatan pelanggan</dt>
+            <dd className="break-words">{booking.customer_note}</dd>
+          </>
+        ) : null}
         <dt className="text-muted-foreground">Dibuat</dt>
         <dd>{booking.source === "MANUAL" ? "Manual" : "Halaman booking"}</dd>
       </dl>
@@ -384,6 +402,7 @@ export function BookingDetailPanel({
               username={username}
               serviceId={booking.service_id}
               staffId={booking.staff_id}
+              partySize={booking.party_size}
               dateISO={dateISO}
               value={newStart}
               onChange={setNewStart}
