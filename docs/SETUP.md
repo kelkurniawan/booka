@@ -12,6 +12,11 @@ Kalau ingin menjalankan lewat Docker dan melewati instalasi Node lokal, lihat
 npm install
 ```
 
+`ffmpeg-static` (dipakai `/api/staff/clip`) mengunduh binary ffmpeg untuk OS
+yang menjalankan `npm install`. Jangan menyalin `node_modules` dari Mac ke
+server Linux; biarkan build (Vercel atau Docker) menjalankan `npm install`
+sendiri supaya binary-nya cocok.
+
 ## 2. Environment
 
 ```bash

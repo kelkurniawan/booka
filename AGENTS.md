@@ -76,6 +76,13 @@ halaman (`motion-background.tsx`, dimuat malas, mesin `seek(t)` di
 `src/lib/theme/motion.ts`, berhenti saat reduced motion, hemat data, tab
 tersembunyi, dan punya tombol jeda), editor di `/dashboard/halaman`
 (DECISIONS #35).
+F7 selesai: profil staf (peran, perkenalan, keahlian, foto, klip) di kolom
+`staff` (`motion_path` hanya ditulis `service_role`), bucket privat
+`staff-clip-uploads` untuk klip mentah, route `/api/staff/clip` dengan
+`ffmpeg-static` (MP4 bisu maksimal 5 detik, poster JPG, GIF tidak pernah
+disajikan), `/api/slots/nearest`, dan kartu "Dengan siapa?" di
+`staff-picker.tsx` yang menghormati reduced motion dan hemat data
+(DECISIONS #36).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

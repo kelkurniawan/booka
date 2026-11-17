@@ -562,3 +562,15 @@ Latar bergerak adalah satu lapisan `fixed` di belakang seluruh halaman; semua te
 Gerakan berhenti saat `prefers-reduced-motion`, hemat data, dan tab tersembunyi; tombol jeda 44 px selalu tersedia selama gerakan bisa berjalan, dan Bentuk melanjutkan dari posisi jeda. Lapisan dimuat malas lewat `next/dynamic` hanya untuk tema `MOTION` (sekitar 4,4 KB gzip), warna dasar dirender server sehingga tidak ada pergeseran tata letak.
 
 Warna teks tombol `FILLED` ikut dijaga minimal 4,5:1 dengan `ensureContrast`, karena pemilih hitam/putih bawaan tidak menjamin rasio itu pada aksen bernada tengah (preset Hangat).
+
+## 36. Profil staf: foto dan klip
+
+Profil staf (peran, perkenalan, keahlian, foto, klip) tinggal di kolom `staff`, bukan tabel baru, karena satu staf punya tepat satu profil. Hanya Studio yang punya staf, jadi seluruh fitur ikut paket itu.
+
+Klip mentah (GIF atau video) tidak pernah disajikan ke pelanggan. Browser mengunggahnya ke bucket privat `staff-clip-uploads`, lalu `/api/staff/clip` mengubahnya dengan `ffmpeg-static` menjadi MP4 bisu maksimal 5 detik plus poster JPG di `merchant-media`, dan menghapus berkas mentah apa pun hasilnya. GIF besar dan berat; MP4 jauh lebih kecil dan bisa ditahan saat reduced motion. `motion_path` hanya bisa ditulis `service_role`, supaya klien tidak bisa menunjuk berkas yang tidak pernah diproses.
+
+Unggahan mentah dibatasi policy storage: hanya merchant Studio, hanya ke folder staf miliknya sendiri, dengan nama dan ekstensi yang sama dengan yang diterima route. Route memeriksa sesi dan `Content-Length` sebelum membaca badan, menjalankan ffmpeg tanpa shell dengan whitelist protokol (`file`) dan format, batas waktu 45 detik, dan encoder dibatasi 2 utas. Diterima sadar: berkas mentah yang diunggah tetapi tidak pernah dikirim ke route akan tertinggal di bucket privat (tidak terbaca siapa pun); bila menumpuk, tambahkan pembersih terjadwal.
+
+Klip diputar sekali tanpa suara dengan tombol "Putar lagi", bukan loop, sehingga tidak ada gerakan lebih dari 5 detik yang butuh tombol jeda. Saat reduced motion atau hemat data, hanya poster yang tampil dan MP4 tidak diminta sama sekali. Jam kosong terdekat tiap staf datang dari `/api/slots/nearest` (satu panggilan `get_booked_ranges` untuk 14 hari).
+
+Isi langkah 2 dan 3 alur booking kini selalu berada di kartu solid, karena latar bergerak F6 ada di belakang seluruh halaman.
