@@ -12,7 +12,7 @@ Spec ini berisi 11 sub-proyek yang masing-masing bisa dirilis sendiri. Setiap fa
 | F3 Dashboard Hari ini + Booking | `2026-11-15-marky-f3-dashboard.md` | Selesai di cabang `fitur/marky-f3` | F2 | Sedikit (sumber booking) |
 | F4 Kelola booking pelanggan + pengingat | `2026-11-15-marky-f4-kelola-booking.md` | Selesai di cabang `fitur/marky-f4` | F2 | Ya |
 | F5 Promosi: banner + voucher | `2026-11-15-marky-f5-promosi.md` | Selesai di cabang `fitur/marky-f5` | F2 | Ya |
-| F6 Tampilan lanjutan + latar bergerak | ditulis setelah F1 | – | F1 | Ya |
+| F6 Tampilan lanjutan + latar bergerak | `2026-11-15-marky-f6-tampilan.md` | Selesai di cabang `fitur/marky-f6` | F1 | Ya |
 | F7 Profil staf | ditulis setelah F1 | – | F1 | Ya |
 | F8 Restoran: tamu, kapasitas, meja | ditulis setelah F3 | – | F2, F3 | Ya |
 | F9 Panduan merchant baru | ditulis setelah F3 | – | F3 | Ya |

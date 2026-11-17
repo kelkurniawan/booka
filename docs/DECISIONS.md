@@ -548,3 +548,17 @@ Batas 3 banner tayang bersamaan ditegakkan trigger `enforce_banner_live_limit` d
 Banner di halaman publik tidak berputar otomatis: baris gulir horizontal dengan `scroll-snap`, banner berikutnya mengintip. Tanpa timer, tanpa tombol jeda, tanpa urusan reduced motion.
 
 Anon hanya punya hak kolom tertentu di `merchant_banners` (tanpa `published` dan timestamp). Query publik karena itu tidak boleh memakai kolom di luar daftar itu, termasuk di `order()`: urutan pemecah seri memakai `id`, bukan `created_at`.
+
+## 35. Tampilan lanjutan: merek, susunan, latar bergerak
+
+Bagian halaman yang bisa disusun hanya `PROMO`, `SERVICES`, dan `FAQ`, karena hanya itu yang benar-benar ada di halaman publik. Kepala profil selalu paling atas, watermark selalu paling bawah, dan `SERVICES` tidak bisa disembunyikan. Database menyimpan urutan sebagai permutasi persis tiga kunci (constraint tanpa fungsi), sedangkan pembaca `visibleSections()` tetap menormalkan, supaya fase berikutnya yang menambah bagian cukup memperbarui constraint. Urutan dirender di dalam `BookingFlow` pada langkah 1, karena tombol banner memegang state alur.
+
+Logo dan susunan untuk semua paket; foto sampul, gaya tombol selain `FILLED`, dan latar `MOTION` untuk Pro dan Studio. Trigger `enforce_theme_tier` hanya menolak perubahan ke nilai premium, bukan nilai lama: merchant yang turun paket tetap bisa menyimpan bagian lain tanpa menghapus sampulnya, dan `resolveTheme()` memangkasnya saat baca.
+
+Berkas tema lama (logo, sampul, background) dihapus server setelah upsert berhasil, bukan sebelumnya, supaya halaman publik tidak pernah menunjuk berkas yang hilang. Unggahan yang belum pernah tersimpan dan diganti lagi langsung dihapus dari browser.
+
+Latar bergerak adalah satu lapisan `fixed` di belakang seluruh halaman; semua teks dan kontrol duduk di permukaan solid, jadi kontras tetap dihitung terhadap kartu. Di layar lebar, pola selain gelombang ditaruh di kolom 440 px yang sama dengan isi halaman. Bentuk memakai mesin `seek(t)` murni (loop 12 detik, hanya `translate`/`rotate`/`scale`; morf `border-radius` dari kanvas dibuang karena bukan properti kompositor). Gelombang, Aurora, dan Partikel animasi CSS `transform`/`opacity`.
+
+Gerakan berhenti saat `prefers-reduced-motion`, hemat data, dan tab tersembunyi; tombol jeda 44 px selalu tersedia selama gerakan bisa berjalan, dan Bentuk melanjutkan dari posisi jeda. Lapisan dimuat malas lewat `next/dynamic` hanya untuk tema `MOTION` (sekitar 4,4 KB gzip), warna dasar dirender server sehingga tidak ada pergeseran tata letak.
+
+Warna teks tombol `FILLED` ikut dijaga minimal 4,5:1 dengan `ensureContrast`, karena pemilih hitam/putih bawaan tidak menjamin rasio itu pada aksen bernada tengah (preset Hangat).

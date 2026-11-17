@@ -69,6 +69,13 @@ di dalam `create_booking`, DP dari harga setelah diskon, anon hanya lewat
 banner promosi (`merchant_banners`, maksimal 3 tayang ditegakkan trigger, gambar
 di `{merchant_id}/banner/`), keduanya Pro dan Studio, editor di
 `/dashboard/promosi` (DECISIONS #34).
+F6 selesai: logo (semua paket), foto sampul, gaya tombol, dan latar bergerak
+(Pro dan Studio) di `merchant_themes`, susunan bagian `PROMO`/`SERVICES`/`FAQ`
+lewat `section_order` dan `hidden_sections`, latar bergerak penuh di belakang
+halaman (`motion-background.tsx`, dimuat malas, mesin `seek(t)` di
+`src/lib/theme/motion.ts`, berhenti saat reduced motion, hemat data, tab
+tersembunyi, dan punya tombol jeda), editor di `/dashboard/halaman`
+(DECISIONS #35).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
