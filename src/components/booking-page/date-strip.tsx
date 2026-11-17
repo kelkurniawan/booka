@@ -26,7 +26,7 @@ export function DateStrip({
       <div
         role="radiogroup"
         aria-label="Pilih tanggal"
-        className="-mx-4 flex snap-x gap-2 overflow-x-auto px-4 py-1"
+        className="-mx-4 flex scroll-px-4 snap-x gap-2 overflow-x-auto px-4 py-1"
       >
         {days.map((day) => {
           const { weekday, day: tgl } = parts(day.dateISO);

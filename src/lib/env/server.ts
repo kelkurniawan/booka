@@ -50,6 +50,15 @@ const serverEnvSchema = z.object({
   cronSecret: z.string().optional(),
 
   /**
+   * Web push (pengingat di HP pelanggan). Ketiganya wajib terisi agar fitur
+   * aktif; kalau ada yang kosong, push dimatikan tanpa error (seperti Sentry
+   * tanpa DSN). Buat kunci dengan `npx web-push generate-vapid-keys`.
+   */
+  vapidPublicKey: z.string().min(1).optional(),
+  vapidPrivateKey: z.string().min(1).optional(),
+  vapidSubject: z.string().min(1).optional(),
+
+  /**
    * Notifikasi. Semuanya opsional: tanpa nilai, kanal yang bersangkutan
    * dilewati (tercatat SKIPPED di notification_log), bukan membuat webhook
    * pembayaran gagal. Lihat docs/NOTIFIKASI.md.
@@ -111,6 +120,9 @@ export function serverEnv(): ServerEnv {
     xenditSecretKey: process.env.XENDIT_SECRET_KEY,
     xenditEnv: process.env.XENDIT_ENV,
     cronSecret: process.env.CRON_SECRET,
+    vapidPublicKey: emptyToUndefined(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY),
+    vapidPrivateKey: emptyToUndefined(process.env.VAPID_PRIVATE_KEY),
+    vapidSubject: emptyToUndefined(process.env.VAPID_SUBJECT),
     resendApiKey: emptyToUndefined(process.env.RESEND_API_KEY),
     emailFrom: emptyToUndefined(process.env.EMAIL_FROM),
     whatsappProvider: emptyToUndefined(process.env.WHATSAPP_PROVIDER),

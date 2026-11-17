@@ -30,6 +30,7 @@ const BASE: BookingListItem = {
   no_show_at: null,
   source: "ONLINE",
   merchant_reschedule_count: 0,
+  reschedule_count: 0,
 };
 
 function row(id: string, over: Partial<BookingListItem>): BookingListItem {

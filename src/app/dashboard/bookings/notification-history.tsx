@@ -3,7 +3,10 @@ import type { NotificationChannel, NotificationKind, NotificationStatus } from "
 const KIND_LABEL: Record<NotificationKind, string> = {
   BOOKING_PAID_MERCHANT: "Pemberitahuan ke Anda",
   BOOKING_PAID_CUSTOMER: "Konfirmasi ke pelanggan",
-  REMINDER_CUSTOMER: "Reminder H-1 ke pelanggan",
+  REMINDER_CUSTOMER: "Pengingat H-1 ke pelanggan",
+  REMINDER_CUSTOMER_SAME_DAY: "Pengingat hari H ke pelanggan",
+  BOOKING_RESCHEDULED_MERCHANT: "Pemberitahuan ubah jadwal oleh pelanggan",
+  BOOKING_CANCELLED_MERCHANT: "Pemberitahuan batal oleh pelanggan",
   BOOKING_CONFIRMED_MERCHANT: "Pemberitahuan ke Anda",
   BOOKING_CONFIRMED_CUSTOMER: "Konfirmasi ke pelanggan",
   BOOKING_REQUESTED_MERCHANT: "Permintaan ke Anda",
@@ -14,6 +17,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 const CHANNEL_LABEL: Record<NotificationChannel, string> = {
   EMAIL: "email",
   WHATSAPP: "WhatsApp",
+  PUSH: "Notifikasi HP",
 };
 
 const STATUS_LABEL: Record<NotificationStatus, string> = {

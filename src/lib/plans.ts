@@ -52,7 +52,7 @@ export const PLANS: Plan[] = [
     features: [
       { label: "Transaksi tanpa batas" },
       { label: "Layanan tanpa batas" },
-      { label: "Reminder WhatsApp H-1 ke pelanggan" },
+      { label: "Pengingat ke pelanggan lewat WhatsApp, email, dan notifikasi HP" },
       { label: "Tanpa watermark" },
       { label: "Semua tema, warna, dan font sendiri" },
       { label: "Video pada layanan" },

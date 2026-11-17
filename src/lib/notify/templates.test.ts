@@ -13,13 +13,20 @@ import {
   merchantRequestedWhatsapp,
   customerPaidWhatsapp,
   customerReminderWhatsapp,
+  customerReminderEmail,
+  customerReminderPush,
   merchantPaidEmail,
   merchantPaidWhatsapp,
+  merchantRescheduledEmail,
+  merchantRescheduledWhatsapp,
+  merchantCustomerCancelledEmail,
+  merchantCustomerCancelledWhatsapp,
   waLink,
   type BookingMessageData,
 } from "./templates";
 
 const base: BookingMessageData = {
+  bookingId: "11111111-1111-1111-1111-111111111111",
   merchantName: "Studio Mawar",
   merchantWhatsapp: "+6281234567890",
   customerName: "Rina",
@@ -28,6 +35,7 @@ const base: BookingMessageData = {
   servicePrice: 150000,
   // 10:30 UTC = 17:30 WIB, Rabu 19 Agustus 2026.
   startDatetime: "2026-08-19T10:30:00.000Z",
+  endDatetime: "2026-08-19T11:30:00.000Z",
   statusUrl: "https://marky.id/pesanan/abc",
   dashboardUrl: "https://marky.id/dashboard/bookings",
   amountDueNow: 150000,
@@ -68,11 +76,11 @@ test("WA pelanggan tanpa nomor merchant tidak menulis baris kontak kosong", () =
 test("baris staf hanya muncul bila staf diisi", () => {
   assert.doesNotMatch(merchantPaidWhatsapp(base), /Staf:/);
   assert.match(merchantPaidWhatsapp({ ...base, staffName: "Dewi" }), /Staf: Dewi/);
-  assert.match(customerReminderWhatsapp({ ...base, staffName: "Dewi" }), /Staf: Dewi/);
+  assert.match(customerReminderWhatsapp({ ...base, staffName: "Dewi" }, "DAY_BEFORE"), /Staf: Dewi/);
 });
 
 test("reminder menyebut 'besok' dan jadwal WIB", () => {
-  const text = customerReminderWhatsapp(base);
+  const text = customerReminderWhatsapp(base, "DAY_BEFORE");
   assert.match(text, /besok/);
   assert.match(text, /17:30 WIB/);
 });
@@ -94,9 +102,9 @@ test("WA merchant lunas: Dibayar dan Sisa di tempat hanya bila sisa > 0", () => 
 
 test("reminder menambah Bayar di tempat hanya bila belum lunas di tempat", () => {
   const due = { ...base, amountDueOnSite: 245000 };
-  assert.match(customerReminderWhatsapp(due), /Bayar di tempat/);
-  assert.doesNotMatch(customerReminderWhatsapp({ ...due, paidOnSite: true }), /Bayar di tempat/);
-  assert.doesNotMatch(customerReminderWhatsapp(base), /Bayar di tempat/);
+  assert.match(customerReminderWhatsapp(due, "DAY_BEFORE"), /Bayar di tempat/);
+  assert.doesNotMatch(customerReminderWhatsapp({ ...due, paidOnSite: true }, "DAY_BEFORE"), /Bayar di tempat/);
+  assert.doesNotMatch(customerReminderWhatsapp(base, "DAY_BEFORE"), /Bayar di tempat/);
 });
 
 test("WA persetujuan memuat nominal, statusUrl, dan batas bayar", () => {
@@ -147,4 +155,56 @@ test("pesan terkonfirmasi menulis Bayar di tempat hanya bila ada sisa di tempat"
 
 test("subjek email booking dibayar tanpa em dash", () => {
   assert.doesNotMatch(merchantPaidEmail(base).subject, /—/);
+});
+
+test("template perubahan oleh pelanggan memuat nama, layanan, jadwal, tautan dashboard, tanpa karakter terlarang", () => {
+  const oldStart = "2026-08-18T09:00:00.000Z"; // Selasa 18 Agustus 16:00 WIB
+  const outputs = [
+    merchantRescheduledWhatsapp(base, oldStart),
+    merchantRescheduledEmail(base, oldStart).text,
+    merchantRescheduledEmail(base, oldStart).subject,
+    merchantRescheduledEmail(base, oldStart).html,
+    merchantCustomerCancelledWhatsapp(base),
+    merchantCustomerCancelledEmail(base).text,
+    merchantCustomerCancelledEmail(base).subject,
+    merchantCustomerCancelledEmail(base).html,
+  ];
+  for (const out of outputs) assert.doesNotMatch(out, /—|·/);
+  // Email tidak memakai penanda tebal WhatsApp.
+  for (const out of [outputs[1], outputs[3], outputs[5], outputs[7]]) assert.doesNotMatch(out, /\*/);
+  for (const out of [outputs[0], outputs[1], outputs[4], outputs[5]]) {
+    assert.match(out, /Rina/);
+    assert.match(out, /Makeup Wisuda/);
+    assert.ok(out.includes(base.dashboardUrl));
+  }
+  for (const out of [outputs[0], outputs[1]]) {
+    assert.match(out, /Selasa, 18 Agustus 2026 pukul 16:00/);
+    assert.match(out, /Rabu, 19 Agustus 2026 pukul 17:30/);
+  }
+  assert.match(outputs[2], /^Jadwal diubah pelanggan: Makeup Wisuda$/);
+  assert.match(outputs[6], /^Booking dibatalkan pelanggan: Makeup Wisuda$/);
+  assert.match(outputs[4], /Slotnya sudah kosong lagi\./);
+});
+
+test("pengingat hari H memakai 'hari ini', bukan 'besok'", () => {
+  const text = customerReminderWhatsapp(base, "SAME_DAY");
+  assert.match(text, /hari ini:/);
+  assert.doesNotMatch(text, /besok/);
+});
+
+test("email pengingat melampirkan booking.ics", () => {
+  const email = customerReminderEmail(base, "DAY_BEFORE");
+  assert.match(email.subject, /^Pengingat besok: Makeup Wisuda/);
+  assert.equal(email.attachments?.length, 1);
+  assert.equal(email.attachments?.[0].filename, "booking.ics");
+  assert.match(Buffer.from(email.attachments![0].content, "base64").toString("utf8"), /^BEGIN:VCALENDAR/);
+});
+
+test("push pengingat: judul, isi, url, dan tag per booking", () => {
+  const p = customerReminderPush(base, "SAME_DAY");
+  assert.equal(p.title, "Pengingat: Makeup Wisuda");
+  assert.equal(p.body, "Hari ini, 17:30 WIB di Studio Mawar.");
+  assert.equal(p.url, new URL(base.statusUrl).pathname);
+  assert.ok(p.url.startsWith("/"));
+  assert.equal(p.tag, `booking-${base.bookingId}`);
 });

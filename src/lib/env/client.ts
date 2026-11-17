@@ -19,6 +19,8 @@ const rawClientEnv = {
   // Nomor WhatsApp tim Marky untuk permintaan upgrade/downgrade paket manual.
   // Opsional -- halaman Langganan menyembunyikan tombol upgrade kalau kosong.
   supportWhatsapp: process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP,
+  // Kunci publik VAPID untuk langganan web push. Kosong = fitur push tersembunyi.
+  vapidPublicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || undefined,
 };
 
 const clientEnvSchema = z.object({
@@ -33,6 +35,7 @@ const clientEnvSchema = z.object({
       "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY (atau NEXT_PUBLIC_SUPABASE_ANON_KEY) wajib diisi",
     ),
   supportWhatsapp: z.string().optional(),
+  vapidPublicKey: z.string().optional(),
 });
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
