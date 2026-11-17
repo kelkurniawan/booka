@@ -125,3 +125,17 @@ test("harga 1..1499 ditolak untuk FULL, DEPOSIT, REQUEST; ON_SITE dan 0 diterima
   assert.equal(serviceSchema.safeParse({ ...VALID, price: "1000", payment_mode: "ON_SITE" }).success, true);
   assert.equal(serviceSchema.safeParse({ ...VALID, price: "0", payment_mode: "FULL" }).success, true);
 });
+
+test("jumlah tamu: min tanpa max, min > max, dan lama duduk tanpa rentang ditolak", () => {
+  assert.equal(serviceSchema.safeParse({ ...VALID, partyMin: "2" }).success, false);
+  assert.equal(serviceSchema.safeParse({ ...VALID, partyMin: "5", partyMax: "2" }).success, false);
+  assert.equal(serviceSchema.safeParse({ ...VALID, seatDurationMinutes: "90" }).success, false);
+  assert.equal(serviceSchema.safeParse({ ...VALID, partyMin: "1", partyMax: "201" }).success, false);
+});
+
+test("jumlah tamu: rentang 1 sampai 12 dengan lama duduk 90 diterima, kosong jadi null", () => {
+  const ok = serviceSchema.parse({ ...VALID, partyMin: "1", partyMax: "12", seatDurationMinutes: "90" });
+  assert.deepEqual([ok.partyMin, ok.partyMax, ok.seatDurationMinutes], [1, 12, 90]);
+  const kosong = serviceSchema.parse({ ...VALID, partyMin: "", partyMax: "", seatDurationMinutes: "" });
+  assert.deepEqual([kosong.partyMin, kosong.partyMax, kosong.seatDurationMinutes], [null, null, null]);
+});

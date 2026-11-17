@@ -30,7 +30,10 @@ function toFieldErrors(error: z.ZodError): ServiceFormState {
       key === "price" ||
       key === "duration_minutes" ||
       key === "deposit_type" ||
-      key === "deposit_value"
+      key === "deposit_value" ||
+      key === "partyMin" ||
+      key === "partyMax" ||
+      key === "seatDurationMinutes"
     ) {
       fieldErrors[key] ??= issue.message;
     }
@@ -47,6 +50,10 @@ function parseServiceForm(formData: FormData) {
     payment_mode: formData.get("payment_mode") ?? undefined,
     deposit_type: formData.get("deposit_type") ?? "",
     deposit_value: formData.get("deposit_value") ?? "",
+    partyMin: formData.get("partyMin") ?? "",
+    partyMax: formData.get("partyMax") ?? "",
+    // Kotak "Reservasi meja" mati: lama duduk tidak terkirim, jadi null.
+    seatDurationMinutes: formData.get("seatDurationMinutes") ?? "",
   });
 }
 
@@ -75,6 +82,9 @@ export async function createService(
       payment_mode: parsed.data.payment_mode,
       deposit_type: parsed.data.deposit_type,
       deposit_value: parsed.data.deposit_value,
+      party_min: parsed.data.partyMin,
+      party_max: parsed.data.partyMax,
+      seat_duration_minutes: parsed.data.seatDurationMinutes,
     })
     .select("id")
     .single();
@@ -120,6 +130,9 @@ export async function updateService(
       payment_mode: parsed.data.payment_mode,
       deposit_type: parsed.data.deposit_type,
       deposit_value: parsed.data.deposit_value,
+      party_min: parsed.data.partyMin,
+      party_max: parsed.data.partyMax,
+      seat_duration_minutes: parsed.data.seatDurationMinutes,
     })
     .eq("id", id)
     // RLS sudah membatasi ke merchant pemilik, tapi filter eksplisit ini

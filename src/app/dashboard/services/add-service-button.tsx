@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import type { SubscriptionTier } from "@/types/database";
+import type { SubscriptionTier, TableMode } from "@/types/database";
 
 import type { ServicePaymentSettings } from "./payment-mode-field";
 import { ServiceFormDialog } from "./service-form-dialog";
@@ -13,10 +13,12 @@ export function AddServiceButton({
   merchantId,
   tier,
   settings,
+  tableMode,
 }: {
   merchantId: string;
   tier: SubscriptionTier;
   settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -32,6 +34,7 @@ export function AddServiceButton({
         merchantId={merchantId}
         tier={tier}
         settings={settings}
+        tableMode={tableMode}
       />
     </>
   );

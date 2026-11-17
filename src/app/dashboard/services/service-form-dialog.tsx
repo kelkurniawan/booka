@@ -26,10 +26,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { mediaFileName, removeMedia, uploadMedia } from "@/lib/media/upload";
 import { ROUTES } from "@/lib/routes";
-import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
+import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types/database";
 
 import { attachServiceMedia, createService, updateService } from "./actions";
 import { PaymentModeField, type ServicePaymentSettings } from "./payment-mode-field";
+import { ReservationFields } from "./reservation-fields";
 import { ServiceMediaField, type DraftMedia } from "./service-media-field";
 import { INITIAL_SERVICE_FORM_STATE, type ServiceFormState } from "./service-state";
 
@@ -49,6 +50,7 @@ export function ServiceFormDialog({
   tier,
   media = [],
   settings,
+  tableMode,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -57,6 +59,7 @@ export function ServiceFormDialog({
   tier: SubscriptionTier;
   media?: ServiceMedia[];
   settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   // Dipegang di sini, bukan di ServiceForm, supaya dialog sendiri bisa
   // menolak ditutup selagi submit atau unggahan draft masih berjalan --
@@ -99,6 +102,7 @@ export function ServiceFormDialog({
           tier={tier}
           media={media}
           settings={settings}
+          tableMode={tableMode}
           pending={pending}
           startTransition={startTransition}
           mediaSibuk={mediaSibuk}
@@ -187,6 +191,7 @@ function ServiceForm({
   tier,
   media,
   settings,
+  tableMode,
   pending,
   startTransition,
   mediaSibuk,
@@ -198,6 +203,7 @@ function ServiceForm({
   tier: SubscriptionTier;
   media: ServiceMedia[];
   settings: ServicePaymentSettings;
+  tableMode: TableMode;
   /** Dipegang oleh ServiceFormDialog supaya dialog bisa menolak ditutup selagi ini true. */
   pending: boolean;
   startTransition: TransitionStartFunction;
@@ -368,6 +374,8 @@ function ServiceForm({
           settings={settings}
           depositError={state.fieldErrors?.deposit_value ?? state.fieldErrors?.deposit_type}
         />
+
+        <ReservationFields service={service} tableMode={tableMode} errors={state.fieldErrors} />
 
         {state.status === "error" && !state.fieldErrors ? (
           <Alert variant="destructive">

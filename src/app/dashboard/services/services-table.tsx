@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/table";
 import { formatDuration, formatRupiah } from "@/lib/format";
 import { removeMedia } from "@/lib/media/upload";
-import type { Service, ServiceMedia, SubscriptionTier } from "@/types/database";
+import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types/database";
 
 import { deleteService, toggleServiceActive } from "./actions";
 import { paymentLabel } from "@/lib/booking/payment-mode";
@@ -46,12 +46,14 @@ export function ServicesTable({
   tier,
   mediaByService,
   settings,
+  tableMode,
 }: {
   services: Service[];
   merchantId: string;
   tier: SubscriptionTier;
   mediaByService: Record<string, ServiceMedia[]>;
   settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border">
@@ -74,6 +76,7 @@ export function ServicesTable({
               tier={tier}
               media={mediaByService[service.id] ?? []}
               settings={settings}
+              tableMode={tableMode}
             />
           ))}
         </TableBody>
@@ -88,12 +91,14 @@ function ServiceRow({
   tier,
   media,
   settings,
+  tableMode,
 }: {
   service: Service;
   merchantId: string;
   tier: SubscriptionTier;
   media: ServiceMedia[];
   settings: ServicePaymentSettings;
+  tableMode: TableMode;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -135,6 +140,11 @@ function ServiceRow({
           {service.description ? (
             <p className="text-muted-foreground line-clamp-2 text-xs">
               {service.description}
+            </p>
+          ) : null}
+          {service.party_min != null && service.party_max != null ? (
+            <p className="text-muted-foreground text-xs">
+              {service.party_min} sampai {service.party_max} orang
             </p>
           ) : null}
         </TableCell>
@@ -199,6 +209,7 @@ function ServiceRow({
         tier={tier}
         media={media}
         settings={settings}
+        tableMode={tableMode}
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

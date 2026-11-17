@@ -65,7 +65,46 @@ export function isChargeablePrice(price: number): boolean {
  * DP. DP dibuang untuk FULL dan ON_SITE. Selain ON_SITE, harga harus 0 atau
  * minimal MIN_ONLINE_CHARGE (create_booking menolak sisanya dengan BK022).
  */
-export const serviceSchema = serviceFieldsSchema.transform((v, ctx) => {
+// Kosong dari form berarti "tidak diisi" (null).
+const optionalInt = (min: number, max: number, label: string) =>
+  z.preprocess(
+    (v) => (v === "" || v === undefined || v === null ? null : v),
+    z
+      .coerce.number(`${label} harus berupa angka`)
+      .int(`${label} harus bilangan bulat`)
+      .min(min, `${label} minimal ${min}`)
+      .max(max, `${label} maksimal ${max}`)
+      .nullable(),
+  );
+
+export const serviceSchema = serviceFieldsSchema
+  .extend({
+    partyMin: optionalInt(1, 200, "Jumlah tamu minimal"),
+    partyMax: optionalInt(1, 200, "Jumlah tamu maksimal"),
+    seatDurationMinutes: optionalInt(15, 480, "Lama duduk"),
+  })
+  .transform((v, ctx) => {
+  // Mencerminkan constraint rentang tamu dan lama duduk di tabel services.
+  if ((v.partyMin === null) !== (v.partyMax === null)) {
+    ctx.addIssue({
+      code: "custom",
+      path: [v.partyMin === null ? "partyMin" : "partyMax"],
+      message: "Isi jumlah tamu minimal dan maksimal, atau kosongkan keduanya",
+    });
+  } else if (v.partyMin !== null && v.partyMax !== null && v.partyMin > v.partyMax) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["partyMax"],
+      message: "Jumlah tamu maksimal tidak boleh lebih kecil dari minimal",
+    });
+  }
+  if (v.seatDurationMinutes !== null && v.partyMax === null) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["partyMax"],
+      message: "Isi rentang jumlah tamu untuk layanan reservasi meja",
+    });
+  }
   if (v.payment_mode !== "ON_SITE" && !isChargeablePrice(v.price)) {
     ctx.addIssue({ code: "custom", path: ["price"], message: ONLINE_PRICE_MESSAGE });
   }
@@ -91,7 +130,7 @@ export const serviceSchema = serviceFieldsSchema.transform((v, ctx) => {
     });
   }
   return v;
-});
+  });
 
 export type ServiceInput = z.input<typeof serviceSchema>;
 export type ServiceValues = z.output<typeof serviceSchema>;

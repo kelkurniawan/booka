@@ -33,6 +33,7 @@ export const ROUTES = {
   promoVouchers: "/dashboard/promosi/voucher",
   services: "/dashboard/services",
   availability: "/dashboard/availability",
+  floorPlan: "/dashboard/denah",
   staff: "/dashboard/staf",
   staffClipApi: "/api/staff/clip",
   payments: "/dashboard/payments",

@@ -44,10 +44,11 @@ export default async function ServicesPage() {
   // Baris dibuat trigger/backfill; bila belum ada, pakai bawaan.
   const { data: settingsRow } = await supabase
     .from("merchant_settings")
-    .select("allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show")
+    .select("allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show, table_mode")
     .eq("merchant_id", user.id)
     .maybeSingle();
   const settings = settingsRow ?? DEFAULT_MERCHANT_SETTINGS;
+  const tableMode = settingsRow?.table_mode ?? "NONE";
 
   // `service_media` datang menempel di tiap baris lewat embedding; dipisah di
   // sini supaya komponen di bawah tetap menerima Service[] polos.
@@ -69,7 +70,7 @@ export default async function ServicesPage() {
       <PageHeader
         title="Layanan"
         description="Daftar layanan yang bisa dipesan pelanggan beserta harga dan durasinya."
-        action={<AddServiceButton merchantId={user.id} tier={tier} settings={settings} />}
+        action={<AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} />}
       />
 
       {limitReached ? (
@@ -97,7 +98,7 @@ export default async function ServicesPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <AddServiceButton merchantId={user.id} tier={tier} settings={settings} />
+            <AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} />
           </EmptyContent>
         </Empty>
       ) : (
@@ -106,7 +107,7 @@ export default async function ServicesPage() {
           merchantId={user.id}
           tier={tier}
           mediaByService={mediaByService}
-          settings={settings}
+          settings={settings} tableMode={tableMode}
         />
       )}
     </>

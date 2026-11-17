@@ -8,6 +8,7 @@ import {
   CreditCard,
   ExternalLink,
   Globe,
+  LayoutGrid,
   LayoutList,
   Megaphone,
   Palette,
@@ -52,6 +53,7 @@ const NAV_GROUPS = [
     items: [
       { title: "Layanan", href: ROUTES.services, icon: Sparkles },
       { title: "Jam buka", href: ROUTES.availability, icon: CalendarClock },
+      { title: "Denah meja", href: ROUTES.floorPlan, icon: LayoutGrid },
       { title: "Staf", href: ROUTES.staff, icon: Users },
       { title: "Pembayaran", href: ROUTES.payments, icon: Wallet },
     ],
