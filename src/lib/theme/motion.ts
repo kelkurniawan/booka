@@ -12,7 +12,7 @@ export const MOTION_SPEED_FACTOR: Record<MotionSpeed, number> = {
 
 export const MOTION_LABELS: Record<BackgroundMotion, { label: string; hint: string }> = {
   BENTUK: { label: "Bentuk", hint: "Bentuk melayang dan berputar pelan" },
-  GELOMBANG: { label: "Gelombang", hint: "Ombak pelan di bagian atas" },
+  GELOMBANG: { label: "Gelombang", hint: "Ombak pelan bergulir di bawah layar" },
   AURORA: { label: "Aurora", hint: "Cahaya lembut bergeser" },
   PARTIKEL: { label: "Partikel", hint: "Titik kecil melayang naik" },
 };

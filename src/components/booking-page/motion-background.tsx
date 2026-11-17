@@ -38,13 +38,14 @@ function useSaveData(): boolean {
   const prefersReducedData = useMedia("(prefers-reduced-data: reduce)");
   const connection = useSyncExternalStore(
     (cb) => {
-      const c = (navigator as Navigator & { connection?: EventTarget }).connection;
+      const c = (navigator as Navigator & { connection?: EventTarget })
+        .connection;
       c?.addEventListener("change", cb);
       return () => c?.removeEventListener("change", cb);
     },
     () =>
-      (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
-        ?.saveData === true,
+      (navigator as Navigator & { connection?: { saveData?: boolean } })
+        .connection?.saveData === true,
     () => false,
   );
   return prefersReducedData || connection;
@@ -66,9 +67,17 @@ const GELOMBANG_PATHS = [
   "M0 110 Q 195 40 390 110 T 780 110 T 1170 110 T 1560 110 V200 H0Z",
   "M0 120 Q 195 60 390 120 T 780 120 T 1170 120 T 1560 120 V200 H0Z",
 ];
-const GELOMBANG_FILLS = ["var(--motion-a)", "var(--motion-b)", "var(--background)"];
+const GELOMBANG_FILLS = [
+  "var(--motion-a)",
+  "var(--motion-b)",
+  "var(--background)",
+];
 
-export function MotionBackground({ preset, speed, forceStatic = false }: MotionBackgroundProps) {
+export function MotionBackground({
+  preset,
+  speed,
+  forceStatic = false,
+}: MotionBackgroundProps) {
   const reducedMotion = useMedia("(prefers-reduced-motion: reduce)");
   const saveData = useSaveData();
   const hidden = useDocumentHidden();
@@ -109,7 +118,11 @@ export function MotionBackground({ preset, speed, forceStatic = false }: MotionB
     <>
       <div
         aria-hidden="true"
-        className={cn(styles.layer, !berjalan && styles.paused, !boleh && styles.static)}
+        className={cn(
+          styles.layer,
+          !berjalan && styles.paused,
+          !boleh && styles.static,
+        )}
       >
         {preset === "GELOMBANG"
           ? GELOMBANG_PATHS.map((d, i) => (
@@ -117,54 +130,61 @@ export function MotionBackground({ preset, speed, forceStatic = false }: MotionB
                 key={i}
                 viewBox="0 0 1560 200"
                 preserveAspectRatio="none"
-                className={cn(styles.wave, styles[`wave${i + 1}`], styles[`wv${i + 1}`])}
+                className={cn(
+                  styles.wave,
+                  styles[`wave${i + 1}`],
+                  styles[`wv${i + 1}`],
+                )}
               >
                 <path d={d} fill={GELOMBANG_FILLS[i]} />
               </svg>
             ))
           : null}
-        {preset === "AURORA"
-          ? [1, 2, 3].map((n) => (
-              <div key={n} className={cn(styles.blob, styles[`au${n}`])} />
-            ))
-          : null}
-        {preset === "BENTUK"
-          ? BENTUK_SHAPES.map((s, i) => (
-              <span
-                key={i}
-                ref={(el) => {
-                  shapeRefs.current[i] = el;
-                }}
-                className="absolute left-0 top-0"
-                style={{
-                  width: s.size,
-                  height: s.size,
-                  borderRadius: s.rounded === "full" ? "9999px" : "28px",
-                  background: `var(--motion-${s.tone})`,
-                  willChange: "transform",
-                  transform: awal[i],
-                }}
-              />
-            ))
-          : null}
-        {preset === "PARTIKEL"
-          ? PARTIKEL_DOTS.map((d, i) => (
-              <span
-                key={i}
-                className={styles.dot}
-                style={
-                  {
-                    left: `${d.leftPercent}%`,
-                    width: d.size,
-                    height: d.size,
-                    background: `var(--motion-${d.tone})`,
-                    "--d": `${d.durationSeconds}s`,
-                    "--l": `${d.delaySeconds}s`,
-                  } as React.CSSProperties
-                }
-              />
-            ))
-          : null}
+        {/* Selain gelombang, pola diletakkan di kolom yang sama dengan isi halaman supaya tidak terdampar di pojok layar lebar. */}
+        <div className="relative mx-auto h-full w-full max-w-[440px]">
+          {preset === "AURORA"
+            ? [1, 2, 3].map((n) => (
+                <div key={n} className={cn(styles.blob, styles[`au${n}`])} />
+              ))
+            : null}
+          {preset === "BENTUK"
+            ? BENTUK_SHAPES.map((s, i) => (
+                <span
+                  key={i}
+                  ref={(el) => {
+                    shapeRefs.current[i] = el;
+                  }}
+                  className="absolute left-0 top-0"
+                  style={{
+                    width: s.size,
+                    height: s.size,
+                    borderRadius: s.rounded === "full" ? "9999px" : "28px",
+                    background: `var(--motion-${s.tone})`,
+                    willChange: "transform",
+                    transform: awal[i],
+                  }}
+                />
+              ))
+            : null}
+          {preset === "PARTIKEL"
+            ? PARTIKEL_DOTS.map((d, i) => (
+                <span
+                  key={i}
+                  className={styles.dot}
+                  style={
+                    {
+                      left: `${d.leftPercent}%`,
+                      width: d.size,
+                      height: d.size,
+                      background: `var(--motion-${d.tone})`,
+                      "--d": `${d.durationSeconds}s`,
+                      "--l": `${d.delaySeconds}s`,
+                    } as React.CSSProperties
+                  }
+                />
+              ))
+            : null}
+        </div>
       </div>
       {boleh ? (
         <button
@@ -174,7 +194,11 @@ export function MotionBackground({ preset, speed, forceStatic = false }: MotionB
           onClick={() => setPaused((p) => !p)}
           className="fixed right-2 top-2 z-30 flex size-11 items-center justify-center rounded-full border border-border bg-card/85 text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          {paused ? <Play aria-hidden className="size-4" /> : <Pause aria-hidden className="size-4" />}
+          {paused ? (
+            <Play aria-hidden className="size-4" />
+          ) : (
+            <Pause aria-hidden className="size-4" />
+          )}
         </button>
       ) : null}
     </>
