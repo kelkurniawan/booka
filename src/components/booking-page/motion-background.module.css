@@ -1,0 +1,54 @@
+/* Hanya transform dan opacity yang digerakkan. Durasi dikali --motion-factor (kecepatan). */
+@keyframes waveA {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@keyframes drift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 30px) scale(1.15); }
+}
+@keyframes drift2 {
+  0%, 100% { transform: translate(0, 0) scale(1.1); }
+  50% { transform: translate(-50px, 40px) scale(0.9); }
+}
+@keyframes rise {
+  from { transform: translateY(40px); opacity: 0; }
+  20% { opacity: 0.9; }
+  to { transform: translateY(-320px); opacity: 0; }
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: -10;
+  overflow: hidden;
+  background: var(--motion-base);
+  /* Topeng alfa, tidak terlihat sebagai warna: memudarkan latar ke bawah. */
+  -webkit-mask-image: linear-gradient(black 55%, transparent);
+  mask-image: linear-gradient(black 55%, transparent);
+}
+
+.wave { position: absolute; width: 200%; }
+.wave1 { left: 0; bottom: 70px; height: 180px; }
+.wave2 { left: -50%; bottom: 40px; height: 170px; }
+.wave3 { left: 0; bottom: 0; height: 150px; }
+
+.blob { position: absolute; border-radius: 9999px; }
+.au1 { left: -60px; top: -40px; width: 300px; height: 300px; background: radial-gradient(circle, var(--motion-a), transparent 65%); }
+.au2 { right: -80px; top: 20px; width: 320px; height: 320px; background: radial-gradient(circle, var(--motion-b), transparent 65%); }
+.au3 { left: 80px; top: 120px; width: 260px; height: 260px; background: radial-gradient(circle, var(--motion-c), transparent 65%); }
+
+.dot { position: absolute; bottom: 0; border-radius: 9999px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .wv1 { animation: waveA calc(18s * var(--motion-factor)) linear infinite; }
+  .wv2 { animation: waveA calc(26s * var(--motion-factor)) linear infinite reverse; }
+  .wv3 { animation: waveA calc(34s * var(--motion-factor)) linear infinite; }
+  .au1 { animation: drift1 calc(16s * var(--motion-factor)) ease-in-out infinite; }
+  .au2 { animation: drift2 calc(20s * var(--motion-factor)) ease-in-out infinite; }
+  .au3 { animation: drift1 calc(24s * var(--motion-factor)) ease-in-out infinite reverse; }
+  .dot { animation: rise calc(var(--d) * var(--motion-factor)) linear infinite; animation-delay: var(--l); }
+}
+
+.paused * { animation-play-state: paused; }
+.static * { animation: none; }
