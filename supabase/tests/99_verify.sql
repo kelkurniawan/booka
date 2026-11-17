@@ -4909,3 +4909,27 @@ select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) valu
 select case when (select count(*) from storage.objects where bucket_id = 'staff-clip-uploads') = 0
             then 'OK   t57c anon tidak bisa membaca' else 'FAIL t57c anon bisa membaca' end as t57c;
 rollback;
+
+-- 57d. Unggahan klip mentah hanya untuk Studio, ke folder staf sendiri (20261119000200)
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '55505550-0000-0000-0000-000000000001';
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/55505550-57af-0000-0000-000000000001/a1.exe')$q$,
+  't57d ekstensi selain gif/mp4/webm/mov');
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/55505550-57af-0000-0000-0000000000ff/a1.gif')$q$,
+  't57d folder staf yang tidak ada');
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/sembarang/a1.gif')$q$,
+  't57d folder kedua bukan id staf');
+rollback;
+
+begin;
+update public.merchants set subscription_tier = 'PRO' where id = '55505550-0000-0000-0000-000000000001';
+set local role authenticated;
+set local request.jwt.claim.sub = '55505550-0000-0000-0000-000000000001';
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/55505550-57af-0000-0000-000000000001/a1.gif')$q$,
+  't57d merchant Pro tidak bisa mengunggah klip');
+rollback;

@@ -45,6 +45,8 @@ export function clipFfmpegArgs(inputPath: string, outputPath: string): string[] 
     "-an", "-sn", "-dn",
     "-vf", "scale=480:480:force_original_aspect_ratio=decrease:force_divisible_by=2,fps=24",
     "-c:v", "libx264",
+    // Batasi utas encoder supaya beberapa permintaan bersamaan tidak menghabiskan CPU.
+    "-threads", "2",
     "-preset", "veryfast",
     "-crf", "28",
     "-pix_fmt", "yuv420p",

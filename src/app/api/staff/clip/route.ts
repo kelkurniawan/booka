@@ -40,20 +40,25 @@ function galat(error: string, status: number) {
  * getUser(). Klien admin melewati RLS: setiap query memfilter merchant_id.
  */
 export async function POST(request: Request) {
+  // Sesi dan ukuran dicek sebelum badan dibaca, supaya badan raksasa ditolak tanpa dimuat ke memori.
+  const { data } = await (await createClient()).auth.getUser();
+  const user = data.user;
+  if (!user) return galat("Silakan masuk lagi.", 401);
+
+  // Badan sah hanya ~100 byte; 2 KB sudah sangat longgar.
+  const panjang = Number(request.headers.get("content-length"));
+  if (!Number.isFinite(panjang) || panjang <= 0 || panjang > 2048) {
+    return galat("Permintaan tidak valid.", 400);
+  }
   const raw = await request.text().catch(() => "");
   let parsed: z.infer<typeof bodySchema>;
   try {
-    // Badan sah hanya ~100 byte; 2 KB sudah sangat longgar.
     if (raw.length > 2048) throw new Error("terlalu besar");
     parsed = bodySchema.parse(JSON.parse(raw));
   } catch {
     return galat("Permintaan tidak valid.", 400);
   }
   const { staffId, uploadPath } = parsed;
-
-  const { data } = await (await createClient()).auth.getUser();
-  const user = data.user;
-  if (!user) return galat("Silakan masuk lagi.", 401);
 
   const admin = createAdminClient();
 
