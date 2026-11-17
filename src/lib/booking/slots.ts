@@ -192,3 +192,45 @@ export function computeStaffSlots(params: {
 
   return [...byStart.values()].sort((a, b) => a.startUtc.localeCompare(b.startUtc));
 }
+
+export const ANY_STAFF_KEY = "any";
+export const NEAREST_SLOT_DAYS = 14;
+export type NearestSlot = FreeSlot & { dateISO: string };
+
+/**
+ * Jam kosong terdekat per staf (kunci: id staf) plus "siapa saja"
+ * (ANY_STAFF_KEY). Tanpa staf hanya ada ANY_STAFF_KEY. null = tidak ada
+ * jam kosong dalam `days` hari sejak `fromDateISO`.
+ */
+export function nearestStaffSlots(params: {
+  fromDateISO: string;
+  days: number;
+  durationMinutes: number;
+  merchantAvailability: AvailabilityWindow[];
+  staff: StaffSchedule[];
+  bookedRanges: StaffBookedRange[];
+  now?: Date;
+}): Record<string, NearestSlot | null> {
+  const keys = [ANY_STAFF_KEY, ...params.staff.map((member) => member.id)];
+  const result: Record<string, NearestSlot | null> = Object.fromEntries(keys.map((key) => [key, null]));
+  const startMs = Date.parse(`${params.fromDateISO}T12:00:00Z`);
+
+  for (let i = 0; i < params.days; i++) {
+    const dateISO = new Date(startMs + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    for (const key of keys) {
+      if (result[key]) continue;
+      const [first] = computeStaffSlots({
+        dateISO,
+        durationMinutes: params.durationMinutes,
+        merchantAvailability: params.merchantAvailability,
+        staff: params.staff,
+        bookedRanges: params.bookedRanges,
+        staffId: key === ANY_STAFF_KEY ? null : key,
+        now: params.now,
+      });
+      if (first) result[key] = { ...first, dateISO };
+    }
+    if (keys.every((key) => result[key])) break;
+  }
+  return result;
+}

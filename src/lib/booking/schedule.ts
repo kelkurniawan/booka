@@ -77,3 +77,19 @@ export function monthLabel(dateISO: string): string {
     timeZone: "UTC",
   });
 }
+
+const weekdayShort = new Intl.DateTimeFormat("id-ID", { weekday: "short", timeZone: "UTC" });
+
+/** "Hari ini 14:00", "Besok 09:00", "Sab 10:00"; null jadi "Belum ada jadwal". */
+export function nearestSlotText(
+  slot: { dateISO: string; label: string } | null,
+  todayISO: string,
+): string {
+  if (!slot) return "Belum ada jadwal";
+  if (slot.dateISO === todayISO) return `Hari ini ${slot.label}`;
+  const tomorrow = new Date(Date.parse(`${todayISO}T12:00:00Z`) + 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
+  if (slot.dateISO === tomorrow) return `Besok ${slot.label}`;
+  return `${weekdayShort.format(new Date(`${slot.dateISO}T12:00:00Z`))} ${slot.label}`;
+}

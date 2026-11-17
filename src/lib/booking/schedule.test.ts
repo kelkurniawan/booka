@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildDateStrip, groupSlotsByPeriod, monthLabel, nextOpenDate } from "./schedule";
+import { buildDateStrip, groupSlotsByPeriod, monthLabel, nearestSlotText, nextOpenDate } from "./schedule";
 
 test("buildDateStrip menandai hari tutup tanpa membuangnya", () => {
   // 2026-11-16 adalah Senin. Buka Senin sampai Jumat.
@@ -39,4 +39,12 @@ test("groupSlotsByPeriod mengelompokkan dan membuang kelompok kosong", () => {
 
 test("monthLabel memakai bahasa Indonesia", () => {
   assert.equal(monthLabel("2026-11-21"), "November 2026");
+});
+
+test("nearestSlotText: hari ini, besok, nama hari, kosong", () => {
+  const today = "2026-11-16";
+  assert.equal(nearestSlotText({ dateISO: "2026-11-16", label: "14:00" }, today), "Hari ini 14:00");
+  assert.equal(nearestSlotText({ dateISO: "2026-11-17", label: "09:00" }, today), "Besok 09:00");
+  assert.equal(nearestSlotText({ dateISO: "2026-11-21", label: "10:00" }, today), "Sab 10:00");
+  assert.equal(nearestSlotText(null, today), "Belum ada jadwal");
 });
