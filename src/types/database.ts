@@ -244,6 +244,12 @@ export type Staff = {
   name: string;
   is_active: boolean;
   sort_order: number;
+  role: string | null;
+  bio: string | null;
+  tags: string[];
+  photo_path: string | null;
+  motion_path: string | null;
+  show_motion: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -608,8 +614,32 @@ export type Database = {
       staff: {
         Row: Staff;
         Insert: Pick<Staff, "merchant_id" | "name"> &
-          Partial<Pick<Staff, "id" | "is_active" | "sort_order">>;
-        Update: Partial<Pick<Staff, "name" | "is_active" | "sort_order">>;
+          Partial<
+            Pick<
+              Staff,
+              | "id"
+              | "is_active"
+              | "sort_order"
+              | "role"
+              | "bio"
+              | "tags"
+              | "photo_path"
+              | "show_motion"
+            >
+          >;
+        Update: Partial<
+          Pick<
+            Staff,
+            | "name"
+            | "is_active"
+            | "sort_order"
+            | "role"
+            | "bio"
+            | "tags"
+            | "photo_path"
+            | "show_motion"
+          >
+        >;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       staff_availability: {

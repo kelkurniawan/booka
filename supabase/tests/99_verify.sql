@@ -4804,3 +4804,108 @@ with u as (update public.merchant_themes set button_style = 'OUTLINE'
 select case when (select count(*) from u) = 0
             then 'OK   t52b merchant lain 0 baris' else 'FAIL t52b merchant lain berubah' end as t52b2;
 rollback;
+
+-- ===========================================================================
+-- 55. Profil staf: kolom dan constraint (20261119000100)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('55505550-0000-0000-0000-000000000001', 'staf55-a@example.com', '{}'::jsonb),
+  ('55505550-0000-0000-0000-000000000002', 'staf55-b@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'STUDIO'
+  where id in ('55505550-0000-0000-0000-000000000001', '55505550-0000-0000-0000-000000000002');
+insert into public.staff (id, merchant_id, name, sort_order)
+  values ('55505550-57af-0000-0000-000000000001', '55505550-0000-0000-0000-000000000001', 'Rani', 0);
+
+select case when (select tags = '{}' and show_motion and role is null and bio is null
+                         and photo_path is null and motion_path is null
+                  from public.staff where id = '55505550-57af-0000-0000-000000000001')
+            then 'OK   t55a nilai bawaan profil staf' else 'FAIL t55a nilai bawaan profil staf' end as t55a;
+
+select pg_temp.expect_fail_code(format($q$update public.staff set %s
+  where id = '55505550-57af-0000-0000-000000000001'$q$, c), '23514', 't55b ' || c)
+from unnest(array[
+  $c$role = repeat('a', 41)$c$,
+  $c$role = '   '$c$,
+  $c$bio = repeat('a', 141)$c$,
+  $c$tags = '{a,b,c,d,e,f}'$c$,
+  $c$tags = array[repeat('a', 25)]$c$,
+  $c$tags = '{""}'$c$,
+  $c$tags = array['a', null]$c$,
+  $c$tags = '{{a,b},{c,d}}'$c$,
+  $c$photo_path = '55505550-0000-0000-0000-000000000002/staff/x/photo-a.webp'$c$,
+  $c$photo_path = '55505550-0000-0000-0000-000000000001/avatar-a.webp'$c$,
+  $c$photo_path = '55505550-0000-0000-0000-000000000001/staff/x/photo-a.png'$c$,
+  $c$photo_path = '55505550-0000-0000-0000-000000000001/staff/../photo-a.webp'$c$,
+  $c$motion_path = '55505550-0000-0000-0000-000000000001/staff/x/clip-a.gif'$c$
+]) as c;
+
+select pg_temp.expect_ok($q$update public.staff set role = 'Pemilik, MUA', bio = repeat('a', 140),
+  tags = '{Wisuda,Pengantin}',
+  photo_path = '55505550-0000-0000-0000-000000000001/staff/55505550-57af-0000-0000-000000000001/photo-ab12cd34.webp'
+  where id = '55505550-57af-0000-0000-000000000001'$q$, 't55c profil sah diterima');
+select pg_temp.expect_ok($q$update public.staff set
+  motion_path = '55505550-0000-0000-0000-000000000001/staff/55505550-57af-0000-0000-000000000001/clip-ab12cd34.mp4'
+  where id = '55505550-57af-0000-0000-000000000001'$q$, 't55c motion_path sah (superuser)');
+
+-- ===========================================================================
+-- 56. Profil staf: hak akses kolom (20261119000100)
+-- ===========================================================================
+
+select case when bool_and(has_column_privilege('anon', 'public.staff', c, 'SELECT'))
+            then 'OK   t56a anon bisa SELECT kolom profil' else 'FAIL t56a anon tidak bisa SELECT kolom profil' end as t56a
+from unnest(array['role', 'bio', 'tags', 'photo_path', 'motion_path', 'show_motion']) as c;
+select case when not has_table_privilege('anon', 'public.staff', 'UPDATE')
+             and not has_column_privilege('authenticated', 'public.staff', 'motion_path', 'UPDATE')
+             and not has_column_privilege('authenticated', 'public.staff', 'motion_path', 'INSERT')
+             and has_column_privilege('authenticated', 'public.staff', 'role', 'UPDATE')
+             and has_column_privilege('authenticated', 'public.staff', 'name', 'INSERT')
+            then 'OK   t56a hak kolom authenticated dan anon' else 'FAIL t56a hak kolom authenticated atau anon' end as t56a2;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '55505550-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$update public.staff set role = 'Penata rias'
+  where id = '55505550-57af-0000-0000-000000000001'$q$, 't56b pemilik ubah role');
+select pg_temp.expect_fail_code($q$update public.staff set motion_path =
+  '55505550-0000-0000-0000-000000000001/staff/x/clip-zz.mp4'
+  where id = '55505550-57af-0000-0000-000000000001'$q$, '42501', 't56b UPDATE motion_path');
+select pg_temp.expect_fail_code($q$insert into public.staff (merchant_id, name, motion_path) values
+  ('55505550-0000-0000-0000-000000000001', 'Gita', '55505550-0000-0000-0000-000000000001/staff/x/clip-zz.mp4')$q$,
+  '42501', 't56b INSERT motion_path');
+select pg_temp.expect_ok($q$insert into public.staff (merchant_id, name, sort_order) values
+  ('55505550-0000-0000-0000-000000000001', 'Nadia', 1)$q$, 't56b createStaff tetap jalan');
+rollback;
+
+-- ===========================================================================
+-- 57. Bucket staff-clip-uploads (20261119000100)
+-- ===========================================================================
+
+select case when exists (select 1 from storage.buckets where id = 'staff-clip-uploads'
+                         and not public and file_size_limit = 8388608
+                         and 'image/gif' = any(allowed_mime_types))
+            then 'OK   t57a bucket staff-clip-uploads privat, 8MB, menerima GIF'
+            else 'FAIL t57a bucket staff-clip-uploads' end as t57a;
+select case when not exists (select 1 from storage.buckets where id = 'merchant-media'
+                             and 'image/gif' = any(coalesce(allowed_mime_types, '{}')))
+            then 'OK   t57a merchant-media tidak menerima GIF' else 'FAIL t57a merchant-media menerima GIF' end as t57a2;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '55505550-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/55505550-57af-0000-0000-000000000001/a1.gif')$q$,
+  't57b unggah ke folder sendiri');
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', '55505550-0000-0000-0000-000000000002/x/a2.gif')$q$, 't57b unggah ke folder merchant lain');
+select case when (select count(*) from storage.objects where bucket_id = 'staff-clip-uploads') = 0
+            then 'OK   t57b tidak ada policy baca bagi pemilik' else 'FAIL t57b pemilik bisa membaca berkas mentah' end as t57b;
+rollback;
+
+begin;
+set local role anon;
+select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) values
+  ('staff-clip-uploads', 'anon/a3.gif')$q$, 't57c anon mengunggah berkas mentah');
+select case when (select count(*) from storage.objects where bucket_id = 'staff-clip-uploads') = 0
+            then 'OK   t57c anon tidak bisa membaca' else 'FAIL t57c anon bisa membaca' end as t57c;
+rollback;
