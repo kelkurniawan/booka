@@ -1,6 +1,13 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,11 +18,23 @@ import { PromoBanners } from "@/components/booking-page/promo-banners";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { BookingStepIndicator } from "@/components/booking-page/step-indicator";
 import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
-import { StaffPicker, type NearestState, type StaffOption } from "@/components/booking-page/staff-picker";
-import { TimeSlotPicker, type TimeSlotState } from "@/components/booking-page/time-slot-picker";
+import {
+  StaffPicker,
+  type NearestState,
+  type StaffOption,
+} from "@/components/booking-page/staff-picker";
+import {
+  TimeSlotPicker,
+  type TimeSlotState,
+} from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   computeAmounts,
@@ -25,7 +44,11 @@ import {
   type PaymentSettings,
 } from "@/lib/booking/payment-mode";
 import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
-import { jakartaDateISO, type FreeSlot, type NearestSlot } from "@/lib/booking/slots";
+import {
+  jakartaDateISO,
+  type FreeSlot,
+  type NearestSlot,
+} from "@/lib/booking/slots";
 import {
   computeDiscount,
   voucherIneligibleReason,
@@ -66,8 +89,16 @@ export type BookingFlowProps = {
 
 type Step = 1 | 2 | 3;
 
-const STEP_PARAM: Record<Step, string | null> = { 1: null, 2: "jadwal", 3: "data" };
-const STEP_TITLE: Record<Step, string> = { 1: "Pilih layanan", 2: "Pilih jadwal", 3: "Data diri" };
+const STEP_PARAM: Record<Step, string | null> = {
+  1: null,
+  2: "jadwal",
+  3: "data",
+};
+const STEP_TITLE: Record<Step, string> = {
+  1: "Pilih layanan",
+  2: "Pilih jadwal",
+  3: "Data diri",
+};
 
 /** URL halaman ini dengan parameter `langkah` untuk `step`; query lain dan hash tetap. */
 function urlForStep(step: Step): string {
@@ -76,7 +107,9 @@ function urlForStep(step: Step): string {
   if (value) params.set("langkah", value);
   else params.delete("langkah");
   const query = params.toString();
-  return window.location.pathname + (query ? `?${query}` : "") + window.location.hash;
+  return (
+    window.location.pathname + (query ? `?${query}` : "") + window.location.hash
+  );
 }
 
 const TANGGAL = new Intl.DateTimeFormat("id-ID", {
@@ -117,7 +150,9 @@ type CheckoutErrorBody = { error?: string; issues?: unknown };
  * sendiri lewat `username`. Melempar `Error` berisi pesan Indonesia yang sudah
  * dipetakan server, tinggal ditampilkan lewat toast.
  */
-async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutResult> {
+async function submitCheckout(
+  payload: CheckoutSubmitPayload,
+): Promise<CheckoutResult> {
   const response = await fetch("/api/bookings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -126,7 +161,12 @@ async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutR
 
   const body: unknown = await response.json().catch(() => null);
 
-  if (!response.ok || !body || typeof body !== "object" || !("bookingId" in body)) {
+  if (
+    !response.ok ||
+    !body ||
+    typeof body !== "object" ||
+    !("bookingId" in body)
+  ) {
     const message =
       body && typeof body === "object" && "error" in body
         ? ((body as CheckoutErrorBody).error ?? null)
@@ -152,7 +192,12 @@ async function checkVoucherCode(
     body: JSON.stringify({ username, serviceId, code }),
   });
   const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !body || typeof body !== "object" || !("discount" in body)) {
+  if (
+    !response.ok ||
+    !body ||
+    typeof body !== "object" ||
+    !("discount" in body)
+  ) {
     const message =
       body && typeof body === "object" && "error" in body
         ? ((body as CheckoutErrorBody).error ?? null)
@@ -191,7 +236,9 @@ export function BookingFlow({
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null);
+  const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(
+    null,
+  );
   // Pesan netral saat voucher dilepas atau tidak jadi dipasang karena layanan tidak cocok.
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
   const serviceListRef = useRef<HTMLDivElement>(null);
@@ -202,15 +249,19 @@ export function BookingFlow({
   const [nearestByService, setNearestByService] = useState<
     Record<string, Record<string, NearestSlot | null> | "error">
   >({});
-  const needNearest = step === 2 && staff.length > 0 && selectedServiceId !== null;
-  const nearestLoaded = selectedServiceId !== null && selectedServiceId in nearestByService;
+  const needNearest =
+    step === 2 && staff.length > 0 && selectedServiceId !== null;
+  const nearestLoaded =
+    selectedServiceId !== null && selectedServiceId in nearestByService;
   useEffect(() => {
     if (!needNearest || nearestLoaded || !selectedServiceId) return;
     const serviceId = selectedServiceId;
     const controller = new AbortController();
     const params = new URLSearchParams({ username, serviceId });
     fetch(`/api/slots/nearest?${params}`, { signal: controller.signal })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((res) =>
+        res.ok ? res.json() : Promise.reject(new Error(String(res.status))),
+      )
       .then((body: { nearest: Record<string, NearestSlot | null> }) =>
         setNearestByService((prev) => ({ ...prev, [serviceId]: body.nearest })),
       )
@@ -221,32 +272,46 @@ export function BookingFlow({
       });
     return () => controller.abort();
   }, [needNearest, nearestLoaded, selectedServiceId, username]);
-  const nearest: NearestState = (selectedServiceId && nearestByService[selectedServiceId]) || "loading";
+  const nearest: NearestState =
+    (selectedServiceId && nearestByService[selectedServiceId]) || "loading";
 
   // Hari buka mengikuti staf yang dipilih: staf dengan jam sendiri bisa
   // bekerja di hari usaha tutup, dan sebaliknya. "Siapa saja" = gabungan.
   const openDays = useMemo(() => {
     const merchantDays = availability.map((row) => row.day_of_week);
     if (staff.length === 0) return new Set(merchantDays);
-    const candidates = selectedStaffId ? staff.filter((m) => m.id === selectedStaffId) : staff;
-    return new Set(candidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)));
+    const candidates = selectedStaffId
+      ? staff.filter((m) => m.id === selectedStaffId)
+      : staff;
+    return new Set(
+      candidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)),
+    );
   }, [availability, staff, selectedStaffId]);
-  const strip = useMemo(() => buildDateStrip(openDays, todayISO), [openDays, todayISO]);
+  const strip = useMemo(
+    () => buildDateStrip(openDays, todayISO),
+    [openDays, todayISO],
+  );
 
-  const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
+  const selectedService =
+    services.find((service) => service.id === selectedServiceId) ?? null;
   const serviceNames = useMemo(
-    () => Object.fromEntries(services.map((service) => [service.id, service.name])),
+    () =>
+      Object.fromEntries(services.map((service) => [service.id, service.name])),
     [services],
   );
   const voucherCodeById = useMemo(
-    () => Object.fromEntries(vouchers.map((voucher) => [voucher.id, voucher.code])),
+    () =>
+      Object.fromEntries(vouchers.map((voucher) => [voucher.id, voucher.code])),
     [vouchers],
   );
 
   // Pilihan terkini untuk listener popstate (effect-nya hanya jalan sekali).
   const selectionRef = useRef({ hasService: false, hasSlot: false });
   useEffect(() => {
-    selectionRef.current = { hasService: Boolean(selectedServiceId), hasSlot: Boolean(selectedSlot) };
+    selectionRef.current = {
+      hasService: Boolean(selectedServiceId),
+      hasSlot: Boolean(selectedSlot),
+    };
   }, [selectedServiceId, selectedSlot]);
 
   // Riwayat browser: maju langkah = pushState, tombol Kembali = popstate.
@@ -294,11 +359,19 @@ export function BookingFlow({
   // menjaga urutan: respons request lama tidak boleh menimpa yang terbaru.
   const requestIdRef = useRef(0);
 
-  async function loadSlots(serviceId: string, dateISO: string, staffId: string | null) {
+  async function loadSlots(
+    serviceId: string,
+    dateISO: string,
+    staffId: string | null,
+  ) {
     const requestId = (requestIdRef.current += 1);
     setSlotState({ kind: "loading" });
     try {
-      const params = new URLSearchParams({ username, serviceId, date: dateISO });
+      const params = new URLSearchParams({
+        username,
+        serviceId,
+        date: dateISO,
+      });
       if (staffId) params.set("staffId", staffId);
       const response = await fetch(`/api/slots?${params.toString()}`);
       if (!response.ok) throw new Error("Gagal memuat jadwal");
@@ -326,7 +399,11 @@ export function BookingFlow({
     resetSchedule();
     const next = services.find((service) => service.id === serviceId);
     if (appliedVoucher && next) {
-      const reason = voucherIneligibleReason(appliedVoucher, next, serviceNames);
+      const reason = voucherIneligibleReason(
+        appliedVoucher,
+        next,
+        serviceNames,
+      );
       if (reason) {
         setAppliedVoucher(null);
         setVoucherNotice(`Voucher ${appliedVoucher.code} dilepas. ${reason}.`);
@@ -335,7 +412,10 @@ export function BookingFlow({
   }
 
   function scrollToServices() {
-    serviceListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    serviceListRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   }
 
   // Dari banner: layanan dipilih lalu daftar digulir ke tampilan.
@@ -346,7 +426,11 @@ export function BookingFlow({
 
   function handleApplyVoucher(voucher: AppliedVoucher) {
     if (selectedService) {
-      const reason = voucherIneligibleReason(voucher, selectedService, serviceNames);
+      const reason = voucherIneligibleReason(
+        voucher,
+        selectedService,
+        serviceNames,
+      );
       if (reason) {
         setVoucherNotice(`Voucher ${voucher.code} belum dipasang. ${reason}.`);
         return;
@@ -371,7 +455,8 @@ export function BookingFlow({
   function handleSelectDate(dateISO: string) {
     setSelectedDate(dateISO);
     setSelectedSlot(null);
-    if (selectedServiceId) void loadSlots(selectedServiceId, dateISO, selectedStaffId);
+    if (selectedServiceId)
+      void loadSlots(selectedServiceId, dateISO, selectedStaffId);
   }
 
   async function handleCheckoutSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -390,7 +475,8 @@ export function BookingFlow({
       const nextErrors: Record<string, string> = {};
       for (const issue of result.error.issues) {
         const key = issue.path[0];
-        if (typeof key === "string" && !nextErrors[key]) nextErrors[key] = issue.message;
+        if (typeof key === "string" && !nextErrors[key])
+          nextErrors[key] = issue.message;
       }
       setFormErrors(nextErrors);
       return;
@@ -414,7 +500,11 @@ export function BookingFlow({
       // berpindah.
       router.push(checkout.bookingUrl);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Gagal membuat booking, silakan coba lagi.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Gagal membuat booking, silakan coba lagi.",
+      );
       setSubmitting(false);
     }
   }
@@ -430,8 +520,14 @@ export function BookingFlow({
   } | null = null;
   if (selectedService) {
     const mode = effectivePaymentMode(selectedService, paymentSettings);
-    const discount = appliedVoucher ? computeDiscount(appliedVoucher, Number(selectedService.price)) : 0;
-    const { dueNow, dueOnSite } = computeAmounts(selectedService, mode, discount);
+    const discount = appliedVoucher
+      ? computeDiscount(appliedVoucher, Number(selectedService.price))
+      : 0;
+    const { dueNow, dueOnSite } = computeAmounts(
+      selectedService,
+      mode,
+      discount,
+    );
     const status = initialBookingStatus(mode, dueNow, paymentSettings);
     payment = {
       discount,
@@ -448,7 +544,9 @@ export function BookingFlow({
     };
   }
 
-  const staffName = selectedStaffId ? staff.find((m) => m.id === selectedStaffId)?.name : null;
+  const staffName = selectedStaffId
+    ? staff.find((m) => m.id === selectedStaffId)?.name
+    : null;
 
   // Di permukaan solid: teks tidak boleh langsung di atas lapisan gerak.
   const langkahHead = (
@@ -457,7 +555,12 @@ export function BookingFlow({
       style={{ borderRadius: "var(--radius)" }}
     >
       <BookingStepIndicator current={step} />
-      <h2 id="langkah-judul" ref={headingRef} tabIndex={-1} className="text-lg font-medium outline-none">
+      <h2
+        id="langkah-judul"
+        ref={headingRef}
+        tabIndex={-1}
+        className="text-lg font-medium outline-none"
+      >
         {STEP_TITLE[step]}
       </h2>
     </div>
@@ -483,9 +586,16 @@ export function BookingFlow({
         >
           <div className="min-w-0">
             <p className="text-sm font-medium">Voucher {appliedVoucher.code}</p>
-            <p className="text-muted-foreground text-xs">{voucherSummary(appliedVoucher)}</p>
+            <p className="text-muted-foreground text-xs">
+              {voucherSummary(appliedVoucher)}
+            </p>
           </div>
-          <Button type="button" variant="outline" className="min-h-11" onClick={() => setAppliedVoucher(null)}>
+          <Button
+            type="button"
+            variant="outline"
+            className="min-h-11"
+            onClick={() => setAppliedVoucher(null)}
+          >
             Lepas
           </Button>
         </div>
@@ -511,8 +621,10 @@ export function BookingFlow({
             eager={index === 0}
             paymentLabel={paymentLabel(service, paymentSettings)}
             promoPrice={
-              appliedVoucher && !voucherIneligibleReason(appliedVoucher, service, serviceNames)
-                ? Number(service.price) - computeDiscount(appliedVoucher, Number(service.price))
+              appliedVoucher &&
+              !voucherIneligibleReason(appliedVoucher, service, serviceNames)
+                ? Number(service.price) -
+                  computeDiscount(appliedVoucher, Number(service.price))
                 : undefined
             }
           />
@@ -538,7 +650,9 @@ export function BookingFlow({
             <Fragment key={key}>{bagian[key]}</Fragment>
           ))}
           <StickyActionBar
-            summary={selectedService ? selectedService.name : "Pilih satu layanan"}
+            summary={
+              selectedService ? selectedService.name : "Pilih satu layanan"
+            }
             actionLabel="Pilih jadwal"
             disabled={!selectedService}
             onAction={() => goForward(2)}
@@ -553,45 +667,68 @@ export function BookingFlow({
             style={{ borderRadius: "var(--radius)" }}
           >
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{selectedService.name}</p>
-              <p className="text-muted-foreground text-xs">{formatRupiah(selectedService.price)}</p>
+              <p className="truncate text-sm font-medium">
+                {selectedService.name}
+              </p>
+              <p className="text-muted-foreground text-xs">
+                {formatRupiah(selectedService.price)}
+              </p>
             </div>
             {services.length > 1 ? (
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => window.history.back()}>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11"
+                onClick={() => window.history.back()}
+              >
                 Ganti
               </Button>
             ) : null}
           </div>
 
-          {staff.length > 0 ? (
-            <StaffPicker
-              staff={staff}
-              selectedId={selectedStaffId}
-              onSelect={handleSelectStaff}
-              nearest={nearest}
-              todayISO={todayISO}
-            />
-          ) : null}
-
-          {strip.every((d) => !d.open) ? (
-            <div className="flex flex-col gap-1">
-              <p className="font-medium">Tidak ada jadwal buka dalam 14 hari ke depan.</p>
-              {staff.length > 0 ? (
-                <p className="text-muted-foreground text-sm">Coba pilih staf lain.</p>
-              ) : null}
-            </div>
-          ) : (
-            <>
-              <DateStrip days={strip} selected={selectedDate} onSelect={handleSelectDate} />
-              <TimeSlotPicker
-                state={slotState}
-                selected={selectedSlot?.startUtc ?? null}
-                onSelect={setSelectedSlot}
-                onRetry={() => selectedDate && handleSelectDate(selectedDate)}
-                onPickDate={handleSelectDate}
+          {/* Permukaan solid: latar bergerak F6 tidak boleh berada langsung di bawah teks. */}
+          <div
+            className="bg-card border-border flex flex-col gap-6 border p-3"
+            style={{ borderRadius: "var(--radius)" }}
+          >
+            {staff.length > 0 ? (
+              <StaffPicker
+                staff={staff}
+                selectedId={selectedStaffId}
+                onSelect={handleSelectStaff}
+                nearest={nearest}
+                todayISO={todayISO}
               />
-            </>
-          )}
+            ) : null}
+
+            {strip.every((d) => !d.open) ? (
+              <div className="flex flex-col gap-1">
+                <p className="font-medium">
+                  Tidak ada jadwal buka dalam 14 hari ke depan.
+                </p>
+                {staff.length > 0 ? (
+                  <p className="text-muted-foreground text-sm">
+                    Coba pilih staf lain.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <>
+                <DateStrip
+                  days={strip}
+                  selected={selectedDate}
+                  onSelect={handleSelectDate}
+                />
+                <TimeSlotPicker
+                  state={slotState}
+                  selected={selectedSlot?.startUtc ?? null}
+                  onSelect={setSelectedSlot}
+                  onRetry={() => selectedDate && handleSelectDate(selectedDate)}
+                  onPickDate={handleSelectDate}
+                />
+              </>
+            )}
+          </div>
           <StickyActionBar
             summary={
               selectedDate && selectedSlot
@@ -605,8 +742,17 @@ export function BookingFlow({
         </>
       ) : null}
 
-      {step === 3 && selectedService && selectedDate && selectedSlot && payment ? (
-        <form onSubmit={handleCheckoutSubmit} noValidate className="flex flex-col gap-6">
+      {step === 3 &&
+      selectedService &&
+      selectedDate &&
+      selectedSlot &&
+      payment ? (
+        <form
+          onSubmit={handleCheckoutSubmit}
+          noValidate
+          className="bg-card border-border flex flex-col gap-6 border p-3"
+          style={{ borderRadius: "var(--radius)" }}
+        >
           <VoucherPicker
             vouchers={vouchers}
             service={selectedService}
@@ -615,7 +761,9 @@ export function BookingFlow({
             applied={appliedVoucher}
             onApply={handleApplyVoucher}
             onRemove={() => setAppliedVoucher(null)}
-            checkCode={(code) => checkVoucherCode(username, selectedService.id, code)}
+            checkCode={(code) =>
+              checkVoucherCode(username, selectedService.id, code)
+            }
           />
           <BookingSummary
             rows={[
@@ -623,15 +771,30 @@ export function BookingFlow({
               ...(staffName ? [{ label: "Dengan", value: staffName }] : []),
               { label: "Tanggal", value: dateLabel(selectedDate) },
               { label: "Jam", value: selectedSlot.label },
-              ...(payment.discount > 0 || payment.dueNow !== Number(selectedService.price)
-                ? [{ label: "Harga layanan", value: formatRupiah(Number(selectedService.price)) }]
+              ...(payment.discount > 0 ||
+              payment.dueNow !== Number(selectedService.price)
+                ? [
+                    {
+                      label: "Harga layanan",
+                      value: formatRupiah(Number(selectedService.price)),
+                    },
+                  ]
                 : []),
               ...(payment.discount > 0 && appliedVoucher
-                ? [{ label: `Voucher ${appliedVoucher.code}`, value: `\u2212${formatRupiah(payment.discount)}` }]
+                ? [
+                    {
+                      label: `Voucher ${appliedVoucher.code}`,
+                      value: `\u2212${formatRupiah(payment.discount)}`,
+                    },
+                  ]
                 : []),
             ]}
             total={formatRupiah(payment.dueNow)}
-            onSite={payment.dueOnSite > 0 ? formatRupiah(payment.dueOnSite) : undefined}
+            onSite={
+              payment.dueOnSite > 0
+                ? formatRupiah(payment.dueOnSite)
+                : undefined
+            }
           />
 
           <Field data-invalid={Boolean(formErrors.customer_name)}>
@@ -647,7 +810,9 @@ export function BookingFlow({
               className="min-h-11"
               aria-invalid={Boolean(formErrors.customer_name)}
             />
-            {formErrors.customer_name ? <FieldError>{formErrors.customer_name}</FieldError> : null}
+            {formErrors.customer_name ? (
+              <FieldError>{formErrors.customer_name}</FieldError>
+            ) : null}
           </Field>
 
           <Field data-invalid={Boolean(formErrors.customer_whatsapp)}>
@@ -682,19 +847,22 @@ export function BookingFlow({
           <div className="text-muted-foreground flex flex-col gap-2 text-sm text-pretty">
             {payment.online ? (
               <p>
-                Pembayaran masuk langsung ke {merchantName} lewat QRIS. Jadwal ditahan 15 menit
-                selama Anda membayar.
+                Pembayaran masuk langsung ke {merchantName} lewat QRIS. Jadwal
+                ditahan 15 menit selama Anda membayar.
               </p>
             ) : null}
             {payment.approval ? (
               <p>
-                Ini permintaan booking. {merchantName} akan menyetujui atau menolak dalam 24 jam.
+                Ini permintaan booking. {merchantName} akan menyetujui atau
+                menolak dalam 24 jam.
                 {payment.dueNow > 0
                   ? ` Setelah disetujui, Anda membayar ${formatRupiah(payment.dueNow)} lewat halaman booking Anda.`
                   : ""}
               </p>
             ) : null}
-            {!payment.online && !payment.approval ? <p>Tidak perlu bayar sekarang.</p> : null}
+            {!payment.online && !payment.approval ? (
+              <p>Tidak perlu bayar sekarang.</p>
+            ) : null}
             {payment.dueOnSite > 0 ? (
               <p>
                 {payment.dueNow > 0
