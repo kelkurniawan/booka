@@ -31,6 +31,9 @@ const BASE: BookingListItem = {
   source: "ONLINE",
   merchant_reschedule_count: 0,
   reschedule_count: 0,
+  voucher_id: null,
+  voucher_code: null,
+  discount_amount: 0,
 };
 
 function row(id: string, over: Partial<BookingListItem>): BookingListItem {

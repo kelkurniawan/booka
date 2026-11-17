@@ -14,6 +14,8 @@ export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
 export type BookingSource = "ONLINE" | "MANUAL";
 export type DepositType = "PERCENT" | "FIXED";
 export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
+export type VoucherKind = "PERCENT" | "FIXED";
+export type VoucherVisibility = "PUBLIC" | "PRIVATE";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
@@ -351,9 +353,49 @@ export type Booking = {
   merchant_reschedule_count: number;
   /** Jumlah ubah jadwal oleh pelanggan; dibatasi merchant_settings.max_reschedules (BK043). */
   reschedule_count: number;
+  /** null bila booking tanpa voucher atau vouchernya sudah dihapus. */
+  voucher_id: string | null;
+  /** Salinan kode voucher; tetap ada walau vouchernya dihapus. */
+  voucher_code: string | null;
+  /** service_price = amount_due_now + amount_due_on_site + discount_amount. */
+  discount_amount: number;
   created_at: string;
   updated_at: string;
 };
+
+export type Voucher = {
+  id: string;
+  merchant_id: string;
+  code: string;
+  kind: VoucherKind;
+  value: number;
+  max_discount: number | null;
+  min_spend: number | null;
+  service_ids: string[] | null;
+  quota: number | null;
+  per_phone_limit: number | null;
+  new_customer_only: boolean;
+  visibility: VoucherVisibility;
+  starts_at: string | null;
+  ends_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Kolom yang dibuka public_vouchers() untuk pemilih di halaman booking. */
+export type PublicVoucher = Pick<
+  Voucher,
+  | "id"
+  | "code"
+  | "kind"
+  | "value"
+  | "max_discount"
+  | "min_spend"
+  | "service_ids"
+  | "ends_at"
+  | "per_phone_limit"
+  | "new_customer_only"
+>;
 
 export type MerchantSettings = {
   merchant_id: string;
@@ -589,6 +631,9 @@ export type Database = {
           | "no_show_at"
           | "source"
           | "merchant_reschedule_count"
+          | "voucher_id"
+          | "voucher_code"
+          | "discount_amount"
         > &
           Partial<
             Pick<
@@ -596,6 +641,9 @@ export type Database = {
               | "id"
               | "source"
               | "merchant_reschedule_count"
+              | "voucher_id"
+              | "voucher_code"
+              | "discount_amount"
               | "payment_mode"
               | "amount_due_now"
               | "amount_due_on_site"
@@ -615,6 +663,39 @@ export type Database = {
           Relationship<"merchant_id", "merchants">,
           Relationship<"service_id", "services">,
         ];
+      };
+      vouchers: {
+        Row: Voucher;
+        Insert: Omit<
+          Voucher,
+          | "id"
+          | Timestamps
+          | "max_discount"
+          | "min_spend"
+          | "service_ids"
+          | "quota"
+          | "per_phone_limit"
+          | "new_customer_only"
+          | "visibility"
+          | "starts_at"
+          | "ends_at"
+        > &
+          Partial<
+            Pick<
+              Voucher,
+              | "max_discount"
+              | "min_spend"
+              | "service_ids"
+              | "quota"
+              | "per_phone_limit"
+              | "new_customer_only"
+              | "visibility"
+              | "starts_at"
+              | "ends_at"
+            >
+          >;
+        Update: Partial<Omit<Voucher, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
       };
       merchant_settings: {
         Row: MerchantSettings;
@@ -698,6 +779,35 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Voucher publik yang hidup; anon boleh memanggil. */
+      public_vouchers: {
+        Args: { p_merchant_id: string };
+        Returns: PublicVoucher[];
+      };
+      /** Cek kode untuk route /api/vouchers/check (service_role). Syarat hanya terisi bila reason null. */
+      check_voucher: {
+        Args: { p_merchant_id: string; p_code: string; p_service_id: string };
+        Returns: {
+          code: string | null;
+          kind: VoucherKind | null;
+          value: number | null;
+          max_discount: number | null;
+          min_spend: number | null;
+          service_ids: string[] | null;
+          discount: number | null;
+          reason: string | null;
+        }[];
+      };
+      /** Pemakaian voucher merchant yang login dan ringkasan bulan WIB berjalan. */
+      voucher_stats: {
+        Args: Record<string, never>;
+        Returns: { voucher_id: string; used: number; month_discount: number; month_bookings: number }[];
+      };
+      /** 10 cek kode per (hash IP, merchant) per 15 menit (service_role). */
+      check_voucher_rate_limit: {
+        Args: { p_ip_hash: string; p_merchant_id: string };
+        Returns: boolean;
+      };
       prune_push_subscriptions: { Args: Record<string, never>; Returns: number };
       bookings_in_tab: {
         Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
@@ -920,6 +1030,8 @@ export type Database = {
       };
     };
     Enums: {
+      voucher_kind: VoucherKind;
+      voucher_visibility: VoucherVisibility;
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
       payment_mode: PaymentMode;

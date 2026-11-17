@@ -120,6 +120,8 @@ export const sampleBooking = {
   amount_due_now: 105000,
   amount_due_on_site: 0,
   paid_on_site_at: null,
+  voucher_code: null,
+  discount_amount: 0,
 };
 
 /** Token contoh (48 hex) untuk story /pesanan/[token]. */

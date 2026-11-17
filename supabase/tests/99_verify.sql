@@ -3929,3 +3929,364 @@ select case when not has_function_privilege('anon', 'public.prune_push_subscript
              and has_function_privilege('service_role', 'public.prune_push_subscriptions()', 'EXECUTE')
             then 'OK   t43f prune_push_subscriptions hanya service_role'
             else 'FAIL t43f hak EXECUTE prune salah' end as t43f;
+
+-- ===========================================================================
+-- 45. Voucher: skema dan hak akses (20261117000100)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('45454545-0000-0000-0000-000000000001', 'promo45-a@example.com', '{}'::jsonb),
+  ('45454545-0000-0000-0000-000000000002', 'promo45-b@example.com', '{}'::jsonb),
+  ('45454545-0000-0000-0000-000000000003', 'promo45-c@example.com', '{}'::jsonb),
+  ('45454545-0000-0000-0000-000000000004', 'promo45-d@example.com', '{}'::jsonb);
+update public.merchants set username = 'promo-45', subscription_tier = 'PRO'
+  where id = '45454545-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id in ('45454545-0000-0000-0000-000000000002', '45454545-0000-0000-0000-000000000004');
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '45454545-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
+  ('45454545-5e5e-0000-0000-000000000001', '45454545-0000-0000-0000-000000000001', 'Layanan A', 350000, 60, 'FULL', true),
+  ('45454545-5e5e-0000-0000-000000000002', '45454545-0000-0000-0000-000000000001', 'Layanan B', 450000, 60, 'ON_SITE', true),
+  ('45454545-5e5e-0000-0000-000000000003', '45454545-0000-0000-0000-000000000001', 'Layanan nonaktif', 350000, 60, 'FULL', false);
+
+-- Sisip voucher merchant 0001 dengan kolom opsional lewat jsonb (superuser).
+create or replace function pg_temp.v45(p_code text, p_kind text, p_value integer, p_extra jsonb default '{}'::jsonb,
+  p_merchant uuid default '45454545-0000-0000-0000-000000000001')
+returns uuid language plpgsql as $$
+declare v_id uuid;
+begin
+  insert into public.vouchers (merchant_id, code, kind, value, max_discount, min_spend, service_ids, quota,
+    per_phone_limit, new_customer_only, visibility, starts_at, ends_at)
+  select p_merchant, p_code, p_kind::public.voucher_kind, p_value,
+    (p_extra->>'max_discount')::integer, (p_extra->>'min_spend')::integer,
+    case when p_extra ? 'service_ids' then coalesce(
+      (select array_agg(x::uuid) from jsonb_array_elements_text(p_extra->'service_ids') x), '{}') end,
+    (p_extra->>'quota')::integer, (p_extra->>'per_phone_limit')::integer,
+    coalesce((p_extra->>'new_customer_only')::boolean, false),
+    coalesce(p_extra->>'visibility', 'PUBLIC')::public.voucher_visibility,
+    (p_extra->>'starts_at')::timestamptz, (p_extra->>'ends_at')::timestamptz
+  returning id into v_id;
+  return v_id;
+end $$;
+
+-- Sisip booking merchant 0001 (Layanan A, 350000). Kode voucher null = tanpa voucher.
+create or replace function pg_temp.b45(p_code text, p_phone text, p_status text, p_discount numeric default 0,
+  p_start timestamptz default null, p_expires timestamptz default now() + interval '15 minutes',
+  p_created timestamptz default now())
+returns uuid language plpgsql as $$
+declare v_id uuid; v_start timestamptz;
+begin
+  v_start := coalesce(p_start, now() + interval '30 days'
+    + (select count(*) from public.bookings where merchant_id = '45454545-0000-0000-0000-000000000001') * interval '2 hours');
+  insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+    customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site,
+    voucher_id, voucher_code, discount_amount, created_at)
+  values ('45454545-0000-0000-0000-000000000001', 'Layanan A', 350000, 60, v_start, v_start + interval '1 hour',
+    'Uji 45', p_phone, p_status::public.booking_status, p_expires, 350000 - p_discount, 0,
+    (select id from public.vouchers where merchant_id = '45454545-0000-0000-0000-000000000001' and code = p_code),
+    p_code, p_discount, p_created)
+  returning id into v_id;
+  return v_id;
+end $$;
+
+-- 45a. Constraint voucher.
+select pg_temp.expect_fail_code($q$select pg_temp.v45('ab12', 'PERCENT', 10)$q$, '23514', 't45a kode huruf kecil');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('ABC', 'PERCENT', 10)$q$, '23514', 't45a kode 3 karakter');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('ABCDEFGHIJ1234567', 'PERCENT', 10)$q$, '23514', 't45a kode 17 karakter');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('PERSEN101', 'PERCENT', 101)$q$, '23514', 't45a PERCENT 101');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('PERSEN0', 'PERCENT', 0)$q$, '23514', 't45a PERCENT 0');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('TETAP0', 'FIXED', 0)$q$, '23514', 't45a FIXED 0');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('TETAPMAX', 'FIXED', 10000, '{"max_discount": 5000}')$q$,
+  '23514', 't45a max_discount pada FIXED');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('KUOTA0', 'PERCENT', 10, '{"quota": 0}')$q$, '23514', 't45a quota 0');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('NOMOR0', 'PERCENT', 10, '{"per_phone_limit": 0}')$q$,
+  '23514', 't45a per_phone_limit 0');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('KOSONG', 'PERCENT', 10, '{"service_ids": []}')$q$,
+  '23514', 't45a service_ids kosong');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('JADWAL', 'PERCENT', 10,
+  '{"starts_at": "2031-01-01 00:00+07", "ends_at": "2031-01-01 00:00+07"}')$q$, '23514', 't45a ends_at <= starts_at');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('RHS12', 'PERCENT', 10, '{"visibility": "PRIVATE"}')$q$,
+  '23514', 't45a voucher privat 5 karakter');
+select pg_temp.expect_ok($q$select pg_temp.v45('RHS123', 'PERCENT', 10, '{"visibility": "PRIVATE"}')$q$,
+  't45a voucher privat 6 karakter');
+select pg_temp.expect_ok($q$select pg_temp.v45('AB12', 'PERCENT', 10)$q$, 't45a voucher publik 4 karakter');
+select pg_temp.expect_ok($q$select pg_temp.v45('PROMO45', 'FIXED', 70000)$q$, 't45a voucher PROMO45');
+select pg_temp.expect_fail_code($q$select pg_temp.v45('PROMO45', 'PERCENT', 10)$q$, '23505', 't45a kode ganda di merchant sama');
+select pg_temp.expect_ok($q$select pg_temp.v45('PROMO45', 'PERCENT', 10, '{}', '45454545-0000-0000-0000-000000000002')$q$,
+  't45a kode sama di merchant lain');
+
+-- 45b. Merchant STARTER tidak bisa membuat voucher.
+select pg_temp.expect_fail_code($q$select pg_temp.v45('STARTER1', 'PERCENT', 10, '{}', '45454545-0000-0000-0000-000000000003')$q$,
+  'P0001', 't45b voucher untuk STARTER');
+
+-- 45c. Constraint nominal booking dengan diskon.
+select pg_temp.expect_ok($q$select pg_temp.b45('PROMO45', '+6281445450100', 'CONFIRMED', 70000)$q$,
+  't45c booking diskon 70000 + 280000 = 350000');
+select pg_temp.expect_fail_code($q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes,
+     start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site,
+     voucher_code, discount_amount)
+   values ('45454545-0000-0000-0000-000000000001', 'Layanan A', 350000, 60, '2033-01-04 09:00+07', '2033-01-04 10:00+07',
+     'Uji 45', '+6281445450101', 'CONFIRMED', 350000, 0, 'PROMO45', 70000)$q$, '23514', 't45c jumlah nominal tidak cocok');
+select pg_temp.expect_fail_code($q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes,
+     start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, discount_amount)
+   values ('45454545-0000-0000-0000-000000000001', 'Layanan A', 350000, 60, '2033-01-04 09:00+07', '2033-01-04 10:00+07',
+     'Uji 45', '+6281445450102', 'CONFIRMED', 349990, 0, 10)$q$, '23514', 't45c diskon tanpa voucher_code');
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status)
+values ('45454545-0000-0000-0000-000000000004', 'Potong', 350000, 60, '2033-01-05 09:00+07', '2033-01-05 10:00+07',
+  'Uji 45', '+6281445450103', 'PAID');
+select case when amount_due_now = 350000 and amount_due_on_site = 0 and discount_amount = 0
+              and voucher_id is null and voucher_code is null
+            then 'OK   t45c insert lama tanpa nominal tetap harga penuh, diskon 0'
+            else 'FAIL t45c insert lama tanpa nominal salah' end as t45c
+from public.bookings where customer_whatsapp = '+6281445450103';
+
+-- 45d. Hapus voucher: booking kehilangan voucher_id, salinan kode dan diskon tetap.
+delete from public.vouchers where merchant_id = '45454545-0000-0000-0000-000000000001' and code = 'PROMO45';
+select case when voucher_id is null and voucher_code = 'PROMO45' and discount_amount = 70000
+            then 'OK   t45d hapus voucher: voucher_id null, kode dan diskon tetap'
+            else 'FAIL t45d snapshot booking berubah' end as t45d
+from public.bookings where customer_whatsapp = '+6281445450100';
+
+-- 45e. Hapus merchant yang punya voucher dan booking bervoucher.
+select pg_temp.v45('HAPUS45', 'FIXED', 10000, '{}', '45454545-0000-0000-0000-000000000004');
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, voucher_id, voucher_code, discount_amount)
+select '45454545-0000-0000-0000-000000000004', 'Potong', 350000, 60, '2033-01-06 09:00+07', '2033-01-06 10:00+07',
+  'Uji 45', '+6281445450104', 'CONFIRMED', 340000, 0, v.id, v.code, 10000
+from public.vouchers v where v.merchant_id = '45454545-0000-0000-0000-000000000004';
+select pg_temp.expect_ok($q$delete from auth.users where id = '45454545-0000-0000-0000-000000000004'$q$,
+  't45e hapus merchant dengan voucher dan booking bervoucher');
+select case when not exists (select 1 from public.vouchers where merchant_id = '45454545-0000-0000-0000-000000000004')
+             and not exists (select 1 from public.bookings where merchant_id = '45454545-0000-0000-0000-000000000004')
+            then 'OK   t45e voucher dan booking ikut terhapus'
+            else 'FAIL t45e sisa voucher/booking merchant terhapus' end as t45e;
+
+-- 45f. Hak akses.
+select
+  case when not exists (select 1 from unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE']) p
+                        where has_table_privilege('anon', 'public.vouchers', p))
+       then 'OK   t45f anon tanpa hak di vouchers' else 'FAIL t45f anon punya hak di vouchers' end as t45f1,
+  case when has_column_privilege('authenticated', 'public.vouchers', 'merchant_id', 'UPDATE')
+       then 'FAIL t45f authenticated bisa UPDATE merchant_id'
+       else 'OK   t45f authenticated tidak bisa UPDATE merchant_id' end as t45f2,
+  case when has_table_privilege('anon', 'public.voucher_attempts', 'SELECT')
+         or has_table_privilege('authenticated', 'public.voucher_attempts', 'SELECT')
+       then 'FAIL t45f voucher_attempts terbaca' else 'OK   t45f voucher_attempts tertutup' end as t45f3,
+  case when exists (select 1 from unnest(array['anon', 'authenticated']) r,
+                      unnest(array['public.evaluate_voucher(uuid, text, uuid, text)', 'public.check_voucher(uuid, text, uuid)',
+                                   'public.check_voucher_rate_limit(text, uuid)']) f
+                    where has_function_privilege(r, f, 'EXECUTE'))
+       then 'FAIL t45f fungsi internal voucher terbuka'
+       else 'OK   t45f evaluate/check/rate limit tertutup untuk anon dan authenticated' end as t45f4,
+  case when has_function_privilege('service_role', 'public.check_voucher(uuid, text, uuid)', 'EXECUTE')
+        and has_function_privilege('service_role', 'public.check_voucher_rate_limit(text, uuid)', 'EXECUTE')
+       then 'OK   t45f service_role bisa check_voucher dan rate limit'
+       else 'FAIL t45f service_role tidak bisa check_voucher/rate limit' end as t45f5,
+  case when has_function_privilege('anon', 'public.public_vouchers(uuid)', 'EXECUTE')
+       then 'OK   t45f anon bisa public_vouchers' else 'FAIL t45f anon tidak bisa public_vouchers' end as t45f6,
+  case when has_function_privilege('authenticated', 'public.voucher_stats()', 'EXECUTE')
+        and not has_function_privilege('anon', 'public.voucher_stats()', 'EXECUTE')
+       then 'OK   t45f voucher_stats hanya authenticated' else 'FAIL t45f hak voucher_stats salah' end as t45f7;
+
+-- 45g. RLS sebagai merchant 0001.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '45454545-0000-0000-0000-000000000001';
+select case when (select count(*) from public.vouchers where merchant_id = '45454545-0000-0000-0000-000000000002') = 0
+             and (select count(*) from public.vouchers) > 0
+            then 'OK   t45g hanya melihat voucher sendiri' else 'FAIL t45g voucher merchant lain terlihat' end as t45g1;
+with u as (update public.vouchers set value = 5 where merchant_id = '45454545-0000-0000-0000-000000000002' returning 1)
+select case when (select count(*) from u) = 0
+            then 'OK   t45g update voucher merchant lain 0 baris' else 'FAIL t45g voucher merchant lain berubah' end as t45g2;
+select pg_temp.expect_fail_code($q$insert into public.vouchers (merchant_id, code, kind, value)
+  values ('45454545-0000-0000-0000-000000000002', 'SUSUP45', 'PERCENT', 10)$q$, '42501', 't45g insert untuk merchant lain');
+select pg_temp.expect_ok($q$insert into public.vouchers (merchant_id, code, kind, value)
+  values ('45454545-0000-0000-0000-000000000001', 'SENDIRI45', 'PERCENT', 10)$q$, 't45g insert voucher sendiri');
+rollback;
+
+-- ===========================================================================
+-- 46. Voucher: kelayakan, daftar publik, cek kode (20261117000100)
+-- ===========================================================================
+
+create or replace function pg_temp.ev46(p_code text, p_phone text default null,
+  p_service uuid default '45454545-5e5e-0000-0000-000000000001',
+  p_merchant uuid default '45454545-0000-0000-0000-000000000001')
+returns text language plpgsql as $$
+declare r record;
+begin
+  select * into r from public.evaluate_voucher(p_merchant, p_code, p_service, p_phone);
+  return coalesce(r.reason, 'OK:' || trim_scale(r.discount)::text || ':' || r.code
+    || case when r.voucher_id is null then ':tanpa-id' else '' end);
+end $$;
+
+select pg_temp.v45('WISUDA20', 'PERCENT', 20, '{"max_discount": 100000}');
+select pg_temp.v45('HEMAT50', 'PERCENT', 50, '{"max_discount": 100000}');
+select pg_temp.v45('POTONG400', 'FIXED', 400000);
+select pg_temp.v45('POTONG349', 'FIXED', 349000);
+select pg_temp.v45('GRATIS100', 'PERCENT', 100);
+select pg_temp.v45('PUNYAB2', 'PERCENT', 10, '{}', '45454545-0000-0000-0000-000000000002');
+select pg_temp.v45('BELUMMULAI', 'PERCENT', 10, jsonb_build_object('starts_at', now() + interval '1 day'));
+select pg_temp.v45('SUDAHHABIS', 'PERCENT', 10, jsonb_build_object('ends_at', now() - interval '1 minute'));
+select pg_temp.v45('KHUSUSB', 'PERCENT', 10, '{"service_ids": ["45454545-5e5e-0000-0000-000000000002"]}');
+select pg_temp.v45('MIN500', 'PERCENT', 10, '{"min_spend": 500000}');
+select pg_temp.v45('KUOTA2', 'PERCENT', 10, '{"quota": 2}');
+select pg_temp.v45('SEKALI', 'PERCENT', 10, '{"per_phone_limit": 1}');
+select pg_temp.v45('BARU46', 'PERCENT', 10, '{"new_customer_only": true}');
+select pg_temp.v45('RAHASIA45', 'PERCENT', 10, '{"visibility": "PRIVATE"}');
+
+-- 46a. Rumus diskon.
+select case when pg_temp.ev46('WISUDA20') = 'OK:70000:WISUDA20' then 'OK   t46a PERCENT 20 = 70000'
+            else 'FAIL t46a PERCENT 20: ' || pg_temp.ev46('WISUDA20') end as t46a1;
+select case when pg_temp.ev46('HEMAT50') = 'OK:100000:HEMAT50' then 'OK   t46a PERCENT 50 dibatasi max 100000'
+            else 'FAIL t46a PERCENT 50: ' || pg_temp.ev46('HEMAT50') end as t46a2;
+select case when pg_temp.ev46('POTONG400') = 'OK:350000:POTONG400' then 'OK   t46a FIXED 400000 dibatasi harga'
+            else 'FAIL t46a FIXED 400000: ' || pg_temp.ev46('POTONG400') end as t46a3;
+select case when pg_temp.ev46('POTONG349') = 'OK:348500:POTONG349' then 'OK   t46a FIXED 349000 jadi 348500 (harga akhir 1500)'
+            else 'FAIL t46a FIXED 349000: ' || pg_temp.ev46('POTONG349') end as t46a4;
+select case when pg_temp.ev46('GRATIS100') = 'OK:350000:GRATIS100' then 'OK   t46a PERCENT 100 = harga penuh'
+            else 'FAIL t46a PERCENT 100: ' || pg_temp.ev46('GRATIS100') end as t46a5;
+select case when pg_temp.ev46('  wisuda20 ') = 'OK:70000:WISUDA20' then 'OK   t46a kode dinormalisasi upper(btrim())'
+            else 'FAIL t46a normalisasi kode: ' || pg_temp.ev46('  wisuda20 ') end as t46a6;
+
+-- 46b. Kode tidak ditemukan.
+select case when pg_temp.ev46('TIDAKADA') = 'BK050' then 'OK   t46b kode tak dikenal BK050'
+            else 'FAIL t46b kode tak dikenal: ' || pg_temp.ev46('TIDAKADA') end as t46b1;
+select case when pg_temp.ev46('PUNYAB2') = 'BK050' then 'OK   t46b voucher merchant lain BK050'
+            else 'FAIL t46b voucher merchant lain: ' || pg_temp.ev46('PUNYAB2') end as t46b2;
+update public.merchants set subscription_tier = 'STARTER' where id = '45454545-0000-0000-0000-000000000001';
+select case when pg_temp.ev46('WISUDA20') = 'BK050' and pg_temp.ev46('RAHASIA45') = 'BK050'
+            then 'OK   t46b merchant STARTER: semua kode BK050'
+            else 'FAIL t46b merchant STARTER: ' || pg_temp.ev46('WISUDA20') end as t46b3;
+update public.merchants set subscription_tier = 'PRO' where id = '45454545-0000-0000-0000-000000000001';
+
+-- 46c. Jendela berlaku.
+select case when pg_temp.ev46('BELUMMULAI') = 'BK051' and pg_temp.ev46('SUDAHHABIS') = 'BK051'
+            then 'OK   t46c belum mulai / sudah berakhir BK051'
+            else 'FAIL t46c ' || pg_temp.ev46('BELUMMULAI') || ', ' || pg_temp.ev46('SUDAHHABIS') end as t46c;
+
+-- 46d. Layanan.
+select case when pg_temp.ev46('KHUSUSB') = 'BK055' then 'OK   t46d voucher khusus B untuk A BK055'
+            else 'FAIL t46d cakupan layanan: ' || pg_temp.ev46('KHUSUSB') end as t46d1;
+select case when pg_temp.ev46('KHUSUSB', null, '45454545-5e5e-0000-0000-000000000002') like 'OK:%'
+            then 'OK   t46d voucher khusus B berlaku untuk B'
+            else 'FAIL t46d voucher khusus B untuk B: ' || pg_temp.ev46('KHUSUSB', null, '45454545-5e5e-0000-0000-000000000002') end as t46d2;
+select case when pg_temp.ev46('WISUDA20', null, '45454545-5e5e-0000-0000-000000000003') = 'P0005'
+            then 'OK   t46d layanan nonaktif P0005'
+            else 'FAIL t46d layanan nonaktif: ' || pg_temp.ev46('WISUDA20', null, '45454545-5e5e-0000-0000-000000000003') end as t46d3;
+
+-- 46e. Minimal transaksi.
+select case when pg_temp.ev46('MIN500') = 'BK054' then 'OK   t46e di bawah min_spend BK054'
+            else 'FAIL t46e min_spend: ' || pg_temp.ev46('MIN500') end as t46e;
+
+-- 46f. Kuota: hanya booking yang memegang slot dihitung.
+select pg_temp.b45('KUOTA2', '+6281445450201', 'CONFIRMED', 10000);
+select pg_temp.b45('KUOTA2', '+6281445450202', 'CONFIRMED', 10000);
+select case when pg_temp.ev46('KUOTA2') = 'BK052' then 'OK   t46f dua CONFIRMED: kuota 2 habis BK052'
+            else 'FAIL t46f kuota habis: ' || pg_temp.ev46('KUOTA2') end as t46f1;
+update public.bookings set status = 'CANCELLED', cancelled_at = now(), cancel_reason = 'uji'
+  where customer_whatsapp = '+6281445450201';
+select case when pg_temp.ev46('KUOTA2') like 'OK:%' then 'OK   t46f CANCELLED membebaskan kuota'
+            else 'FAIL t46f setelah batal: ' || pg_temp.ev46('KUOTA2') end as t46f2;
+select pg_temp.b45('KUOTA2', '+6281445450203', 'PENDING', 10000, null, now() - interval '1 minute');
+select case when pg_temp.ev46('KUOTA2') like 'OK:%' then 'OK   t46f PENDING kedaluwarsa tidak dihitung'
+            else 'FAIL t46f PENDING kedaluwarsa dihitung: ' || pg_temp.ev46('KUOTA2') end as t46f3;
+select pg_temp.b45('KUOTA2', '+6281445450204', 'PAID', 10000, now() - interval '7 days', now() - interval '7 days',
+  now() - interval '40 days');
+select case when pg_temp.ev46('KUOTA2') = 'BK052' then 'OK   t46f PAID minggu lalu tetap dihitung'
+            else 'FAIL t46f PAID lama tidak dihitung: ' || pg_temp.ev46('KUOTA2') end as t46f4;
+
+-- 46g. Batas per nomor.
+select pg_temp.b45('SEKALI', '+6281445450301', 'CONFIRMED', 20000);
+select case when pg_temp.ev46('SEKALI', '+6281445450301') = 'BK053'
+             and pg_temp.ev46('SEKALI', '+6281445450302') like 'OK:%'
+             and pg_temp.ev46('SEKALI', null) like 'OK:%'
+            then 'OK   t46g per_phone_limit: X BK053, Y dan tanpa nomor layak'
+            else 'FAIL t46g ' || pg_temp.ev46('SEKALI', '+6281445450301') || ', '
+                 || pg_temp.ev46('SEKALI', '+6281445450302') || ', ' || pg_temp.ev46('SEKALI', null) end as t46g;
+
+-- 46h. Khusus pelanggan baru.
+select pg_temp.b45(null, '+6281445450401', 'CONFIRMED', 0, now() - interval '35 days', now() - interval '35 days',
+  now() - interval '35 days');
+select pg_temp.b45(null, '+6281445450402', 'CANCELLED');
+select case when pg_temp.ev46('BARU46', '+6281445450401') = 'BK056'
+             and pg_temp.ev46('BARU46', '+6281445450402') like 'OK:%'
+            then 'OK   t46h pelanggan lama BK056, yang hanya batal layak'
+            else 'FAIL t46h ' || pg_temp.ev46('BARU46', '+6281445450401') || ', '
+                 || pg_temp.ev46('BARU46', '+6281445450402') end as t46h;
+
+-- 46i. public_vouchers sebagai anon.
+begin;
+set local role anon;
+select case when 'WISUDA20' = any (codes)
+             and not ('RAHASIA45' = any (codes)) and not ('RHS123' = any (codes))
+             and not ('BELUMMULAI' = any (codes)) and not ('SUDAHHABIS' = any (codes))
+             and not ('KUOTA2' = any (codes)) and not ('PUNYAB2' = any (codes))
+            then 'OK   t46i public_vouchers: hanya publik yang hidup dan kuota tersisa'
+            else 'FAIL t46i public_vouchers: ' || array_to_string(codes, ',') end as t46i1
+from (select coalesce(array_agg(code), '{}') as codes
+      from public.public_vouchers('45454545-0000-0000-0000-000000000001')) s;
+commit;
+update public.merchants set subscription_tier = 'STARTER' where id = '45454545-0000-0000-0000-000000000001';
+begin;
+set local role anon;
+select case when (select count(*) from public.public_vouchers('45454545-0000-0000-0000-000000000001')) = 0
+            then 'OK   t46i public_vouchers kosong untuk merchant STARTER'
+            else 'FAIL t46i public_vouchers merchant STARTER tidak kosong' end as t46i2;
+commit;
+update public.merchants set subscription_tier = 'PRO' where id = '45454545-0000-0000-0000-000000000001';
+
+-- 46j. check_voucher sebagai service_role.
+begin;
+set local role service_role;
+select case when code = 'RAHASIA45' and kind = 'PERCENT' and value = 10 and discount = 35000 and reason is null
+            then 'OK   t46j check_voucher kode rahasia: syarat dan diskon'
+            else 'FAIL t46j check_voucher kode rahasia salah' end as t46j1
+from public.check_voucher('45454545-0000-0000-0000-000000000001', 'rahasia45', '45454545-5e5e-0000-0000-000000000001');
+select case when reason = 'BK054' and code is null and kind is null and value is null and min_spend is null
+              and discount is null
+            then 'OK   t46j check_voucher BK054: hanya reason'
+            else 'FAIL t46j check_voucher BK054 membocorkan syarat' end as t46j2
+from public.check_voucher('45454545-0000-0000-0000-000000000001', 'MIN500', '45454545-5e5e-0000-0000-000000000001');
+commit;
+
+-- 46k. Rate limit cek kode: 10 per (hash, merchant) per 15 menit.
+create or replace function pg_temp.rl46()
+returns text language plpgsql as $$
+declare v_res boolean[] := '{}';
+begin
+  for i in 1..11 loop
+    v_res := v_res || public.check_voucher_rate_limit('hash46', '45454545-0000-0000-0000-000000000001');
+  end loop;
+  if v_res[1:10] = array_fill(true, array[10]) and not v_res[11]
+     and public.check_voucher_rate_limit('hash46-lain', '45454545-0000-0000-0000-000000000001') then
+    return 'OK   t46k rate limit: 10 lolos, ke-11 ditolak, hash lain lolos';
+  end if;
+  return 'FAIL t46k rate limit: ' || array_to_string(v_res, ',');
+end $$;
+begin;
+set local role service_role;
+select pg_temp.rl46();
+commit;
+
+-- 46l. voucher_stats sebagai merchant.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '45454545-0000-0000-0000-000000000001';
+select case when
+    (select used = 2 and month_discount = 10000 and month_bookings = 1 from public.voucher_stats() s
+     join public.vouchers v on v.id = s.voucher_id where v.code = 'KUOTA2')
+    and (select used = 1 and month_discount = 20000 and month_bookings = 1 from public.voucher_stats() s
+         join public.vouchers v on v.id = s.voucher_id where v.code = 'SEKALI')
+    and (select used = 0 and month_discount = 0 and month_bookings = 0 from public.voucher_stats() s
+         join public.vouchers v on v.id = s.voucher_id where v.code = 'WISUDA20')
+    and (select count(*) from public.voucher_stats()) = (select count(*) from public.vouchers)
+  then 'OK   t46l voucher_stats: used, month_discount, month_bookings sesuai'
+  else 'FAIL t46l voucher_stats salah' end as t46l1;
+commit;
+-- Hitungan baris di atas memakai RLS: authenticated hanya melihat voucher sendiri.
+begin;
+set local role authenticated;
+select pg_temp.expect_fail_code($q$select * from public.voucher_stats()$q$, '42501', 't46l voucher_stats tanpa login');
+commit;
