@@ -106,7 +106,7 @@ export function StaffManager({
           Belum ada staf. Selama kosong, semua booking masuk ke satu kalender seperti biasa.
         </p>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3" data-tour="staff-list">
           {staff.map((member) => (
             <StaffCard
               key={member.id}

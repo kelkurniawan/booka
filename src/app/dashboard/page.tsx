@@ -45,7 +45,7 @@ export default async function DashboardPage() {
                 Lihat halaman
               </Link>
             </Button>
-            <Button asChild className="hidden h-11 md:inline-flex">
+            <Button asChild className="hidden h-11 md:inline-flex" data-tour="new-booking">
               <Link href={ROUTES.newBooking}>Booking manual</Link>
             </Button>
             <CopyLinkButton path={pagePath} />

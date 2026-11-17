@@ -39,17 +39,20 @@ function NavLink({
   icon: Icon,
   active,
   badge,
+  tour,
 }: {
   href: string;
   label: string;
   icon: LucideIcon;
   active: boolean;
   badge?: React.ReactNode;
+  tour?: string;
 }) {
   return (
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
+      data-tour={tour}
       className={cn(ITEM, active ? "text-foreground font-semibold" : "text-muted-foreground")}
     >
       <span className="relative">
@@ -73,12 +76,13 @@ export function MobileNav({ actionCount }: { actionCount: number | null }) {
       aria-label="Navigasi utama"
       className="bg-background fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t pb-[env(safe-area-inset-bottom)] md:hidden"
     >
-      <NavLink href={ROUTES.dashboard} label="Hari ini" icon={Sun} active={pathname === ROUTES.dashboard} />
+      <NavLink href={ROUTES.dashboard} label="Hari ini" icon={Sun} active={pathname === ROUTES.dashboard} tour="nav-today" />
       <NavLink
         href={ROUTES.bookings}
         label="Booking"
         icon={LayoutList}
         active={onBookings}
+        tour="nav-bookings"
         badge={<ActionBadge count={actionCount} className="absolute -top-1.5 -right-2.5" />}
       />
       <div className="flex items-center justify-center">
@@ -86,6 +90,7 @@ export function MobileNav({ actionCount }: { actionCount: number | null }) {
           href={ROUTES.newBooking}
           aria-label="Tambah booking manual"
           aria-current={pathname === ROUTES.newBooking ? "page" : undefined}
+          data-tour="new-booking"
           className="bg-primary text-primary-foreground focus-visible:ring-ring focus-visible:ring-offset-background -mt-4 flex size-12 items-center justify-center rounded-full focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
         >
           <Plus className="size-6" />

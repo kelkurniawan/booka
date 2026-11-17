@@ -72,7 +72,7 @@ export function CapacitySettingsForm({
         <CardDescription>Cara Marky membatasi jumlah reservasi di satu jam.</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit} className="flex flex-col gap-5" noValidate>
+        <form onSubmit={submit} className="flex flex-col gap-5" noValidate data-tour="dining-capacity">
           <fieldset className="flex flex-col gap-3">
             <legend className="mb-2 text-sm font-medium">Cara menghitung reservasi</legend>
             <OptionCardGroup className="lg:grid-cols-1 sm:grid-cols-1">

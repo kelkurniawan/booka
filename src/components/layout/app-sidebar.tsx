@@ -43,8 +43,8 @@ const NAV_GROUPS = [
   {
     label: null,
     items: [
-      { title: "Hari ini", href: ROUTES.dashboard, icon: Sun, exact: true },
-      { title: "Booking", href: ROUTES.bookings, icon: LayoutList, badge: true },
+      { title: "Hari ini", href: ROUTES.dashboard, icon: Sun, exact: true, tour: "nav-today" },
+      { title: "Booking", href: ROUTES.bookings, icon: LayoutList, badge: true, tour: "nav-bookings" },
       { title: "Analitik", href: ROUTES.analytics, icon: BarChart3 },
     ],
   },
@@ -135,6 +135,7 @@ export function AppSidebar({
                       asChild
                       isActive={active}
                       tooltip={item.title}
+                      data-tour={"tour" in item ? item.tour : undefined}
                       className="max-md:h-11"
                     >
                       <Link href={item.href}>
@@ -157,7 +158,7 @@ export function AppSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Lihat halaman booking">
+                <SidebarMenuButton asChild tooltip="Lihat halaman booking" data-tour="page-link">
                   <a
                     href={ROUTES.merchantPage(merchant.username)}
                     target="_blank"

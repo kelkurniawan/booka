@@ -56,7 +56,7 @@ export function CustomerPolicyForm({
   const [cancel, setCancel] = useState(settings.allow_customer_cancel);
 
   return (
-    <Card className="max-w-lg">
+    <Card className="max-w-lg" data-tour="settings-customer">
       <CardHeader>
         <CardTitle>Ubah jadwal &amp; batal oleh pelanggan</CardTitle>
         <CardDescription>Pelanggan mengelola booking dari tautan di pesan konfirmasi mereka.</CardDescription>

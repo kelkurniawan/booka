@@ -75,7 +75,7 @@ export default async function BillingPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3" data-tour="billing-plans">
         {PLANS.map((plan) => (
           <Card
             key={plan.tier}

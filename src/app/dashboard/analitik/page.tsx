@@ -127,7 +127,7 @@ export default async function AnalyticsPage({
         ))}
       </nav>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="analytics-summary">
         <Stat
           label="Uang diterima"
           value={formatRupiah(summary.revenue)}

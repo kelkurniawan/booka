@@ -14,7 +14,7 @@ const TABS = [
 export function PromoTabs() {
   const pathname = usePathname();
   return (
-    <nav aria-label="Promosi" className="flex gap-1 border-b">
+    <nav aria-label="Promosi" className="flex gap-1 border-b" data-tour="promo-tabs">
       {TABS.map((tab) => {
         const active = pathname === tab.href;
         return (

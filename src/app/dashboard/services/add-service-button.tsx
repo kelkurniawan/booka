@@ -24,7 +24,7 @@ export function AddServiceButton({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>
+      <Button onClick={() => setOpen(true)} data-tour="service-add">
         <Plus />
         Tambah layanan
       </Button>

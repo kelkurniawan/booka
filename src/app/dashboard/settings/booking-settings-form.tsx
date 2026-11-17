@@ -42,7 +42,7 @@ export function BookingSettingsForm({
   }, [state]);
 
   return (
-    <Card className="max-w-lg">
+    <Card className="max-w-lg" data-tour="settings-booking">
       <CardHeader>
         <CardTitle>Booking tanpa bayar</CardTitle>
         <CardDescription>Atur layanan yang boleh dibayar di tempat dan cara menjaga dari no-show.</CardDescription>

@@ -47,7 +47,7 @@ export function AccountSection({ username }: { username: string }) {
   const matches = confirmation.trim().toLowerCase() === username;
 
   return (
-    <div className="flex max-w-lg flex-col gap-4">
+    <div className="flex max-w-lg flex-col gap-4" data-tour="settings-account">
       <Card>
         <CardHeader>
           <CardTitle>Unduh data Anda</CardTitle>

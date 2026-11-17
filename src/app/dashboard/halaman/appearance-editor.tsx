@@ -858,7 +858,7 @@ export function AppearanceEditor({
       </div>
 
       <div className="gap-10 lg:grid lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className={cn(tampilan === "preview" && "max-lg:hidden")}>{panel}</div>
+        <div className={cn(tampilan === "preview" && "max-lg:hidden")} data-tour="appearance-editor">{panel}</div>
         <div
           className={cn(
             "lg:sticky lg:top-6 lg:self-start",

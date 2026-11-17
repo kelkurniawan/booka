@@ -45,7 +45,7 @@ export function ReminderSettingsForm({
   const allowed = REMINDER_TIERS.includes(tier);
 
   return (
-    <Card className="max-w-lg">
+    <Card className="max-w-lg" data-tour="settings-reminders">
       <CardHeader>
         <CardTitle>Pengingat untuk pelanggan</CardTitle>
         <CardDescription>

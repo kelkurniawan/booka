@@ -22,7 +22,7 @@ export function BookingTabs({
   size: number;
 }) {
   return (
-    <nav aria-label="Kelompok booking" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
+    <nav aria-label="Kelompok booking" data-tour="booking-tabs" className="-mx-4 overflow-x-auto px-4 md:mx-0 md:px-0">
       <ul className="flex min-w-max gap-5 border-b">
         {BOOKING_TABS.map(({ tab, label }) => {
           const count = tab === "ACTION" ? counts?.action : tab === "UPCOMING" ? counts?.upcoming : undefined;

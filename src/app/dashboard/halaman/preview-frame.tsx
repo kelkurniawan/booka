@@ -46,6 +46,7 @@ export function AppearancePreview({
     // transform membuat bingkai ini acuan `fixed` lapisan gerak di shell.
     <div
       className="border-border mx-auto w-full max-w-[360px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-800"
+      data-tour="appearance-preview"
       style={{ transform: "translateZ(0)" }}
     >
       <div className="max-h-[620px] overflow-y-auto">

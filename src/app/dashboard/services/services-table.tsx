@@ -56,7 +56,7 @@ export function ServicesTable({
   tableMode: TableMode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border">
+    <div className="overflow-hidden rounded-xl border" data-tour="service-list">
       <Table>
         <TableHeader>
           <TableRow>

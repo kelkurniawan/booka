@@ -55,6 +55,7 @@ export function BookingsFilters({ q }: { q: string }) {
           placeholder="Cari nama atau WhatsApp"
           maxLength={80}
           aria-label="Cari booking"
+          data-tour="booking-search"
           className="h-11"
         />
         <Button type="submit" variant="outline" size="icon" aria-label="Cari" className="size-11">

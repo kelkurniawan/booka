@@ -1,6 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join } from "node:path";
 import { CHECKLIST_COPY, GUIDE_PAGES } from "./content";
 import { CHECKLIST_ORDER, GUIDE_PAGE_KEYS } from "./guide";
 
@@ -29,5 +30,20 @@ describe("isi panduan", () => {
     const sql = readFileSync("supabase/migrations/20261121000100_onboarding_progress.sql", "utf8");
     const list = sql.match(/tours_seen <@ array\[([^\]]+)\]/)?.[1] ?? "";
     assert.deepEqual([...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort(), [...GUIDE_PAGE_KEYS].sort());
+  });
+  it("setiap target tur terpasang di kode aplikasi", () => {
+    const walk = (dir: string): string[] =>
+      readdirSync(dir).flatMap((f) => {
+        const p = join(dir, f);
+        return statSync(p).isDirectory() ? walk(p) : /\.tsx$/.test(p) && !/\.stories\.tsx$/.test(p) ? [p] : [];
+      });
+    const source = walk("src").map((p) => readFileSync(p, "utf8")).join("\n");
+    const targets = new Set(
+      Object.values(GUIDE_PAGES).flatMap((p) => p.tour.flatMap((s) => (s.target ? [s.target] : []))),
+    );
+    // Menerima data-tour="x", data-tour={"x"}, dan properti tour: "x" / tour="x" (item nav yang dirender dari larik).
+    for (const t of targets) {
+      assert.match(source, new RegExp(`tour\\s*[=:]\\s*\\{?["']${t}["']`), `target "${t}" tidak ditemukan`);
+    }
   });
 });

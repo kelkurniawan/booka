@@ -55,6 +55,7 @@ export function DomainManager({
         </CardHeader>
         <CardContent>
           <form
+            data-tour="domain-form"
             className="flex gap-2"
             onSubmit={(event) => {
               event.preventDefault();

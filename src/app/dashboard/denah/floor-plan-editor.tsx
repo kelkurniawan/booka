@@ -299,7 +299,7 @@ export function FloorPlanEditor({
   const others = selected ? tables.filter((t) => t.area_id === selected.area_id && t.id !== selected.id) : [];
 
   return (
-    <section aria-label="Editor denah" className="flex flex-col gap-4">
+    <section aria-label="Editor denah" className="flex flex-col gap-4" data-tour="dining-editor">
       {error ? (
         <Alert variant="destructive" role="alert">
           <AlertDescription>{error}</AlertDescription>
