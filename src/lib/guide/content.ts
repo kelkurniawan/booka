@@ -266,7 +266,7 @@ export const GUIDE_PAGES: Record<GuidePageKey, GuidePage> = {
       },
       {
         term: "Area dan meja",
-        text: "Tambah area (misalnya Dalam atau Teras), lalu Tambah meja bulat atau Tambah meja kotak. Isi nama, ukuran, catatan untuk pelanggan, dan apakah meja Bisa dipesan online. Tekan Simpan denah setelah selesai.",
+        text: "Tambah area (misalnya Dalam atau Teras), lalu Tambah meja bulat atau Tambah meja kotak. Isi nama, ukuran, catatan untuk pelanggan, dan apakah meja Bisa dipesan online. Tekan Simpan denah setelah selesai. Meja tidak boleh bertumpuk, dan meja atau area yang masih punya reservasi mendatang tidak bisa dihapus sampai reservasinya dipindah.",
       },
       {
         term: "Gabung meja",
