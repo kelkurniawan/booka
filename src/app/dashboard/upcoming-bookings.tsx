@@ -22,7 +22,7 @@ export async function UpcomingBookings() {
     .from("bookings")
     .select("id, service_name, customer_name, start_datetime, status")
     .eq("merchant_id", user.id)
-    .eq("status", "PAID")
+    .in("status", ["PAID", "CONFIRMED"])
     .gte("start_datetime", now.toISOString())
     .order("start_datetime", { ascending: true })
     .limit(5);

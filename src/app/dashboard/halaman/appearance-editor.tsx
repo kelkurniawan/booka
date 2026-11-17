@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { PaymentSettings } from "@/lib/booking/payment-mode";
 import { compressImage } from "@/lib/media/compress";
 import { MEDIA_LIMITS, validateImageFile } from "@/lib/media/limits";
 import { mediaFileName, mediaPathFromUrl, removeMedia, uploadMedia } from "@/lib/media/upload";
@@ -96,6 +97,7 @@ export function AppearanceEditor({
   services,
   mediaByService,
   faqs: faqsAwal,
+  paymentSettings,
 }: {
   tier: SubscriptionTier;
   merchantId: string;
@@ -107,6 +109,7 @@ export function AppearanceEditor({
   services: Service[];
   mediaByService: Record<string, ServiceMedia[]>;
   faqs: MerchantFaq[];
+  paymentSettings: PaymentSettings;
 }) {
   const starter = tier === "STARTER";
 
@@ -718,6 +721,7 @@ export function AppearanceEditor({
       mediaByService={mediaByService}
       faqs={faqPreview}
       showWatermark={starter}
+      paymentSettings={paymentSettings}
     />
   );
 

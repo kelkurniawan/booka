@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { requireMerchant } from "@/lib/auth/session";
+import { DEFAULT_PAYMENT_SETTINGS } from "@/lib/booking/payment-mode";
 import { createClient } from "@/lib/supabase/server";
 import type { Service, ServiceMedia } from "@/types/database";
 
@@ -13,7 +14,7 @@ export default async function AppearancePage() {
   const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
 
-  const [themeResult, profilResult, servicesResult, faqsResult] = await Promise.all([
+  const [themeResult, profilResult, servicesResult, faqsResult, settingsResult] = await Promise.all([
     supabase.from("merchant_themes").select("*").eq("merchant_id", user.id).maybeSingle(),
     // requireMerchant() tidak membawa `bio`, sedangkan halaman publik
     // menampilkannya. Diambil di sini supaya preview tidak diam-diam berbeda
@@ -31,6 +32,11 @@ export default async function AppearancePage() {
       .select("*")
       .eq("merchant_id", user.id)
       .order("sort_order", { ascending: true }),
+    supabase
+      .from("merchant_settings")
+      .select("allow_pay_on_site, auto_confirm_on_site")
+      .eq("merchant_id", user.id)
+      .maybeSingle(),
   ]);
 
   const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
@@ -59,6 +65,7 @@ export default async function AppearancePage() {
         services={services}
         mediaByService={mediaByService}
         faqs={faqsResult.data ?? []}
+        paymentSettings={settingsResult.data ?? DEFAULT_PAYMENT_SETTINGS}
       />
     </>
   );

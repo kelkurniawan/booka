@@ -1,11 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 
+import { DEFAULT_PAYMENT_SETTINGS } from "@/lib/booking/payment-mode";
 import {
   sampleFaqs,
   sampleMerchant,
   sampleServices,
   sampleTheme,
 } from "@/components/booking-page/fixtures";
+
+import type { Service } from "@/types/database";
 
 import { BookingPageView } from "./booking-page-view";
 
@@ -28,6 +31,7 @@ const meta = {
     })),
     staff: [],
     faqs: sampleFaqs,
+    paymentSettings: DEFAULT_PAYMENT_SETTINGS,
   },
 } satisfies Meta<typeof BookingPageView>;
 
@@ -56,3 +60,12 @@ export const DenganStaf: Story = {
     ],
   },
 };
+
+const campuran: Service[] = [
+  { ...sampleServices[0], payment_mode: "FULL" },
+  { ...sampleServices[1], payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: 30 },
+  { ...sampleServices[2], payment_mode: "ON_SITE" },
+  { ...sampleServices[0], id: "00000000-0000-4000-8000-0000000000a4", name: "Makeup Akad", payment_mode: "REQUEST", deposit_type: "FIXED", deposit_value: 200000 },
+];
+
+export const CaraBayarCampuran: Story = { args: { services: campuran } };

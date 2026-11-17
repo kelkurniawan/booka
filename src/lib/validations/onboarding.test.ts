@@ -84,6 +84,12 @@ describe("wizardServiceSchema", () => {
     );
   });
 
+  it("menolak harga 1..1499 (di bawah minimum QRIS), menerima 0 dan 1500", () => {
+    assert.equal(wizardServiceSchema.safeParse({ ...LAYANAN, price: "1000" }).success, false);
+    assert.equal(wizardServiceSchema.safeParse({ ...LAYANAN, price: "0" }).success, true);
+    assert.equal(wizardServiceSchema.safeParse({ ...LAYANAN, price: "1500" }).success, true);
+  });
+
   it("menolak harga kosong, BUKAN mengubahnya jadi nol", () => {
     // z.coerce.number() mengubah "" menjadi 0 yang lolos nonnegative(). Tanpa
     // penolakan eksplisit, merchant yang melewati kolom harga diam-diam

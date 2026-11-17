@@ -122,3 +122,34 @@ export const Ringkasan: Story = {
     </Bingkai>
   ),
 };
+
+export const RingkasanDpSisaDiTempat: Story = {
+  render: () => (
+    <Bingkai>
+      <BookingSummary
+        rows={[
+          { label: "Layanan", value: "Makeup Wisuda" },
+          { label: "Jadwal", value: "Jumat, 20 November 2026, 09:30" },
+          { label: "Harga layanan", value: "Rp 105.000" },
+        ]}
+        total="Rp 50.000"
+        onSite="Rp 55.000"
+      />
+    </Bingkai>
+  ),
+};
+
+export const RingkasanBayarDiTempat: Story = {
+  render: () => (
+    <Bingkai theme={sampleTheme("MALAM")}>
+      <BookingSummary
+        rows={[
+          { label: "Layanan", value: "Makeup Wisuda" },
+          { label: "Harga layanan", value: "Rp 105.000" },
+        ]}
+        total="Rp 0"
+        onSite="Rp 105.000"
+      />
+    </Bingkai>
+  ),
+};

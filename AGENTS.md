@@ -51,6 +51,10 @@ Redesign mengikuti `DESIGN.md` dan spec `docs/superpowers/specs/2026-11-14-marky
 F1 selesai: `/[username]` kini alur tiga langkah (`BookingFlow` di
 `src/app/[username]/booking-flow.tsx`, komponen murni di
 `src/components/booking-page/`), dan `/pesanan/[token]` memakai tema merchant.
+F2 selesai: cara bayar per layanan (`FULL`, `DEPOSIT`, `ON_SITE`, `REQUEST`),
+status `CONFIRMED`/`REQUESTED`, `merchant_settings`, minimum QRIS Rp1.500
+(`src/lib/booking/payment-mode.ts` mencerminkan `create_booking`), aksi merchant
+di detail booking, dan rute bayar `/api/pesanan/[token]/bayar`.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

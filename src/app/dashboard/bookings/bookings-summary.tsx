@@ -54,12 +54,12 @@ export async function BookingsSummary() {
           label="Booking bulan ini"
           value={`${bookingsThisMonth}`}
           // Definisi ini SENGAJA sama persis dengan count_bookings_this_month
-          // (dipakai kuota "X / Y transaksi" di Ringkasan) -- PAID, atau
-          // PENDING yang belum kedaluwarsa. Bukan "semua status": CANCELLED
-          // dan PENDING kedaluwarsa TIDAK dihitung, supaya angka di kartu ini
+          // (dipakai kuota "X / Y transaksi" di Ringkasan) -- PAID dan
+          // CONFIRMED, atau PENDING dan REQUESTED yang belum kedaluwarsa.
+          // Bukan "semua status": CANCELLED dan yang kedaluwarsa TIDAK dihitung, supaya angka di kartu ini
           // tidak pernah tampak berbeda dari kuota di halaman Ringkasan untuk
           // bulan yang sama.
-          hint="Booking yang terhitung kuota bulan ini (dibayar atau menunggu pembayaran)"
+          hint="Booking yang terhitung kuota bulan ini: terkonfirmasi, dibayar, menunggu pembayaran, atau menunggu persetujuan"
         />
       </Reveal>
       <Reveal delay={40}>
@@ -67,7 +67,7 @@ export async function BookingsSummary() {
           icon={<Banknote className="size-4" />}
           label="Pendapatan terkonfirmasi bulan ini"
           value={formatRupiah(confirmedRevenue)}
-          hint="Total DP yang sudah dibayar bulan ini"
+          hint="DP atau pelunasan online ditambah pelunasan di tempat yang diterima bulan ini"
         />
       </Reveal>
       <Reveal delay={80}>

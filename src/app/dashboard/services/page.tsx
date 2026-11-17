@@ -15,6 +15,7 @@ import {
 import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
+import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
 import type { Service, ServiceMedia } from "@/types/database";
 
 import { AddServiceButton } from "./add-service-button";
@@ -40,6 +41,14 @@ export default async function ServicesPage() {
 
   const tier = merchant.subscription_tier;
 
+  // Baris dibuat trigger/backfill; bila belum ada, pakai bawaan.
+  const { data: settingsRow } = await supabase
+    .from("merchant_settings")
+    .select("allow_pay_on_site, auto_confirm_on_site, max_active_per_phone, deposit_after_no_show")
+    .eq("merchant_id", user.id)
+    .maybeSingle();
+  const settings = settingsRow ?? DEFAULT_MERCHANT_SETTINGS;
+
   // `service_media` datang menempel di tiap baris lewat embedding; dipisah di
   // sini supaya komponen di bawah tetap menerima Service[] polos.
   const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
@@ -60,7 +69,7 @@ export default async function ServicesPage() {
       <PageHeader
         title="Layanan"
         description="Daftar layanan yang bisa dipesan pelanggan beserta harga dan durasinya."
-        action={<AddServiceButton merchantId={user.id} tier={tier} />}
+        action={<AddServiceButton merchantId={user.id} tier={tier} settings={settings} />}
       />
 
       {limitReached ? (
@@ -88,7 +97,7 @@ export default async function ServicesPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <AddServiceButton merchantId={user.id} tier={tier} />
+            <AddServiceButton merchantId={user.id} tier={tier} settings={settings} />
           </EmptyContent>
         </Empty>
       ) : (
@@ -97,6 +106,7 @@ export default async function ServicesPage() {
           merchantId={user.id}
           tier={tier}
           mediaByService={mediaByService}
+          settings={settings}
         />
       )}
     </>

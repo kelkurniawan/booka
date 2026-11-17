@@ -48,13 +48,13 @@ export async function deleteAccount(
       .from("bookings")
       .select("id", { count: "exact", head: true })
       .eq("merchant_id", user.id)
-      .eq("status", "PAID")
+      .in("status", ["PAID", "CONFIRMED"])
       .gt("end_datetime", nowISO),
     supabase
       .from("bookings")
       .select("id", { count: "exact", head: true })
       .eq("merchant_id", user.id)
-      .eq("status", "PENDING")
+      .in("status", ["PENDING", "REQUESTED"])
       .gt("expires_at", nowISO),
   ]);
 

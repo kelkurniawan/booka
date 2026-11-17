@@ -18,6 +18,8 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "all", label: "Semua status" },
   { value: "PENDING", label: "Menunggu pembayaran" },
   { value: "PAID", label: "Dibayar" },
+  { value: "CONFIRMED", label: "Terkonfirmasi" },
+  { value: "REQUESTED", label: "Perlu persetujuan" },
   { value: "CANCELLED", label: "Dibatalkan" },
 ];
 

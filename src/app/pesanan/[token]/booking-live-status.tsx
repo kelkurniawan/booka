@@ -7,12 +7,14 @@ import { Loader2 } from "lucide-react";
 import { formatCountdown } from "@/lib/booking/countdown";
 import { formatTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import type { BookingStatus } from "@/types/database";
 
 const POLL_INTERVAL_MS = 3000;
 const TICK_INTERVAL_MS = 1000;
 const URGENT_THRESHOLD_MS = 2 * 60 * 1000;
 
-type PollStatus = "PENDING" | "PAID" | "CANCELLED";
+// Semua status selain PENDING dianggap terminal (halaman di-refresh).
+type PollStatus = BookingStatus;
 
 /** Bentuk respons `GET /api/bookings/[id]/status` -- sengaja cuma dua field ini. */
 type BookingStatusResponse = { status: PollStatus; expires_at: string };

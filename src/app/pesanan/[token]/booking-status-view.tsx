@@ -1,16 +1,19 @@
 import Link from "next/link";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, Clock, XCircle } from "lucide-react";
 
 import { AddToCalendarButton } from "@/components/booking-page/add-to-calendar-button";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { QrisCode } from "@/components/qris-code";
 import { Button } from "@/components/ui/button";
 import { buildBookingIcs } from "@/lib/booking/calendar";
-import { formatDayBlock, formatRupiah, formatSchedule, formatTime } from "@/lib/format";
+import { REQUEST_EXPIRY_REASON, REQUEST_REJECT_REASON } from "@/lib/booking/payment-mode";
+import { formatDateTime, formatDayBlock, formatRupiah, formatSchedule, formatTime } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import type { ResolvedTheme } from "@/lib/theme/types";
+import type { BookingStatus, PaymentMode } from "@/types/database";
 
 import { BookingLiveStatus } from "./booking-live-status";
+import { PayNowButton } from "./pay-now-button";
 
 export type BookingPageRow = {
   id: string;
@@ -20,15 +23,21 @@ export type BookingPageRow = {
   start_datetime: string;
   end_datetime: string;
   customer_name: string;
-  status: "PENDING" | "PAID" | "CANCELLED";
+  status: BookingStatus;
   payment_url: string | null;
   paid_at: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   expires_at: string;
+  payment_mode: PaymentMode;
+  amount_due_now: number;
+  amount_due_on_site: number;
+  paid_on_site_at: string | null;
 };
 
 type ViewProps = {
+  /** Token akses dari URL; dipakai tombol bayar untuk permintaan yang disetujui. */
+  token: string;
   booking: BookingPageRow;
   merchantName: string;
   merchantUsername: string | null;
@@ -38,6 +47,7 @@ type ViewProps = {
 
 /** Tampilan murni /pesanan/[token]: tanpa query, supaya bisa dipakai Storybook. */
 export function BookingStatusView({
+  token,
   booking,
   merchantName,
   merchantUsername,
@@ -51,14 +61,21 @@ export function BookingStatusView({
         <p className="text-muted-foreground text-sm">{merchantName}</p>
       </header>
 
-      {booking.status === "PAID" ? (
-        <Paid booking={booking} merchantName={merchantName} merchantUsername={merchantUsername} />
+      {booking.status === "PAID" || booking.status === "CONFIRMED" ? (
+        <Booked booking={booking} merchantName={merchantName} merchantUsername={merchantUsername} />
       ) : booking.status === "CANCELLED" || isExpiredPending ? (
         <ExpiredOrCancelled
           booking={booking}
           merchantName={merchantName}
           merchantUsername={merchantUsername}
+          isExpiredPending={isExpiredPending}
         />
+      ) : booking.status === "REQUESTED" ? (
+        <Requested booking={booking} merchantName={merchantName} />
+      ) : booking.payment_mode === "REQUEST" && !booking.payment_url ? (
+        // Hanya permintaan yang disetujui yang menunggu pelanggan menekan Bayar;
+        // PENDING lain tanpa QR tetap memakai cadangan "muat ulang" di Pending.
+        <Approved token={token} booking={booking} />
       ) : (
         <Pending booking={booking} />
       )}
@@ -75,7 +92,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-function Paid({
+function Booked({
   booking,
   merchantName,
   merchantUsername,
@@ -84,6 +101,7 @@ function Paid({
   merchantName: string;
   merchantUsername: string | null;
 }) {
+  const confirmed = booking.status === "CONFIRMED";
   const { month, day } = formatDayBlock(booking.start_datetime);
   const ics = buildBookingIcs({
     uid: booking.id,
@@ -93,8 +111,25 @@ function Paid({
     location: merchantName,
   });
 
+  const onSiteRow = booking.amount_due_on_site > 0 && (
+    <Row label={booking.paid_on_site_at ? "Lunas di tempat" : confirmed ? "Bayar di tempat" : "Sisa di tempat"}>
+      {formatRupiah(Number(booking.amount_due_on_site))}
+      {confirmed && !booking.paid_on_site_at ? (
+        <span className="text-muted-foreground block text-xs font-normal">Dibayar saat layanan</span>
+      ) : null}
+    </Row>
+  );
+
   return (
     <div className="flex flex-col gap-6">
+      {confirmed ? (
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Jadwal sudah dipesan</h2>
+          <p className="text-muted-foreground text-sm">
+            Sampai jumpa, {booking.customer_name.split(" ")[0]}.
+          </p>
+        </div>
+      ) : null}
       <div className="border-border bg-card flex items-center gap-4 rounded-[var(--radius)] border p-4">
         <div className="border-border flex w-16 shrink-0 flex-col items-center border-r pr-4">
           <span className="text-muted-foreground text-sm">{month}</span>
@@ -109,8 +144,14 @@ function Paid({
       </div>
 
       <dl className="flex flex-col gap-3 text-sm">
+        {confirmed ? onSiteRow : null}
         <Row label="Atas nama">{booking.customer_name}</Row>
-        <Row label="Dibayar">{formatRupiah(Number(booking.service_price))} (QRIS)</Row>
+        {confirmed ? null : (
+          <>
+            <Row label="Dibayar">{formatRupiah(Number(booking.amount_due_now))} (QRIS)</Row>
+            {onSiteRow}
+          </>
+        )}
         <Row label="Status">
           <span className="inline-flex items-center gap-1.5">
             <CheckCircle2 className="size-4" aria-hidden />
@@ -142,22 +183,36 @@ function ExpiredOrCancelled({
   booking,
   merchantName,
   merchantUsername,
+  isExpiredPending,
 }: {
   booking: BookingPageRow;
   merchantName: string;
   merchantUsername: string | null;
+  isExpiredPending: boolean;
 }) {
+  const rejected =
+    booking.status === "CANCELLED" && booking.cancel_reason === REQUEST_REJECT_REASON;
+  const unanswered =
+    (booking.status === "CANCELLED" && booking.cancel_reason === REQUEST_EXPIRY_REASON) ||
+    (booking.status === "REQUESTED" && isExpiredPending);
+  const isRequestEnd = rejected || unanswered;
   return (
     <div className="border-border bg-card flex flex-col items-center gap-3 rounded-[var(--radius)] border p-6 text-center">
       <XCircle className="text-destructive size-10" aria-hidden />
       <div className="flex flex-col gap-1">
         <span className="font-medium">
-          {booking.status === "CANCELLED" ? "Booking dibatalkan" : "Waktu pembayaran habis"}
+          {rejected
+            ? "Permintaan ditolak"
+            : unanswered
+              ? "Permintaan tidak dijawab"
+              : booking.status === "CANCELLED"
+                ? "Booking dibatalkan"
+                : "Waktu pembayaran habis"}
         </span>
         <p className="text-muted-foreground text-sm text-pretty">
           Slot ini sudah dilepas kembali.
-          {booking.cancel_reason ? ` ${booking.cancel_reason}.` : ""} Silakan pesan ulang untuk
-          memilih jadwal baru.
+          {booking.cancel_reason && !isRequestEnd ? ` ${booking.cancel_reason}.` : ""} Silakan
+          pesan ulang untuk memilih jadwal baru.
         </p>
       </div>
 
@@ -191,11 +246,18 @@ function Pending({ booking }: { booking: BookingPageRow }) {
           )}
 
           <div className="flex flex-col items-center">
-            <span className="text-muted-foreground text-sm">Yang perlu dibayar</span>
+            <span className="text-muted-foreground text-sm">
+              {booking.amount_due_on_site > 0 ? "DP dibayar sekarang" : "Yang perlu dibayar"}
+            </span>
             <span className="text-2xl font-semibold">
-              {formatRupiah(Number(booking.service_price))}
+              {formatRupiah(Number(booking.amount_due_now))}
             </span>
           </div>
+          {booking.amount_due_on_site > 0 ? (
+            <p className="text-muted-foreground text-center text-sm">
+              Sisa {formatRupiah(Number(booking.amount_due_on_site))} dibayar di tempat.
+            </p>
+          ) : null}
           <p className="text-muted-foreground text-center text-sm">
             Bayar sebelum {formatTime(booking.expires_at)} WIB
           </p>
@@ -216,6 +278,59 @@ function Pending({ booking }: { booking: BookingPageRow }) {
         <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
         <Row label="Atas nama">{booking.customer_name}</Row>
       </dl>
+    </div>
+  );
+}
+
+function Summary({ booking }: { booking: BookingPageRow }) {
+  return (
+    <dl className="border-border flex flex-col gap-3 border-t pt-4 text-sm">
+      <Row label="Layanan">{booking.service_name}</Row>
+      <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
+      <Row label="Atas nama">{booking.customer_name}</Row>
+      {booking.amount_due_now > 0 ? (
+        <Row label="Dibayar setelah disetujui">{formatRupiah(Number(booking.amount_due_now))}</Row>
+      ) : null}
+      {booking.amount_due_on_site > 0 ? (
+        <Row label="Bayar di tempat">{formatRupiah(Number(booking.amount_due_on_site))}</Row>
+      ) : null}
+    </dl>
+  );
+}
+
+function Requested({ booking, merchantName }: { booking: BookingPageRow; merchantName: string }) {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="border-border bg-card flex flex-col items-center gap-3 rounded-[var(--radius)] border p-6 text-center">
+        <Clock className="size-10" aria-hidden />
+        <div className="flex flex-col gap-1">
+          <h2 className="font-medium">Permintaan terkirim</h2>
+          <p className="text-muted-foreground text-sm text-pretty">
+            {merchantName} akan menjawab sebelum {formatDateTime(booking.expires_at)} WIB. Buka lagi
+            halaman ini untuk melihat jawabannya.
+          </p>
+        </div>
+      </div>
+      <Summary booking={booking} />
+    </div>
+  );
+}
+
+function Approved({ token, booking }: { token: string; booking: BookingPageRow }) {
+  const amount = formatRupiah(Number(booking.amount_due_now));
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="border-border bg-card flex flex-col items-center gap-3 rounded-[var(--radius)] border p-6 text-center">
+        <CheckCircle2 className="size-10" aria-hidden />
+        <div className="flex flex-col gap-1">
+          <h2 className="font-medium">Permintaan disetujui</h2>
+          <p className="text-muted-foreground text-sm text-pretty">
+            Bayar {amount} sebelum {formatTime(booking.expires_at)} WIB untuk mengunci jadwal.
+          </p>
+        </div>
+        <PayNowButton token={token} label={`Bayar ${amount}`} />
+      </div>
+      <Summary booking={booking} />
     </div>
   );
 }
