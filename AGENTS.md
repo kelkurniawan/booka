@@ -90,6 +90,13 @@ di bawah kunci merchant, `bookings_no_overlap` hanya untuk
 `capacity_mode = 'NONE'` plus eksklusi per meja, denah ditulis hanya lewat
 `save_dining_layout`, `anon` membaca lewat `get_seat_availability`/
 `get_table_status`, editor di `/dashboard/denah` (DECISIONS #37).
+F9 selesai: checklist "Panduan memulai" di Hari ini dihitung dari data lewat
+`onboarding_state()` (aturan di `src/lib/guide/guide.ts`), progres di
+`merchant_onboarding_progress` yang hanya ditulis `save_onboarding_progress`,
+tur coachmark Radix `Dialog` dengan target `data-tour`, panel "Panduan halaman
+ini" di setiap halaman dashboard. Semua teks di `src/lib/guide/content.ts`
+wajib diperbarui saat halaman berubah; `content.test.ts` memeriksa target
+(DECISIONS #38).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

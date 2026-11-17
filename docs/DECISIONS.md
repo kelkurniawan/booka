@@ -586,3 +586,13 @@ Denah hanya ditulis lewat `save_dining_layout` (atomik, di bawah kunci merchant)
 Reservasi gratis mengikuti artboard ResData: tanpa pemilih voucher dan tanpa ringkasan harga Rp 0. Penanda ruangan (Jendela, Pintu, Kasir) dan slot "Penuh" dicoret tidak dibangun. Baris "Lebih dari N? Lihat Paket acara" dibangun umum sebagai "Lihat layanan lain" yang kembali ke daftar layanan, karena tidak setiap restoran punya layanan paket acara.
 
 Diterima sadar: pemilih jam saat jadwal ulang menghitung kursi atau meja milik booking itu sendiri, sehingga jam yang sebenarnya muat (misalnya menggeser 30 menit) bisa tidak tampil. `move_booking_slot` sendiri menghitung dengan benar; perbaikannya parameter pengecualian booking di `get_seat_availability` bila keluhan muncul.
+
+## 38. Panduan merchant baru
+
+Checklist "Panduan memulai" (6 langkah) dihitung dari data sungguhan lewat satu panggilan `onboarding_state()`, bukan dari centang manual: layanan ada, jam buka ada, cara menerima uang siap (gateway terhubung ATAU semua layanan aktif bayar di tempat atau ajukan dulu, supaya merchant tanpa gateway tidak disuruh menghubungkannya), tampilan pernah disimpan, tautan pernah dibagikan, dan booking pertama masuk. Aturannya ada di modul murni `src/lib/guide/guide.ts` supaya bisa diuji tanpa database.
+
+Progres yang bukan data (tur sudah dilihat, checklist disembunyikan, tautan sudah disalin) disimpan di `merchant_onboarding_progress`, satu baris per merchant, hanya bisa dibaca pemiliknya dan hanya ditulis lewat `save_onboarding_progress`. Klien tidak punya hak INSERT/UPDATE langsung.
+
+Tur coachmark memakai `Dialog` Radix dengan target `data-tour`: fokus terkunci di kartu, Enter maju, Esc menutup, gulir halaman dikembalikan. Tur Hari ini mulai sendiri sekali untuk merchant baru, lima langkah di desktop dan empat di HP (kartu di atas nav bawah). Langkah yang targetnya tidak ada (misalnya fitur paket Pro atau Studio untuk merchant Starter) dilewati, jadi Starter hanya melihat langkah ringkasan di halaman itu.
+
+Semua teks panduan ada di satu modul `src/lib/guide/content.ts` dan ditulis dari perilaku halaman yang sebenarnya, bukan dari rencana; `content.test.ts` memeriksa bahwa setiap target tur benar-benar terpasang di kode. Halaman yang berubah wajib memperbarui teksnya. Slot video tiap halaman sengaja kosong ("Video panduan belum tersedia.") sampai videonya dibuat; tidak ada durasi atau angka karangan.
