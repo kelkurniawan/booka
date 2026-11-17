@@ -1,9 +1,11 @@
-import { getTabCounts } from "@/app/dashboard/queries";
+import { getOnboardingState, getTabCounts } from "@/app/dashboard/queries";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { GuideProvider } from "@/components/guide/guide-provider";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { requireMerchant } from "@/lib/auth/session";
+import { GUIDE_PAGE_KEYS } from "@/lib/guide/guide";
 
 /**
  * Seluruh dashboard bergantung pada sesi merchant, jadi tidak boleh ada
@@ -22,10 +24,19 @@ export default async function DashboardLayout({
   // belum-onboarding untuk /dashboard/* (lihat komentar di proxy.ts), tapi
   // layout tetap memeriksa sendiri agar sidebar tidak pernah dirender tanpa
   // merchant yang valid.
-  const [{ user, merchant }, counts] = await Promise.all([requireMerchant(), getTabCounts()]);
+  const [{ user, merchant }, counts, onboarding] = await Promise.all([
+    requireMerchant(),
+    getTabCounts(),
+    getOnboardingState(),
+  ]);
   const actionCount = counts?.action ?? null;
 
   return (
+    // Gagal muat: semua halaman dianggap sudah dilihat, jadi tidak ada tur otomatis.
+    <GuideProvider
+      toursSeen={onboarding?.toursSeen ?? [...GUIDE_PAGE_KEYS]}
+      checklistDismissed={onboarding ? onboarding.checklistDismissedAt !== null : true}
+    >
     <SidebarProvider>
       <AppSidebar
         actionCount={actionCount}
@@ -49,5 +60,6 @@ export default async function DashboardLayout({
       </SidebarInset>
       <MobileNav actionCount={actionCount} />
     </SidebarProvider>
+    </GuideProvider>
   );
 }

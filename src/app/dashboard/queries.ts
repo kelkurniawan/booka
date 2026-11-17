@@ -3,11 +3,13 @@ import "server-only";
 import { cache } from "react";
 
 import { getSessionUser } from "@/lib/auth/session";
+import type { OnboardingFacts } from "@/lib/guide/guide";
 import { createClient } from "@/lib/supabase/server";
+import type { GuidePageKey, ManualStepKey } from "@/types/database";
 
 /**
  * Query yang dibutuhkan LEBIH DARI SATU komponen async di halaman Ringkasan
- * (`OverviewStats`, `SetupAlerts`). Dibungkus `cache()` dari React supaya
+ * (mis. kuota dan progres panduan). Dibungkus `cache()` dari React supaya
  * dalam SATU render pass, pemanggilan kedua dst mengembalikan promise yang
  * sama alih-alih menembak ulang ke Supabase -- pola yang sama dengan
  * `getSessionUser()`/`requireMerchant()` di `lib/auth/session.ts`. Tanpa ini,
@@ -34,30 +36,40 @@ export const getQuotaUsage = cache(async (): Promise<QuotaUsage> => {
   return { used: row?.used ?? 0, limit: row?.quota ?? null };
 });
 
-/** Dipakai OverviewStats (kartu "Layanan aktif") DAN SetupAlerts (langkah setup). */
-export const getServiceCount = cache(async (merchantId: string): Promise<number> => {
+export type OnboardingState = {
+  facts: OnboardingFacts;
+  stepsCompleted: ManualStepKey[];
+  toursSeen: GuidePageKey[];
+  checklistDismissedAt: string | null;
+};
+
+/**
+ * Fakta kesiapan + progres panduan dalam satu RPC. `null` bila gagal: layout
+ * menganggap semua halaman sudah dilihat dan checklist menampilkan pesan netral.
+ */
+export const getOnboardingState = cache(async (): Promise<OnboardingState | null> => {
   const supabase = await createClient();
-  const { count } = await supabase
-    .from("services")
-    .select("id", { count: "exact", head: true })
-    .eq("merchant_id", merchantId);
-  return count ?? 0;
+  const { data, error } = await supabase.rpc("onboarding_state");
+  const row = data?.[0];
+  if (error || !row) {
+    const user = await getSessionUser(); // cache(): tanpa round-trip tambahan
+    console.error("onboarding_state gagal", { merchantId: user?.id, error });
+    return null;
+  }
+  return {
+    facts: {
+      hasService: row.has_service,
+      hasHours: row.has_hours,
+      hasActivePayment: row.has_active_payment,
+      needsOnlinePayment: row.needs_online_payment,
+      pageCustomized: row.page_customized,
+      hasOnlineBooking: row.has_online_booking,
+    },
+    stepsCompleted: row.steps_completed,
+    toursSeen: row.tours_seen,
+    checklistDismissedAt: row.checklist_dismissed_at,
+  };
 });
-
-export type ActivePaymentConnection = { provider: string; status: string };
-
-/** Dipakai OverviewStats (kartu "Pembayaran") DAN SetupAlerts (langkah setup). */
-export const getActivePaymentConnections = cache(
-  async (merchantId: string): Promise<ActivePaymentConnection[]> => {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("payment_connections")
-      .select("provider, status")
-      .eq("merchant_id", merchantId)
-      .eq("status", "ACTIVE");
-    return data ?? [];
-  },
-);
 
 /**
  * Jumlah booking yang perlu tindakan (badge navigasi). `null` bila RPC gagal:
