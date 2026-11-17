@@ -5991,3 +5991,29 @@ select case when (select count(*) from public.merchants
                     and column_name = 'subscription_tier') like '%STUDIO%'
             then 'OK   t71b default kolom subscription_tier adalah STUDIO'
             else 'FAIL t71b default kolom bukan STUDIO' end as t71b;
+
+-- 72. Batas QRIS: PENDING di atas Rp10.000.000 ditolak BK037 (20261124000200)
+-- Merchant fixture dari bagian 67; slot beda-beda agar bookings_no_overlap tidak menangkap lebih dulu.
+select pg_temp.expect_fail_code(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+       customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, source)
+     values ('65656565-0000-0000-0000-000000000001', 'Layanan 72', 10000001, 30, now() + interval '10 days',
+       now() + interval '10 days 30 minutes', 'Pelanggan 72', '+6281372000001', 'PENDING',
+       now() + interval '15 minutes', 10000001, 0, 'FULL', 'ONLINE')$q$,
+  'BK037', 't72a PENDING 10000001 ditolak');
+
+select pg_temp.expect_ok(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+       customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, source)
+     values ('65656565-0000-0000-0000-000000000001', 'Layanan 72', 10000000, 30, now() + interval '11 days',
+       now() + interval '11 days 30 minutes', 'Pelanggan 72', '+6281372000002', 'PENDING',
+       now() + interval '15 minutes', 10000000, 0, 'FULL', 'ONLINE')$q$,
+  't72b PENDING 10000000 diterima');
+
+select pg_temp.expect_ok(
+  $q$insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+       customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, source)
+     values ('65656565-0000-0000-0000-000000000001', 'Layanan 72', 50000000, 30, now() + interval '12 days',
+       now() + interval '12 days 30 minutes', 'Pelanggan 72', '+6281372000003', 'CONFIRMED',
+       now() + interval '15 minutes', 0, 50000000, 'ON_SITE', 'ONLINE')$q$,
+  't72c CONFIRMED harga di atas batas diterima');

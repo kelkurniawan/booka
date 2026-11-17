@@ -109,3 +109,9 @@ test("route publik: BK053 dan BK056 jadi satu respons 409 tanpa code", () => {
   assert.equal(mapPublicBookingError("BK052").code, "BK052");
   assert.equal(mapPublicBookingError("XX999").code, undefined);
 });
+
+test("BK037 (di atas batas QRIS) -> 422, pesan batas Rp10.000.000", () => {
+  const result = mapBookingError("BK037");
+  assert.equal(result.status, 422);
+  assert.match(result.message, /maksimal Rp10\.000\.000/);
+});

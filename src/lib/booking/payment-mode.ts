@@ -9,6 +9,9 @@ import { formatRupiah } from "@/lib/format";
 /** Nominal QRIS terkecil (Rupiah), batas minimum QR Xendit. Sama dengan konstanta 1500 di create_booking. */
 export const MIN_ONLINE_CHARGE = 1500;
 
+/** Nominal QRIS terbesar per transaksi (Rupiah), batas Midtrans: QRIS menerima 1 sampai 10.000.000. Sama dengan trigger BK037. */
+export const MAX_ONLINE_CHARGE = 10_000_000;
+
 export type PaymentSettings = Pick<MerchantSettings, "allow_pay_on_site" | "auto_confirm_on_site">;
 
 export const DEFAULT_PAYMENT_SETTINGS: PaymentSettings = {

@@ -618,3 +618,8 @@ Pemeriksaan desain F10: review anti-slop (commit `57b92d4`) menemukan tiga FAIL 
 ## 40. Masa awal gratis
 
 Produk masih tahap awal, jadi semua merchant mendapat akses penuh gratis; pemilik berencana menagih per layanan nanti. Migration `20261123000100_free_early_access.sql` menjadikan `STUDIO` default `merchants.subscription_tier` dan menaikkan merchant yang sudah ada. Seluruh pengecekan tier (trigger, RPC, halaman) sengaja tidak disentuh dan terbuka otomatis karena tier = STUDIO. Untuk menagih lagi: ubah tier per merchant, kembalikan default kolom lewat migration baru, dan set `EARLY_ACCESS_FREE` di `src/lib/plans.ts` ke `false`. Konstanta itu hanya mengatur catatan "Semua fitur gratis selama masa awal." di landing, `/dashboard/billing`, dan `PromoUpsell`; tabel harga tetap tampil. `/syarat` diberi satu kalimat soal masa awal. Tidak ada alur pembayaran baru. Fixture `supabase/tests/99_verify.sql` bagian 1-70 memasang default sementara ke STARTER; bagian 71 memulihkan STUDIO dan mengujinya.
+
+
+## 41. Batas atas QRIS
+
+Midtrans menerima QRIS 1 sampai 10.000.000 per transaksi. Minimumnya sudah dijaga (`MIN_ONLINE_CHARGE`, BK022), maksimumnya belum, sehingga booking PENDING di atas Rp10.000.000 gagal ditagih lalu dibatalkan. Kini `MAX_ONLINE_CHARGE` di `payment-mode.ts` dipakai form layanan (FULL, DEPOSIT, dan REQUEST karena ditagih QRIS setelah disetujui; hitungannya lewat `computeAmounts`, tanpa voucher) dan trigger `bookings_enforce_max_online_charge` (BK037, 422, migration `20261124000200`) sebagai jaring terakhir untuk status PENDING saja. Layanan lama yang sudah melewati batas tetap bisa dipesan lewat ON_SITE; yang FULL/DEPOSIT ditolak saat booking, sampai merchant mengubahnya.

@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ONLINE_PRICE_MESSAGE, serviceSchema } from "./service";
+import { MAX_ONLINE_MESSAGE, ONLINE_PRICE_MESSAGE, serviceSchema } from "./service";
 
 const VALID = {
   name: "Riasan pengantin",
@@ -138,4 +138,20 @@ test("jumlah tamu: rentang 1 sampai 12 dengan lama duduk 90 diterima, kosong jad
   assert.deepEqual([ok.partyMin, ok.partyMax, ok.seatDurationMinutes], [1, 12, 90]);
   const kosong = serviceSchema.parse({ ...VALID, partyMin: "", partyMax: "", seatDurationMinutes: "" });
   assert.deepEqual([kosong.partyMin, kosong.partyMax, kosong.seatDurationMinutes], [null, null, null]);
+});
+
+test("batas QRIS: FULL Rp10.000.001 ditolak, tepat Rp10.000.000 diterima", () => {
+  const over = serviceSchema.safeParse({ ...VALID, price: "10000001", payment_mode: "FULL" });
+  assert.equal(over.success, false);
+  assert.ok(over.error?.issues.some((i) => i.message === MAX_ONLINE_MESSAGE));
+  assert.equal(serviceSchema.safeParse({ ...VALID, price: "10000000", payment_mode: "FULL" }).success, true);
+});
+
+test("batas QRIS: DP 30% dari Rp40.000.000 ditolak, bayar di tempat Rp50.000.000 diterima", () => {
+  const dp = serviceSchema.safeParse({
+    ...VALID, price: "40000000", payment_mode: "DEPOSIT", deposit_type: "PERCENT", deposit_value: "30",
+  });
+  assert.equal(dp.success, false);
+  assert.ok(dp.error?.issues.some((i) => i.path[0] === "deposit_value" && i.message === MAX_ONLINE_MESSAGE));
+  assert.equal(serviceSchema.safeParse({ ...VALID, price: "50000000", payment_mode: "ON_SITE" }).success, true);
 });
