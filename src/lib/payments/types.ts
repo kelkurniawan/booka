@@ -8,7 +8,7 @@ import type { PaymentEnvironment, PaymentProvider } from "@/types/database";
  * provider dengan apa yang diberikan.
  */
 export type QrisChargeParams = {
-  /** ID unik dari sisi Booka (biasanya `bookings.id`) — jadi order_id/reference_id di provider. */
+  /** ID unik dari sisi Marky (biasanya `bookings.id`) — jadi order_id/reference_id di provider. */
   orderId: string;
   /** Nominal dalam Rupiah, bilangan bulat (tanpa desimal). */
   amount: number;

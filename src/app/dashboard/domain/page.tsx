@@ -14,7 +14,8 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { requireMerchant } from "@/lib/auth/session";
-import { ownershipRecord, vercelConfig } from "@/lib/domains/config";
+import { vercelConfig } from "@/lib/domains/config";
+import { ownershipRecord } from "@/lib/domains/ownership";
 import { apexOf, dnsInstruction } from "@/lib/domains/vercel";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -38,7 +39,7 @@ export default async function DomainPage() {
             <EmptyTitle>Fitur paket Studio</EmptyTitle>
             <EmptyDescription>
               Pakai alamat seperti booking.salonanda.id untuk halaman booking Anda, tanpa
-              tautan booka di depannya.
+              tautan Marky di depannya.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -80,7 +81,7 @@ export default async function DomainPage() {
         <Alert>
           <AlertTitle>Belum diaktifkan</AlertTitle>
           <AlertDescription>
-            Fitur ini butuh konfigurasi dari admin Booka (VERCEL_API_TOKEN dan
+            Fitur ini butuh konfigurasi dari admin Marky (VERCEL_API_TOKEN dan
             VERCEL_PROJECT_ID). Hubungi kami bila Anda melihat pesan ini.
           </AlertDescription>
         </Alert>

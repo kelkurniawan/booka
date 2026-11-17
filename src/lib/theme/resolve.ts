@@ -66,7 +66,8 @@ export function resolveTheme(
     // warna teks preset belum tentu masih kontras. Digeser secukupnya.
     foreground: ensureContrast(def.foreground, permukaan, 4.5),
     card: backgroundPilihan ?? def.card,
-    mutedForeground: ensureContrast(def.mutedForeground, permukaan, 3),
+    // Teks sekunder juga teks kecil, jadi dijaga 4,5:1 (WCAG AA), bukan 3:1.
+    mutedForeground: ensureContrast(def.mutedForeground, permukaan, 4.5),
     border: ensureContrast(def.border, permukaan, 1.3),
     accentFill,
     accentText: ensureContrast(accentFill, permukaan, 4.5),

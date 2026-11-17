@@ -23,13 +23,13 @@ export const metadata: Metadata = {
   // tautan di WhatsApp/Instagram tidak pernah muncul.
   metadataBase: siteUrl(),
   openGraph: {
-    siteName: "Booka",
+    siteName: "Marky",
     locale: "id_ID",
     type: "website",
   },
   title: {
-    default: "Booka — Booking & Invoicing untuk usaha kecil",
-    template: "%s · Booka",
+    default: "Marky: Booking & Invoicing untuk usaha kecil",
+    template: "%s | Marky",
   },
   description:
     "Terima booking dan DP lewat satu tautan. Dana masuk langsung ke rekening Anda.",

@@ -22,6 +22,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Hasil build Storybook (berkas minified).
+    "storybook-static/**",
   ]),
 ]);
 

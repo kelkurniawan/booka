@@ -73,7 +73,7 @@ export function AppearancePreview({
 
           {showWatermark ? (
             <span className="text-muted-foreground mt-auto self-center text-xs">
-              Dibuat dengan Booka
+              Dibuat dengan Marky
             </span>
           ) : null}
         </BookingPageShell>

@@ -5,7 +5,8 @@ import { resolveTxt } from "node:dns/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { ownershipRecord, vercelConfig } from "@/lib/domains/config";
+import { vercelConfig } from "@/lib/domains/config";
+import { acceptedOwnershipRecords, matchesOwnership } from "@/lib/domains/ownership";
 import { isAppHost } from "@/lib/domains/routing";
 import { addProjectDomain, getDomainStatus, removeProjectDomain } from "@/lib/domains/vercel";
 import { serverEnv } from "@/lib/env/server";
@@ -25,7 +26,7 @@ async function sessionClient() {
   return { supabase, userId: user.id };
 }
 
-const NOT_CONFIGURED = "Fitur domain sendiri belum diaktifkan oleh admin Booka.";
+const NOT_CONFIGURED = "Fitur domain sendiri belum diaktifkan oleh admin Marky.";
 
 export async function registerDomain(input: string): Promise<DomainActionResult> {
   const parsed = domainSchema.safeParse(input);
@@ -33,7 +34,7 @@ export async function registerDomain(input: string): Promise<DomainActionResult>
   const domain = parsed.data;
 
   if (isAppHost(domain, serverEnv().appUrl)) {
-    return { ok: false, message: "Domain ini milik Booka dan tidak bisa dipakai." };
+    return { ok: false, message: "Domain ini milik Marky dan tidak bisa dipakai." };
   }
 
   const config = vercelConfig();
@@ -74,16 +75,16 @@ export async function registerDomain(input: string): Promise<DomainActionResult>
   return { ok: true };
 }
 
-/** Apakah TXT `_booka.<domain>` memuat token merchant ini. */
+/** Apakah TXT `_marky.<domain>` (atau `_booka.` lama) memuat token merchant ini. */
 async function ownsDomain(domain: string, token: string): Promise<boolean> {
-  const record = ownershipRecord(domain, token);
-  try {
-    const records = await resolveTxt(record.name);
-    return records.some((chunks) => chunks.join("") === record.value);
-  } catch {
-    // ENOTFOUND/ENODATA: record belum ada atau belum menyebar.
-    return false;
-  }
+  const found: Record<string, string[][]> = {};
+  const names = acceptedOwnershipRecords(domain, token).map((r) => r.name);
+  const results = await Promise.allSettled(names.map((n) => resolveTxt(n)));
+  results.forEach((r, i) => {
+    // Rejected (ENOTFOUND/ENODATA): record belum ada atau belum menyebar.
+    if (r.status === "fulfilled") found[names[i]] = r.value;
+  });
+  return matchesOwnership(found, domain, token);
 }
 
 export async function checkDomain(): Promise<DomainActionResult> {
@@ -112,7 +113,7 @@ export async function checkDomain(): Promise<DomainActionResult> {
     return { ok: false, message: "Gagal memeriksa status domain. Coba lagi." };
   }
   if (status.value.misconfigured) {
-    return { ok: false, message: "Record CNAME/A belum mengarah ke Booka. Perubahan DNS bisa butuh beberapa jam." };
+    return { ok: false, message: "Record CNAME/A belum mengarah ke Marky. Perubahan DNS bisa butuh beberapa jam." };
   }
   if (!status.value.verified) {
     return { ok: false, message: "Vercel masih memverifikasi domain ini. Coba lagi beberapa menit lagi." };

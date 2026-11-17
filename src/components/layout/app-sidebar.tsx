@@ -87,10 +87,10 @@ export function AppSidebar({
             <SidebarMenuButton asChild size="lg">
               <Link href={ROUTES.dashboard}>
                 <div className="bg-primary text-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg text-sm font-semibold">
-                  B
+                  M
                 </div>
                 <div className="grid flex-1 text-left leading-tight">
-                  <span className="truncate font-semibold">Booka</span>
+                  <span className="truncate font-semibold">Marky</span>
                   <span className="text-muted-foreground truncate text-xs">
                     {TIER_LABEL[merchant.tier]}
                   </span>

@@ -7,7 +7,7 @@ import { ROUTES } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "Ketentuan Layanan",
-  description: "Aturan pemakaian Booka bagi merchant dan pelanggannya.",
+  description: "Aturan pemakaian Marky bagi merchant dan pelanggannya.",
 };
 
 /**
@@ -20,15 +20,15 @@ export default function TermsPage() {
   return (
     <LegalPage title="Ketentuan Layanan">
       <p>
-        Ketentuan ini mengatur pemakaian Booka, layanan halaman booking dan
+        Ketentuan ini mengatur pemakaian Marky, layanan halaman booking dan
         penagihan DP yang diselenggarakan oleh {operatorName} (&quot;kami&quot;).
-        Dengan mendaftar atau memakai Booka, Anda menyetujui ketentuan ini.
+        Dengan mendaftar atau memakai Marky, Anda menyetujui ketentuan ini.
       </p>
 
       <h2>Layanan kami</h2>
       <p>
-        Booka menyewakan sistem kepada pemilik usaha jasa (&quot;merchant&quot;)
-        untuk menerima pemesanan dan DP lewat satu tautan. Booka{" "}
+        Marky menyewakan sistem kepada pemilik usaha jasa (&quot;merchant&quot;)
+        untuk menerima pemesanan dan DP lewat satu tautan. Marky{" "}
         <strong>tidak menampung dana</strong>: pembayaran pelanggan masuk
         langsung ke akun payment gateway milik merchant.
       </p>
@@ -92,7 +92,7 @@ export default function TermsPage() {
 
       <h2>Ketersediaan dan batas tanggung jawab</h2>
       <p>
-        Kami berupaya menjaga Booka tetap berjalan, tetapi layanan disediakan
+        Kami berupaya menjaga Marky tetap berjalan, tetapi layanan disediakan
         sebagaimana adanya dan bisa terganggu sewaktu-waktu, termasuk karena
         gangguan payment gateway atau penyedia infrastruktur. Sejauh diizinkan
         hukum, tanggung jawab kami terbatas pada biaya langganan yang Anda

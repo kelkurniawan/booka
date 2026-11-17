@@ -1,6 +1,6 @@
 # Notifikasi: email dan WhatsApp
 
-Booka mengirim tiga jenis pesan:
+Marky mengirim tiga jenis pesan:
 
 | Kapan | Ke siapa | Kanal | Paket |
 | --- | --- | --- | --- |
@@ -27,7 +27,7 @@ cron terpanggil ulang.
 
    ```
    RESEND_API_KEY=re_...
-   EMAIL_FROM=Booka <notifikasi@domainanda.id>
+   EMAIL_FROM=Marky <notifikasi@domainanda.id>
    ```
 
 ### Sekalian: SMTP Supabase
@@ -45,7 +45,7 @@ Pakai kunci Resend yang sama:
 | Username | `resend` |
 | Password | API key Resend |
 | Sender email | alamat di domain terverifikasi |
-| Sender name | `Booka` |
+| Sender name | `Marky` |
 
 Setelah itu naikkan **Rate Limits → emails per hour** sesuai kebutuhan.
 
@@ -54,8 +54,8 @@ Setelah itu naikkan **Rate Limits → emails per hour** sesuai kebutuhan.
 WAHA adalah gateway WhatsApp open-source. Ia **bukan API resmi** WhatsApp:
 nomor pengirim bisa diblokir kalau dianggap spam. Karena itu:
 
-- Pakai **nomor khusus Booka**, jangan nomor pribadi.
-- Booka hanya mengirim pesan transaksional ke orang yang baru saja memesan,
+- Pakai **nomor khusus Marky**, jangan nomor pribadi.
+- Marky hanya mengirim pesan transaksional ke orang yang baru saja memesan,
   dengan jeda antarpesan. Jangan pakai nomor ini untuk siaran promosi.
 - Kalau nanti sudah ada pemasukan, pindah ke penyedia resmi cukup dengan
   mengganti env (lihat "Ganti penyedia").
@@ -95,7 +95,7 @@ Setelah tunnel jalan, port 3000 di firewall VPS boleh ditutup.
 
 Buka `https://wa.domainanda.id/dashboard`, login dengan kredensial dashboard
 dari `.env`, start sesi `default`, lalu scan QR dari WhatsApp di HP nomor
-Booka (**Perangkat tertaut → Tautkan perangkat**).
+Marky (**Perangkat tertaut → Tautkan perangkat**).
 
 ### 5. Isi env di Vercel
 

@@ -38,12 +38,12 @@ export default async function BillingPage() {
   const quota = quotaRow?.quota ?? null;
   const quotaFull = quota !== null && used >= quota;
 
-  // Nomor WhatsApp tim Booka -- opsional, tombol upgrade disembunyikan kalau
+  // Nomor WhatsApp tim Marky -- opsional, tombol upgrade disembunyikan kalau
   // tidak diisi supaya tidak pernah menampilkan tautan yang rusak.
   const supportWhatsappDigits = (clientEnv().supportWhatsapp ?? "").replace(/\D/g, "");
   const waLink = supportWhatsappDigits
     ? `https://wa.me/${supportWhatsappDigits}?text=${encodeURIComponent(
-        `Halo, saya mau tanya soal upgrade paket Booka. Paket saya saat ini: ${tier}.`,
+        `Halo, saya mau tanya soal upgrade paket Marky. Paket saya saat ini: ${tier}.`,
       )}`
     : null;
 
@@ -51,7 +51,7 @@ export default async function BillingPage() {
     <>
       <PageHeader
         title="Langganan"
-        description="Paket sewa sistem Booka. Terpisah dari pembayaran DP pelanggan Anda."
+        description="Paket sewa sistem Marky. Terpisah dari pembayaran DP pelanggan Anda."
       />
 
       <Card>

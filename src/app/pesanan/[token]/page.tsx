@@ -163,7 +163,7 @@ export default async function BookingStatusPage({
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col gap-8 px-4 py-10">
       <header className="flex flex-col items-center gap-1 text-center">
         <span className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
-          Booka
+          Marky
         </span>
         <h1 className="text-xl font-semibold tracking-tight text-balance">{merchantName}</h1>
       </header>

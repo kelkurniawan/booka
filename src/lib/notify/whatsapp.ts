@@ -7,7 +7,7 @@
  * - fonnte:    layanan berbayar Fonnte     -- POST https://api.fonnte.com/send
  *
  * WAHA dan Evolution bukan API resmi WhatsApp. Nomor pengirim bisa diblokir
- * bila pesannya dianggap spam -- karena itu Booka hanya mengirim pesan
+ * bila pesannya dianggap spam -- karena itu Marky hanya mengirim pesan
  * transaksional ke orang yang baru saja memesan, tidak pernah siaran.
  *
  * Modul ini murni (tanpa `server-only`, tanpa env) supaya bisa diuji dengan

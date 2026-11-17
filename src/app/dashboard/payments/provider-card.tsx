@@ -64,7 +64,7 @@ export function ProviderCard({
   /**
    * False selama kredensial partner OAuth provider ini belum diisi di env.
    * Tombolnya disembunyikan alih-alih ditampilkan lalu berakhir di pesan
-   * "belum aktif" -- jalan buntu yang membuat merchant mengira Booka rusak.
+   * "belum aktif" -- jalan buntu yang membuat merchant mengira Marky rusak.
    */
   oauthAvailable: boolean;
 }) {
@@ -180,7 +180,7 @@ export function ProviderCard({
           ) : (
             <p className="text-muted-foreground">
               Belum ada akun {meta.name} yang terhubung. DP pelanggan akan langsung masuk ke
-              akun ini, tidak pernah ditahan Booka.
+              akun ini, tidak pernah ditahan Marky.
             </p>
           )}
         </CardContent>

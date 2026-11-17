@@ -205,7 +205,7 @@ export async function completeOnboarding(
 
 /**
  * Menyimpan blok opsional kuesioner (ukuran tim, provinsi, kanal saat ini,
- * kebutuhan, sumber tahu Booka). Berjalan setelah akun sudah jadi lewat
+ * kebutuhan, sumber tahu Marky). Berjalan setelah akun sudah jadi lewat
  * completeOnboarding, jadi cukup UPDATE biasa yang dijaga RLS -- tidak perlu
  * atomicity dengan apa pun.
  */

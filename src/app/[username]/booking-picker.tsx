@@ -475,7 +475,7 @@ export function BookingPicker({
               <Link href={ROUTES.privacy} target="_blank" className="underline">
                 Kebijakan Privasi
               </Link>{" "}
-              Booka.
+              Marky.
             </p>
           </div>
         </form>

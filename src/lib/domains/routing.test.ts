@@ -22,16 +22,16 @@ test("/{username} di domain sendiri dialihkan ke / supaya tautannya satu", () =>
   assert.deepEqual(routeCustomDomain("/salon", "salon"), { type: "redirect", pathname: "/", toApp: false });
 });
 
-test("dashboard, login, dan merchant lain dialihkan ke domain Booka", () => {
+test("dashboard, login, dan merchant lain dialihkan ke domain Marky", () => {
   for (const path of ["/dashboard", "/masuk", "/syarat", "/merchant-lain"]) {
     assert.deepEqual(routeCustomDomain(path, "salon"), { type: "redirect", pathname: path, toApp: true });
   }
 });
 
 test("isAppHost mengenali domain aplikasi, localhost, dan pratinjau Vercel", () => {
-  assert.equal(isAppHost("booka.id", "https://booka.id"), true);
-  assert.equal(isAppHost("www.booka.id", "https://booka.id"), true);
-  assert.equal(isAppHost("localhost:3000", "https://booka.id"), true);
-  assert.equal(isAppHost("booka-git-x.vercel.app", "https://booka.id"), true);
-  assert.equal(isAppHost("booking.salon.id", "https://booka.id"), false);
+  assert.equal(isAppHost("marky.id", "https://marky.id"), true);
+  assert.equal(isAppHost("www.marky.id", "https://marky.id"), true);
+  assert.equal(isAppHost("localhost:3000", "https://marky.id"), true);
+  assert.equal(isAppHost("booka-git-x.vercel.app", "https://marky.id"), true);
+  assert.equal(isAppHost("booking.salon.id", "https://marky.id"), false);
 });

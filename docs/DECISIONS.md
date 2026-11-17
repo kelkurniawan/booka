@@ -138,7 +138,7 @@ tabel `staff` biasa sudah cukup.
 Awalnya hanya Magic Link dan Google. Ditambahkan email + password, dengan
 Magic Link dipertahankan sebagai opsi "masuk tanpa password".
 
-Alasannya audiens: pemilik usaha kecil membuka Booka dari HP. Magic Link
+Alasannya audiens: pemilik usaha kecil membuka Marky dari HP. Magic Link
 memaksa mereka keluar aplikasi, mencari email yang sering mendarat di tab
 Promosi, lalu kembali. Setiap perpindahan itu kehilangan sebagian orang.
 
@@ -149,7 +149,7 @@ masuk tidak bisa dipakai memetakan siapa saja yang punya akun.
 ## 12. Kuota transaksi ditegakkan di database
 
 Batas 10 transaksi/bulan paket STARTER semula hanya ditampilkan di dashboard
-dan tidak ditegakkan di mana pun — merchant Starter bisa memakai Booka tanpa
+dan tidak ditegakkan di mana pun — merchant Starter bisa memakai Marky tanpa
 batas selamanya.
 
 Sekarang dijaga trigger `bookings_enforce_quota`. Yang dihitung adalah booking
@@ -248,7 +248,7 @@ label "WIB" di sampingnya, termasuk jam kedaluwarsa QRIS dan bukti pembayaran
 di `/pesanan/[token]`.
 
 Asia/Jakarta dipilih sebagai satu-satunya zona tampilan (bukan opsional per
-pengguna) karena Booka hanya melayani merchant Indonesia dan WIB adalah
+pengguna) karena Marky hanya melayani merchant Indonesia dan WIB adalah
 UTC+7 tetap tanpa DST — aman dihitung manual tanpa data zona waktu IANA.
 
 ## 18. `access_token` booking ada di path URL, bukan header/cookie
@@ -317,7 +317,7 @@ pengguna lalu meneruskan ke region function lewat backbone-nya, jadi hop
 pengguna→function praktis dibayar sekali per request. Hop
 function→database dibayar pada SETIAP round-trip berurutan, dan satu
 navigasi dashboard masih melakukan sekitar tiga. Round-trip database
-berlipat; hop pengguna tidak. Karena pengguna Booka juga ada di Asia
+berlipat; hop pengguna tidak. Karena pengguna Marky juga ada di Asia
 Tenggara, Singapura kebetulan memenangkan keduanya sekaligus.
 
 **Catatan sejarah — asumsi region pernah salah dan tidak ketahuan.** Revisi
@@ -331,7 +331,7 @@ verifikasi region lewat `npx supabase projects list`, jangan diingat-ingat.
 
 Trade-off yang tetap ada: ini pin satu region, bukan multi-region. Pengguna
 jauh dari Asia Tenggara akan mendapat latensi lebih tinggi dibanding kalau
-function-nya tersebar. Untuk profil pengguna Booka (merchant Indonesia,
+function-nya tersebar. Untuk profil pengguna Marky (merchant Indonesia,
 lihat keputusan #17 soal zona tampilan WIB) trade-off ini menguntungkan.
 
 **Kaitan yang wajib diingat:** region Supabase dan `regions` di
@@ -346,7 +346,7 @@ memberi paket Starter tiga preset gratis (Bersih, Hangat, Malam), pilihan gaya
 sudut, foto profil, dan FAQ.
 
 Alasannya: halaman merchant Starter justru halaman yang memasang watermark
-"Dibuat dengan Booka". Halaman itu etalase platform, dan etalase yang seragam
+"Dibuat dengan Marky". Halaman itu etalase platform, dan etalase yang seragam
 dan hambar merugikan kami sendiri. Batas yang terasa — tiga preset premium,
 warna sendiri, background foto, pilihan font, ukuran teks, dan video layanan
 masih terkunci — mendorong upgrade lebih baik daripada tembok penuh yang
@@ -494,12 +494,12 @@ kosong, di dalam advisory lock yang sama.
 **PRD bagian 1:** paket Studio "Custom Domain".
 
 **Implementasi:** satu domain per merchant di `merchant_domains`. Merchant
-memasang CNAME/A ke Vercel **dan** TXT `_booka.<domain>` berisi token acak
-miliknya; server memeriksa keduanya (Vercel REST API + `dns.resolveTxt`)
+memasang CNAME/A ke Vercel **dan** TXT `_marky.<domain>` berisi token acak
+miliknya (`_booka.<domain>` masih diterima untuk pengaturan lama); server memeriksa keduanya (Vercel REST API + `dns.resolveTxt`)
 sebelum service role menandai `ACTIVE`. `src/proxy.ts` me-resolve host asing
 lewat RPC `resolve_custom_domain` (di-cache 60 detik per instance) dan
 me-rewrite `/` ke `/{username}`; selain halaman publik merchant itu, semua
-path dialihkan ke domain Booka.
+path dialihkan ke domain Marky.
 
 **Alasan:**
 
@@ -515,3 +515,8 @@ path dialihkan ke domain Booka.
   seluruh situs mati tanpa pesan error yang jelas.
 - Turun paket mematikan domain lewat `resolve_custom_domain` (yang mensyaratkan
   STUDIO) tanpa menghapus barisnya, sama seperti staf (#28).
+
+## 30. Storybook 10, bukan 9
+
+Spek F0 menyebut Storybook 9. Yang terpasang Storybook 10 dengan
+`@storybook/nextjs-vite`, karena itu versi yang mendukung Next 16 dan Vite 8.

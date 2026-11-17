@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { MerchantTheme } from "@/types/database";
+import type { MerchantTheme, ThemePreset } from "@/types/database";
 
 import { contrastRatio } from "./color";
 import { THEME_PRESETS } from "./presets";
@@ -120,6 +120,18 @@ test("gradien digeser dari background ke arah aksen, bukan warna bebas", () => {
   assert.notEqual(tema.gradientTo, tema.background);
   // Masih jauh lebih dekat ke background daripada ke aksen penuh.
   assert.ok(contrastRatio(tema.foreground, tema.gradientTo) >= 4.5);
+});
+
+test("teks sekunder minimal 4,5:1 di semua preset", () => {
+  for (const preset of Object.keys(THEME_PRESETS) as ThemePreset[]) {
+    const tema = resolveTheme("PRO", baris({ preset }));
+    assert.ok(contrastRatio(tema.mutedForeground, tema.background) >= 4.5, preset);
+  }
+});
+
+test("teks sekunder tetap 4,5:1 di atas background kustom", () => {
+  const tema = resolveTheme("PRO", baris({ preset: "HANGAT", background_color: "#f3e3d6" }));
+  assert.ok(contrastRatio(tema.mutedForeground, tema.background) >= 4.5);
 });
 
 test("skala teks dipetakan ke pengali", () => {

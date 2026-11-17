@@ -50,3 +50,7 @@ next-env.d.ts
 # client_secret dan TIDAK boleh masuk repo — secretnya dipasang di Supabase
 # (Authentication > Providers > Google), bukan di kode.
 client_secret_*.json
+
+# Storybook
+storybook-static/
+*storybook.log

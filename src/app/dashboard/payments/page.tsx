@@ -87,7 +87,7 @@ export default async function PaymentsPage({
     <>
       <PageHeader
         title="Pembayaran"
-        description="Hubungkan akun payment gateway Anda. DP pelanggan masuk langsung ke akun tersebut, bukan ke Booka."
+        description="Hubungkan akun payment gateway Anda. DP pelanggan masuk langsung ke akun tersebut, bukan ke Marky."
       />
       <OAuthStatusToast connected={connected} oauthError={oauthError} provider={errorProvider} />
 

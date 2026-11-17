@@ -10,8 +10,3 @@ export function vercelConfig(): VercelConfig | null {
   if (!env.vercelApiToken || !env.vercelProjectId) return null;
   return { token: env.vercelApiToken, projectId: env.vercelProjectId, teamId: env.vercelTeamId };
 }
-
-/** Record TXT bukti kepemilikan -- lihat migration 20261005180048. */
-export function ownershipRecord(domain: string, token: string) {
-  return { type: "TXT" as const, name: `_booka.${domain}`, value: `booka-verify=${token}` };
-}

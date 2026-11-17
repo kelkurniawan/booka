@@ -15,7 +15,9 @@
     "docker:prod": "docker compose --env-file .env.local --profile prod up --build",
     "docker:test": "docker compose --profile test down -v && docker compose --profile test up db-test",
     "docker:down": "docker compose --profile prod --profile test down -v",
-    "db:print": "cat supabase/migrations/*.sql"
+    "db:print": "cat supabase/migrations/*.sql",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.5.7",
@@ -41,6 +43,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@storybook/addon-a11y": "^10.6.7",
+    "@storybook/nextjs-vite": "^10.6.7",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.6",
@@ -48,8 +52,10 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "storybook": "^10.6.7",
     "tailwindcss": "^4",
     "tsx": "^4.23.1",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.8"
   }
 }

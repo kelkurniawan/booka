@@ -7,7 +7,7 @@
  * tidak diam-diam tayang apa adanya.
  */
 export const LEGAL_IDENTITY = {
-  /** Nama badan usaha atau perorangan yang menyelenggarakan Booka. */
+  /** Nama badan usaha atau perorangan yang menyelenggarakan Marky. */
   operatorName: "[NAMA BADAN USAHA]",
   /** Alamat korespondensi (minimal kota dan provinsi). */
   address: "[ALAMAT]",

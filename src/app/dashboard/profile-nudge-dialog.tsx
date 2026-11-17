@@ -96,7 +96,7 @@ export function ProfileNudgeDialog({ missingProfile }: { missingProfile: boolean
       <AlertTitle>Kenali usaha Anda lebih dalam</AlertTitle>
       <AlertDescription>
         <p>
-          Bantu kami menyesuaikan Booka untuk usaha Anda. Beberapa pertanyaan
+          Bantu kami menyesuaikan Marky untuk usaha Anda. Beberapa pertanyaan
           singkat, semuanya opsional.
         </p>
         {skipError ? (
