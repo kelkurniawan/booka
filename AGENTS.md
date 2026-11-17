@@ -46,6 +46,7 @@ reminder H-1, idempoten lewat `notification_log` — panduan di
 `docs/NOTIFIKASI.md`. Fitur Studio: Analitik, multi-staf (kalender per staf,
 DECISIONS #28), dan domain sendiri (verifikasi TXT di `_marky.<domain>`, routing
 di `src/proxy.ts`, DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
+Masa awal gratis: merchant baru dan lama bertier STUDIO, flag `EARLY_ACCESS_FREE` (DECISIONS #40).
 
 Redesign mengikuti `DESIGN.md` dan spec `docs/superpowers/specs/2026-11-14-marky-redesign-design.md`.
 F1 selesai: `/[username]` kini alur tiga langkah (`BookingFlow` di

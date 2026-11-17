@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import { requireMerchant } from "@/lib/auth/session";
 import { clientEnv } from "@/lib/env/client";
-import { COMING_SOON_LABEL, PLANS } from "@/lib/plans";
+import { COMING_SOON_LABEL, EARLY_ACCESS_DETAIL, EARLY_ACCESS_FREE, EARLY_ACCESS_NOTE, PLANS } from "@/lib/plans";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Langganan" };
@@ -53,6 +53,17 @@ export default async function BillingPage() {
         title="Langganan"
         description="Paket sewa sistem Marky. Terpisah dari pembayaran DP pelanggan Anda."
       />
+
+      {EARLY_ACCESS_FREE ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>{EARLY_ACCESS_NOTE}</CardTitle>
+            <CardDescription>
+              Saat ini Anda memakai semua fitur tanpa biaya. {EARLY_ACCESS_DETAIL}
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

@@ -10,6 +10,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { EARLY_ACCESS_FREE } from "@/lib/plans";
 import { ROUTES } from "@/lib/routes";
 
 /** Ajakan upgrade untuk merchant Starter; dipakai tab Banner dan Voucher. */
@@ -23,6 +24,7 @@ export function PromoUpsell() {
         <EmptyTitle>Fitur paket Pro</EmptyTitle>
         <EmptyDescription>
           Pasang banner promo dan voucher diskon di halaman booking dengan paket Pro atau Studio.
+          {EARLY_ACCESS_FREE ? " Selama masa awal, semua fitur gratis." : null}
         </EmptyDescription>
       </EmptyHeader>
       <EmptyContent>

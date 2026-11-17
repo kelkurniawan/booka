@@ -20,6 +20,11 @@ exception when others then
   return 'FAIL (seharusnya diterima): ' || label || ' [' || sqlerrm || ']';
 end $$;
 
+-- Fixture lama di bawah mengandalkan merchant baru bertier STARTER. Default
+-- produksi kini STUDIO (masa awal gratis, migration 20261123000100), jadi
+-- dipasang kembali ke STARTER selama bagian 1-70; bagian 71 memulihkannya.
+alter table public.merchants alter column subscription_tier set default 'STARTER';
+
 -- 1. Trigger handle_new_user
 insert into auth.users (id, email, raw_user_meta_data)
 values ('11111111-1111-1111-1111-111111111111', 'a@example.com',
@@ -5967,3 +5972,22 @@ select case when (select count(*) from generate_series(1, 40)
              and (select count(*) from public.username_check_attempts where ip_hash = '') = 0
             then 'OK   t70f hash kosong: tanpa batas, tanpa catatan'
             else 'FAIL t70f hash kosong salah' end as t70f;
+
+-- 71. Masa awal gratis: merchant baru bertier STUDIO (20261123000100)
+alter table public.merchants alter column subscription_tier set default 'STUDIO';
+insert into auth.users (id, email) values
+  ('71717171-7171-7171-7171-717171717171', 'awal-gratis-71@example.com');
+
+select case when (select subscription_tier from public.merchants
+                  where id = '71717171-7171-7171-7171-717171717171') = 'STUDIO'
+            then 'OK   t71a merchant baru otomatis bertier STUDIO'
+            else 'FAIL t71a merchant baru tidak bertier STUDIO' end as t71a;
+
+select case when (select count(*) from public.merchants
+                  where subscription_tier <> 'STUDIO'
+                    and id = '71717171-7171-7171-7171-717171717171') = 0
+             and (select column_default from information_schema.columns
+                  where table_schema = 'public' and table_name = 'merchants'
+                    and column_name = 'subscription_tier') like '%STUDIO%'
+            then 'OK   t71b default kolom subscription_tier adalah STUDIO'
+            else 'FAIL t71b default kolom bukan STUDIO' end as t71b;

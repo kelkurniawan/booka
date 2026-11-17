@@ -59,6 +59,10 @@ export default function TermsPage() {
 
       <h2>Paket dan pembayaran langganan</h2>
       <ul>
+        <li>
+          Selama masa awal, semua fitur dapat dipakai gratis. Harga paket berlaku
+          nanti dan kami memberi tahu Anda lebih dulu sebelum ada tagihan.
+        </li>
         <li>Paket Starter gratis dengan batas 10 transaksi per bulan dan 1 jenis layanan.</li>
         <li>
           Paket berbayar ditagih per bulan sesuai harga yang tercantum saat

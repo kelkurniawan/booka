@@ -1,4 +1,4 @@
-import { PLAN_COMPARISON, PLANS, type Plan } from "@/lib/plans";
+import { EARLY_ACCESS_DETAIL, EARLY_ACCESS_FREE, EARLY_ACCESS_NOTE, PLAN_COMPARISON, PLANS, type Plan } from "@/lib/plans";
 
 import { RadioSwitch, SwitchPanel } from "./radio-switch";
 
@@ -17,6 +17,12 @@ export function Pricing() {
             <span style={{ fontSize: "var(--text-title)", fontWeight: 500, ...muted }}>untuk mulai</span>
           </p>
         </div>
+
+        {EARLY_ACCESS_FREE ? (
+          <p style={{ margin: 0, fontSize: "var(--text-body)" }}>
+            <strong>{EARLY_ACCESS_NOTE}</strong> <span style={muted}>{EARLY_ACCESS_DETAIL}</span>
+          </p>
+        ) : null}
 
         <div className="price-mobile" data-switch style={{ flexDirection: "column", gap: "var(--space-lg)" }}>
           <RadioSwitch name="paket" legend="Pilih paket" options={PLANS.map((p) => p.name)} defaultIndex={1} tone="board" />

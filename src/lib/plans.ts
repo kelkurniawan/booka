@@ -88,6 +88,19 @@ export const PLANS: Plan[] = [
   },
 ];
 
+/**
+ * Masa awal gratis: selama true, semua merchant mendapat akses penuh (tier
+ * STUDIO lewat default kolom, migration 20261123000100) dan UI harga memberi
+ * catatan bahwa harga baru berlaku nanti. Penegakan tier di kode dan database
+ * tetap utuh; untuk menagih lagi, ubah subscription_tier per merchant lalu
+ * set konstanta ini ke false.
+ */
+export const EARLY_ACCESS_FREE = true;
+
+/** Catatan harga untuk UI selama masa awal gratis. */
+export const EARLY_ACCESS_NOTE = "Semua fitur gratis selama masa awal.";
+export const EARLY_ACCESS_DETAIL = "Harga di bawah berlaku nanti; kami kabari dulu sebelum ada tagihan.";
+
 export const COMING_SOON_LABEL = "Segera hadir";
 
 export type ComparisonRow = {
