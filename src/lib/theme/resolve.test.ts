@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { MerchantTheme, ThemePreset } from "@/types/database";
 
-import { contrastRatio } from "./color";
+import { contrastRatio, mixHex } from "./color";
 import { THEME_PRESETS } from "./presets";
 import { resolveTheme } from "./resolve";
 
@@ -145,4 +145,60 @@ test("skala teks dipetakan ke pengali", () => {
   assert.equal(resolveTheme("PRO", baris({ text_scale: "KECIL" })).scale, 0.9375);
   assert.equal(resolveTheme("PRO", baris({ text_scale: "SEDANG" })).scale, 1);
   assert.equal(resolveTheme("PRO", baris({ text_scale: "BESAR" })).scale, 1.125);
+});
+
+test("kolom baru: baris null memberi bawaan", () => {
+  const t = resolveTheme("PRO", null);
+  assert.equal(t.buttonStyle, "FILLED");
+  assert.deepEqual(t.sections, ["PROMO", "SERVICES", "FAQ"]);
+  assert.equal(t.motion, null);
+  assert.equal(t.logoPath, null);
+  assert.equal(t.coverPath, null);
+});
+
+test("STARTER: sampul, gaya tombol, dan gerak dipangkas; logo dan susunan tetap", () => {
+  const t = resolveTheme(
+    "STARTER",
+    baris({
+      cover_path: "m1/cover-a.webp",
+      button_style: "OUTLINE",
+      background_style: "MOTION",
+      logo_path: "m/logo-a.webp",
+      section_order: ["FAQ", "SERVICES", "PROMO"],
+      hidden_sections: ["PROMO"],
+    }),
+  );
+  assert.equal(t.coverPath, null);
+  assert.equal(t.buttonStyle, "FILLED");
+  assert.equal(t.backgroundStyle, "SOLID");
+  assert.equal(t.motion, null);
+  assert.equal(t.logoPath, "m/logo-a.webp");
+  assert.deepEqual(t.sections, ["FAQ", "SERVICES"]);
+});
+
+test("PRO MOTION: warna gerak diturunkan dari tema", () => {
+  const t = resolveTheme(
+    "PRO",
+    baris({ preset: "HANGAT", background_style: "MOTION", background_motion: "GELOMBANG", background_motion_speed: "NORMAL" }),
+  );
+  assert.ok(t.motion);
+  assert.equal(t.motion.preset, "GELOMBANG");
+  assert.equal(t.motion.speed, "NORMAL");
+  assert.equal(t.motion.base, mixHex(t.background, t.accentFill, 0.1));
+  assert.equal(t.motion.shapeC, t.card);
+});
+
+test("kontras tombol minimal 4,5:1 di semua preset, gaya, dan aksen", () => {
+  for (const preset of Object.keys(THEME_PRESETS) as ThemePreset[]) {
+    for (const gaya of ["FILLED", "OUTLINE", "SOFT"] as const) {
+      for (const accent of [null, "#ffe600", "#808080", "#1f5c45"]) {
+        const t = resolveTheme("PRO", baris({ preset, button_style: gaya, accent }));
+        const label = `${preset} ${gaya} ${accent}`;
+        assert.ok(contrastRatio(t.buttonText, t.buttonFill) >= 4.5, label);
+        if (gaya === "OUTLINE") {
+          assert.ok(contrastRatio(t.buttonBorder, t.background) >= 3, label);
+        }
+      }
+    }
+  }
 });

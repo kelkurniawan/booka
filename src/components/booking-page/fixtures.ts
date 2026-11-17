@@ -70,7 +70,10 @@ export const sampleFaqs: MerchantFaq[] = [
 }));
 
 /** Tema PRO dengan preset tertentu, lewat resolveTheme seperti halaman asli. */
-export function sampleTheme(preset: ThemePreset): ResolvedTheme {
+export function sampleTheme(
+  preset: ThemePreset,
+  ubah: Partial<MerchantTheme> = {},
+): ResolvedTheme {
   const row: MerchantTheme = {
     merchant_id: sampleMerchant.id,
     preset,
@@ -91,6 +94,7 @@ export function sampleTheme(preset: ThemePreset): ResolvedTheme {
     background_motion_speed: "SLOW",
     created_at: waktu,
     updated_at: waktu,
+    ...ubah,
   };
   return resolveTheme("PRO", row);
 }

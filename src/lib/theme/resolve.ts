@@ -2,6 +2,7 @@ import type { MerchantTheme, SubscriptionTier, TextScale } from "@/types/databas
 
 import { ensureContrast, isDark, mixHex, readableOn } from "./color";
 import { CORNER_RADIUS, isFreePreset, THEME_PRESETS } from "./presets";
+import { visibleSections } from "./sections";
 import type { ResolvedTheme } from "./types";
 
 const SKALA_TEKS: Record<TextScale, number> = {
@@ -58,6 +59,28 @@ export function resolveTheme(
 
   const accentFill = starter ? def.accent : (row?.accent ?? def.accent);
 
+  const buttonStyle = starter ? "FILLED" : (row?.button_style ?? "FILLED");
+  const accentText = ensureContrast(accentFill, permukaan, 4.5);
+  const accentForeground = readableOn(accentFill);
+  // Keputusan 9: --primary tetap aksen; gaya hanya untuk satu aksi utama.
+  const softFill = mixHex(background, accentFill, 0.14);
+  const tombol =
+    buttonStyle === "OUTLINE"
+      ? { fill: background, text: accentText, border: accentText }
+      : buttonStyle === "SOFT"
+        ? {
+            fill: softFill,
+            text: ensureContrast(accentFill, softFill, 4.5),
+            border: softFill,
+          }
+        : {
+            fill: accentFill,
+            // readableOn() memilih putih/hitam terbaik tapi tidak menjamin 4,5:1
+            // di aksen tengah-tengah; ensureContrast no-op bila sudah cukup.
+            text: ensureContrast(accentForeground, accentFill, 4.5),
+            border: accentFill,
+          };
+
   return {
     preset,
     colorMode: isDark(permukaan) ? "GELAP" : "TERANG",
@@ -70,8 +93,8 @@ export function resolveTheme(
     mutedForeground: ensureContrast(def.mutedForeground, permukaan, 4.5),
     border: ensureContrast(def.border, permukaan, 1.3),
     accentFill,
-    accentText: ensureContrast(accentFill, permukaan, 4.5),
-    accentForeground: readableOn(accentFill),
+    accentText,
+    accentForeground,
     radius: CORNER_RADIUS[cornerStyle],
     cornerStyle,
     fontPair,
@@ -87,5 +110,26 @@ export function resolveTheme(
       backgroundStyle === "IMAGE"
         ? Math.max(OVERLAY_MINIMUM, row?.background_overlay ?? OVERLAY_MINIMUM)
         : 0,
+    logoPath: row?.logo_path ?? null,
+    // Keputusan 6: baris lama milik merchant yang turun paket boleh tetap
+    // premium; dipangkas di sini saat baca, bukan ditolak trigger.
+    coverPath: starter ? null : (row?.cover_path ?? null),
+    buttonStyle,
+    buttonFill: tombol.fill,
+    buttonText: tombol.text,
+    buttonBorder: tombol.border,
+    sections: visibleSections(row?.section_order, row?.hidden_sections),
+    motion:
+      backgroundStyle === "MOTION"
+        ? {
+            preset: row?.background_motion ?? "BENTUK",
+            speed: row?.background_motion_speed ?? "SLOW",
+            // Keputusan 12: warna gerak diturunkan dari tema, tanpa pilihan terpisah.
+            base: mixHex(background, accentFill, 0.1),
+            shapeA: mixHex(background, accentFill, 0.32),
+            shapeB: mixHex(background, def.foreground, 0.16),
+            shapeC: backgroundPilihan ?? def.card,
+          }
+        : null,
   };
 }

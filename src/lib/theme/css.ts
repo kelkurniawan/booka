@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 
 import { FONT_PAIR_VARS } from "./font-pairs";
+import { MOTION_SPEED_FACTOR } from "./motion";
 import type { ResolvedTheme } from "./types";
 
 /**
@@ -51,6 +52,9 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
     "--primary-foreground": theme.accentForeground,
     "--accent-fill": theme.accentFill,
     "--accent-text": theme.accentText,
+    "--button-bg": theme.buttonFill,
+    "--button-fg": theme.buttonText,
+    "--button-border": theme.buttonBorder,
     "--radius": theme.radius,
     "--font-sans": font.body,
     "--font-heading": font.heading,
@@ -63,6 +67,14 @@ export function themeToCssVars(theme: ResolvedTheme): CSSProperties {
 
   if (theme.backgroundStyle === "IMAGE") {
     vars["--page-overlay"] = String(theme.backgroundOverlay / 100);
+  }
+
+  if (theme.motion) {
+    vars["--motion-base"] = theme.motion.base;
+    vars["--motion-a"] = theme.motion.shapeA;
+    vars["--motion-b"] = theme.motion.shapeB;
+    vars["--motion-c"] = theme.motion.shapeC;
+    vars["--motion-factor"] = String(MOTION_SPEED_FACTOR[theme.motion.speed]);
   }
 
   return vars as CSSProperties;
