@@ -16,6 +16,9 @@ export type DepositType = "PERCENT" | "FIXED";
 export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
 export type VoucherKind = "PERCENT" | "FIXED";
 export type VoucherVisibility = "PUBLIC" | "PRIVATE";
+export type BannerSource = "TEMPLATE" | "IMAGE";
+export type BannerColor = "ACCENT" | "DARK" | "SOFT";
+export type BannerTarget = "VOUCHER" | "SERVICE" | "URL";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
 export type ConnectionStatus = "ACTIVE" | "EXPIRED" | "REVOKED";
 export type ConnectionMode = "OAUTH" | "MANUAL_KEY";
@@ -397,6 +400,36 @@ export type PublicVoucher = Pick<
   | "new_customer_only"
 >;
 
+/** Banner promosi. TEMPLATE: title wajib, tanpa gambar. IMAGE: image_path + alt_text, tanpa teks. */
+export type MerchantBanner = {
+  id: string;
+  merchant_id: string;
+  source: BannerSource;
+  tag_text: string | null;
+  title: string | null;
+  body: string | null;
+  color: BannerColor;
+  /** `<merchant_id>/banner/<nama berkas>` di Storage. */
+  image_path: string | null;
+  alt_text: string | null;
+  /** Terisi tepat bila target_kind terisi. */
+  cta_text: string | null;
+  target_kind: BannerTarget | null;
+  /** Null juga bila voucher/layanan targetnya sudah dihapus. */
+  target_voucher_id: string | null;
+  target_service_id: string | null;
+  target_url: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  sort_order: number;
+  published: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Kolom yang boleh dibaca anon; hanya banner yang sedang tayang. */
+export type PublicBanner = Omit<MerchantBanner, "published" | "created_at" | "updated_at">;
+
 export type MerchantSettings = {
   merchant_id: string;
   allow_pay_on_site: boolean;
@@ -696,6 +729,17 @@ export type Database = {
           >;
         Update: Partial<Omit<Voucher, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_banners: {
+        Row: MerchantBanner;
+        Insert: Pick<MerchantBanner, "merchant_id" | "source"> &
+          Partial<Omit<MerchantBanner, "id" | "merchant_id" | "source" | Timestamps>>;
+        Update: Partial<Omit<MerchantBanner, "id" | "merchant_id" | Timestamps>>;
+        Relationships: [
+          Relationship<"merchant_id", "merchants">,
+          Relationship<"target_voucher_id", "vouchers">,
+          Relationship<"target_service_id", "services">,
+        ];
       };
       merchant_settings: {
         Row: MerchantSettings;
@@ -1034,6 +1078,9 @@ export type Database = {
     Enums: {
       voucher_kind: VoucherKind;
       voucher_visibility: VoucherVisibility;
+      banner_source: BannerSource;
+      banner_color: BannerColor;
+      banner_target: BannerTarget;
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
       payment_mode: PaymentMode;

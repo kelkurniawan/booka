@@ -4490,3 +4490,180 @@ select case when not exists (select 1 from public.voucher_attempts where ip_hash
               and exists (select 1 from public.voucher_attempts where ip_hash = 'hash47-baru')
             then 'OK   t47l reap_expired_bookings membuang voucher_attempts lama saja'
             else 'FAIL t47l voucher_attempts lama tidak dibuang atau yang baru ikut terbuang' end as t47l;
+
+-- ===========================================================================
+-- 48. Banner promosi (20261117000300)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('48484848-0000-0000-0000-000000000001', 'banner48-a@example.com', '{}'::jsonb),
+  ('48484848-0000-0000-0000-000000000002', 'banner48-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'banner-48', subscription_tier = 'PRO'
+  where id = '48484848-0000-0000-0000-000000000001';
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
+  ('48484848-5e5e-0000-0000-000000000001', '48484848-0000-0000-0000-000000000001', 'Layanan 48', 350000, 60, 'FULL', true);
+insert into public.vouchers (id, merchant_id, code, kind, value) values
+  ('48484848-7070-0000-0000-000000000001', '48484848-0000-0000-0000-000000000001', 'BANNER48', 'PERCENT', 10);
+
+-- Sisip banner (superuser). Kolom opsional lewat jsonb; TEMPLATE tanpa kunci title diberi judul bawaan.
+create or replace function pg_temp.bn48(p jsonb default '{}'::jsonb,
+  p_merchant uuid default '48484848-0000-0000-0000-000000000001')
+returns uuid language plpgsql as $$
+declare v_id uuid; v_source text := coalesce(p->>'source', 'TEMPLATE');
+begin
+  insert into public.merchant_banners (merchant_id, source, tag_text, title, body, color, image_path, alt_text,
+    cta_text, target_kind, target_voucher_id, target_service_id, target_url, starts_at, ends_at, published)
+  values (p_merchant, v_source::public.banner_source, p->>'tag_text',
+    case when p ? 'title' or v_source <> 'TEMPLATE' then p->>'title' else 'Promo 48' end,
+    p->>'body', coalesce(p->>'color', 'ACCENT')::public.banner_color, p->>'image_path', p->>'alt_text',
+    p->>'cta_text', (p->>'target_kind')::public.banner_target, (p->>'target_voucher_id')::uuid,
+    (p->>'target_service_id')::uuid, p->>'target_url', (p->>'starts_at')::timestamptz,
+    (p->>'ends_at')::timestamptz, coalesce((p->>'published')::boolean, false))
+  returning id into v_id;
+  return v_id;
+end $$;
+
+-- 48a. Constraint.
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"title": null}')$q$, '23514', 't48a TEMPLATE tanpa title');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"source": "IMAGE",
+  "image_path": "48484848-0000-0000-0000-000000000001/banner/a.webp"}')$q$, '23514', 't48a IMAGE tanpa alt_text');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"source": "IMAGE", "title": "Judul", "alt_text": "Promo",
+  "image_path": "48484848-0000-0000-0000-000000000001/banner/a.webp"}')$q$, '23514', 't48a IMAGE dengan title');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"source": "IMAGE", "alt_text": "Promo",
+  "image_path": "48484848-0000-0000-0000-000000000002/banner/a.webp"}')$q$, '23514', 't48a image_path merchant lain');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"source": "IMAGE", "alt_text": "Promo",
+  "image_path": "48484848-0000-0000-0000-000000000001/banner/../x.webp"}')$q$, '23514', 't48a image_path dengan ..');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "URL", "cta_text": "Lihat",
+  "target_url": "http://contoh.test"}')$q$, '23514', 't48a target_url http');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "URL", "cta_text": "Lihat",
+  "target_url": "javascript:alert(1)"}')$q$, '23514', 't48a target_url javascript:');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "URL", "cta_text": "Lihat",
+  "target_url": "https://a.test/x y"}')$q$, '23514', 't48a target_url berspasi');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_url": "https://a.test"}')$q$,
+  '23514', 't48a target_url tanpa target_kind');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "URL", "target_url": "https://a.test"}')$q$,
+  '23514', 't48a target_kind tanpa cta_text');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "VOUCHER", "cta_text": "Pakai",
+  "target_voucher_id": "48484848-7070-0000-0000-000000000001",
+  "target_service_id": "48484848-5e5e-0000-0000-000000000001"}')$q$, '23514', 't48a target_service_id pada VOUCHER');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"starts_at": "2031-01-01 00:00+07",
+  "ends_at": "2031-01-01 00:00+07"}')$q$, '23514', 't48a ends_at <= starts_at');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48(jsonb_build_object('title', repeat('a', 61)))$q$,
+  '23514', 't48a title 61 karakter');
+select pg_temp.expect_ok($q$select pg_temp.bn48()$q$, 't48a template minimal');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"source": "IMAGE", "alt_text": "Promo wisuda",
+  "image_path": "48484848-0000-0000-0000-000000000001/banner/a.webp"}')$q$, 't48a image dengan path dan alt');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"target_kind": "URL", "cta_text": "Lihat",
+  "target_url": "https://instagram.com/riasbysekar"}')$q$, 't48a URL instagram');
+
+-- 48b. Maksimal 3 banner tayang bersamaan.
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"title": "Tayang 48b-1", "published": true}')$q$, 't48b tayang ke-1');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"title": "Tayang 48b-2", "published": true}')$q$, 't48b tayang ke-2');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"title": "Tayang 48b-3", "published": true}')$q$, 't48b tayang ke-3');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"title": "Tayang 48b-4", "published": true}')$q$,
+  'PR001', 't48b tayang ke-4');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"title": "Draf 48b"}')$q$, 't48b ke-4 sebagai draf');
+select pg_temp.expect_fail_code($q$update public.merchant_banners set published = true
+  where merchant_id = '48484848-0000-0000-0000-000000000001' and title = 'Draf 48b'$q$, 'PR001', 't48b draf dijadikan tayang');
+
+-- 48c. Jendela tayang: banner terjadwal hanya bertabrakan dengan yang masih tayang saat itu.
+delete from public.merchant_banners
+  where merchant_id = '48484848-0000-0000-0000-000000000001' and title = 'Tayang 48b-3';
+select pg_temp.expect_ok($q$select pg_temp.bn48(jsonb_build_object('title', 'Tujuh hari 48c', 'published', true,
+  'ends_at', now() + interval '7 days'))$q$, 't48c pengganti berakhir +7 hari');
+select pg_temp.expect_ok($q$select pg_temp.bn48(jsonb_build_object('title', 'Terjadwal 48c', 'published', true,
+  'starts_at', now() + interval '8 days'))$q$, 't48c terjadwal +8 hari');
+select pg_temp.expect_fail_code($q$update public.merchant_banners set starts_at = now() + interval '6 days'
+  where merchant_id = '48484848-0000-0000-0000-000000000001' and title = 'Terjadwal 48c'$q$,
+  'PR001', 't48c terjadwal dimajukan ke +6 hari');
+
+-- 48d. Banner yang sudah berakhir tidak dihitung; puncak dihitung per titik waktu.
+select pg_temp.expect_ok($q$select pg_temp.bn48(jsonb_build_object('title', 'Selesai 48d', 'published', true,
+  'starts_at', now() - interval '10 days', 'ends_at', now() - interval '1 day'))$q$, 't48d banner berakhir diterima');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"title": "Baru 48d", "published": true}')$q$,
+  'PR001', 't48d banner baru tetap ditolak');
+delete from public.merchant_banners where merchant_id = '48484848-0000-0000-0000-000000000001' and published;
+select pg_temp.bn48('{"title": "Tanpa batas 48d", "published": true}');
+select pg_temp.bn48(jsonb_build_object('title', 'A 48d', 'published', true,
+  'starts_at', now() + interval '1 day', 'ends_at', now() + interval '10 days'));
+select pg_temp.bn48(jsonb_build_object('title', 'B 48d', 'published', true,
+  'starts_at', now() + interval '1 day', 'ends_at', now() + interval '3 days'));
+select pg_temp.bn48(jsonb_build_object('title', 'C 48d', 'published', true,
+  'starts_at', now() + interval '5 days', 'ends_at', now() + interval '8 days'));
+select pg_temp.expect_fail_code($q$select pg_temp.bn48(jsonb_build_object('title', 'D 48d', 'published', true,
+  'starts_at', now() + interval '1 day', 'ends_at', now() + interval '10 days'))$q$, 'PR001', 't48d D puncak 4 di hari +1');
+delete from public.merchant_banners
+  where merchant_id = '48484848-0000-0000-0000-000000000001' and title = 'Tanpa batas 48d';
+select pg_temp.expect_ok($q$select pg_temp.bn48(jsonb_build_object('title', 'D 48d', 'published', true,
+  'starts_at', now() + interval '1 day', 'ends_at', now() + interval '10 days'))$q$, 't48d D tanpa banner tanpa batas');
+
+-- 48e. Merchant STARTER tidak bisa membuat banner.
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{}', '48484848-0000-0000-0000-000000000002')$q$,
+  'P0001', 't48e banner untuk STARTER');
+
+-- 48f. Hak akses dan RLS.
+delete from public.merchant_banners where merchant_id = '48484848-0000-0000-0000-000000000001' and published;
+select pg_temp.bn48('{"title": "Tayang 48f", "published": true}');
+select pg_temp.bn48('{"title": "Draf 48f"}');
+select pg_temp.bn48(jsonb_build_object('title', 'Terjadwal 48f', 'published', true, 'starts_at', now() + interval '2 days'));
+select pg_temp.bn48(jsonb_build_object('title', 'Selesai 48f', 'published', true,
+  'starts_at', now() - interval '5 days', 'ends_at', now() - interval '1 day'));
+
+begin;
+set local role anon;
+select case when (select string_agg(title, ',') from public.merchant_banners) = 'Tayang 48f'
+            then 'OK   t48f anon hanya melihat banner tayang merchant PRO'
+            else 'FAIL t48f anon melihat -> ' || coalesce((select string_agg(title, ',') from public.merchant_banners), '(kosong)')
+       end as t48f1;
+rollback;
+
+update public.merchants set subscription_tier = 'STARTER' where id = '48484848-0000-0000-0000-000000000001';
+begin;
+set local role anon;
+select case when (select count(*) from public.merchant_banners where title is not null) = 0
+            then 'OK   t48f anon tidak melihat banner merchant yang turun ke STARTER'
+            else 'FAIL t48f banner merchant STARTER terlihat anon' end as t48f2;
+rollback;
+update public.merchants set subscription_tier = 'PRO' where id = '48484848-0000-0000-0000-000000000001';
+
+select
+  case when has_column_privilege('anon', 'public.merchant_banners', 'published', 'SELECT')
+       then 'FAIL t48f anon bisa SELECT published' else 'OK   t48f anon tidak bisa SELECT published' end as t48f3,
+  case when has_column_privilege('authenticated', 'public.merchant_banners', 'merchant_id', 'UPDATE')
+       then 'FAIL t48f authenticated bisa UPDATE merchant_id'
+       else 'OK   t48f authenticated tidak bisa UPDATE merchant_id' end as t48f4,
+  case when has_function_privilege('anon', 'public.enforce_banner_live_limit()', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.enforce_banner_live_limit()', 'EXECUTE')
+       then 'FAIL t48f enforce_banner_live_limit terbuka'
+       else 'OK   t48f enforce_banner_live_limit tertutup' end as t48f5;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '48484848-0000-0000-0000-000000000002';
+with u as (update public.merchant_banners set sort_order = 9
+           where merchant_id = '48484848-0000-0000-0000-000000000001' returning 1)
+select case when (select count(*) from u) = 0
+            then 'OK   t48f update banner merchant lain 0 baris' else 'FAIL t48f banner merchant lain berubah' end as t48f6;
+rollback;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '48484848-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$insert into public.merchant_banners (merchant_id, source, title, published)
+  values ('48484848-0000-0000-0000-000000000001', 'TEMPLATE', 'Sendiri 48f', false)$q$, 't48f pemilik insert banner sendiri');
+select case when (select count(*) from public.merchant_banners where title = 'Draf 48f') = 1
+            then 'OK   t48f pemilik melihat drafnya' else 'FAIL t48f pemilik tidak melihat drafnya' end as t48f7;
+rollback;
+
+-- 48g. Hapus voucher dan layanan target: kolom target jadi null, banner tetap.
+select pg_temp.bn48('{"title": "Ke voucher 48g", "target_kind": "VOUCHER", "cta_text": "Pakai",
+  "target_voucher_id": "48484848-7070-0000-0000-000000000001"}');
+select pg_temp.bn48('{"title": "Ke layanan 48g", "target_kind": "SERVICE", "cta_text": "Pesan",
+  "target_service_id": "48484848-5e5e-0000-0000-000000000001"}');
+delete from public.vouchers where id = '48484848-7070-0000-0000-000000000001';
+delete from public.services where id = '48484848-5e5e-0000-0000-000000000001';
+select case when (select count(*) from public.merchant_banners
+                  where title in ('Ke voucher 48g', 'Ke layanan 48g')
+                    and target_voucher_id is null and target_service_id is null) = 2
+            then 'OK   t48g target dihapus: id target null, banner tetap'
+            else 'FAIL t48g banner hilang atau target tidak null' end as t48g;
