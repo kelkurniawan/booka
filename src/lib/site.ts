@@ -15,5 +15,10 @@ export function siteUrl(): URL {
   }
 }
 
+/** Host tampilan untuk landing, mis. "marky.id" atau "localhost:3000". */
+export function siteHost(): string {
+  return siteUrl().host;
+}
+
 /** Ukuran gambar Open Graph standar (rasio 1.91:1). */
 export const OG_IMAGE_SIZE = { width: 1200, height: 630 } as const;
