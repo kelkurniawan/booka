@@ -9,6 +9,9 @@ import { MIN_ONLINE_CHARGE } from "./payment-mode";
 
 export type VoucherTerms = Pick<Voucher, "code" | "kind" | "value" | "max_discount" | "min_spend" | "service_ids">;
 
+/** Voucher yang terpasang di alur booking: dari daftar publik atau dari kode yang diketik. */
+export type AppliedVoucher = VoucherTerms & { source: "PUBLIC" | "PRIVATE" };
+
 /** Respons 200 POST /api/vouchers/check. Tanpa nomor pelanggan (Keputusan 11). */
 export type CheckVoucherResult = {
   code: string;

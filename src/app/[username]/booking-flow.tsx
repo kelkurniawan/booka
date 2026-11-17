@@ -7,10 +7,12 @@ import { toast } from "sonner";
 
 import { BookingSummary } from "@/components/booking-page/booking-summary";
 import { DateStrip } from "@/components/booking-page/date-strip";
+import { PromoBanners } from "@/components/booking-page/promo-banners";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { BookingStepIndicator } from "@/components/booking-page/step-indicator";
 import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
 import { TimeSlotPicker, type TimeSlotState } from "@/components/booking-page/time-slot-picker";
+import { VoucherPicker } from "@/components/booking-page/voucher-picker";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -23,10 +25,24 @@ import {
 } from "@/lib/booking/payment-mode";
 import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
 import { jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
+import {
+  computeDiscount,
+  voucherIneligibleReason,
+  voucherSummary,
+  type AppliedVoucher,
+  type CheckVoucherResult,
+} from "@/lib/booking/voucher";
 import { formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 import { checkoutSchema } from "@/lib/validations/booking";
-import type { Availability, DayOfWeek, Service, ServiceMedia } from "@/types/database";
+import type {
+  Availability,
+  DayOfWeek,
+  PublicBanner,
+  PublicVoucher,
+  Service,
+  ServiceMedia,
+} from "@/types/database";
 
 export type BookingFlowProps = {
   username: string;
@@ -38,6 +54,8 @@ export type BookingFlowProps = {
   staff: { id: string; name: string; days: DayOfWeek[] }[];
   /** Hanya petunjuk tampilan; server menentukan mode akhir saat booking dibuat. */
   paymentSettings: PaymentSettings;
+  banners: PublicBanner[];
+  vouchers: PublicVoucher[];
 };
 
 type Step = 1 | 2 | 3;
@@ -75,6 +93,7 @@ type CheckoutSubmitPayload = {
   startUtc: string;
   customer_name: string;
   customer_whatsapp: string;
+  voucherCode: string | null;
 };
 
 /** Respons sukses `POST /api/bookings` -- lihat src/app/api/bookings/route.ts. */
@@ -112,6 +131,31 @@ async function submitCheckout(payload: CheckoutSubmitPayload): Promise<CheckoutR
   return body as CheckoutResult;
 }
 
+/**
+ * `POST /api/vouchers/check`. Melempar `Error` berisi pesan Indonesia dari
+ * server, tinggal ditampilkan di bawah kolom kode.
+ */
+async function checkVoucherCode(
+  username: string,
+  serviceId: string,
+  code: string,
+): Promise<CheckVoucherResult> {
+  const response = await fetch("/api/vouchers/check", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, serviceId, code }),
+  });
+  const body: unknown = await response.json().catch(() => null);
+  if (!response.ok || !body || typeof body !== "object" || !("discount" in body)) {
+    const message =
+      body && typeof body === "object" && "error" in body
+        ? ((body as CheckoutErrorBody).error ?? null)
+        : null;
+    throw new Error(message ?? "Kode tidak bisa diperiksa, coba lagi.");
+  }
+  return body as CheckVoucherResult;
+}
+
 export function BookingFlow({
   username,
   merchantName,
@@ -120,6 +164,8 @@ export function BookingFlow({
   availability,
   staff,
   paymentSettings,
+  banners,
+  vouchers,
 }: BookingFlowProps) {
   const router = useRouter();
 
@@ -137,6 +183,10 @@ export function BookingFlow({
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [appliedVoucher, setAppliedVoucher] = useState<AppliedVoucher | null>(null);
+  // Pesan netral saat voucher dilepas atau tidak jadi dipasang karena layanan tidak cocok.
+  const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
+  const serviceListRef = useRef<HTMLDivElement>(null);
 
   const [todayISO] = useState(() => jakartaDateISO(new Date()));
 
@@ -151,6 +201,14 @@ export function BookingFlow({
   const strip = useMemo(() => buildDateStrip(openDays, todayISO), [openDays, todayISO]);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) ?? null;
+  const serviceNames = useMemo(
+    () => Object.fromEntries(services.map((service) => [service.id, service.name])),
+    [services],
+  );
+  const voucherCodeById = useMemo(
+    () => Object.fromEntries(vouchers.map((voucher) => [voucher.id, voucher.code])),
+    [vouchers],
+  );
 
   // Pilihan terkini untuk listener popstate (effect-nya hanya jalan sekali).
   const selectionRef = useRef({ hasService: false, hasSlot: false });
@@ -233,6 +291,43 @@ export function BookingFlow({
   function handleSelectService(serviceId: string) {
     setSelectedServiceId(serviceId);
     resetSchedule();
+    const next = services.find((service) => service.id === serviceId);
+    if (appliedVoucher && next) {
+      const reason = voucherIneligibleReason(appliedVoucher, next, serviceNames);
+      if (reason) {
+        setAppliedVoucher(null);
+        setVoucherNotice(`Voucher ${appliedVoucher.code} dilepas. ${reason}.`);
+      }
+    }
+  }
+
+  function scrollToServices() {
+    serviceListRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  // Dari banner: layanan dipilih lalu daftar digulir ke tampilan.
+  function handleBannerSelectService(serviceId: string) {
+    handleSelectService(serviceId);
+    scrollToServices();
+  }
+
+  function handleApplyVoucher(voucher: AppliedVoucher) {
+    if (selectedService) {
+      const reason = voucherIneligibleReason(voucher, selectedService, serviceNames);
+      if (reason) {
+        setVoucherNotice(`Voucher ${voucher.code} belum dipasang. ${reason}.`);
+        return;
+      }
+    }
+    setVoucherNotice(null);
+    setAppliedVoucher(voucher);
+  }
+
+  function handleBannerApplyVoucher(voucherId: string) {
+    const voucher = vouchers.find((item) => item.id === voucherId);
+    if (!voucher) return;
+    handleApplyVoucher({ ...voucher, source: "PUBLIC" });
+    scrollToServices();
   }
 
   function handleSelectStaff(staffId: string | null) {
@@ -278,6 +373,7 @@ export function BookingFlow({
         startUtc: result.data.startUtc,
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
+        voucherCode: appliedVoucher?.code ?? null,
       });
       // Booking sudah permanen: arahkan ke /pesanan/[token], tempat QRIS atau
       // hasil akhir ditampilkan. Selalu ikuti bookingUrl: server yang
@@ -292,6 +388,7 @@ export function BookingFlow({
 
   // Rincian bayar langkah 3, dihitung dari pengaturan yang terlihat anon.
   let payment: {
+    discount: number;
     dueNow: number;
     dueOnSite: number;
     approval: boolean;
@@ -300,9 +397,11 @@ export function BookingFlow({
   } | null = null;
   if (selectedService) {
     const mode = effectivePaymentMode(selectedService, paymentSettings);
-    const { dueNow, dueOnSite } = computeAmounts(selectedService, mode);
+    const discount = appliedVoucher ? computeDiscount(appliedVoucher, Number(selectedService.price)) : 0;
+    const { dueNow, dueOnSite } = computeAmounts(selectedService, mode, discount);
     const status = initialBookingStatus(mode, dueNow, paymentSettings);
     payment = {
+      discount,
       dueNow,
       dueOnSite,
       approval: status === "REQUESTED",
@@ -327,7 +426,38 @@ export function BookingFlow({
 
       {step === 1 ? (
         <>
-          <div role="radiogroup" aria-labelledby="langkah-judul" className="flex flex-col gap-3">
+          <PromoBanners
+            banners={banners}
+            voucherCodeById={voucherCodeById}
+            activeServiceIds={services.map((service) => service.id)}
+            onApplyVoucher={handleBannerApplyVoucher}
+            onSelectService={handleBannerSelectService}
+          />
+          {appliedVoucher ? (
+            <div
+              className="bg-card border-border flex items-center justify-between gap-3 border p-3"
+              style={{ borderRadius: "var(--radius)" }}
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Voucher {appliedVoucher.code}</p>
+                <p className="text-muted-foreground text-xs">{voucherSummary(appliedVoucher)}</p>
+              </div>
+              <Button type="button" variant="outline" className="min-h-11" onClick={() => setAppliedVoucher(null)}>
+                Lepas
+              </Button>
+            </div>
+          ) : null}
+          {voucherNotice ? (
+            <p role="status" className="text-muted-foreground text-sm">
+              {voucherNotice}
+            </p>
+          ) : null}
+          <div
+            ref={serviceListRef}
+            role="radiogroup"
+            aria-labelledby="langkah-judul"
+            className="flex scroll-mt-4 flex-col gap-3"
+          >
             {services.map((service, index) => (
               <ServiceOptionCard
                 key={service.id}
@@ -337,6 +467,11 @@ export function BookingFlow({
                 onSelect={() => handleSelectService(service.id)}
                 eager={index === 0}
                 paymentLabel={paymentLabel(service, paymentSettings)}
+                promoPrice={
+                  appliedVoucher && !voucherIneligibleReason(appliedVoucher, service, serviceNames)
+                    ? Number(service.price) - computeDiscount(appliedVoucher, Number(service.price))
+                    : undefined
+                }
               />
             ))}
           </div>
@@ -420,14 +555,27 @@ export function BookingFlow({
 
       {step === 3 && selectedService && selectedDate && selectedSlot && payment ? (
         <form onSubmit={handleCheckoutSubmit} noValidate className="flex flex-col gap-6">
+          <VoucherPicker
+            vouchers={vouchers}
+            service={selectedService}
+            serviceNames={serviceNames}
+            merchantName={merchantName}
+            applied={appliedVoucher}
+            onApply={handleApplyVoucher}
+            onRemove={() => setAppliedVoucher(null)}
+            checkCode={(code) => checkVoucherCode(username, selectedService.id, code)}
+          />
           <BookingSummary
             rows={[
               { label: "Layanan", value: selectedService.name },
               ...(staffName ? [{ label: "Dengan", value: staffName }] : []),
               { label: "Tanggal", value: dateLabel(selectedDate) },
               { label: "Jam", value: selectedSlot.label },
-              ...(payment.dueNow !== Number(selectedService.price)
+              ...(payment.discount > 0 || payment.dueNow !== Number(selectedService.price)
                 ? [{ label: "Harga layanan", value: formatRupiah(Number(selectedService.price)) }]
+                : []),
+              ...(payment.discount > 0 && appliedVoucher
+                ? [{ label: `Voucher ${appliedVoucher.code}`, value: `\u2212${formatRupiah(payment.discount)}` }]
                 : []),
             ]}
             total={formatRupiah(payment.dueNow)}

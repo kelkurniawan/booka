@@ -32,6 +32,8 @@ const meta = {
     staff: [],
     faqs: sampleFaqs,
     paymentSettings: DEFAULT_PAYMENT_SETTINGS,
+    banners: [],
+    vouchers: [],
   },
 } satisfies Meta<typeof BookingPageView>;
 

@@ -21,6 +21,8 @@ import type {
   Availability,
   Merchant,
   MerchantFaq,
+  PublicBanner,
+  PublicVoucher,
   Service,
   ServiceMedia,
 } from "@/types/database";
@@ -39,6 +41,8 @@ export type BookingPageViewProps = {
   staff: PublicStaff[];
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
+  banners: PublicBanner[];
+  vouchers: PublicVoucher[];
 };
 
 /**
@@ -54,6 +58,8 @@ export function BookingPageView({
   staff,
   faqs,
   paymentSettings,
+  banners,
+  vouchers,
 }: BookingPageViewProps) {
   const name = merchant.full_name ?? merchant.username;
   // Staf dengan jam sendiri membuat halaman bisa menerima pesanan walau jam
@@ -79,6 +85,8 @@ export function BookingPageView({
             mediaByService={mediaByService}
             availability={availability}
             paymentSettings={paymentSettings}
+            banners={banners}
+            vouchers={vouchers}
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,

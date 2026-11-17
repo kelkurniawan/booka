@@ -14,6 +14,7 @@ export function ServiceOptionCard({
   onSelect,
   eager = false,
   paymentLabel,
+  promoPrice,
 }: {
   service: Service;
   media?: ServiceMedia[];
@@ -21,7 +22,11 @@ export function ServiceOptionCard({
   onSelect: () => void;
   eager?: boolean;
   paymentLabel: string;
+  /** Harga setelah voucher terpasang; tampil bila lebih kecil dari harga normal. */
+  promoPrice?: number;
 }) {
+  const price = Number(service.price);
+  const discounted = promoPrice !== undefined && promoPrice < price;
   return (
     <div
       className={cn(
@@ -44,7 +49,17 @@ export function ServiceOptionCard({
             {checked ? <Check aria-hidden className="size-4 shrink-0" /> : null}
             {service.name}
           </span>
-          <span className="shrink-0 text-sm font-medium">{formatRupiah(service.price)}</span>
+          {discounted ? (
+            <span className="flex shrink-0 flex-col items-end text-sm">
+              <span className="font-bold">{formatRupiah(promoPrice)}</span>
+              <s className="text-muted-foreground text-xs">
+                <span className="sr-only">harga normal </span>
+                {formatRupiah(price)}
+              </s>
+            </span>
+          ) : (
+            <span className="shrink-0 text-sm font-medium">{formatRupiah(service.price)}</span>
+          )}
         </span>
         {service.description ? (
           <span className="text-muted-foreground text-sm text-pretty">{service.description}</span>
@@ -52,6 +67,9 @@ export function ServiceOptionCard({
         <span className="text-muted-foreground text-xs">
           {formatDuration(service.duration_minutes)}
         </span>
+        {discounted ? (
+          <span className="text-xs font-medium">Hemat {formatRupiah(price - promoPrice)}</span>
+        ) : null}
         <span className="text-xs font-medium">{paymentLabel}</span>
       </label>
     </div>

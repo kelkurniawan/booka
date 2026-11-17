@@ -9,7 +9,9 @@ import { DEFAULT_PAYMENT_SETTINGS, type PaymentSettings } from "@/lib/booking/pa
 import { loadPublicStaff, type PublicStaff } from "@/lib/booking/staff";
 import type {
   MerchantTheme,
+  PublicBanner,
   PublicMerchant,
+  PublicVoucher,
   Service,
   ServiceMedia,
 } from "@/types/database";
@@ -156,7 +158,38 @@ const getMerchantPageData = cache(async (username: string) => {
       ? settingsResult.data
       : DEFAULT_PAYMENT_SETTINGS;
 
+  // Promo bukan isi wajib halaman: gagal baca dicatat lalu dianggap kosong.
+  // Merchant Starter tidak punya promo, jadi tidak memicu query.
+  let banners: PublicBanner[] = [];
+  let vouchers: PublicVoucher[] = [];
+  if (onboardedMerchant.subscription_tier !== "STARTER") {
+    const [bannersResult, vouchersResult] = await Promise.all([
+      supabase
+        .from("merchant_banners")
+        .select(
+          "id, merchant_id, source, tag_text, title, body, color, image_path, alt_text, cta_text, target_kind, target_voucher_id, target_service_id, target_url, starts_at, ends_at, sort_order",
+        )
+        .eq("merchant_id", onboardedMerchant.id)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .limit(3),
+      supabase.rpc("public_vouchers", { p_merchant_id: onboardedMerchant.id }),
+    ]);
+    if (bannersResult.error) {
+      console.error("[booking-page] gagal memuat banner", { username, error: bannersResult.error });
+    } else {
+      banners = bannersResult.data ?? [];
+    }
+    if (vouchersResult.error) {
+      console.error("[booking-page] gagal memuat voucher", { username, error: vouchersResult.error });
+    } else {
+      vouchers = vouchersResult.data ?? [];
+    }
+  }
+
   return {
+    banners,
+    vouchers,
     paymentSettings,
     merchant: onboardedMerchant,
     staff,
@@ -215,7 +248,8 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings } = data;
+  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, banners, vouchers } =
+    data;
 
   return (
     <BookingPageView
@@ -227,6 +261,8 @@ export default async function MerchantPublicPage({
       staff={staff}
       faqs={faqs}
       paymentSettings={paymentSettings}
+      banners={banners}
+      vouchers={vouchers}
     />
   );
 }
