@@ -56,6 +56,7 @@ export const PLANS: Plan[] = [
       { label: "Tanpa watermark" },
       { label: "Semua tema, warna, dan font sendiri" },
       { label: "Video pada layanan" },
+      { label: "Voucher dan banner promosi" },
     ],
   },
   {

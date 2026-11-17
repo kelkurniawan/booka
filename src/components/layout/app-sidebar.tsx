@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Globe,
   LayoutList,
+  Megaphone,
   Palette,
   Settings,
   Sparkles,
@@ -59,6 +60,7 @@ const NAV_GROUPS = [
     label: "Halaman booking",
     items: [
       { title: "Tampilan", href: ROUTES.appearance, icon: Palette },
+      { title: "Promosi", href: ROUTES.promoBanners, icon: Megaphone },
       { title: "Domain", href: ROUTES.domain, icon: Globe },
     ],
   },
