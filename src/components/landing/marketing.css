@@ -218,3 +218,13 @@
 .marketing .price-mobile .groove { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: stretch; }
 .marketing .price-mobile .groove label { justify-content: center; }
 .marketing .note { font-size: 12px; color: var(--color-muted); overflow-wrap: anywhere; }
+
+/* Daftar bergaris: judul di kiri, isi di kanan, garis tipis antarbaris (pengganti deretan kartu kembar). */
+.marketing .ruled-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--color-rule-2); }
+.marketing .ruled-list > li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: var(--space-sm) var(--space-xl); padding: var(--space-lg) 0; border-bottom: 1px solid var(--color-rule-2); }
+.marketing .ruled-list h3 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -0.01em; }
+.marketing .ruled-list p { margin: 0; max-width: 60ch; color: var(--color-ink-2); }
+@media (max-width: 720px) { .marketing .ruled-list > li { grid-template-columns: minmax(0, 1fr); } }
+
+/* Tautan teks di kaki halaman dan kebijakan: target sentuh 44px (DESIGN.md). */
+.marketing footer nav a, .marketing #kebijakan p a { display: inline-flex; align-items: center; min-height: 44px; }

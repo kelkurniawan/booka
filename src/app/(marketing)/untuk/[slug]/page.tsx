@@ -60,11 +60,11 @@ export default async function IndustryPage({ params }: Props) {
         </section>
 
         <section aria-label="Yang Anda dapat" className="wrap" style={{ paddingBottom: "var(--space-3xl)" }}>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexWrap: "wrap", gap: "var(--space-lg)" }}>
+          <ul className="ruled-list">
             {industry.points.map((p) => (
-              <li key={p.title} className="stock" style={{ flex: "1 1 260px", minWidth: 0, padding: "var(--space-lg)", display: "flex", flexDirection: "column", gap: "var(--space-sm)" }}>
-                <h3 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>{p.title}</h3>
-                <p style={{ margin: 0, color: "var(--color-ink-2)" }}>{p.body}</p>
+              <li key={p.title}>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
               </li>
             ))}
           </ul>
