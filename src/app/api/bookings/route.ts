@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { isKnownBookingError, mapBookingError } from "@/lib/booking/errors";
+import { mapPublicBookingError } from "@/lib/booking/errors";
 import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
 import { notifyBookingCreated } from "@/lib/notify/dispatch";
 import { chargeBooking, chargeFailureMessage, findChargeProvider } from "@/lib/payments/charge-booking";
@@ -167,7 +167,7 @@ export async function POST(request: NextRequest) {
   if (bookingError) {
     // Teks error Postgres mentah TIDAK PERNAH diteruskan ke klien -- lihat
     // komentar mapBookingError di src/lib/booking/errors.ts.
-    const mapped = mapBookingError(bookingError.code);
+    const { mapped, code } = mapPublicBookingError(bookingError.code);
     if (mapped.status >= 500) {
       console.error("[api/bookings] create_booking gagal", {
         merchantId: merchant.id,
@@ -175,8 +175,6 @@ export async function POST(request: NextRequest) {
         error: bookingError,
       });
     }
-    // `code` hanya untuk kode yang dikenal peta; galat tak dikenal tanpa `code`.
-    const code = isKnownBookingError(bookingError.code) ? bookingError.code : undefined;
     return NextResponse.json({ error: mapped.message, code }, { status: mapped.status });
   }
 

@@ -65,7 +65,7 @@ export function voucherIneligibleReason(
   // shortcut: service_ids kosong dianggap tanpa batasan layanan, cocokkan dengan SQL saat diubah.
   if (voucher.service_ids?.length && !voucher.service_ids.includes(service.id)) {
     const names = voucher.service_ids.map((id) => serviceNames[id]).filter(Boolean).join(", ");
-    return `Hanya untuk ${names}`;
+    return names ? `Hanya untuk ${names}` : "Tidak berlaku untuk layanan ini";
   }
   if (voucher.min_spend != null && Number(service.price) < Number(voucher.min_spend)) {
     return `Belum bisa dipakai: minimal ${rupiah(Number(voucher.min_spend))}`;

@@ -81,6 +81,8 @@ export function BannerForm({
   const [targetKind, setTargetKind] = useState<BannerTarget | null>(banner?.target_kind ?? null);
   const [voucherId, setVoucherId] = useState(banner?.target_voucher_id ?? "");
   const [serviceId, setServiceId] = useState(banner?.target_service_id ?? "");
+  const [startsOn, setStartsOn] = useState(banner?.starts_at ? jakartaDateISO(new Date(banner.starts_at)) : "");
+  const [endsOnValue, setEndsOnValue] = useState(endsOn(banner?.ends_at ?? null));
   const [url, setUrl] = useState(banner?.target_url ?? "");
   // Gambar baru ditahan di memori dan baru diunggah saat disimpan, jadi batal tidak meninggalkan berkas yatim.
   const [file, setFile] = useState<File | null>(null);
@@ -104,7 +106,7 @@ export function BannerForm({
       const result = await saveBanner(prev, formData);
       if (result.status === "success") {
         // Berkas lama baru dihapus setelah baris tersimpan dengan gambar pengganti.
-        if (newPath && banner?.image_path) await removeMedia([banner.image_path]);
+        if (banner?.image_path && (newPath || source === "TEMPLATE")) await removeMedia([banner.image_path]);
         toast.success(result.message);
         onDone();
       } else if (newPath) {
@@ -235,6 +237,7 @@ export function BannerForm({
                 onChange={(e) => pickFile(e.target.files?.[0])}
                 className="min-h-11 text-sm"
               />
+              {file ? <p className="text-sm">Dipilih: {file.name}</p> : null}
               <p className="text-muted-foreground text-sm">Rasio 3:1, minimal 1200 x 400 px. JPG, PNG, atau WebP.</p>
               {!file && !banner?.image_path ? <FieldError message={errors.image_path} /> : null}
             </div>
@@ -306,12 +309,12 @@ export function BannerForm({
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-2">
             <Label htmlFor="banner-start">Mulai tayang</Label>
-            <Input id="banner-start" name="starts_on" type="date" defaultValue={banner?.starts_at ? jakartaDateISO(new Date(banner.starts_at)) : ""} aria-invalid={!!errors.starts_on} className="min-h-11" />
+            <Input id="banner-start" name="starts_on" type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} aria-invalid={!!errors.starts_on} className="min-h-11" />
             <FieldError message={errors.starts_on} />
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="banner-end">Selesai</Label>
-            <Input id="banner-end" name="ends_on" type="date" defaultValue={endsOn(banner?.ends_at ?? null)} aria-invalid={!!errors.ends_on} className="min-h-11" />
+            <Input id="banner-end" name="ends_on" type="date" value={endsOnValue} onChange={(e) => setEndsOnValue(e.target.value)} aria-invalid={!!errors.ends_on} className="min-h-11" />
             <FieldError message={errors.ends_on} />
           </div>
         </div>
@@ -342,15 +345,16 @@ export function BannerForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button type="submit" name="published" value="true" disabled={pending} className="min-h-11">
+          {/* Draf lebih dulu di DOM: Enter di kolom teks memakai tombol submit pertama, jangan sampai langsung tayang. */}
+          <Button type="submit" name="published" value="false" variant="outline" disabled={pending} className="order-2 min-h-11">
+            Simpan draf
+          </Button>
+          <Button type="submit" name="published" value="true" disabled={pending} className="order-1 min-h-11">
             {pending ? <Spinner /> : null}
             Simpan dan jadwalkan
           </Button>
-          <Button type="submit" name="published" value="false" variant="outline" disabled={pending} className="min-h-11">
-            Simpan draf
-          </Button>
           {banner ? (
-            <Button type="button" variant="destructive" onClick={() => setConfirmDelete(true)} className="min-h-11">
+            <Button type="button" variant="destructive" className="order-3 min-h-11" onClick={() => setConfirmDelete(true)}>
               Hapus
             </Button>
           ) : null}

@@ -71,8 +71,17 @@ export function VoucherForm({
   const [minSpend, setMinSpend] = useState(voucher?.min_spend != null ? String(voucher.min_spend) : "");
   const [scopeAll, setScopeAll] = useState(!voucher?.service_ids?.length);
   const [serviceIds, setServiceIds] = useState<string[]>(voucher?.service_ids ?? []);
+  const [quota, setQuota] = useState(voucher?.quota != null ? String(voucher.quota) : "");
+  const [startsOn, setStartsOn] = useState(voucher?.starts_at ? jakartaDateISO(new Date(voucher.starts_at)) : "");
+  const [endsOnValue, setEndsOnValue] = useState(endsOn(voucher?.ends_at ?? null));
+  const [onePerPhone, setOnePerPhone] = useState(voucher?.per_phone_limit === 1);
+  const [newCustomerOnly, setNewCustomerOnly] = useState(voucher?.new_customer_only ?? false);
   const [isPublic, setIsPublic] = useState(voucher ? voucher.visibility === "PUBLIC" : true);
+  const [scopeError, setScopeError] = useState<string>();
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  // Layanan tercakup yang tidak aktif/tersembunyi tidak punya checkbox; id-nya tetap dikirim agar tidak hilang saat disimpan.
+  const hiddenScopedIds = serviceIds.filter((id) => !services.some((s) => s.id === id));
 
   // Baris contoh memakai layanan pertama dalam cakupan voucher.
   const sample = services.find((s) => (scopeAll ? true : serviceIds.includes(s.id)));
@@ -109,10 +118,20 @@ export function VoucherForm({
 
   return (
     <>
-      <form action={formAction} className="flex flex-col gap-5 px-4 pb-4">
+      <form
+        action={formAction}
+        onSubmit={(e) => {
+          if (!scopeAll && serviceIds.length === 0) {
+            e.preventDefault();
+            setScopeError("Pilih minimal satu layanan");
+          }
+        }}
+        className="flex flex-col gap-5 px-4 pb-4">
         {voucher ? <input type="hidden" name="id" value={voucher.id} /> : null}
         <input type="hidden" name="kind" value={kind} />
         <input type="hidden" name="is_public" value={String(isPublic)} />
+        <input type="hidden" name="scope" value={scopeAll ? "all" : "some"} />
+        {!scopeAll ? hiddenScopedIds.map((id) => <input key={id} type="hidden" name="service_ids" value={id} />) : null}
 
         {state.status === "error" && !state.fieldErrors ? (
           <p role="alert" className="text-destructive text-sm">
@@ -206,11 +225,11 @@ export function VoucherForm({
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-2 text-sm font-medium">Berlaku untuk</legend>
           <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="radio" name="scope" checked={scopeAll} onChange={() => setScopeAll(true)} />
+            <input type="radio" name="scope-choice" checked={scopeAll} onChange={() => { setScopeAll(true); setScopeError(undefined); }} />
             Semua layanan
           </label>
           <label className="flex min-h-11 items-center gap-2 text-sm">
-            <input type="radio" name="scope" checked={!scopeAll} onChange={() => setScopeAll(false)} />
+            <input type="radio" name="scope-choice" checked={!scopeAll} onChange={() => setScopeAll(false)} />
             Pilih beberapa…
           </label>
           {!scopeAll ? (
@@ -222,9 +241,10 @@ export function VoucherForm({
                     name="service_ids"
                     value={service.id}
                     checked={serviceIds.includes(service.id)}
-                    onChange={(e) =>
-                      setServiceIds((ids) => (e.target.checked ? [...ids, service.id] : ids.filter((i) => i !== service.id)))
-                    }
+                    onChange={(e) => {
+                      setScopeError(undefined);
+                      setServiceIds((ids) => (e.target.checked ? [...ids, service.id] : ids.filter((i) => i !== service.id)));
+                    }}
                   />
                   {service.name}
                 </label>
@@ -234,7 +254,7 @@ export function VoucherForm({
               ) : null}
             </div>
           ) : null}
-          <FieldError message={errors.service_ids} />
+          <FieldError message={scopeError ?? errors.service_ids} />
         </fieldset>
 
         {example ? <p className="text-muted-foreground text-sm">{example}</p> : null}
@@ -248,7 +268,8 @@ export function VoucherForm({
             inputMode="numeric"
             min={1}
             placeholder="Tanpa batas"
-            defaultValue={voucher?.quota ?? ""}
+            value={quota}
+            onChange={(e) => setQuota(e.target.value)}
             aria-invalid={!!errors.quota}
             className="min-h-11"
           />
@@ -262,7 +283,8 @@ export function VoucherForm({
               id="voucher-start"
               name="starts_on"
               type="date"
-              defaultValue={voucher?.starts_at ? jakartaDateISO(new Date(voucher.starts_at)) : ""}
+              value={startsOn}
+              onChange={(e) => setStartsOn(e.target.value)}
               aria-invalid={!!errors.starts_on}
               className="min-h-11"
             />
@@ -274,7 +296,8 @@ export function VoucherForm({
               id="voucher-end"
               name="ends_on"
               type="date"
-              defaultValue={endsOn(voucher?.ends_at ?? null)}
+              value={endsOnValue}
+              onChange={(e) => setEndsOnValue(e.target.value)}
               aria-invalid={!!errors.ends_on}
               className="min-h-11"
             />
@@ -283,11 +306,11 @@ export function VoucherForm({
         </div>
 
         <label className="flex min-h-11 items-center gap-2 text-sm">
-          <input type="checkbox" name="one_per_phone" defaultChecked={voucher?.per_phone_limit === 1} />
+          <input type="checkbox" name="one_per_phone" checked={onePerPhone} onChange={(e) => setOnePerPhone(e.target.checked)} />
           Satu kali per nomor WhatsApp
         </label>
         <label className="flex min-h-11 items-center gap-2 text-sm">
-          <input type="checkbox" name="new_customer_only" defaultChecked={voucher?.new_customer_only ?? false} />
+          <input type="checkbox" name="new_customer_only" checked={newCustomerOnly} onChange={(e) => setNewCustomerOnly(e.target.checked)} />
           Hanya untuk pelanggan baru
         </label>
 

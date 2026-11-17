@@ -7,7 +7,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { mapBookingError } from "./errors";
+import { mapBookingError, mapPublicBookingError } from "./errors";
 
 test("23P01 (bookings_no_overlap) -> 409, pesan slot direbut", () => {
   const result = mapBookingError("23P01");
@@ -97,4 +97,15 @@ test("kode kapasitas restoran (BK060, BK061, BK062, BK063, BK064) terpetakan", (
   assert.equal(mapBookingError("BK062").status, 409);
   assert.equal(mapBookingError("BK063").status, 422);
   assert.equal(mapBookingError("BK064").status, 422);
+});
+
+test("route publik: BK053 dan BK056 jadi satu respons 409 tanpa code", () => {
+  const a = mapPublicBookingError("BK053");
+  const b = mapPublicBookingError("BK056");
+  assert.deepEqual(a, b);
+  assert.equal(a.mapped.status, 409);
+  assert.equal(a.code, undefined);
+  assert.match(a.mapped.message, /^Voucher tidak berlaku untuk booking ini\./);
+  assert.equal(mapPublicBookingError("BK052").code, "BK052");
+  assert.equal(mapPublicBookingError("XX999").code, undefined);
 });

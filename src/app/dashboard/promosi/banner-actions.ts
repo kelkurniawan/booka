@@ -97,7 +97,7 @@ export async function saveBanner(_prev: BannerFormState, formData: FormData): Pr
     // P0001: trigger enforce_promo_tier (paket Starter).
     if (error.code === "P0001") return { status: "error", message: error.message };
     if (error.code === "BK057") return { status: "error", message: mapBookingError(error.code).message };
-    if (error.code === "23514") return { status: "error", message: PESAN_PATH_TIDAK_VALID };
+    if (error.code === "23514" && error.message.includes("merchant_banners_image_path")) return { status: "error", message: PESAN_PATH_TIDAK_VALID };
     console.error("[promosi/banner] gagal menyimpan banner", { userId: user.id, error });
     return { status: "error", message: "Gagal menyimpan banner. Coba lagi." };
   }

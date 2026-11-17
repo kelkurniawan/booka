@@ -64,3 +64,12 @@ test("voucherFormToRow: tanggal WIB, satu kali per nomor, semua layanan = NULL",
 test("voucherFormToRow: tanpa one_per_phone per_phone_limit null", () => {
   assert.equal(voucherFormToRow(voucherFormSchema.parse(VALID)).per_phone_limit, null);
 });
+
+test("scope 'some' tanpa layanan ditolak, 'some' dengan layanan dan 'all' lolos", () => {
+  const none = voucherFormSchema.safeParse({ ...VALID, scope: "some", service_ids: [] });
+  assert.equal(none.success, false);
+  assert.equal(none.error?.issues[0].message, "Pilih minimal satu layanan");
+  const id = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+  assert.equal(voucherFormSchema.safeParse({ ...VALID, scope: "some", service_ids: [id] }).success, true);
+  assert.equal(voucherFormSchema.safeParse({ ...VALID, scope: "all" }).success, true);
+});

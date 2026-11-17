@@ -176,3 +176,21 @@ export function mapBookingError(code: string | null | undefined): BookingErrorMa
 export function isKnownBookingError(code: string | null | undefined): code is string {
   return !!code && Object.hasOwn(ERROR_MAP, code);
 }
+
+const VOUCHER_PRIVACY_MAPPING: BookingErrorMapping = {
+  status: 409,
+  message: "Voucher tidak berlaku untuk booking ini. Lepas voucher untuk melanjutkan.",
+};
+
+/**
+ * Untuk POST /api/bookings (publik, tanpa login). BK053 (nomor sudah memakai)
+ * dan BK056 (bukan pelanggan baru) disatukan jadi satu respons tanpa `code`,
+ * supaya pesan berbeda tidak membocorkan riwayat nomor WhatsApp orang lain.
+ */
+export function mapPublicBookingError(code: string | null | undefined): {
+  mapped: BookingErrorMapping;
+  code: string | undefined;
+} {
+  if (code === "BK053" || code === "BK056") return { mapped: VOUCHER_PRIVACY_MAPPING, code: undefined };
+  return { mapped: mapBookingError(code), code: isKnownBookingError(code) ? code : undefined };
+}

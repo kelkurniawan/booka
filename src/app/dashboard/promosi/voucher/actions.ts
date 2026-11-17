@@ -35,6 +35,7 @@ export async function saveVoucher(_prev: VoucherFormState, formData: FormData): 
     max_discount: formData.get("max_discount"),
     min_spend: formData.get("min_spend"),
     service_ids: formData.getAll("service_ids"),
+    scope: formData.get("scope") ?? undefined,
     quota: formData.get("quota"),
     starts_on: formData.get("starts_on"),
     ends_on: formData.get("ends_on"),

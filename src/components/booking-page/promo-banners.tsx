@@ -126,7 +126,7 @@ export function PromoBanners({
                 </div>
               ) : (
                 <div
-                  className="flex aspect-[3/1] min-h-32 flex-col justify-between gap-2 p-4"
+                  className="flex min-h-32 flex-col justify-between gap-2 p-4"
                   style={{ ...colors.card, borderRadius: "var(--radius)" }}
                 >
                   <div className="flex flex-col gap-1">

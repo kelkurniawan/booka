@@ -53,6 +53,8 @@ export const voucherFormSchema = z
     min_spend: optionalInt("Min transaksi", 1, 100_000_000),
     // Kosong = semua layanan. Id yang bukan milik merchant ditolak di server action.
     service_ids: z.array(z.uuid("Layanan tidak valid")).max(50, "Maksimal 50 layanan").default([]),
+    // "some" = form memilih layanan tertentu; daftar kosong lalu ditolak (bukan diam-diam "semua layanan").
+    scope: z.enum(["all", "some"]).default("all"),
     quota: optionalInt("Total kuota", 1, 100_000),
     starts_on: optionalDate,
     ends_on: optionalDate,
@@ -61,6 +63,9 @@ export const voucherFormSchema = z
     is_public: checkbox,
   })
   .superRefine((v, ctx) => {
+    if (v.scope === "some" && v.service_ids.length === 0) {
+      ctx.addIssue({ code: "custom", path: ["service_ids"], message: "Pilih minimal satu layanan" });
+    }
     if (v.kind === "PERCENT" && v.value > 100) {
       ctx.addIssue({ code: "custom", path: ["value"], message: "Persen maksimal 100" });
     }

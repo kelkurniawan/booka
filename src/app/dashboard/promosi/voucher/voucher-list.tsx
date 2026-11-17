@@ -47,25 +47,25 @@ function StatusBadge({ status }: { status: VoucherStatus }) {
 function Usage({ used, quota }: { used: number; quota: number | null }) {
   if (quota == null) return <span>{used}</span>;
   return (
-    <div className="flex flex-col gap-1">
+    <span className="flex flex-col gap-1">
       <span>
         {used} dari {quota}
       </span>
-      <div className="bg-muted h-1 w-24 overflow-hidden rounded-full">
-        <div className="bg-primary h-full" style={{ width: `${Math.min(100, (used / quota) * 100)}%` }} />
-      </div>
-    </div>
+      <span className="bg-muted block h-1 w-24 overflow-hidden rounded-full">
+        <span className="bg-primary block h-full" style={{ width: `${Math.min(100, (used / quota) * 100)}%` }} />
+      </span>
+    </span>
   );
 }
 
 function CodeCell({ voucher }: { voucher: Voucher }) {
   return (
-    <div className="flex flex-col">
+    <span className="flex flex-col">
       <span className="font-mono font-medium">{voucher.code}</span>
       <span className="text-muted-foreground text-xs">
         {voucher.visibility === "PUBLIC" ? "Tampil di halaman" : "Kode rahasia"}
       </span>
-    </div>
+    </span>
   );
 }
 
@@ -168,15 +168,15 @@ export function VoucherList({
                   aria-label={`Ubah voucher ${voucher.code}`}
                   className="flex min-h-11 w-full flex-col gap-2 rounded-lg border p-4 text-left"
                 >
-                  <div className="flex items-start justify-between gap-2">
+                  <span className="flex items-start justify-between gap-2">
                     <CodeCell voucher={voucher} />
                     <StatusBadge status={status} />
-                  </div>
+                  </span>
                   <span className="text-sm">{voucherSummary(voucher)}</span>
-                  <div className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-sm">
+                  <span className="text-muted-foreground flex flex-wrap items-center justify-between gap-2 text-sm">
                     <Usage used={used} quota={voucher.quota} />
                     <span>{validityLabel(voucher.starts_at, voucher.ends_at)}</span>
-                  </div>
+                  </span>
                 </button>
               </li>
             ))}

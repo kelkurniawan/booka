@@ -469,6 +469,7 @@ export function BookingFlow({
   }
 
   function handleSelectService(serviceId: string) {
+    setVoucherNotice(null);
     setSelectedServiceId(serviceId);
     resetSchedule();
     const next = services.find((service) => service.id === serviceId);
@@ -780,7 +781,10 @@ export function BookingFlow({
             type="button"
             variant="outline"
             className="min-h-11"
-            onClick={() => setAppliedVoucher(null)}
+            onClick={() => {
+              setAppliedVoucher(null);
+              setVoucherNotice(null);
+            }}
           >
             Lepas
           </Button>
