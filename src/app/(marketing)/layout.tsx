@@ -6,7 +6,9 @@ const generalSans = localFont({
   src: "../../assets/fonts/general-sans/GeneralSans-Variable.woff2",
   variable: "--font-general-sans",
   weight: "200 700",
-  display: "swap",
+  // optional, bukan swap: H1 tidak digambar ulang saat font tiba, sehingga LCP HP tidak menunggu font.
+  // Kunjungan pertama di jaringan lambat bisa memakai font cadangan; kunjungan berikutnya memakai General Sans dari cache.
+  display: "optional",
 });
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

@@ -55,7 +55,7 @@ export function Hero({ host }: { host: string }) {
 
   return (
     <section aria-labelledby="hero-h" style={{ paddingTop: "var(--space-2xl)", paddingBottom: "var(--space-3xl)" }}>
-      <HeroMotionShell desk={desk}>{intro}</HeroMotionShell>
+      <HeroMotionShell desk={desk} host={host}>{intro}</HeroMotionShell>
     </section>
   );
 }

@@ -24,7 +24,7 @@ const place = (a: readonly number[]): CSSProperties => ({
 });
 
 /** Panggung dekoratif: server merender frame diam, loop menulis gaya ke ref (tanpa setState per frame). */
-export function HeroMotion({ layout, paused }: { layout: LayoutName; paused: boolean }) {
+export function HeroMotion({ layout, paused, host }: { layout: LayoutName; paused: boolean; host: string }) {
   const L: MotionLayout = LAYOUTS[layout];
   const allowed = useMotionAllowed();
   const hidden = useDocumentHidden();
@@ -87,7 +87,7 @@ export function HeroMotion({ layout, paused }: { layout: LayoutName; paused: boo
     <div ref={root} aria-hidden="true" className={`hm-root hm-${layout}`}>
       <div ref={stage} className="hm-stage" style={{ width: L.w, height: L.h }}>
         <div className="hm-card hm-s1" style={place(L.s1)}>
-          <span className="hm-mono">marky.id/riasbysekar</span>
+          <span className="hm-mono">{host}/riasbysekar</span>
           <span className="hm-btn" data-part="button" style={initial.button}>
             Pilih jadwal
             <span className="hm-btn-on" data-part="pressedLayer" style={initial.pressedLayer}>Pilih jadwal</span>
@@ -122,19 +122,19 @@ export function HeroMotion({ layout, paused }: { layout: LayoutName; paused: boo
 }
 
 /** Merakit latar lebar, intro, tombol jeda, pita HP, dan meja. Satu state jeda untuk kedua panggung. */
-export function HeroMotionShell({ children, desk }: { children: ReactNode; desk: ReactNode }) {
+export function HeroMotionShell({ children, desk, host }: { children: ReactNode; desk: ReactNode; host: string }) {
   const [paused, setPaused] = useState(false);
   const allowed = useMotionAllowed();
   return (
     <div className="hm-shell">
-      <div className="hero-motion-bg"><HeroMotion layout="wide" paused={paused} /></div>
+      <div className="hero-motion-bg"><HeroMotion layout="wide" paused={paused} host={host} /></div>
       {children}
       {allowed && (
         <button type="button" className="hm-pause" onClick={() => setPaused((p) => !p)}>
           {paused ? "Putar animasi" : "Jeda animasi"}
         </button>
       )}
-      <div className="hero-motion-band"><HeroMotion layout="compact" paused={paused} /></div>
+      <div className="hero-motion-band"><HeroMotion layout="compact" paused={paused} host={host} /></div>
       {desk}
     </div>
   );

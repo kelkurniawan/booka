@@ -14,16 +14,16 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Lebar: Story = {
-  args: { layout: "wide", paused: false },
+  args: { layout: "wide", paused: false, host: "marky.id" },
   render: (args) => <div style={{ width: 1280 }}><HeroMotion {...args} /></div>,
 };
 
 export const Ringkas: Story = {
-  args: { layout: "compact", paused: false },
+  args: { layout: "compact", paused: false, host: "marky.id" },
   render: (args) => <div style={{ width: 390 }}><HeroMotion {...args} /></div>,
 };
 
 export const Dijeda: Story = {
-  args: { layout: "compact", paused: true },
+  args: { layout: "compact", paused: true, host: "marky.id" },
   render: (args) => <div style={{ width: 390 }}><HeroMotion {...args} /></div>,
 };
