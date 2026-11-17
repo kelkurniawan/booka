@@ -1,3 +1,4 @@
+import { readBodyText } from "@/lib/http/read-body";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -27,9 +28,8 @@ export async function PUT(
   }
 
   const invalid = () => NextResponse.json({ error: "Pilihan pengingat tidak valid." }, { status: 400 });
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return invalid();
-  const text = await request.text().catch(() => "");
-  if (text.length > MAX_BODY_BYTES) return invalid();
+  const text = await readBodyText(request, MAX_BODY_BYTES);
+  if (text === null) return invalid();
   let body: unknown = null;
   try {
     body = JSON.parse(text);

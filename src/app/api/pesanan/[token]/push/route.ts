@@ -1,3 +1,4 @@
+import { readBodyText } from "@/lib/http/read-body";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -38,9 +39,8 @@ export async function POST(
 
   // Langganan sah jauh di bawah 4 KB; tolak sebelum membaca/parse.
   const tooLarge = () => NextResponse.json({ error: "Langganan notifikasi tidak valid." }, { status: 400 });
-  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return tooLarge();
-  const text = await request.text().catch(() => "");
-  if (text.length > MAX_BODY_BYTES) return tooLarge();
+  const text = await readBodyText(request, MAX_BODY_BYTES);
+  if (text === null) return tooLarge();
   let body: unknown = null;
   try {
     body = JSON.parse(text);
