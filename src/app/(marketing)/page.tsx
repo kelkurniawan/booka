@@ -5,11 +5,11 @@ import { LandingView } from "@/components/landing/landing-view";
 import { contactLinks } from "@/lib/marketing/contact";
 import { LANDING_FAQS } from "@/lib/marketing/content";
 import { landingJsonLd } from "@/lib/marketing/json-ld";
-import { PLANS, STARTER_MONTHLY_TRANSACTIONS } from "@/lib/plans";
+import { EARLY_ACCESS_FREE, PLANS, STARTER_MONTHLY_TRANSACTIONS } from "@/lib/plans";
 import { siteHost, siteUrl } from "@/lib/site";
 
 const TITLE = "Marky: booking, DP, dan pengingat lewat satu tautan";
-const DESCRIPTION = `Satu tautan di bio untuk jadwal, DP, dan pengingat. DP pelanggan masuk langsung ke akun Midtrans atau Xendit Anda. Gratis untuk ${STARTER_MONTHLY_TRANSACTIONS} transaksi per bulan.`;
+const DESCRIPTION = `Satu tautan di bio untuk jadwal, DP, dan pengingat. DP pelanggan masuk langsung ke akun Midtrans atau Xendit Anda. ${EARLY_ACCESS_FREE ? "Semua fitur gratis selama masa awal." : `Gratis untuk ${STARTER_MONTHLY_TRANSACTIONS} transaksi per bulan.`}`;
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

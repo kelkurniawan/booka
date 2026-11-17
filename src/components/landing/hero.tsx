@@ -1,4 +1,4 @@
-import { STARTER_MONTHLY_TRANSACTIONS } from "@/lib/plans";
+import { EARLY_ACCESS_FREE, STARTER_MONTHLY_TRANSACTIONS } from "@/lib/plans";
 
 import { HeroMotionShell } from "./hero-motion/hero-motion";
 
@@ -15,7 +15,7 @@ export function Hero({ host }: { host: string }) {
         <a href="#klaim" className="btn btn--ink btn--wrap">Klaim {host}/nama-anda</a>
         <a href="#alur" style={{ display: "inline-flex", alignItems: "center", minHeight: 48, padding: "0 var(--space-md)", fontSize: 16, fontWeight: 500 }}>Lihat cara kerjanya</a>
       </div>
-      <p style={{ margin: 0, fontSize: "var(--text-small)", color: "var(--color-muted)" }}>Gratis untuk {STARTER_MONTHLY_TRANSACTIONS} transaksi per bulan, tanpa kartu kredit.</p>
+      <p style={{ margin: 0, fontSize: "var(--text-small)", color: "var(--color-muted)" }}>{EARLY_ACCESS_FREE ? "Semua fitur gratis selama masa awal, tanpa kartu kredit." : `Gratis untuk ${STARTER_MONTHLY_TRANSACTIONS} transaksi per bulan, tanpa kartu kredit.`}</p>
     </div>
   );
 

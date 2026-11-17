@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { EARLY_ACCESS_FREE } from "@/lib/plans";
 import { ROUTES, sanitizeRedirect } from "@/lib/routes";
 
 import { SignUpForm } from "./sign-up-form";
@@ -31,7 +32,9 @@ export default async function SignUpPage({
       <CardHeader>
         <CardTitle>Buat akun Marky</CardTitle>
         <CardDescription>
-          Gratis selamanya untuk 10 transaksi per bulan. Tanpa kartu kredit.
+          {EARLY_ACCESS_FREE
+            ? "Semua fitur gratis selama masa awal. Tanpa kartu kredit."
+            : "Gratis selamanya untuk 10 transaksi per bulan. Tanpa kartu kredit."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
