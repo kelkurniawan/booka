@@ -184,3 +184,29 @@
   .marketing .slip { padding-bottom: 64px !important; }
   .marketing .slip .stamp { bottom: 12px !important; }
 }
+
+/* HeroMotion: posisi statis, hanya transform dan opacity yang digerakkan dari ref. */
+.marketing .hm-shell { position: relative; isolation: isolate; display: flex; flex-direction: column; align-items: center; }
+.marketing .hero-motion-bg { position: absolute; top: 0; left: 0; right: 0; height: 760px; z-index: -1; pointer-events: none; }
+.marketing .hm-root { position: relative; width: 100%; overflow: hidden; text-align: left; font-family: var(--font-display); color: var(--color-print); }
+.marketing .hm-wide { height: 760px; }
+.marketing .hm-compact { aspect-ratio: 390 / 260; max-height: 312px; }
+.marketing .hm-stage { position: absolute; left: 50%; top: 0; transform-origin: 50% 0; transform: translateX(-50%); }
+.marketing .hm-stage > * { will-change: transform; }
+.marketing .hm-card { padding: 12px 14px; box-sizing: border-box; border-radius: 8px; background: var(--color-cotton); box-shadow: 0 0 0 0.5px oklch(var(--shade) / 0.22), var(--cast-stock); display: flex; flex-direction: column; gap: 2px; }
+.marketing .hm-s1 { padding: 14px 16px; gap: 10px; transform: rotate(-3deg); }
+.marketing .hm-s4 { padding: 16px; gap: 8px; transform: rotate(2deg); }
+.marketing .hm-mono { font-family: var(--font-outlier); font-size: 13px; color: var(--color-muted); white-space: nowrap; }
+.marketing .hm-note strong { font-size: 14px; }
+.marketing .hm-label { position: absolute; left: 10px; top: 50px; font-size: 12px; color: var(--color-muted); }
+.marketing .hm-label-s { font-size: 12px; color: var(--color-muted); }
+.marketing .hm-strong { font-weight: 600; font-size: 14px; }
+.marketing .hm-rule { height: 1px; background: var(--color-print); }
+.marketing .hm-btn { position: relative; display: flex; align-items: center; justify-content: center; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; background: var(--color-paper-3); color: var(--color-print); }
+.marketing .hm-btn-on { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--color-ink); color: var(--color-cotton); }
+.marketing .hm-track { position: absolute; left: 10px; right: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--color-paper-3); }
+.marketing .hm-fill { position: absolute; left: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--color-ink); transform-origin: left; }
+.marketing .hm-tip { position: absolute; top: 0; left: 0; padding: 2px 8px; border-radius: 6px; background: var(--color-ink); color: var(--color-cotton); font-family: var(--font-outlier); font-size: 12px; white-space: nowrap; }
+.marketing .hm-stamp { position: absolute; right: 12px; bottom: 6px; font-weight: 700; color: var(--color-paid); }
+.marketing .hm-hero { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 999px; background: var(--color-ink); box-shadow: 4px 6px 10px -4px oklch(var(--shade) / 0.5); }
+.marketing .hm-pause { min-height: 44px; padding: 0 var(--space-sm); border: 0; background: transparent; color: var(--color-muted); font-size: var(--text-small); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
