@@ -445,13 +445,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2750,14 +2750,14 @@ select case when staff_name = 'Bima'
 from public.bookings where customer_whatsapp = '+6281333000061';
 
 -- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
--- Sejak 20261115000600 signature terbarunya delapan argumen (p_source).
+-- Sejak 20261117000200 signature terbarunya sembilan argumen (p_voucher_code).
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
-       then 'FAIL t33m signature delapan argumen (20261115000600) tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is null
+       then 'FAIL t33m signature sembilan argumen (20261117000200) tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
        then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
        then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
        else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
@@ -3318,8 +3318,8 @@ select
          and has_function_privilege('authenticated', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE'))
        then 'FAIL t36l authenticated tidak bisa EXECUTE RPC merchant'
        else 'OK   t36l RPC merchant hanya untuk authenticated' end as t36l1,
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
-         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
          or has_function_privilege('authenticated', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
        then 'FAIL t36l anon/authenticated bisa EXECUTE create_booking/reap_expired_bookings_for'
@@ -4290,3 +4290,203 @@ begin;
 set local role authenticated;
 select pg_temp.expect_fail_code($q$select * from public.voucher_stats()$q$, '42501', 't46l voucher_stats tanpa login');
 commit;
+
+-- ===========================================================================
+-- 47. create_booking dengan voucher (20261117000200)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('47474747-0000-0000-0000-000000000001', 'voucher47@example.com', '{}'::jsonb);
+update public.merchants set username = 'voucher-47', subscription_tier = 'PRO'
+  where id = '47474747-0000-0000-0000-000000000001';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '47474747-0000-0000-0000-000000000001', d, '09:00', '17:00' from generate_series(1, 7) d;
+
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value) values
+  ('47474747-5e5e-0000-0000-000000000001', '47474747-0000-0000-0000-000000000001', 'Bayar penuh', 350000, 60, 'FULL', null, null),
+  ('47474747-5e5e-0000-0000-000000000002', '47474747-0000-0000-0000-000000000001', 'DP 30 persen', 350000, 60, 'DEPOSIT', 'PERCENT', 30),
+  ('47474747-5e5e-0000-0000-000000000003', '47474747-0000-0000-0000-000000000001', 'DP tetap', 350000, 60, 'DEPOSIT', 'FIXED', 100000),
+  ('47474747-5e5e-0000-0000-000000000004', '47474747-0000-0000-0000-000000000001', 'Bayar di tempat', 450000, 60, 'ON_SITE', null, null),
+  ('47474747-5e5e-0000-0000-000000000005', '47474747-0000-0000-0000-000000000001', 'Murah', 10000, 60, 'FULL', null, null),
+  ('47474747-5e5e-0000-0000-000000000006', '47474747-0000-0000-0000-000000000001', 'Permintaan', 200000, 60, 'REQUEST', null, null);
+
+select pg_temp.v45('WISUDA20', 'PERCENT', 20, '{"max_discount": 100000}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('HEMAT50', 'FIXED', 50000, '{"min_spend": 300000}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('GRATIS', 'PERCENT', 100, '{}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('TIPIS', 'FIXED', 9000, '{}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('SATU', 'FIXED', 10000, '{"per_phone_limit": 1}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('KUOTA1', 'FIXED', 10000, '{"quota": 1}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('BARU', 'FIXED', 10000, '{"new_customer_only": true}', '47474747-0000-0000-0000-000000000001');
+select pg_temp.v45('SVC1', 'FIXED', 10000, '{"service_ids": ["47474747-5e5e-0000-0000-000000000001"]}',
+  '47474747-0000-0000-0000-000000000001');
+
+-- Sama dengan cb35/check35, untuk merchant 47 dan dengan kode voucher.
+create or replace function pg_temp.cb47(p_service integer, p_slot integer, p_phone text, p_code text,
+  p_can_charge boolean default true)
+returns setof public.bookings language plpgsql as $$
+begin
+  return query select * from public.create_booking(
+    '47474747-0000-0000-0000-000000000001',
+    ('47474747-5e5e-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    pg_temp.jakarta_future(1, 1 + p_slot / 8, (9 + p_slot % 8) || ':00'),
+    'Pelanggan 47', p_phone, null, p_can_charge, 'ONLINE', p_code);
+end $$;
+
+-- voucher_code yang diharapkan = kode masukan yang dinormalisasi, null bila kosong.
+create or replace function pg_temp.check47(
+  p_label text, p_service integer, p_slot integer, p_phone text, p_code text,
+  p_status text, p_due_now numeric, p_due_on_site numeric, p_discount numeric,
+  p_can_charge boolean default true)
+returns text language plpgsql as $$
+declare
+  b public.bookings;
+  v_code text := nullif(upper(btrim(p_code)), '');
+begin
+  select * into b from pg_temp.cb47(p_service, p_slot, p_phone, p_code, p_can_charge);
+  if b.status::text = p_status and b.amount_due_now = p_due_now
+     and b.amount_due_on_site = p_due_on_site and b.discount_amount = p_discount
+     and b.voucher_code is not distinct from v_code
+     and (b.voucher_id is not null) = (v_code is not null) then
+    return 'OK   ' || p_label;
+  end if;
+  return 'FAIL ' || p_label || ' -> ' || b.status || ' ' || b.amount_due_now || '/'
+    || b.amount_due_on_site || ' diskon ' || b.discount_amount || ' kode ' || coalesce(b.voucher_code, 'null');
+exception when others then
+  return 'FAIL ' || p_label || ' [' || sqlstate || ' ' || sqlerrm || ']';
+end $$;
+
+-- 47i dijalankan pertama: kuota Starter 10 booking per bulan, jadi harus
+-- sebelum blok lain mengisi bulan ini.
+update public.merchants set subscription_tier = 'STARTER'
+  where id = '47474747-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 0, '+6281347000090', 'WISUDA20')$q$,
+  'BK050', 't47i Starter: kode voucher dianggap tidak ada');
+select pg_temp.check47('t47i Starter tanpa kode tetap diterima', 1, 1, '+6281347000091', null,
+  'PENDING', 350000, 0, 0);
+update public.merchants set subscription_tier = 'PRO'
+  where id = '47474747-0000-0000-0000-000000000001';
+
+-- 47a. FULL + WISUDA20 (20% dari 350000 = 70000, di bawah max 100000).
+select pg_temp.check47('t47a FULL + WISUDA20 -> PENDING 280000/0 diskon 70000', 1, 2, '+6281347000001', 'WISUDA20',
+  'PENDING', 280000, 0, 70000);
+select pg_temp.check47('t47a kode huruf kecil sama hasilnya', 1, 3, '+6281347000002', 'wisuda20',
+  'PENDING', 280000, 0, 70000);
+select pg_temp.check47('t47a tanpa kode -> PENDING 350000/0', 1, 4, '+6281347000003', null,
+  'PENDING', 350000, 0, 0);
+select pg_temp.check47('t47a kode spasi = tanpa kode', 1, 5, '+6281347000004', '  ',
+  'PENDING', 350000, 0, 0);
+
+-- 47b. Voucher ditolak: tidak ada baris booking baru.
+create temp table t47b_before as
+  select count(*) as n from public.bookings where merchant_id = '47474747-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(2, 6, '+6281347000005', 'SVC1')$q$,
+  'BK055', 't47b SVC1 untuk layanan lain');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 6, '+6281347000005', 'NGAWUR')$q$,
+  'BK050', 't47b kode tak dikenal');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(5, 6, '+6281347000005', 'HEMAT50')$q$,
+  'BK054', 't47b HEMAT50 di bawah minimal transaksi');
+select case when (select count(*) from public.bookings where merchant_id = '47474747-0000-0000-0000-000000000001')
+                 = (select n from t47b_before)
+            then 'OK   t47b tidak ada booking baru setelah voucher ditolak'
+            else 'FAIL t47b ada booking baru setelah voucher ditolak' end as t47b;
+
+-- 47c. Kuota 1: pembatalan membebaskan pemakaian.
+select pg_temp.expect_ok($q$select * from pg_temp.cb47(1, 7, '+6281347000011', 'KUOTA1')$q$, 't47c KUOTA1 pertama');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 8, '+6281347000012', 'KUOTA1')$q$,
+  'BK052', 't47c KUOTA1 kedua nomor lain');
+update public.bookings set status = 'CANCELLED', cancelled_at = now()
+  where merchant_id = '47474747-0000-0000-0000-000000000001' and customer_whatsapp = '+6281347000011';
+select pg_temp.expect_ok($q$select * from pg_temp.cb47(1, 8, '+6281347000013', 'KUOTA1')$q$,
+  't47c KUOTA1 diterima lagi setelah booking pertama batal');
+
+-- 47d. Satu kali per nomor.
+select pg_temp.expect_ok($q$select * from pg_temp.cb47(1, 9, '+6281347000021', 'SATU')$q$, 't47d SATU nomor X');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 10, '+6281347000021', 'SATU')$q$,
+  'BK053', 't47d SATU nomor X lagi');
+select pg_temp.expect_ok($q$select * from pg_temp.cb47(1, 10, '+6281347000022', 'SATU')$q$, 't47d SATU nomor Y');
+
+-- 47e. DP dihitung dari harga setelah diskon.
+select pg_temp.check47('t47e DEPOSIT 30% dari 280000 -> PENDING 84000/196000', 2, 11, '+6281347000031', 'WISUDA20',
+  'PENDING', 84000, 196000, 70000);
+select pg_temp.check47('t47e DEPOSIT tetap 100000 dari 280000 -> PENDING 100000/180000', 3, 12, '+6281347000032', 'WISUDA20',
+  'PENDING', 100000, 180000, 70000);
+select pg_temp.check47('t47e ON_SITE 450000 -> CONFIRMED 0/360000 diskon 90000', 4, 13, '+6281347000033', 'WISUDA20',
+  'CONFIRMED', 0, 360000, 90000);
+select pg_temp.check47('t47e REQUEST tanpa DP -> REQUESTED 160000/0', 6, 14, '+6281347000034', 'WISUDA20',
+  'REQUESTED', 160000, 0, 40000);
+
+-- 47f. Harga akhir 1000 dinaikkan ke 1500 supaya QRIS tetap bisa dibuat.
+select pg_temp.check47('t47f TIPIS untuk 10000 -> PENDING 1500/0 diskon 8500', 5, 15, '+6281347000041', 'TIPIS',
+  'PENDING', 1500, 0, 8500);
+
+-- 47g. Voucher 100%: gratis, tanpa koneksi payment, tetap kena batas per nomor.
+select pg_temp.check47('t47g GRATIS tanpa koneksi -> CONFIRMED 0/0', 1, 16, '+6281347000051', 'GRATIS',
+  'CONFIRMED', 0, 0, 350000, false);
+update public.merchant_settings set max_active_per_phone = 1
+  where merchant_id = '47474747-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 17, '+6281347000051', 'GRATIS', false)$q$,
+  'BK020', 't47g GRATIS kedua nomor sama');
+update public.merchant_settings set max_active_per_phone = 2
+  where merchant_id = '47474747-0000-0000-0000-000000000001';
+select pg_temp.check47('t47g GRATIS untuk DEPOSIT -> CONFIRMED 0/0', 2, 17, '+6281347000052', 'GRATIS',
+  'CONFIRMED', 0, 0, 350000, false);
+
+-- 47h. Khusus pelanggan baru.
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 18, '+6281347000001', 'BARU')$q$,
+  'BK056', 't47h BARU nomor dengan booking PENDING hidup');
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, created_at)
+values ('47474747-0000-0000-0000-000000000001', 'Bayar penuh', 350000, 60,
+  now() - interval '30 days', now() - interval '30 days' + interval '1 hour',
+  'Pelanggan lama 47', '+6281347000061', 'CONFIRMED', 0, 350000, now() - interval '31 days');
+select pg_temp.expect_fail_code(
+  $q$select * from pg_temp.cb47(1, 18, '+6281347000061', 'BARU')$q$,
+  'BK056', 't47h BARU nomor dengan booking CONFIRMED bulan lalu');
+select pg_temp.expect_ok($q$select * from pg_temp.cb47(1, 18, '+6281347000062', 'BARU')$q$, 't47h BARU nomor baru');
+
+-- 47j. Booking manual tidak pernah memakai voucher.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '47474747-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  format('select * from public.create_manual_booking(%L, %L, %L, %L)',
+    '47474747-5e5e-0000-0000-000000000001', pg_temp.jakarta_future(1, 3, '12:00'), 'Manual 47', '+6281347000071'),
+  't47j create_manual_booking');
+commit;
+select case when status = 'CONFIRMED' and amount_due_on_site = service_price and discount_amount = 0
+              and voucher_id is null and voucher_code is null
+            then 'OK   t47j manual: CONFIRMED, bayar di tempat penuh, tanpa diskon'
+            else 'FAIL t47j manual -> ' || status || ' ' || amount_due_on_site || ' diskon ' || discount_amount end as t47j
+from public.bookings where customer_whatsapp = '+6281347000071';
+
+-- 47k. Hak akses: signature sembilan argumen hanya untuk service_role.
+select
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is null
+       then 'FAIL t47k signature sembilan argumen tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+       then 'FAIL t47k anon/authenticated bisa EXECUTE create_booking'
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)'), 'EXECUTE')
+       then 'FAIL t47k service_role tidak bisa EXECUTE create_booking'
+       else 'OK   t47k create_booking sembilan argumen hanya untuk service_role' end as t47k1,
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
+       then 'OK   t47k signature delapan argumen sudah dihapus'
+       else 'FAIL t47k signature delapan argumen masih ada' end as t47k2;
+
+-- 47l. reap_expired_bookings ikut membuang jejak cek voucher yang lebih tua dari 1 jam.
+insert into public.voucher_attempts (ip_hash, merchant_id, created_at) values
+  ('hash47-lama', '47474747-0000-0000-0000-000000000001', now() - interval '2 hours'),
+  ('hash47-baru', '47474747-0000-0000-0000-000000000001', now());
+select public.reap_expired_bookings();
+select case when not exists (select 1 from public.voucher_attempts where ip_hash = 'hash47-lama')
+              and exists (select 1 from public.voucher_attempts where ip_hash = 'hash47-baru')
+            then 'OK   t47l reap_expired_bookings membuang voucher_attempts lama saja'
+            else 'FAIL t47l voucher_attempts lama tidak dibuang atau yang baru ikut terbuang' end as t47l;

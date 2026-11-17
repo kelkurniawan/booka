@@ -944,6 +944,8 @@ export type Database = {
           p_can_charge?: boolean;
           /** MANUAL: bayar di tempat, langsung CONFIRMED, tanpa BK020/BK021. */
           p_source?: BookingSource;
+          /** Null atau kosong = tanpa voucher; diabaikan untuk MANUAL. Ditolak BK050..BK056. */
+          p_voucher_code?: string | null;
         };
         Returns: Booking[];
       };
