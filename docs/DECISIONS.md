@@ -574,3 +574,15 @@ Unggahan mentah dibatasi policy storage: hanya merchant Studio, hanya ke folder 
 Klip diputar sekali tanpa suara dengan tombol "Putar lagi", bukan loop, sehingga tidak ada gerakan lebih dari 5 detik yang butuh tombol jeda. Saat reduced motion atau hemat data, hanya poster yang tampil dan MP4 tidak diminta sama sekali. Jam kosong terdekat tiap staf datang dari `/api/slots/nearest` (satu panggilan `get_booked_ranges` untuk 14 hari).
 
 Isi langkah 2 dan 3 alur booking kini selalu berada di kartu solid, karena latar bergerak F6 ada di belakang seluruh halaman.
+
+## 37. Restoran: kapasitas kursi dan meja
+
+`merchant_settings.table_mode` punya tiga nilai: `NONE` (bawaan, satu booking per slot seperti layanan biasa), `AREA` (total kursi per jam, tanpa denah), dan `TABLE` (per meja, pelanggan memilih meja atau "Pilihkan untuk saya"). Merchant yang tidak menyalakannya tidak berubah sama sekali: `bookings_no_overlap` hanya berlaku untuk booking `capacity_mode = 'NONE'`, dan semua baris lama bernilai itu.
+
+Layanan reservasi ditandai lewat `seat_duration_minutes` (lama duduk) plus rentang `party_min`/`party_max`. Kursi dan meja dihitung di dalam `create_booking`, `create_manual_booking`, dan `move_booking_slot`, di bawah advisory lock merchant yang sama dan setelah membersihkan booking kedaluwarsa, sehingga dua pelanggan yang berebut kursi atau meja terakhir terserialisasi. Meja juga dijaga eksklusi per meja di database sebagai jaring kedua. Semua parameter baru `create_booking` punya default null, jadi kode aplikasi lama tetap jalan selama jeda antara migration dan deploy.
+
+Denah hanya ditulis lewat `save_dining_layout` (atomik, di bawah kunci merchant). Urutannya upsert dulu, baru hapus, supaya meja yang dipindah ke area baru tidak ikut terhapus kaskade bersama area lamanya. Penghapusan meja atau area yang masih punya reservasi mendatang ditolak (`BK062`). Meja yang bertumpuk di satu area ditolak di validasi form. `anon` membaca ketersediaan hanya lewat `get_seat_availability` dan `get_table_status`, yang mengembalikan jam, jumlah, dan status saja, tanpa data pelanggan lain.
+
+Reservasi gratis mengikuti artboard ResData: tanpa pemilih voucher dan tanpa ringkasan harga Rp 0. Penanda ruangan (Jendela, Pintu, Kasir) dan slot "Penuh" dicoret tidak dibangun. Baris "Lebih dari N? Lihat Paket acara" dibangun umum sebagai "Lihat layanan lain" yang kembali ke daftar layanan, karena tidak setiap restoran punya layanan paket acara.
+
+Diterima sadar: pemilih jam saat jadwal ulang menghitung kursi atau meja milik booking itu sendiri, sehingga jam yang sebenarnya muat (misalnya menggeser 30 menit) bisa tidak tampil. `move_booking_slot` sendiri menghitung dengan benar; perbaikannya parameter pengecualian booking di `get_seat_availability` bila keluhan muncul.

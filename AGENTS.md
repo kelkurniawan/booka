@@ -83,6 +83,13 @@ F7 selesai: profil staf (peran, perkenalan, keahlian, foto, klip) di kolom
 disajikan), `/api/slots/nearest`, dan kartu "Dengan siapa?" di
 `staff-picker.tsx` yang menghormati reduced motion dan hemat data
 (DECISIONS #36).
+F8 selesai: reservasi restoran. `table_mode` di `merchant_settings` (bawaan
+`NONE`), layanan reservasi lewat `seat_duration_minutes` dan rentang tamu,
+kursi per slot atau per meja dihitung di `create_booking`/`move_booking_slot`
+di bawah kunci merchant, `bookings_no_overlap` hanya untuk
+`capacity_mode = 'NONE'` plus eksklusi per meja, denah ditulis hanya lewat
+`save_dining_layout`, `anon` membaca lewat `get_seat_availability`/
+`get_table_status`, editor di `/dashboard/denah` (DECISIONS #37).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
