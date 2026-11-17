@@ -10,6 +10,7 @@ import {
   POLICIES,
   QRIS_EXAMPLE_ROWS,
 } from "@/lib/marketing/content";
+import { INDUSTRIES } from "@/lib/marketing/industries";
 
 test("jumlah isi sesuai kanvas", () => {
   assert.equal(LANDING_FAQS.length, 6);
@@ -30,6 +31,7 @@ test("tidak ada em dash, en dash, · atau panah di isi", () => {
     AGENDA_EXAMPLE_ROWS,
     PLANS,
     PLAN_COMPARISON,
+    INDUSTRIES,
   });
   assert.deepEqual(found, []);
 });

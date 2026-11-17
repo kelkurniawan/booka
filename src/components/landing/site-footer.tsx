@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { ContactKind, ContactLink } from "@/lib/marketing/contact";
+import { INDUSTRIES } from "@/lib/marketing/industries";
 import { ROUTES } from "@/lib/routes";
 
 const svg = (children: ReactNode) => (
@@ -77,6 +78,11 @@ export function SiteFooter({ contact }: { contact: ContactLink[] }) {
           <Link href={ROUTES.login}>Masuk</Link>
           <Link href={ROUTES.terms}>Syarat</Link>
           <Link href={ROUTES.privacy}>Privasi</Link>
+        </nav>
+        <nav aria-label="Marky untuk jenis usaha" style={{ flexBasis: "100%", display: "flex", flexWrap: "wrap", gap: "var(--space-sm) var(--space-lg)" }}>
+          {INDUSTRIES.map((i) => (
+            <Link key={i.slug} href={ROUTES.industry(i.slug)}>{i.name}</Link>
+          ))}
         </nav>
         {contact.length > 0 && (
           <ul
