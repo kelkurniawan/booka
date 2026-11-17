@@ -6,7 +6,10 @@ import type { ResolvedTheme } from "@/lib/theme/types";
 
 import { BookingSummary } from "./booking-summary";
 import { DateStrip } from "./date-strip";
-import { sampleServices, sampleSlots, sampleTheme } from "./fixtures";
+import { fixtureTablePicker, sampleSeatSlots, sampleServices, sampleSlots, sampleTheme } from "./fixtures";
+import { GuestStepper } from "./guest-stepper";
+import { ReservationCard } from "./reservation-card";
+import { TablePicker, type TablePickerMode } from "./table-picker";
 import { BookingPageShell } from "./page-shell";
 import { ServiceOptionCard } from "./service-option-card";
 import { BookingStepIndicator } from "./step-indicator";
@@ -152,4 +155,108 @@ export const RingkasanBayarDiTempat: Story = {
       />
     </Bingkai>
   ),
+};
+
+export const IndikatorReservasi: Story = {
+  render: () => (
+    <Bingkai>
+      <BookingStepIndicator current={2} labels={["Jadwal", "Meja", "Data diri"]} />
+    </Bingkai>
+  ),
+};
+
+export const JamDenganSisaMeja: Story = {
+  render: () => <Jam state={{ kind: "ready", slots: sampleSeatSlots }} awal={sampleSeatSlots[6].startUtc} />,
+};
+
+function Tamu({ awal, min, max, theme }: { awal: number; min: number; max: number; theme?: ResolvedTheme }) {
+  const [n, setN] = useState(awal);
+  return (
+    <Bingkai theme={theme}>
+      <GuestStepper value={n} min={min} max={max} onChange={setN} hint="Untuk 1 sampai 12 orang." />
+    </Bingkai>
+  );
+}
+
+export const TamuDiBatasMin: Story = { render: () => <Tamu awal={1} min={1} max={12} /> };
+export const TamuDiTengah: Story = { render: () => <Tamu awal={4} min={1} max={12} theme={sampleTheme("MALAM")} /> };
+export const TamuDiBatasMax: Story = { render: () => <Tamu awal={12} min={1} max={12} /> };
+
+export const KartuReservasi: Story = {
+  render: () => (
+    <Bingkai>
+      <ReservationCard
+        title="Reservasi meja"
+        partyLabel="Untuk 1 sampai 12 orang"
+        holdText="Meja ditahan 15 menit dari jam datang."
+        paymentLabel="Bayar DP saat booking"
+        onStart={() => {}}
+      />
+    </Bingkai>
+  ),
+};
+
+export const KartuReservasiTanpaTahan: Story = {
+  render: () => (
+    <Bingkai theme={sampleTheme("BERANI")}>
+      <ReservationCard
+        title="Reservasi meja"
+        partyLabel={null}
+        holdText={null}
+        paymentLabel="Bayar di tempat"
+        onStart={() => {}}
+      />
+    </Bingkai>
+  ),
+};
+
+function Meja({
+  data = fixtureTablePicker,
+  state = "ready",
+  awalMode = "pick",
+  awalMeja = "d5",
+  theme,
+}: {
+  data?: typeof fixtureTablePicker | null;
+  state?: "loading" | "ready" | "error";
+  awalMode?: TablePickerMode;
+  awalMeja?: string | null;
+  theme?: ResolvedTheme;
+}) {
+  const [mode, setMode] = useState<TablePickerMode>(awalMode);
+  const [meja, setMeja] = useState<string | null>(awalMeja);
+  return (
+    <Bingkai theme={theme}>
+      <TablePicker
+        data={data}
+        state={state}
+        mode={mode}
+        selectedTableId={meja}
+        guests={4}
+        onModeChange={setMode}
+        onSelect={setMeja}
+        onRetry={() => {}}
+      />
+    </Bingkai>
+  );
+}
+
+export const MejaOtomatis: Story = { render: () => <Meja awalMode="auto" awalMeja={null} /> };
+export const MejaDenah: Story = { render: () => <Meja /> };
+export const MejaDenahMalam: Story = { render: () => <Meja theme={sampleTheme("MALAM")} /> };
+export const MejaDenahBerani: Story = { render: () => <Meja theme={sampleTheme("BERANI")} /> };
+export const MejaSatuArea: Story = {
+  render: () => (
+    <Meja
+      data={{
+        areas: [fixtureTablePicker.areas[0]],
+        tables: fixtureTablePicker.tables.filter((t) => t.areaId === "area-dalam"),
+      }}
+    />
+  ),
+};
+export const MejaMemuat: Story = { render: () => <Meja data={null} state="loading" awalMeja={null} /> };
+export const MejaGagal: Story = { render: () => <Meja data={null} state="error" awalMeja={null} /> };
+export const MejaKosong: Story = {
+  render: () => <Meja data={{ areas: [], tables: [] }} awalMeja={null} />,
 };

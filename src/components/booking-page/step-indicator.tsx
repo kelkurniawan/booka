@@ -1,11 +1,17 @@
 import { cn } from "@/lib/utils";
 
-const STEPS = ["Layanan", "Jadwal", "Data diri"] as const;
+const STEPS: readonly string[] = ["Layanan", "Jadwal", "Data diri"];
 
-export function BookingStepIndicator({ current }: { current: 1 | 2 | 3 }) {
+export function BookingStepIndicator({
+  current,
+  labels = STEPS,
+}: {
+  current: number;
+  labels?: readonly string[];
+}) {
   return (
     <ol className="flex items-center gap-2 text-sm" aria-label="Langkah pemesanan">
-      {STEPS.map((label, index) => {
+      {labels.map((label, index) => {
         const step = index + 1;
         const active = step === current;
         return (

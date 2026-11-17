@@ -1,3 +1,4 @@
+import type { PickerTable, TablePickerData } from "@/lib/booking/reservation";
 import type { FreeSlot } from "@/lib/booking/slots";
 import { resolveTheme } from "@/lib/theme/resolve";
 import type { ResolvedTheme } from "@/lib/theme/types";
@@ -159,3 +160,44 @@ export const sampleStaffProfile = {
   posterUrl: svgUri("#a89684"),
   motionUrl: "/contoh-klip.mp4",
 };
+
+function meja(
+  id: string,
+  areaId: string,
+  name: string,
+  [minSeats, maxSeats]: [number, number],
+  [x, y, w, h]: [number, number, number, number],
+  shape: PickerTable["shape"],
+  note: string,
+  status: PickerTable["status"],
+): PickerTable {
+  return { id, areaId, name, minSeats, maxSeats, shape, x, y, w, h, note, status };
+}
+
+/** Denah contoh restoran (fiktif) untuk 4 tamu: area Dalam D1 sampai D8, Teras T1 sampai T4. */
+export const fixtureTablePicker: TablePickerData = {
+  areas: [
+    { id: "area-dalam", name: "Dalam" },
+    { id: "area-teras", name: "Teras" },
+  ],
+  tables: [
+    meja("d1", "area-dalam", "D1", [2, 2], [1, 2, 4, 4], "ROUND", "dekat jendela", "TOO_SMALL"),
+    meja("d2", "area-dalam", "D2", [2, 2], [7, 2, 4, 4], "ROUND", "dekat jendela", "TOO_SMALL"),
+    meja("d3", "area-dalam", "D3", [4, 4], [13, 2, 4, 4], "ROUND", "dekat jendela", "FREE"),
+    meja("d4", "area-dalam", "D4", [4, 4], [19, 2, 4, 4], "ROUND", "dekat jendela", "TAKEN"),
+    meja("d5", "area-dalam", "D5", [4, 6], [2, 9, 8, 5], "RECT", "tengah ruangan", "FREE"),
+    meja("d6", "area-dalam", "D6", [4, 6], [13, 9, 8, 5], "RECT", "tengah ruangan", "FREE"),
+    meja("d7", "area-dalam", "D7", [2, 4], [2, 16, 5, 5], "RECT", "dekat pintu", "FREE"),
+    meja("d8", "area-dalam", "D8", [6, 8], [10, 16, 10, 5], "RECT", "meja panjang", "TAKEN"),
+    meja("t1", "area-teras", "T1", [2, 4], [2, 3, 5, 5], "ROUND", "teras, bebas rokok", "FREE"),
+    meja("t2", "area-teras", "T2", [2, 4], [9, 3, 5, 5], "ROUND", "teras, bebas rokok", "TAKEN"),
+    meja("t3", "area-teras", "T3", [4, 4], [16, 3, 5, 5], "ROUND", "teras, bebas rokok", "FREE"),
+    meja("t4", "area-teras", "T4", [6, 10], [4, 13, 16, 6], "RECT", "teras, meja panjang", "FREE"),
+  ],
+};
+
+/** Slot reservasi contoh: dua jam terakhir hampir penuh. */
+export const sampleSeatSlots = sampleSlots.map((slot, i) => ({
+  ...slot,
+  remaining: i === 6 ? 2 : i === 7 ? 1 : null,
+}));

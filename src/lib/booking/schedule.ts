@@ -53,11 +53,11 @@ function periodOf(label: string): SlotPeriod {
 }
 
 /** Mengelompokkan slot per periode, urut, dan membuang periode yang kosong. */
-export function groupSlotsByPeriod(
-  slots: FreeSlot[],
-): { period: SlotPeriod; slots: FreeSlot[] }[] {
+export function groupSlotsByPeriod<T extends FreeSlot>(
+  slots: T[],
+): { period: SlotPeriod; slots: T[] }[] {
   const order: SlotPeriod[] = ["PAGI", "SIANG", "SORE", "MALAM"];
-  const buckets = new Map<SlotPeriod, FreeSlot[]>();
+  const buckets = new Map<SlotPeriod, T[]>();
   for (const slot of slots) {
     const period = periodOf(slot.label);
     const bucket = buckets.get(period) ?? [];

@@ -2,15 +2,19 @@ import { Check } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { groupSlotsByPeriod, SLOT_PERIOD_LABEL } from "@/lib/booking/schedule";
+import { remainingLabel } from "@/lib/booking/reservation";
 import type { FreeSlot } from "@/lib/booking/slots";
 import { cn } from "@/lib/utils";
+
+/** `remaining` hanya terisi untuk layanan reservasi mode meja. */
+export type PickerSlot = FreeSlot & { remaining?: number | null };
 
 export type TimeSlotState =
   | { kind: "idle" }
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "empty"; nextDate: string | null }
-  | { kind: "ready"; slots: FreeSlot[] };
+  | { kind: "ready"; slots: PickerSlot[] };
 
 const TANGGAL = new Intl.DateTimeFormat("id-ID", {
   weekday: "long",
@@ -29,7 +33,7 @@ export function TimeSlotPicker({
   state: TimeSlotState;
   /** startUtc slot terpilih. */
   selected: string | null;
-  onSelect: (slot: FreeSlot) => void;
+  onSelect: (slot: PickerSlot) => void;
   onRetry: () => void;
   onPickDate: (dateISO: string) => void;
 }) {
@@ -80,11 +84,12 @@ export function TimeSlotPicker({
               <div className="grid grid-cols-3 gap-2">
                 {slots.map((slot) => {
                   const checked = selected === slot.startUtc;
+                  const sisa = remainingLabel(slot.remaining ?? null);
                   return (
                     <label
                       key={slot.startUtc}
                       className={cn(
-                        "relative flex min-h-11 cursor-pointer items-center justify-center gap-1 text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
+                        "relative flex min-h-11 cursor-pointer flex-col items-center justify-center text-sm has-[:focus-visible]:ring-3 has-[:focus-visible]:ring-ring/50",
                         checked ? "border-primary bg-primary text-primary-foreground border-2 font-medium" : "border-border bg-card border",
                       )}
                       style={{ borderRadius: "var(--radius)" }}
@@ -96,9 +101,13 @@ export function TimeSlotPicker({
                         value={slot.startUtc}
                         checked={checked}
                         onChange={() => onSelect(slot)}
+                        aria-label={sisa ? `${slot.label.replace(":", ".")}, ${sisa.toLowerCase()}` : undefined}
                       />
-                      {checked ? <Check aria-hidden className="size-3.5" /> : null}
-                      {slot.label}
+                      <span className="flex items-center gap-1">
+                        {checked ? <Check aria-hidden className="size-3.5" /> : null}
+                        {slot.label}
+                      </span>
+                      {sisa ? <span className="text-xs">{sisa}</span> : null}
                     </label>
                   );
                 })}
