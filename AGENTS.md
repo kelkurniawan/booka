@@ -97,6 +97,14 @@ tur coachmark Radix `Dialog` dengan target `data-tour`, panel "Panduan halaman
 ini" di setiap halaman dashboard. Semua teks di `src/lib/guide/content.ts`
 wajib diperbarui saat halaman berubah; `content.test.ts` memeriksa target
 (DECISIONS #38).
+F10 selesai: landing di route group `(marketing)` dengan token Coral di
+`src/components/landing/marketing.css` dan General Sans self-host di
+`src/assets/fonts/general-sans/`; teks di `src/lib/marketing/*`, paket dan
+perbandingan di `src/lib/plans.ts`; halaman `/untuk/<slug>` dari
+`industries.ts` (segmen `untuk` dicadangkan); cek klaim lewat
+`/api/username-check` dan RPC `check_username_claim` dengan rate limit; OG,
+JSON-LD, dan sitemap dari data yang sama (DECISIONS #39). Semua host di landing
+berasal dari `NEXT_PUBLIC_APP_URL`, jadi env itu wajib benar di produksi.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

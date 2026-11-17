@@ -16,7 +16,7 @@ Spec ini berisi 11 sub-proyek yang masing-masing bisa dirilis sendiri. Setiap fa
 | F7 Profil staf | `2026-11-15-marky-f7-profil-staf.md` | Selesai di cabang `fitur/marky-f7` | F1 | Ya |
 | F8 Restoran: tamu, kapasitas, meja | `2026-11-15-marky-f8-restoran.md` | Selesai di cabang `fitur/marky-f8` | F2, F3 | Ya |
 | F9 Panduan merchant baru | `2026-11-15-marky-f9-panduan.md` | Selesai di cabang `fitur/marky-f9` | F3 | Ya |
-| F10 Landing page Marky + SEO | bisa kapan saja setelah F0 | – | F0 | Tidak |
+| F10 Landing page Marky + SEO | `2026-11-15-marky-f10-landing.md` | Selesai di cabang `fitur/marky-f10` | F0 | Tidak |
 
 Urutan yang disarankan: F0, F1, F2, F3, lalu F4/F5/F6/F7 dalam urutan mana pun (tidak saling menyentuh tabel yang sama kecuali `merchant_settings`, yang dibuat di F2), lalu F8 dan F9. F10 bisa dikerjakan paralel di sesi lain kapan saja.
 

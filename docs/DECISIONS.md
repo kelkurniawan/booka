@@ -596,3 +596,21 @@ Progres yang bukan data (tur sudah dilihat, checklist disembunyikan, tautan suda
 Tur coachmark memakai `Dialog` Radix dengan target `data-tour`: fokus terkunci di kartu, Enter maju, Esc menutup, gulir halaman dikembalikan. Tur Hari ini mulai sendiri sekali untuk merchant baru, lima langkah di desktop dan empat di HP (kartu di atas nav bawah). Langkah yang targetnya tidak ada (misalnya fitur paket Pro atau Studio untuk merchant Starter) dilewati, jadi Starter hanya melihat langkah ringkasan di halaman itu.
 
 Semua teks panduan ada di satu modul `src/lib/guide/content.ts` dan ditulis dari perilaku halaman yang sebenarnya, bukan dari rencana; `content.test.ts` memeriksa bahwa setiap target tur benar-benar terpasang di kode. Halaman yang berubah wajib memperbarui teksnya. Slot video tiap halaman sengaja kosong ("Video panduan belum tersedia.") sampai videonya dibuat; tidak ada durasi atau angka karangan.
+
+## 39. Landing page Marky dan SEO
+
+Halaman pemasaran pindah ke route group `(marketing)` dengan layout sendiri, sehingga font dan token Coral landing tidak menyentuh dashboard, halaman booking, atau halaman legal. `/` dan enam `/untuk/<slug>` dirender statis saat build; satu-satunya permintaan dinamis adalah cek username.
+
+General Sans di-host sendiri (`src/assets/fonts/general-sans/`, ITF Free Font License yang mengizinkan pemakaian komersial dan self-host; berkas lisensi ikut di-commit). Font memakai `display: "optional"`, bukan `swap`: H1 tidak digambar ulang saat font tiba, jadi kunjungan pertama di jaringan lambat bisa memakai font cadangan, dan kunjungan berikutnya memakai General Sans dari cache.
+
+Cek ketersediaan username dibuka untuk publik karena setiap username merchant memang sudah publik lewat `/<username>` dan sitemap. Yang dijaga adalah beban database: RPC `check_username_claim` (hanya `service_role`) mencatat percobaan per hash IP dan menolak setelah 30 cek per 10 menit. IP diambil dari `x-forwarded-for`, yang di Vercel ditulis ulang oleh platform sehingga tidak bisa dipalsukan pengunjung; IP kosong (hanya terjadi di luar Vercel) dibiarkan lewat seperti rate limit booking. Formulir hanya menampilkan status dari server untuk slug yang sedang tertulis.
+
+Kontak (WhatsApp, Instagram, Threads, X, TikTok) dan email penyelenggara datang dari konfigurasi; ikon yang nilainya masih penanda tidak dirender, jadi tidak ada tautan mati. Perbandingan paket satu sumber di `src/lib/plans.ts`. Tombol paket jujur: pendaftaran selalu mulai di Starter.
+
+Klaim di landing disesuaikan dengan produk, bukan sebaliknya: pengingat H-1 plus pagi hari jadwal (opsional) hanya untuk Pro dan Studio, pindah jadwal oleh pelanggan hanya bila merchant mengizinkan, dan perubahan paket dibantu tim Marky (tidak ada "ganti paket kapan saja"). Pemilih contoh (usaha, pesan, paket) memakai radio bawaan plus CSS `:has()` tanpa JS, dan semua panel ada di HTML supaya terbaca mesin pencari.
+
+HeroMotion berulang (pengecualian atas arahan "satu gerakan saat dimuat") dengan tombol jeda, hanya `transform`/`opacity`, berhenti saat reduced motion, hemat data, dan tab tersembunyi; server merender frame diam slip Lunas.
+
+Anggaran kinerja Lighthouse mobile tidak tercapai sepenuhnya: Performance 88 (target 90), LCP simulasi sekitar 3,8 detik (target 2,5 detik), padahal LCP teramati sekitar 50 ms dan desktop 100. Angka simulasi sama dengan baseline landing lama (89, 3,85 detik), karena bebannya JS seluruh aplikasi (terutama klien Sentry di root layout), bukan landing. Transfer skrip 315 KB, di bawah anggaran baseline plus 25 KB. Perbaikan berikutnya: muat klien Sentry hanya bila DSN diisi.
+
+Pemeriksaan desain F10: review anti-slop (commit `57b92d4`) menemukan tiga FAIL yang sudah diperbaiki (tautan teks di kaki halaman dan kebijakan kini 44 px; deretan kartu kembar di "Kebijakan singkat" dan halaman `/untuk/*` diganti daftar bergaris). Hallmark sloplint (render) belum dijalankan karena menjalankan kode dari repo luar perlu izin pemilik proyek.
