@@ -1,3 +1,4 @@
+import type { FreeSlot } from "@/lib/booking/slots";
 import { resolveTheme } from "@/lib/theme/resolve";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type {
@@ -83,3 +84,33 @@ export function sampleTheme(preset: ThemePreset): ResolvedTheme {
   };
   return resolveTheme("PRO", row);
 }
+
+/** Slot contoh dari pagi sampai malam, jam dinding Jakarta (UTC+7). */
+export const sampleSlots: FreeSlot[] = [
+  "08:00", "09:30", "11:00", "13:00", "14:30", "15:00", "16:30", "18:00", "19:30",
+].map((label) => {
+  const [h, m] = label.split(":").map(Number);
+  const start = new Date(Date.UTC(2026, 10, 20, h - 7, m));
+  return {
+    label,
+    startUtc: start.toISOString(),
+    endUtc: new Date(start.getTime() + 90 * 60 * 1000).toISOString(),
+  };
+});
+
+/** Booking contoh untuk /pesanan/[token]: Sabtu 21 Nov 2026, 10.00 sampai 11.30 WIB. */
+export const sampleBooking = {
+  id: "00000000-0000-4000-8000-0000000000b1",
+  merchant_id: sampleMerchant.id,
+  service_name: "Makeup Wisuda",
+  service_price: 105000,
+  start_datetime: "2026-11-21T03:00:00Z",
+  end_datetime: "2026-11-21T04:30:00Z",
+  customer_name: "Dewi Contoh",
+  status: "PAID" as const,
+  payment_url: null,
+  paid_at: "2026-11-20T08:00:00Z",
+  cancelled_at: null,
+  cancel_reason: null,
+  expires_at: "2026-11-20T08:15:00Z",
+};

@@ -43,3 +43,16 @@ export const Berani: Story = { args: { theme: sampleTheme("BERANI") } };
 export const TanpaLayanan: Story = { args: { services: [] } };
 
 export const TanpaFaq: Story = { args: { faqs: [] } };
+
+const win = (day_of_week: 1 | 2 | 5) => ({ day_of_week, start_time: "09:00", end_time: "17:00" });
+
+export const SatuLayanan: Story = { args: { services: sampleServices.slice(0, 1) } };
+
+export const DenganStaf: Story = {
+  args: {
+    staff: [
+      { id: "s1", name: "Sekar", availability: [win(1), win(2)] },
+      { id: "s2", name: "Dewi", availability: [win(5)] },
+    ],
+  },
+};

@@ -3,7 +3,7 @@
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
-import { BookingServiceCard } from "@/components/booking-page/service-card";
+import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import type { ResolvedTheme } from "@/lib/theme/types";
 import type { MerchantFaq, Service, ServiceMedia } from "@/types/database";
 
@@ -42,19 +42,22 @@ export function AppearancePreview({
 
           {services.length > 0 ? (
             <section className="flex flex-col gap-4">
-              <h2 className="text-muted-foreground font-mono text-[0.7rem] tracking-[0.18em] uppercase">
+              <h2 className="text-sm font-medium">
                 Layanan
               </h2>
-              <ul className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3">
                 {services.map((service, index) => (
-                  <BookingServiceCard
+                  <ServiceOptionCard
                     key={service.id}
                     service={service}
                     media={mediaByService[service.id] ?? []}
+                    checked={index === 0}
+                    onSelect={() => {}}
                     eager={index === 0}
+                    paymentLabel="Bayar saat booking"
                   />
                 ))}
-              </ul>
+              </div>
               <div
                 aria-hidden
                 className="bg-primary text-primary-foreground py-3 text-center text-sm font-medium"

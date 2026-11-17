@@ -48,6 +48,9 @@ DECISIONS #28), dan domain sendiri (verifikasi TXT di `_marky.<domain>`, routing
 di `src/proxy.ts`, DECISIONS #29). Daftar paket satu sumber di `src/lib/plans.ts`.
 
 Redesign mengikuti `DESIGN.md` dan spec `docs/superpowers/specs/2026-11-14-marky-redesign-design.md`.
+F1 selesai: `/[username]` kini alur tiga langkah (`BookingFlow` di
+`src/app/[username]/booking-flow.tsx`, komponen murni di
+`src/components/booking-page/`), dan `/pesanan/[token]` memakai tema merchant.
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

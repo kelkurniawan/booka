@@ -98,6 +98,20 @@ export function formatDateTime(value: string | Date): string {
   return `${WEEKDAYS_ID[p.weekday]}, ${p.day} ${MONTHS_ID[p.month]} ${p.year} pukul ${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
+/** "Sabtu, 21 Nov 2026, 10.00 sampai 11.30 WIB" */
+export function formatSchedule(startUtc: string | Date, endUtc: string | Date): string {
+  const s = toJakartaWallClock(startUtc);
+  const e = toJakartaWallClock(endUtc);
+  const jam = (p: JakartaWallClock) => `${pad2(p.hour)}.${pad2(p.minute)}`;
+  return `${WEEKDAYS_ID[s.weekday]}, ${s.day} ${MONTHS_ID_SHORT[s.month]} ${s.year}, ${jam(s)} sampai ${jam(e)} WIB`;
+}
+
+/** Bulan singkat dan tanggal jam dinding Jakarta, untuk blok tanggal. */
+export function formatDayBlock(value: string | Date): { month: string; day: number } {
+  const p = toJakartaWallClock(value);
+  return { month: MONTHS_ID_SHORT[p.month], day: p.day };
+}
+
 export function formatDate(value: string | Date): string {
   const p = toJakartaWallClock(value);
   return `${p.day} ${MONTHS_ID_SHORT[p.month]} ${p.year}`;
