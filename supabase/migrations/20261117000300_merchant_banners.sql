@@ -33,7 +33,7 @@ create table public.merchant_banners (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint merchant_banners_tag_length check (char_length(tag_text) <= 24),
-  constraint merchant_banners_title_length check (char_length(title) <= 60),
+  constraint merchant_banners_title_length check (char_length(title) <= 60 and char_length(btrim(title)) >= 1),
   constraint merchant_banners_body_length check (char_length(body) <= 90),
   constraint merchant_banners_alt_length check (char_length(alt_text) between 1 and 140),
   constraint merchant_banners_cta_length check (char_length(cta_text) between 1 and 20),
@@ -104,6 +104,60 @@ begin
 end;
 $$;
 revoke execute on function public.enforce_banner_live_limit() from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+-- Target banner harus milik merchant yang sama, dan voucher harus PUBLIC:
+-- halaman publik tidak boleh menuntun ke voucher rahasia atau data merchant lain.
+-- Invoker cukup: pemilik hanya melihat voucher dan layanannya sendiri.
+-- ---------------------------------------------------------------------------
+create or replace function public.enforce_banner_target()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.target_voucher_id is not null and not exists (
+    select 1 from public.vouchers v
+    where v.id = new.target_voucher_id and v.merchant_id = new.merchant_id and v.visibility = 'PUBLIC'
+  ) then
+    raise exception 'Target voucher banner tidak valid' using errcode = 'BK057';
+  end if;
+  if new.target_service_id is not null and not exists (
+    select 1 from public.services s
+    where s.id = new.target_service_id and s.merchant_id = new.merchant_id
+  ) then
+    raise exception 'Target layanan banner tidak valid' using errcode = 'BK057';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.enforce_banner_target() from public, anon, authenticated;
+
+create trigger merchant_banners_check_target
+  before insert or update on public.merchant_banners
+  for each row execute function public.enforce_banner_target();
+
+-- Arah sebaliknya: voucher yang dituju banner tidak boleh dijadikan PRIVATE.
+-- Ditolak, bukan diam-diam melepas target, supaya CTA banner tayang tidak hilang tanpa sepengetahuan merchant.
+create or replace function public.guard_banner_voucher_visibility()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if new.visibility = 'PRIVATE' and exists (
+    select 1 from public.merchant_banners b where b.target_voucher_id = new.id
+  ) then
+    raise exception 'Voucher dipakai banner' using errcode = 'BK058';
+  end if;
+  return new;
+end;
+$$;
+revoke execute on function public.guard_banner_voucher_visibility() from public, anon, authenticated;
+
+create trigger vouchers_banner_visibility
+  before update of visibility on public.vouchers
+  for each row execute function public.guard_banner_voucher_visibility();
 
 create trigger merchant_banners_enforce_tier
   before insert on public.merchant_banners

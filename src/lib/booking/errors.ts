@@ -115,6 +115,16 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Voucher ini khusus pelanggan baru.",
   },
+  // enforce_banner_target: target banner bukan voucher publik atau layanan milik merchant ini.
+  BK057: {
+    status: 409,
+    message: "Target banner harus voucher publik atau layanan milik Anda sendiri.",
+  },
+  // guard_banner_voucher_visibility: voucher yang dituju banner dijadikan rahasia.
+  BK058: {
+    status: 409,
+    message: "Voucher ini dipakai banner. Ganti target banner dulu sebelum menjadikannya rahasia.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {

@@ -4502,8 +4502,16 @@ update public.merchants set username = 'banner-48', subscription_tier = 'PRO'
   where id = '48484848-0000-0000-0000-000000000001';
 insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
   ('48484848-5e5e-0000-0000-000000000001', '48484848-0000-0000-0000-000000000001', 'Layanan 48', 350000, 60, 'FULL', true);
-insert into public.vouchers (id, merchant_id, code, kind, value) values
-  ('48484848-7070-0000-0000-000000000001', '48484848-0000-0000-0000-000000000001', 'BANNER48', 'PERCENT', 10);
+-- Merchant PRO 0003 sebagai pemilik target lintas merchant.
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('48484848-0000-0000-0000-000000000003', 'banner48-c@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO' where id = '48484848-0000-0000-0000-000000000003';
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
+  ('48484848-5e5e-0000-0000-000000000003', '48484848-0000-0000-0000-000000000003', 'Layanan lain 48', 350000, 60, 'FULL', true);
+insert into public.vouchers (id, merchant_id, code, kind, value, visibility) values
+  ('48484848-7070-0000-0000-000000000001', '48484848-0000-0000-0000-000000000001', 'BANNER48', 'PERCENT', 10, 'PUBLIC'),
+  ('48484848-7070-0000-0000-000000000002', '48484848-0000-0000-0000-000000000001', 'RAHASIA48', 'PERCENT', 10, 'PRIVATE'),
+  ('48484848-7070-0000-0000-000000000003', '48484848-0000-0000-0000-000000000003', 'LAIN48', 'PERCENT', 10, 'PUBLIC');
 
 -- Sisip banner (superuser). Kolom opsional lewat jsonb; TEMPLATE tanpa kunci title diberi judul bawaan.
 create or replace function pg_temp.bn48(p jsonb default '{}'::jsonb,
@@ -4550,6 +4558,19 @@ select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"starts_at": "2031-01-0
   "ends_at": "2031-01-01 00:00+07"}')$q$, '23514', 't48a ends_at <= starts_at');
 select pg_temp.expect_fail_code($q$select pg_temp.bn48(jsonb_build_object('title', repeat('a', 61)))$q$,
   '23514', 't48a title 61 karakter');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"title": "   "}')$q$, '23514', 't48a title hanya spasi');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "VOUCHER", "cta_text": "Pakai",
+  "target_voucher_id": "48484848-7070-0000-0000-000000000003"}')$q$, 'BK057', 't48a target voucher merchant lain');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "SERVICE", "cta_text": "Pesan",
+  "target_service_id": "48484848-5e5e-0000-0000-000000000003"}')$q$, 'BK057', 't48a target layanan merchant lain');
+select pg_temp.expect_fail_code($q$select pg_temp.bn48('{"target_kind": "VOUCHER", "cta_text": "Pakai",
+  "target_voucher_id": "48484848-7070-0000-0000-000000000002"}')$q$, 'BK057', 't48a target voucher PRIVATE');
+select pg_temp.expect_ok($q$select pg_temp.bn48('{"title": "Ke voucher 48a", "target_kind": "VOUCHER", "cta_text": "Pakai",
+  "target_voucher_id": "48484848-7070-0000-0000-000000000001"}')$q$, 't48a target voucher publik sendiri');
+select pg_temp.expect_fail_code($q$update public.vouchers set visibility = 'PRIVATE'
+  where id = '48484848-7070-0000-0000-000000000001'$q$, 'BK058', 't48a voucher yang dituju banner dijadikan PRIVATE');
+select pg_temp.expect_ok($q$update public.vouchers set visibility = 'PRIVATE'
+  where id = '48484848-7070-0000-0000-000000000003'$q$, 't48a voucher tanpa banner dijadikan PRIVATE');
 select pg_temp.expect_ok($q$select pg_temp.bn48()$q$, 't48a template minimal');
 select pg_temp.expect_ok($q$select pg_temp.bn48('{"source": "IMAGE", "alt_text": "Promo wisuda",
   "image_path": "48484848-0000-0000-0000-000000000001/banner/a.webp"}')$q$, 't48a image dengan path dan alt');

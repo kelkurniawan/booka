@@ -77,3 +77,16 @@ test("BK050-BK056 (voucher) -> status dan pesan sesuai", () => {
   assert.equal(mapBookingError("BK055").message, "Voucher ini tidak berlaku untuk layanan yang dipilih.");
   assert.equal(mapBookingError("BK056").message, "Voucher ini khusus pelanggan baru.");
 });
+
+test("BK057-BK058 (target banner) -> 409 dan pesan sesuai", () => {
+  assert.equal(mapBookingError("BK057").status, 409);
+  assert.equal(
+    mapBookingError("BK057").message,
+    "Target banner harus voucher publik atau layanan milik Anda sendiri.",
+  );
+  assert.equal(mapBookingError("BK058").status, 409);
+  assert.equal(
+    mapBookingError("BK058").message,
+    "Voucher ini dipakai banner. Ganti target banner dulu sebelum menjadikannya rahasia.",
+  );
+});
