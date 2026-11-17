@@ -59,6 +59,10 @@ F3 selesai: dashboard dimulai dari Hari ini, halaman Booking bertab dengan panel
 detail (`?b=`), booking manual `/dashboard/bookings/baru`, jadwal ulang oleh
 merchant, sidebar berkelompok dan nav bawah HP. Batas anti-spam: 50 booking
 manual per 24 jam, 3 jadwal ulang merchant per booking (DECISIONS #31).
+F4 selesai: pelanggan bisa ubah jadwal, batal, hubungi merchant, dan atur
+pengingat dari `/pesanan/[token]` (rute token di `src/app/api/pesanan/[token]/*`),
+pengingat H-1 dan pagi hari H lewat WhatsApp, email, dan web push (VAPID,
+`public/sw.js`), kebijakan merchant di Pengaturan (DECISIONS #33).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
