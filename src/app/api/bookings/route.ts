@@ -1,7 +1,7 @@
 import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-import { mapBookingError } from "@/lib/booking/errors";
+import { isKnownBookingError, mapBookingError } from "@/lib/booking/errors";
 import { extractClientIp, hashClientIp } from "@/lib/booking/rate-limit";
 import { notifyBookingCreated } from "@/lib/notify/dispatch";
 import { chargeBooking, chargeFailureMessage, findChargeProvider } from "@/lib/payments/charge-booking";
@@ -37,9 +37,19 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  * kelayakannya di dalam transaksi; charge tetap sebesar amount_due_now.
  */
 export async function POST(request: NextRequest) {
+  // Batas ukuran body: payload sah di bawah 2 KB; Content-Length bisa dipalsukan
+  // jadi panjang teks yang sudah terbaca diperiksa juga.
+  const MAX_BODY_BYTES = 8 * 1024;
+  if (Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Body request terlalu besar" }, { status: 413 });
+  }
   let rawBody: unknown;
   try {
-    rawBody = await request.json();
+    const text = await request.text();
+    if (text.length > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Body request terlalu besar" }, { status: 413 });
+    }
+    rawBody = JSON.parse(text);
   } catch {
     return NextResponse.json({ error: "Body request harus JSON valid" }, { status: 400 });
   }
@@ -54,6 +64,7 @@ export async function POST(request: NextRequest) {
 
   const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp, voucherCode } =
     parsed.data;
+  const { partySize, areaId, tableId, customerNote } = parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
@@ -147,6 +158,10 @@ export async function POST(request: NextRequest) {
     p_staff_id: staffId,
     p_can_charge: provider !== null,
     p_voucher_code: voucherCode,
+    p_party_size: partySize,
+    p_area_id: areaId,
+    p_table_id: tableId,
+    p_customer_note: customerNote,
   });
 
   if (bookingError) {
@@ -160,7 +175,9 @@ export async function POST(request: NextRequest) {
         error: bookingError,
       });
     }
-    return NextResponse.json({ error: mapped.message }, { status: mapped.status });
+    // `code` hanya untuk kode yang dikenal peta; galat tak dikenal tanpa `code`.
+    const code = isKnownBookingError(bookingError.code) ? bookingError.code : undefined;
+    return NextResponse.json({ error: mapped.message, code }, { status: mapped.status });
   }
 
   const booking = bookingRows?.[0];

@@ -59,6 +59,9 @@ export type AvailabilityWindow = Pick<Availability, "day_of_week" | "start_time"
 /** Bentuk minimal hasil `get_booked_ranges` yang dibutuhkan algoritma ini. */
 export type BookedRange = { start_datetime: string; end_datetime: string };
 
+/** Slot reservasi: `remaining` = sisa meja yang cocok (null di mode kursi). */
+export type SeatSlot = FreeSlot & { remaining: number | null };
+
 export type FreeSlot = {
   /** Instant mulai slot dalam UTC, ISO-8601 — inilah yang dikirim ke checkout. */
   startUtc: string;
@@ -79,11 +82,14 @@ export type FreeSlot = {
 export function computeFreeSlots(params: {
   dateISO: string;
   durationMinutes: number;
+  /** Jarak antar jam mulai; default = durasi (perilaku lama). */
+  stepMinutes?: number;
   availability: AvailabilityWindow[];
   bookedRanges: BookedRange[];
   now?: Date;
 }): FreeSlot[] {
   const { dateISO, durationMinutes, availability, bookedRanges } = params;
+  const stepMinutes = params.stepMinutes ?? durationMinutes;
   const now = params.now ?? new Date();
   const nowMs = now.getTime();
 
@@ -107,7 +113,7 @@ export function computeFreeSlots(params: {
     for (
       let minutes = windowStartMinutes;
       minutes + durationMinutes <= windowEndMinutes;
-      minutes += durationMinutes
+      minutes += stepMinutes
     ) {
       const label = minutesToHHMM(minutes);
       const slotStartMs = jakartaWallClockToUtc(dateISO, label).getTime();

@@ -52,6 +52,16 @@ export const checkoutSchema = z.object({
   startUtc: z.iso.datetime({ message: "Slot tidak valid, silakan pilih ulang" }),
   customer_name: customerNameSchema,
   customer_whatsapp: customerWhatsappSchema,
+  partySize: z.number().int().min(1).max(200).nullable().default(null),
+  areaId: z.uuid().nullable().default(null),
+  tableId: z.uuid().nullable().default(null),
+  customerNote: z
+    .string()
+    .trim()
+    .max(300, "Catatan maksimal 300 karakter")
+    .transform((v) => v || null)
+    .nullable()
+    .default(null),
 });
 
 export type CheckoutInput = z.input<typeof checkoutSchema>;
@@ -76,6 +86,16 @@ export const createBookingRequestSchema = z.object({
   customer_name: customerNameSchema,
   customer_whatsapp: customerWhatsappSchema,
   voucherCode: voucherCodeSchema.nullable().default(null),
+  partySize: z.number().int().min(1).max(200).nullable().default(null),
+  areaId: z.uuid().nullable().default(null),
+  tableId: z.uuid().nullable().default(null),
+  customerNote: z
+    .string()
+    .trim()
+    .max(300, "Catatan maksimal 300 karakter")
+    .transform((v) => v || null)
+    .nullable()
+    .default(null),
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;

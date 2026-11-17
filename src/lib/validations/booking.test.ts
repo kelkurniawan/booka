@@ -157,3 +157,18 @@ test("createBookingRequestSchema: voucherCode hilang jadi null", () => {
   const parsed = createBookingRequestSchema.parse({ ...VALID_INPUT, username: "toko" });
   assert.equal(parsed.voucherCode, null);
 });
+
+test("createBookingRequestSchema: field reservasi baru default null", () => {
+  const parsed = createBookingRequestSchema.parse({ ...VALID_INPUT, username: "toko" });
+  assert.equal(parsed.partySize, null);
+  assert.equal(parsed.areaId, null);
+  assert.equal(parsed.tableId, null);
+  assert.equal(parsed.customerNote, null);
+});
+
+test("createBookingRequestSchema: customerNote kosong jadi null, partySize 0 dan catatan 301 ditolak", () => {
+  const base = { ...VALID_INPUT, username: "toko" };
+  assert.equal(createBookingRequestSchema.parse({ ...base, customerNote: "  " }).customerNote, null);
+  assert.equal(createBookingRequestSchema.safeParse({ ...base, partySize: 0 }).success, false);
+  assert.equal(createBookingRequestSchema.safeParse({ ...base, customerNote: "a".repeat(301) }).success, false);
+});

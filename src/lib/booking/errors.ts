@@ -171,3 +171,8 @@ export function mapBookingError(code: string | null | undefined): BookingErrorMa
   if (!code) return DEFAULT_MAPPING;
   return ERROR_MAP[code] ?? DEFAULT_MAPPING;
 }
+
+/** True bila errcode ada di peta (dipakai route untuk menyertakan `code` di respons). */
+export function isKnownBookingError(code: string | null | undefined): code is string {
+  return !!code && Object.hasOwn(ERROR_MAP, code);
+}

@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { computeStaffSlots, jakartaWallClockToUtc } from "@/lib/booking/slots";
+import { isSeatService, SEAT_SLOT_STEP_MINUTES } from "@/lib/booking/reservation";
+import {
+  computeFreeSlots,
+  computeStaffSlots,
+  jakartaWallClockToUtc,
+  type SeatSlot,
+} from "@/lib/booking/slots";
 import { loadPublicStaff } from "@/lib/booking/staff";
 import { createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
@@ -15,6 +21,9 @@ const querySchema = z.object({
   date: z.string().regex(DATE_PATTERN, "date harus berformat YYYY-MM-DD"),
   // Kosong/absen = "siapa saja" (merchant Studio) atau kalender tunggal.
   staffId: z.uuid("staffId tidak valid").nullable(),
+  // Jumlah tamu: wajib hanya untuk layanan ber-party_max (dicek di bawah).
+  party: z.coerce.number().int().min(1).max(200).nullable(),
+  areaId: z.uuid("areaId tidak valid").nullable(),
 });
 
 /**
@@ -29,6 +38,11 @@ const querySchema = z.object({
  * diberi hak apa pun ke tabel itu (docs/DECISIONS.md bagian 1), dan
  * `get_booked_ranges` sengaja hanya mengembalikan start/end datetime tanpa
  * data pelanggan (docs/DECISIONS.md bagian 2).
+ *
+ * Layanan reservasi (restoran, `isSeatService`) TIDAK memakai
+ * `get_booked_ranges`: kandidat jamnya tiap 30 menit dari jam buka, lalu
+ * `get_seat_availability` menentukan mana yang masih muat untuk `party`
+ * tamu (Keputusan 5 F8). Respons: `{ slots: SeatSlot[] }`, hanya yang kosong.
  */
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
@@ -37,6 +51,8 @@ export async function GET(request: NextRequest) {
     serviceId: url.searchParams.get("serviceId") ?? "",
     date: url.searchParams.get("date") ?? "",
     staffId: url.searchParams.get("staffId") || null,
+    party: url.searchParams.get("party") || null,
+    areaId: url.searchParams.get("areaId") || null,
   });
 
   if (!parsed.success) {
@@ -46,7 +62,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { username, serviceId, date, staffId } = parsed.data;
+  const { username, serviceId, date, staffId, party, areaId } = parsed.data;
 
   // Tanggal lolos regex bisa saja tidak valid secara kalender (mis.
   // "2026-02-30"). new Date() JS akan diam-diam menormalkannya jadi tanggal
@@ -81,7 +97,7 @@ export async function GET(request: NextRequest) {
 
   const { data: service, error: serviceError } = await supabase
     .from("services")
-    .select("id, duration_minutes")
+    .select("id, duration_minutes, party_max, seat_duration_minutes")
     .eq("id", serviceId)
     .eq("merchant_id", merchant.id)
     .eq("is_active", true)
@@ -103,6 +119,52 @@ export async function GET(request: NextRequest) {
   if (availabilityError) {
     console.error("[api/slots] gagal memuat jam kerja", { username, error: availabilityError });
     return NextResponse.json({ error: "Gagal memuat jam kerja" }, { status: 500 });
+  }
+
+  // Tidak ada baris merchant_settings = mode NONE (grant anon: Task 1 F8).
+  const { data: settings, error: settingsError } = await supabase
+    .from("merchant_settings")
+    .select("table_mode")
+    .eq("merchant_id", merchant.id)
+    .maybeSingle();
+
+  if (settingsError) {
+    console.error("[api/slots] gagal memuat pengaturan", { username, error: settingsError });
+    return NextResponse.json({ error: "Gagal memuat pengaturan merchant" }, { status: 500 });
+  }
+
+  if (service.party_max !== null && party === null) {
+    return NextResponse.json({ error: "Jumlah tamu wajib diisi" }, { status: 400 });
+  }
+
+  if (isSeatService(service, settings?.table_mode ?? "NONE")) {
+    const candidates = computeFreeSlots({
+      dateISO: date,
+      durationMinutes: service.seat_duration_minutes!,
+      stepMinutes: SEAT_SLOT_STEP_MINUTES,
+      availability: availability ?? [],
+      bookedRanges: [],
+    });
+    if (candidates.length === 0) return NextResponse.json({ slots: [] });
+
+    const { data: seats, error: seatsError } = await supabase.rpc("get_seat_availability", {
+      p_username: username,
+      p_service_id: serviceId,
+      p_party_size: party!,
+      p_area_id: areaId,
+      p_starts: candidates.map((c) => c.startUtc),
+    });
+    if (seatsError) {
+      console.error("[api/slots] gagal memuat ketersediaan kursi", { username, error: seatsError });
+      return NextResponse.json({ error: "Gagal memuat jadwal" }, { status: 500 });
+    }
+
+    const byStart = new Map((seats ?? []).map((r) => [new Date(r.start_datetime).getTime(), r]));
+    const slots: SeatSlot[] = candidates.flatMap((c) => {
+      const row = byStart.get(new Date(c.startUtc).getTime());
+      return row?.available ? [{ ...c, remaining: row.tables_left }] : [];
+    });
+    return NextResponse.json({ slots });
   }
 
   // Rentang cek bentrok: satu hari kalender penuh di Jakarta, dikonversi ke
