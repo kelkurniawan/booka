@@ -148,6 +148,11 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 422,
     message: "Jumlah tamu di luar batas layanan ini.",
   },
+  // bookings_enforce_max_online_charge: booking PENDING di atas batas QRIS Midtrans.
+  BK037: {
+    status: 422,
+    message: "Pembayaran QRIS maksimal Rp10.000.000 per transaksi. Pakai DP yang lebih kecil, atau bayar di tempat.",
+  },
   // save_dining_layout: denah melanggar batas atau aturan (nama ganda, gabungan tidak cocok).
   BK064: {
     status: 422,

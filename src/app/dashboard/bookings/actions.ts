@@ -80,6 +80,7 @@ const RPC_ERRORS: Record<string, string> = {
   BK030: "Permintaan ini sudah dijawab atau tidak ditemukan.",
   BK031: "Permintaan ini sudah kedaluwarsa.",
   BK032: "Booking ini tidak punya tagihan di tempat yang belum lunas.",
+  BK037: "DP layanan ini di atas batas QRIS Rp10.000.000. Kecilkan DP di Layanan, lalu setujui lagi.",
   BK033: "Kehadiran baru bisa ditandai mendekati jadwal.",
 };
 

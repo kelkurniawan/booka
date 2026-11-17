@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { MIN_ONLINE_CHARGE } from "@/lib/booking/payment-mode";
+import { computeAmounts, MAX_ONLINE_CHARGE, MIN_ONLINE_CHARGE } from "@/lib/booking/payment-mode";
 
 /**
  * Aturan di sini harus persis sama dengan constraint tabel `services` di
@@ -53,6 +53,9 @@ export const serviceFieldsSchema = z.object({
 });
 
 export const ONLINE_PRICE_MESSAGE = "Harga minimal Rp1.500 untuk pembayaran QRIS, atau Rp0 untuk gratis.";
+
+export const MAX_ONLINE_MESSAGE =
+  "Pembayaran QRIS maksimal Rp10.000.000 per transaksi. Pakai DP yang lebih kecil, atau bayar di tempat.";
 
 /** Harga yang bisa ditagih lewat QRIS: gratis, atau minimal MIN_ONLINE_CHARGE. Hanya Zod, tanpa constraint DB. */
 export function isChargeablePrice(price: number): boolean {
@@ -107,6 +110,14 @@ export const serviceSchema = serviceFieldsSchema
   }
   if (v.payment_mode !== "ON_SITE" && !isChargeablePrice(v.price)) {
     ctx.addIssue({ code: "custom", path: ["price"], message: ONLINE_PRICE_MESSAGE });
+  }
+  // Mencerminkan trigger BK037; REQUEST ikut karena ditagih lewat QRIS setelah disetujui.
+  if (computeAmounts(v, v.payment_mode).dueNow > MAX_ONLINE_CHARGE) {
+    ctx.addIssue({
+      code: "custom",
+      path: [v.payment_mode === "FULL" || v.deposit_type === null || v.deposit_value === null ? "price" : "deposit_value"],
+      message: MAX_ONLINE_MESSAGE,
+    });
   }
   if (v.payment_mode === "FULL" || v.payment_mode === "ON_SITE") {
     return { ...v, deposit_type: null, deposit_value: null };
