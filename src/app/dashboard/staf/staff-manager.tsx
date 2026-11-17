@@ -57,7 +57,7 @@ function hoursSummary(hours: Hours[]): string {
   if (hours.length === 0) return "Ikut jam kerja usaha";
   return [...hours]
     .sort((a, b) => a.day_of_week - b.day_of_week)
-    .map((h) => `${DAYS[h.day_of_week - 1].label.slice(0, 3)} ${h.start_time}–${h.end_time}`)
+    .map((h) => `${DAYS[h.day_of_week - 1].label.slice(0, 3)} ${h.start_time} sampai ${h.end_time}`)
     .join(", ");
 }
 
@@ -288,7 +288,7 @@ function HoursDialog({ member, onClose }: { member: StaffRow; onClose: () => voi
                   onChange={(event) => patch(row.day, { start: event.target.value })}
                   aria-label={`Jam mulai ${DAYS[row.day - 1].label}`}
                 />
-                <span aria-hidden>–</span>
+                <span aria-hidden>sampai</span>
                 <Input
                   type="time"
                   value={row.end}

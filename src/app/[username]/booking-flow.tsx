@@ -284,9 +284,9 @@ export function BookingFlow({
   const [tableMode, setTableMode] = useState<TablePickerMode>("auto");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [tablesData, setTablesData] = useState<TablePickerData | null>(null);
-  const [tablesState, setTablesState] = useState<
-    "loading" | "ready" | "error"
-  >("loading");
+  const [tablesState, setTablesState] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [customerNote, setCustomerNote] = useState("");
 
   const [customerName, setCustomerName] = useState("");
@@ -313,6 +313,7 @@ export function BookingFlow({
     ? isSeatService(selectedService, restaurant.tableMode)
     : false;
   const hasTableStep = seat && restaurant.tableMode === "TABLE";
+  const freeSeat = seat && Number(selectedService?.price ?? 0) === 0;
   const needNearest =
     step === 2 && staff.length > 0 && !seat && selectedServiceId !== null;
   const nearestLoaded =
@@ -351,7 +352,9 @@ export function BookingFlow({
   const openDays = new Set(
     dayCandidates.length === 0
       ? merchantDays
-      : dayCandidates.flatMap((m) => (m.days.length > 0 ? m.days : merchantDays)),
+      : dayCandidates.flatMap((m) =>
+          m.days.length > 0 ? m.days : merchantDays,
+        ),
   );
   const strip = buildDateStrip(openDays, todayISO);
   const serviceNames = useMemo(
@@ -385,7 +388,13 @@ export function BookingFlow({
     function onPopState() {
       const param = new URLSearchParams(window.location.search).get("langkah");
       const wanted: Step =
-        param === "data" ? 4 : param === "meja" ? 3 : param === "jadwal" ? 2 : 1;
+        param === "data"
+          ? 4
+          : param === "meja"
+            ? 3
+            : param === "jadwal"
+              ? 2
+              : 1;
       const { hasService, hasSlot } = selectionRef.current;
       const max: Step = hasService && hasSlot ? 4 : hasService ? 2 : 1;
       const next = (wanted > max ? max : wanted) as Step;
@@ -636,7 +645,9 @@ export function BookingFlow({
       setSubmitting(false);
       // Reservasi: kapasitas atau meja berubah selagi mengisi, buka langkah yang relevan.
       const back = seat
-        ? bookingErrorStep(error instanceof CheckoutError ? error.code : undefined)
+        ? bookingErrorStep(
+            error instanceof CheckoutError ? error.code : undefined,
+          )
         : null;
       if (back === "meja" && hasTableStep) {
         setSelectedTableId(null);
@@ -644,7 +655,13 @@ export function BookingFlow({
         goForward(3);
       } else if (back === "jadwal" && selectedDate) {
         setSelectedSlot(null);
-        void loadSlots(selectedServiceId, selectedDate, null, partySize, areaId);
+        void loadSlots(
+          selectedServiceId,
+          selectedDate,
+          null,
+          partySize,
+          areaId,
+        );
         goForward(2);
       }
     }
@@ -691,9 +708,10 @@ export function BookingFlow({
       (t) => t.id === selectedTableId && t.status === "FREE",
     ) ?? null;
 
-  const staffName = !seat && selectedStaffId
-    ? staff.find((m) => m.id === selectedStaffId)?.name
-    : null;
+  const staffName =
+    !seat && selectedStaffId
+      ? staff.find((m) => m.id === selectedStaffId)?.name
+      : null;
 
   // Di permukaan solid: teks tidak boleh langsung di atas lapisan gerak.
   const langkahHead = (
@@ -703,9 +721,7 @@ export function BookingFlow({
     >
       {seat && step !== 1 ? (
         <BookingStepIndicator
-          current={
-            hasTableStep ? step - 1 : step === 4 ? 2 : 1
-          }
+          current={hasTableStep ? step - 1 : step === 4 ? 2 : 1}
           labels={
             hasTableStep
               ? ["Jadwal", "Meja", "Data diri"]
@@ -713,9 +729,7 @@ export function BookingFlow({
           }
         />
       ) : (
-        <BookingStepIndicator
-          current={step === 4 ? 3 : step}
-        />
+        <BookingStepIndicator current={step === 4 ? 3 : step} />
       )}
       <h2
         id="langkah-judul"
@@ -855,9 +869,11 @@ export function BookingFlow({
               <p className="truncate text-sm font-medium">
                 {selectedService.name}
               </p>
-              <p className="text-muted-foreground text-xs">
-                {formatRupiah(selectedService.price)}
-              </p>
+              {freeSeat ? null : (
+                <p className="text-muted-foreground text-xs">
+                  {formatRupiah(selectedService.price)}
+                </p>
+              )}
             </div>
             {services.length > 1 ? (
               <Button
@@ -1005,7 +1021,9 @@ export function BookingFlow({
               if (m === "auto") setSelectedTableId(null);
             }}
             onSelect={setSelectedTableId}
-            onRetry={() => void loadTables(selectedSlot.startUtc, partySize ?? 1)}
+            onRetry={() =>
+              void loadTables(selectedSlot.startUtc, partySize ?? 1)
+            }
           />
           <StickyActionBar
             summary={
@@ -1036,18 +1054,26 @@ export function BookingFlow({
           className="bg-card border-border flex flex-col gap-6 border p-3"
           style={{ borderRadius: "var(--radius)" }}
         >
-          <VoucherPicker
-            vouchers={vouchers}
-            service={selectedService}
-            serviceNames={serviceNames}
-            merchantName={merchantName}
-            applied={appliedVoucher}
-            onApply={handleApplyVoucher}
-            onRemove={() => setAppliedVoucher(null)}
-            checkCode={(code) =>
-              checkVoucherCode(username, selectedService.id, code)
-            }
-          />
+          {/* Reservasi gratis (ResData): tanpa voucher dan tanpa ringkasan harga. */}
+          {freeSeat ? null : (
+            <VoucherPicker
+              vouchers={vouchers}
+              service={selectedService}
+              serviceNames={serviceNames}
+              merchantName={merchantName}
+              applied={appliedVoucher}
+              onApply={handleApplyVoucher}
+              onRemove={() => setAppliedVoucher(null)}
+              checkCode={(code) =>
+                checkVoucherCode(username, selectedService.id, code)
+              }
+            />
+          )}
+          {freeSeat ? (
+            <p className="text-sm font-medium">
+              {dateLabel(selectedDate)}, {selectedSlot.label} WIB
+            </p>
+          ) : null}
           {partySize !== null ? (
             <div className="flex items-center justify-between gap-3 text-sm">
               <p className="font-medium">
@@ -1066,37 +1092,39 @@ export function BookingFlow({
               </Button>
             </div>
           ) : null}
-          <BookingSummary
-            rows={[
-              { label: "Layanan", value: selectedService.name },
-              ...(staffName ? [{ label: "Dengan", value: staffName }] : []),
-              { label: "Tanggal", value: dateLabel(selectedDate) },
-              { label: "Jam", value: selectedSlot.label },
-              ...(payment.discount > 0 ||
-              payment.dueNow !== Number(selectedService.price)
-                ? [
-                    {
-                      label: "Harga layanan",
-                      value: formatRupiah(Number(selectedService.price)),
-                    },
-                  ]
-                : []),
-              ...(payment.discount > 0 && appliedVoucher
-                ? [
-                    {
-                      label: `Voucher ${appliedVoucher.code}`,
-                      value: `\u2212${formatRupiah(payment.discount)}`,
-                    },
-                  ]
-                : []),
-            ]}
-            total={formatRupiah(payment.dueNow)}
-            onSite={
-              payment.dueOnSite > 0
-                ? formatRupiah(payment.dueOnSite)
-                : undefined
-            }
-          />
+          {freeSeat ? null : (
+            <BookingSummary
+              rows={[
+                { label: "Layanan", value: selectedService.name },
+                ...(staffName ? [{ label: "Dengan", value: staffName }] : []),
+                { label: "Tanggal", value: dateLabel(selectedDate) },
+                { label: "Jam", value: selectedSlot.label },
+                ...(payment.discount > 0 ||
+                payment.dueNow !== Number(selectedService.price)
+                  ? [
+                      {
+                        label: "Harga layanan",
+                        value: formatRupiah(Number(selectedService.price)),
+                      },
+                    ]
+                  : []),
+                ...(payment.discount > 0 && appliedVoucher
+                  ? [
+                      {
+                        label: `Voucher ${appliedVoucher.code}`,
+                        value: `\u2212${formatRupiah(payment.discount)}`,
+                      },
+                    ]
+                  : []),
+              ]}
+              total={formatRupiah(payment.dueNow)}
+              onSite={
+                payment.dueOnSite > 0
+                  ? formatRupiah(payment.dueOnSite)
+                  : undefined
+              }
+            />
+          )}
 
           <Field data-invalid={Boolean(formErrors.customer_name)}>
             <FieldLabel htmlFor="customer_name">Nama lengkap</FieldLabel>
@@ -1147,7 +1175,9 @@ export function BookingFlow({
 
           {selectedService.party_max != null ? (
             <Field>
-              <FieldLabel htmlFor="customer_note">Catatan (opsional)</FieldLabel>
+              <FieldLabel htmlFor="customer_note">
+                Catatan (opsional)
+              </FieldLabel>
               <Textarea
                 id="customer_note"
                 name="customer_note"
@@ -1178,7 +1208,9 @@ export function BookingFlow({
             {!payment.online && !payment.approval ? (
               <p>Tidak perlu bayar sekarang.</p>
             ) : null}
-            {seat && payment.dueNow === 0 && holdSentence(restaurant.holdMinutes) ? (
+            {seat &&
+            payment.dueNow === 0 &&
+            holdSentence(restaurant.holdMinutes) ? (
               <p>{holdSentence(restaurant.holdMinutes)}</p>
             ) : null}
             {payment.dueOnSite > 0 ? (

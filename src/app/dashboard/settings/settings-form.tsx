@@ -130,7 +130,7 @@ export function SettingsForm({
           <FieldError>{state.fieldErrors.username}</FieldError>
         ) : (
           <FieldDescription>
-            3–30 karakter. Huruf kecil, angka, dan tanda hubung.
+            3 sampai 30 karakter. Huruf kecil, angka, dan tanda hubung.
           </FieldDescription>
         )}
       </Field>

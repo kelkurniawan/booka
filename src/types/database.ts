@@ -1034,7 +1034,8 @@ export type Database = {
           p_username: string;
           p_service_id: string;
           p_party_size: number;
-          p_area_id?: string | null;
+          /** Tanpa default di SQL: selalu kirim, null bila tidak memilih area. */
+          p_area_id: string | null;
           p_starts: string[];
         };
         Returns: { start_datetime: string; available: boolean; tables_left: number | null }[];

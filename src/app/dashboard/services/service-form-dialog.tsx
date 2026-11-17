@@ -363,7 +363,7 @@ function ServiceForm({
             {state.fieldErrors?.duration_minutes ? (
               <FieldError>{state.fieldErrors.duration_minutes}</FieldError>
             ) : (
-              <FieldDescription>5–480 menit.</FieldDescription>
+              <FieldDescription>5 sampai 480 menit.</FieldDescription>
             )}
           </Field>
         </div>

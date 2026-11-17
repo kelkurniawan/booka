@@ -41,7 +41,7 @@ type PeriodKey = keyof typeof PERIODS;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function percent(value: number | null): string {
-  return value === null ? "–" : `${Math.round(value * 100)}%`;
+  return value === null ? "-" : `${Math.round(value * 100)}%`;
 }
 
 export default async function AnalyticsPage({

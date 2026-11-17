@@ -37,6 +37,9 @@ const RESCHEDULE_ERRORS: Record<string, string> = {
   BK003: "Staf untuk booking ini sudah tidak aktif.",
   "23P01": "Jam itu sudah terisi. Pilih jam lain.",
   P0006: "Jam itu sudah lewat. Pilih jam lain.",
+  BK060: "Kursi atau meja di jam itu sudah penuh. Pilih jam lain.",
+  BK061: "Meja itu sudah terisi di jam baru. Pilih jam lain.",
+  BK063: "Jumlah tamu di luar batas layanan ini.",
 };
 
 /** Pesan jadwal ulang oleh merchant; kode lain jatuh ke pesan umum. */
