@@ -125,6 +125,34 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Voucher ini dipakai banner. Ganti target banner dulu sebelum menjadikannya rahasia.",
   },
+  // create_booking / move_booking_slot: kapasitas kursi atau meja habis untuk
+  // jumlah tamu itu di jam itu (Keputusan 6-8 F8).
+  BK060: {
+    status: 409,
+    message: "Tempat untuk jumlah tamu ini sudah penuh di jam tersebut, silakan pilih jam lain.",
+  },
+  // create_booking: meja pilihan pelanggan tidak tersedia atau tidak cocok.
+  BK061: {
+    status: 409,
+    message:
+      "Meja yang dipilih sudah terisi atau tidak cocok untuk jumlah tamu ini. Pilih meja lain atau Pilihkan untuk saya.",
+  },
+  // save_dining_layout: meja atau area masih punya reservasi mendatang.
+  BK062: {
+    status: 409,
+    message:
+      "Meja atau area ini masih punya reservasi mendatang. Pindahkan reservasinya dulu, lalu hapus.",
+  },
+  // create_booking: jumlah tamu di luar rentang layanan.
+  BK063: {
+    status: 422,
+    message: "Jumlah tamu di luar batas layanan ini.",
+  },
+  // save_dining_layout: denah melanggar batas atau aturan (nama ganda, gabungan tidak cocok).
+  BK064: {
+    status: 422,
+    message: "Denah meja tidak valid. Periksa jumlah, nama, dan gabungan meja, lalu coba lagi.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {

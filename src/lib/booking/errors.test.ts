@@ -90,3 +90,11 @@ test("BK057-BK058 (target banner) -> 409 dan pesan sesuai", () => {
     "Voucher ini dipakai banner. Ganti target banner dulu sebelum menjadikannya rahasia.",
   );
 });
+
+test("kode kapasitas restoran (BK060, BK061, BK062, BK063, BK064) terpetakan", () => {
+  assert.equal(mapBookingError("BK060").status, 409);
+  assert.equal(mapBookingError("BK061").status, 409);
+  assert.equal(mapBookingError("BK062").status, 409);
+  assert.equal(mapBookingError("BK063").status, 422);
+  assert.equal(mapBookingError("BK064").status, 422);
+});
