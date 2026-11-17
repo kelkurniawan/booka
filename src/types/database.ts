@@ -154,6 +154,34 @@ export type PublicMerchant = Pick<
   "id" | "username" | "full_name" | "bio" | "avatar_url" | "subscription_tier"
 >;
 
+/** Langkah checklist yang tidak bisa dibuktikan data; ditandai manual. */
+export type ManualStepKey = "PAGE" | "SHARE";
+
+export type GuidePageKey =
+  | "today"
+  | "bookings"
+  | "analytics"
+  | "services"
+  | "availability"
+  | "floor_plan"
+  | "staff"
+  | "payments"
+  | "appearance"
+  | "promo"
+  | "domain"
+  | "billing"
+  | "settings";
+
+/** Progres panduan. Klien hanya membaca; tulis lewat save_onboarding_progress. */
+export type MerchantOnboardingProgress = {
+  merchant_id: string;
+  steps_completed: ManualStepKey[];
+  tours_seen: GuidePageKey[];
+  checklist_dismissed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 /**
  * Tema halaman publik. Barisnya OPSIONAL -- merchant tanpa baris memakai tema
  * default. `font_pair` dan `corner_style` null berarti "ikut preset".
@@ -601,6 +629,12 @@ export type Database = {
         Update: Partial<Omit<MerchantTheme, "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      merchant_onboarding_progress: {
+        Row: MerchantOnboardingProgress;
+        Insert: never;
+        Update: never;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       merchant_profiles: {
         Row: MerchantProfile;
         Insert: Partial<Omit<MerchantProfile, "merchant_id" | Timestamps>> & {
@@ -953,6 +987,30 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Fakta kesiapan merchant + progres panduan. Hanya authenticated. */
+      onboarding_state: {
+        Args: Record<string, never>;
+        Returns: {
+          has_service: boolean;
+          has_hours: boolean;
+          has_active_payment: boolean;
+          needs_online_payment: boolean;
+          page_customized: boolean;
+          has_online_booking: boolean;
+          steps_completed: ManualStepKey[];
+          tours_seen: GuidePageKey[];
+          checklist_dismissed_at: string | null;
+        }[];
+      };
+      /** Simpan progres panduan; argumen null tidak mengubah kolomnya. */
+      save_onboarding_progress: {
+        Args: {
+          p_step?: ManualStepKey | null;
+          p_tour?: GuidePageKey | null;
+          p_dismissed?: boolean | null;
+        };
+        Returns: undefined;
+      };
       /** Voucher publik yang hidup; anon boleh memanggil. */
       public_vouchers: {
         Args: { p_merchant_id: string };

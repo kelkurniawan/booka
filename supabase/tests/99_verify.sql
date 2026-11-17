@@ -5678,3 +5678,253 @@ select case when to_regprocedure('public.save_dining_layout(jsonb, jsonb)') is n
               or not has_function_privilege('authenticated', to_regprocedure('public.save_dining_layout(jsonb, jsonb)'), 'EXECUTE')
             then 'FAIL t64d hak save_dining_layout salah'
             else 'OK   t64d save_dining_layout hanya authenticated' end as t64d;
+
+-- ===========================================================================
+-- 65. Progres panduan: skema dan hak akses (20261121000100)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('65656565-0000-0000-0000-000000000001', 'guide65-a@example.com', '{}'::jsonb),
+  ('65656565-0000-0000-0000-000000000002', 'guide65-b@example.com', '{}'::jsonb),
+  ('65656565-0000-0000-0000-000000000003', 'guide65-c@example.com', '{}'::jsonb),
+  ('65656565-0000-0000-0000-000000000004', 'guide65-d@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO'
+  where id in ('65656565-0000-0000-0000-000000000001', '65656565-0000-0000-0000-000000000002');
+update public.merchants set subscription_tier = 'STUDIO'
+  where id = '65656565-0000-0000-0000-000000000003';
+
+select case when not has_table_privilege('anon', 'public.merchant_onboarding_progress', 'SELECT')
+             and not has_table_privilege('anon', 'public.merchant_onboarding_progress', 'INSERT')
+             and not has_table_privilege('anon', 'public.merchant_onboarding_progress', 'UPDATE')
+             and not has_table_privilege('anon', 'public.merchant_onboarding_progress', 'DELETE')
+            then 'OK   t65a anon tanpa hak apa pun ke merchant_onboarding_progress'
+            else 'FAIL t65a anon punya hak ke merchant_onboarding_progress' end as t65a;
+
+select case when has_any_column_privilege('authenticated', 'public.merchant_onboarding_progress', 'SELECT')
+             and not has_table_privilege('authenticated', 'public.merchant_onboarding_progress', 'INSERT')
+             and not has_table_privilege('authenticated', 'public.merchant_onboarding_progress', 'UPDATE')
+             and not has_table_privilege('authenticated', 'public.merchant_onboarding_progress', 'DELETE')
+            then 'OK   t65b authenticated hanya boleh SELECT'
+            else 'FAIL t65b hak authenticated salah' end as t65b;
+
+select case when to_regprocedure('public.save_onboarding_progress(text, text, boolean)') is null
+              or to_regprocedure('public.onboarding_state()') is null
+            then 'FAIL t65c fungsi tidak ada'
+            when has_function_privilege('anon', 'public.save_onboarding_progress(text, text, boolean)', 'EXECUTE')
+              or has_function_privilege('anon', 'public.onboarding_state()', 'EXECUTE')
+              or not has_function_privilege('authenticated', 'public.save_onboarding_progress(text, text, boolean)', 'EXECUTE')
+              or not has_function_privilege('authenticated', 'public.onboarding_state()', 'EXECUTE')
+            then 'FAIL t65c hak EXECUTE salah'
+            else 'OK   t65c kedua fungsi hanya authenticated' end as t65c;
+
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_onboarding_progress (merchant_id, steps_completed)
+     values ('65656565-0000-0000-0000-000000000004', '{BOOKING}')$q$,
+  '23514', 't65d steps_completed di luar PAGE/SHARE');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_onboarding_progress (merchant_id, tours_seen)
+     values ('65656565-0000-0000-0000-000000000004', '{beranda}')$q$,
+  '23514', 't65d tours_seen di luar 13 kunci');
+
+-- ===========================================================================
+-- 66. save_onboarding_progress
+-- ===========================================================================
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select public.save_onboarding_progress(p_step => 'SHARE');
+select public.save_onboarding_progress(p_step => 'SHARE');
+commit;
+select case when count(*) = 1 and min(steps_completed::text) = '{SHARE}'
+            then 'OK   t66a SHARE dua kali: satu baris, tanpa duplikat'
+            else 'FAIL t66a -> ' || count(*) || ' baris, ' || coalesce(min(steps_completed::text), 'NULL') end as t66a
+from public.merchant_onboarding_progress where merchant_id = '65656565-0000-0000-0000-000000000001';
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select public.save_onboarding_progress(p_tour => 'today');
+select public.save_onboarding_progress(p_tour => 'services');
+select public.save_onboarding_progress(p_tour => 'today');
+commit;
+select case when tours_seen = '{today,services}' and steps_completed = '{SHARE}'
+            then 'OK   t66b tour ditambah sekali, langkah tetap'
+            else 'FAIL t66b -> ' || tours_seen::text || ' / ' || steps_completed::text end as t66b
+from public.merchant_onboarding_progress where merchant_id = '65656565-0000-0000-0000-000000000001';
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select public.save_onboarding_progress(p_dismissed => true);
+commit;
+create temp table t66c_awal as
+  select checklist_dismissed_at as ts from public.merchant_onboarding_progress
+  where merchant_id = '65656565-0000-0000-0000-000000000001';
+select pg_sleep(0.05);
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select public.save_onboarding_progress(p_dismissed => true);
+commit;
+select case when p.checklist_dismissed_at is not null and p.checklist_dismissed_at = a.ts
+            then 'OK   t66c dismissed terisi dan tidak berubah saat diulang'
+            else 'FAIL t66c dismissed -> ' || coalesce(p.checklist_dismissed_at::text, 'NULL') end as t66c1
+from public.merchant_onboarding_progress p, t66c_awal a
+where p.merchant_id = '65656565-0000-0000-0000-000000000001';
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select public.save_onboarding_progress(p_dismissed => false);
+commit;
+select case when checklist_dismissed_at is null and tours_seen = '{today,services}'
+            then 'OK   t66c false mengosongkan dismissed, kolom lain utuh'
+            else 'FAIL t66c false -> ' || coalesce(checklist_dismissed_at::text, 'NULL') end as t66c2
+from public.merchant_onboarding_progress where merchant_id = '65656565-0000-0000-0000-000000000001';
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code($q$select public.save_onboarding_progress(p_step => 'SERVICE')$q$,
+  '23514', 't66d langkah di luar PAGE/SHARE');
+select pg_temp.expect_fail_code($q$select public.save_onboarding_progress(p_tour => 'beranda')$q$,
+  '23514', 't66d kunci tur tidak dikenal');
+commit;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '';
+select pg_temp.expect_fail_code($q$select public.save_onboarding_progress(p_tour => 'today')$q$,
+  '42501', 't66e tanpa sesi');
+commit;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000002';
+select case when count(*) = 0 then 'OK   t66f B tidak melihat progres A'
+            else 'FAIL t66f B melihat ' || count(*) || ' baris' end as t66f1
+from public.merchant_onboarding_progress;
+select public.save_onboarding_progress(p_tour => 'billing');
+commit;
+select case when (select tours_seen from public.merchant_onboarding_progress
+                  where merchant_id = '65656565-0000-0000-0000-000000000001') = '{today,services}'
+             and (select tours_seen from public.merchant_onboarding_progress
+                  where merchant_id = '65656565-0000-0000-0000-000000000002') = '{billing}'
+            then 'OK   t66f tulis B hanya mengubah baris B'
+            else 'FAIL t66f tulis B memengaruhi A' end as t66f2;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '65656565-0000-0000-0000-000000000001';
+select case when count(*) = 1 then 'OK   t66f A melihat barisnya sendiri'
+            else 'FAIL t66f A melihat ' || count(*) end as t66f3
+from public.merchant_onboarding_progress;
+commit;
+
+-- ===========================================================================
+-- 67. onboarding_state: fakta kesiapan
+-- ===========================================================================
+
+-- Ringkas: has_service has_hours has_active_payment needs_online page_customized has_online_booking.
+create or replace function pg_temp.facts67(p_merchant integer) returns text language plpgsql as $$
+declare r record;
+begin
+  perform set_config('request.jwt.claim.sub',
+    '65656565-0000-0000-0000-' || lpad(p_merchant::text, 12, '0'), true);
+  select * into r from public.onboarding_state();
+  return r.has_service::int::text || r.has_hours::int::text || r.has_active_payment::int::text
+    || r.needs_online_payment::int::text || r.page_customized::int::text || r.has_online_booking::int::text;
+end $$;
+
+create or replace function pg_temp.chk67(p_label text, p_merchant integer, p_expect text) returns text
+language sql as $$
+  select case when pg_temp.facts67(p_merchant) = p_expect then 'OK   ' || p_label
+              else 'FAIL ' || p_label || ' -> ' || pg_temp.facts67(p_merchant) || ' (harap ' || p_expect || ')' end;
+$$;
+
+-- t67a merchant kosong.
+begin;
+set local role authenticated;
+select pg_temp.chk67('t67a merchant kosong: semua false', 4, '000000');
+select case when s.steps_completed = '{}' and s.tours_seen = '{}' and s.checklist_dismissed_at is null
+            then 'OK   t67a progres kosong' else 'FAIL t67a progres tidak kosong' end as t67a2
+from public.onboarding_state() s;
+commit;
+
+-- t67b jam buka: availability (A) atau hanya staff_availability (C).
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+  values ('65656565-0000-0000-0000-000000000001', 1, '09:00', '17:00');
+insert into public.staff (id, merchant_id, name, sort_order)
+  values ('65656565-57af-0000-0000-000000000003', '65656565-0000-0000-0000-000000000003', 'Ayu', 0);
+insert into public.staff_availability (staff_id, merchant_id, day_of_week, start_time, end_time)
+  values ('65656565-57af-0000-0000-000000000003', '65656565-0000-0000-0000-000000000003', 1, '09:00', '17:00');
+begin;
+set local role authenticated;
+select pg_temp.chk67('t67b availability: has_hours', 1, '010000');
+select pg_temp.chk67('t67b hanya staff_availability: has_hours', 3, '010000');
+commit;
+
+-- t67c layanan: ON_SITE, gratis, dan nonaktif tidak butuh gateway; REQUEST butuh.
+insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, is_active)
+  values ('65656565-0000-0000-0000-000000000001', 'Di tempat', 100000, 30, 'ON_SITE', true);
+begin; set local role authenticated;
+select pg_temp.chk67('t67c ON_SITE aktif: has_service, tanpa gateway', 1, '110000'); commit;
+insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, is_active)
+  values ('65656565-0000-0000-0000-000000000001', 'Gratis', 0, 30, 'FULL', true);
+begin; set local role authenticated;
+select pg_temp.chk67('t67c FULL harga 0 tetap tanpa gateway', 1, '110000'); commit;
+insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, is_active)
+  values ('65656565-0000-0000-0000-000000000001', 'Nonaktif', 100000, 30, 'FULL', false);
+begin; set local role authenticated;
+select pg_temp.chk67('t67c FULL nonaktif tidak dihitung', 1, '110000'); commit;
+insert into public.services (merchant_id, name, price, duration_minutes, payment_mode, is_active)
+  values ('65656565-0000-0000-0000-000000000001', 'Permintaan', 100000, 30, 'REQUEST', true);
+begin; set local role authenticated;
+select pg_temp.chk67('t67c REQUEST aktif butuh gateway', 1, '110100'); commit;
+
+-- t67d koneksi pembayaran: EXPIRED tidak dihitung, ACTIVE dihitung.
+insert into public.payment_connections (merchant_id, provider, status)
+  values ('65656565-0000-0000-0000-000000000001', 'MIDTRANS', 'EXPIRED');
+begin; set local role authenticated;
+select pg_temp.chk67('t67d koneksi EXPIRED: has_active_payment false', 1, '110100'); commit;
+update public.payment_connections set status = 'ACTIVE'
+  where merchant_id = '65656565-0000-0000-0000-000000000001';
+begin; set local role authenticated;
+select pg_temp.chk67('t67d koneksi ACTIVE: has_active_payment true', 1, '111100'); commit;
+
+-- t67e tampilan: baris merchant_themes (A) atau avatar_url (D).
+insert into public.merchant_themes (merchant_id) values ('65656565-0000-0000-0000-000000000001');
+update public.merchants set avatar_url = 'https://lh3.googleusercontent.com/guide65'
+  where id = '65656565-0000-0000-0000-000000000004';
+begin; set local role authenticated;
+select pg_temp.chk67('t67e merchant_themes: page_customized', 1, '111110');
+select pg_temp.chk67('t67e avatar_url: page_customized', 4, '000010');
+commit;
+
+-- t67f booking: MANUAL tidak dihitung, ONLINE (status apa pun) dihitung.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, source)
+values ('65656565-0000-0000-0000-000000000001', 'Layanan 67', 100000, 30, now() + interval '2 days',
+  now() + interval '2 days 30 minutes', 'Pelanggan 67', '+6281365000001', 'CONFIRMED',
+  now() + interval '15 minutes', 0, 100000, 'ON_SITE', 'MANUAL');
+begin; set local role authenticated;
+select pg_temp.chk67('t67f booking MANUAL saja: has_online_booking false', 1, '111110'); commit;
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, source)
+values ('65656565-0000-0000-0000-000000000001', 'Layanan 67', 100000, 30, now() + interval '3 days',
+  now() + interval '3 days 30 minutes', 'Pelanggan 67', '+6281365000002', 'CANCELLED',
+  now() + interval '15 minutes', 0, 100000, 'ON_SITE', 'ONLINE');
+begin; set local role authenticated;
+select pg_temp.chk67('t67f booking ONLINE CANCELLED: has_online_booking true', 1, '111111'); commit;
+
+-- t67g B mendapat fakta B, bukan A.
+begin; set local role authenticated;
+select pg_temp.chk67('t67g B tidak melihat fakta A', 2, '000000'); commit;
+
+-- t67h tanpa sesi: 0 baris.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '';
+select case when count(*) = 0 then 'OK   t67h tanpa sesi: 0 baris'
+            else 'FAIL t67h tanpa sesi: ' || count(*) || ' baris' end as t67h
+from public.onboarding_state();
+commit;
