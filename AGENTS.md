@@ -63,6 +63,12 @@ F4 selesai: pelanggan bisa ubah jadwal, batal, hubungi merchant, dan atur
 pengingat dari `/pesanan/[token]` (rute token di `src/app/api/pesanan/[token]/*`),
 pengingat H-1 dan pagi hari H lewat WhatsApp, email, dan web push (VAPID,
 `public/sw.js`), kebijakan merchant di Pengaturan (DECISIONS #33).
+F5 selesai: voucher publik dan rahasia (`vouchers`, divalidasi `evaluate_voucher`
+di dalam `create_booking`, DP dari harga setelah diskon, anon hanya lewat
+`public_vouchers`, cek kode lewat `/api/vouchers/check` dengan rate limit) dan
+banner promosi (`merchant_banners`, maksimal 3 tayang ditegakkan trigger, gambar
+di `{merchant_id}/banner/`), keduanya Pro dan Studio, editor di
+`/dashboard/promosi` (DECISIONS #34).
 
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link

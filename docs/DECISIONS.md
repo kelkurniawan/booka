@@ -532,3 +532,19 @@ Sidebar desktop memakai baris shadcn `h-8` karena dipakai dengan pointer; target
 ## 33. Keputusan F4: pengingat, push, dan lisensi web-push
 
 Pengingat hanya punya dua offset, H-1 dan pagi hari jadwal, karena cron Vercel Hobby jalan sekali sehari pukul 08.00 WIB. Tampilan ke pelanggan memangkas offset ke yang masih terjangkau (`reachableOffsets`): H-1 hanya bila 08.00 WIB hari sebelumnya belum lewat, hari H hanya bila 08.00 WIB hari itu belum lewat dan booking mulai paling cepat 08.30. Booking yang sudah selesai tidak menampilkan pengingat. Cron memproses maksimal 1000 booking per offset per jalan dan mencatat peringatan bila batas tercapai. Payload web push membawa path saja, bukan URL absolut, karena `sw.js` hanya membuka origin sendiri. Pembatalan booking `REQUESTED` oleh pelanggan tidak menampilkan baris kebijakan selain "Belum ada pembayaran." (Keputusan 4 rencana F4). Pustaka `web-push` berlisensi MPL-2.0 (copyleft per berkas): dipakai apa adanya sebagai dependensi npm tanpa memodifikasi sumbernya, sehingga tidak ada kewajiban membuka kode Marky.
+
+## 34. Promosi: banner dan voucher
+
+Voucher dan banner hanya untuk Pro dan Studio. Trigger `enforce_promo_tier` menjaga tulis, pembaca menjaga tampilan: merchant yang turun ke Starter tetap menyimpan barisnya, tetapi banner tidak tampil, `public_vouchers` kosong, dan kode apa pun ditolak sebagai tidak ditemukan (`BK050`). Polanya sama dengan tema berbayar dan `resolveTheme()`.
+
+Tidak ada tabel `voucher_redemptions`. Booking adalah buku besarnya (`voucher_id`, salinan `voucher_code`, `discount_amount`), dan pemakaian dihitung di dalam `create_booking` setelah advisory lock per merchant, sehingga dua pelanggan yang berebut kuota terakhir terserialisasi. Karena hitungannya turunan, booking yang dibatalkan atau kedaluwarsa otomatis membebaskan pemakaian tanpa trigger pelepas; `PAID` dan `CONFIRMED` tetap dihitung selamanya.
+
+Rumus diskon: persen dibulatkan setengah ke atas dan dibatasi `max_discount`, nominal apa adanya, keduanya dibatasi harga. Bila harga awal minimal Rp1.500 dan harga akhir jatuh di Rp1 sampai Rp1.499, diskon dikurangi sampai harga akhir tepat Rp1.500 (minimum QRIS). Harga akhir Rp0 boleh dan menjadi `CONFIRMED`. DP dan semua aturan F2 memakai harga setelah diskon.
+
+Kode rahasia hanya bisa dipakai dengan kode persis, lewat `POST /api/vouchers/check` (10 percobaan per hash IP dan merchant per 15 menit, gagal tertutup dengan 503) atau `create_booking`. Route cek tidak menerima nomor WhatsApp supaya tidak bisa dipakai menebak apakah suatu nomor pernah jadi pelanggan.
+
+Batas 3 banner tayang bersamaan ditegakkan trigger `enforce_banner_live_limit` di database, bukan hanya di form. Draf dan banner yang sudah berakhir tidak dihitung, jadi banner terjadwal berikutnya tetap bisa disimpan.
+
+Banner di halaman publik tidak berputar otomatis: baris gulir horizontal dengan `scroll-snap`, banner berikutnya mengintip. Tanpa timer, tanpa tombol jeda, tanpa urusan reduced motion.
+
+Anon hanya punya hak kolom tertentu di `merchant_banners` (tanpa `published` dan timestamp). Query publik karena itu tidak boleh memakai kolom di luar daftar itu, termasuk di `order()`: urutan pemecah seri memakai `id`, bukan `created_at`.
