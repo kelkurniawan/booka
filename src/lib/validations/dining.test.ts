@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { capacitySettingsSchema } from "./dining";
+import { capacitySettingsSchema, diningLayoutSchema } from "./dining";
 
 const BASE = { tableMode: "NONE", seatsPerSlot: null, tableHoldMinutes: 15, autoJoinTables: false } as const;
 
@@ -20,4 +20,52 @@ test("waktu tahan di luar 0 sampai 120 ditolak", () => {
   assert.equal(capacitySettingsSchema.safeParse({ ...BASE, tableHoldMinutes: 121 }).success, false);
   assert.equal(capacitySettingsSchema.safeParse({ ...BASE, tableHoldMinutes: -1 }).success, false);
   assert.equal(capacitySettingsSchema.safeParse({ ...BASE, tableHoldMinutes: 0 }).success, true);
+});
+
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+const area = (n: number, name: string) => ({ id: id(n), name, sort_order: n });
+const table = (n: number, areaN: number, name: string, over: Record<string, unknown> = {}) => ({
+  id: id(100 + n),
+  area_id: id(areaN),
+  name,
+  min_seats: 2,
+  max_seats: 4,
+  shape: "RECT" as const,
+  grid_x: n * 4,
+  grid_y: 0,
+  grid_w: 3,
+  grid_h: 3,
+  note: null,
+  bookable_online: true,
+  joinable_with: [] as string[],
+  sort_order: n,
+  ...over,
+});
+const LAYOUT = {
+  areas: [area(1, "Dalam"), area(2, "Teras")],
+  tables: [table(1, 1, "D1"), table(2, 1, "D2"), table(3, 2, "T1"), table(4, 2, "T2")],
+};
+
+test("denah contoh lolos", () => {
+  assert.equal(diningLayoutSchema.safeParse(LAYOUT).success, true);
+});
+
+test("nama meja ganda tanpa beda huruf besar ditolak", () => {
+  const tables = [table(1, 1, "d1"), table(2, 1, "D1")];
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables }).success, false);
+});
+
+test("gabungan ke meja area lain ditolak", () => {
+  const tables = [table(1, 1, "D1", { joinable_with: [id(103)] }), table(3, 2, "T1")];
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables }).success, false);
+});
+
+test("meja keluar kanvas ditolak", () => {
+  const tables = [table(1, 1, "D1", { grid_x: 22, grid_w: 3 })];
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables }).success, false);
+});
+
+test("101 meja ditolak", () => {
+  const tables = Array.from({ length: 101 }, (_, i) => table(i + 1, 1, `M${i}`));
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables }).success, false);
 });
