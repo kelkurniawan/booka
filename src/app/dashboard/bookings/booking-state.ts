@@ -6,6 +6,7 @@
  * catatan yang sama di service-state.ts).
  */
 
+import { type BookingTab, tabParam } from "@/lib/booking/dashboard";
 import { REQUEST_EXPIRY_REASON } from "@/lib/booking/payment-mode";
 import { ROUTES } from "@/lib/routes";
 import type { Booking, BookingStatus } from "@/types/database";
@@ -37,7 +38,7 @@ export type BookingListItem = Omit<
  * compiler.
  */
 export const BOOKING_LIST_COLUMNS =
-  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at";
+  "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, cancelled_at, cancel_reason, expires_at, staff_id, staff_name, created_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, source, merchant_reschedule_count";
 
 /**
  * Representasi array bertipe dari BOOKING_LIST_COLUMNS di atas -- typo atau
@@ -78,6 +79,8 @@ export const BOOKING_LIST_COLUMN_LIST: readonly (keyof BookingListItem)[] = [
   "paid_on_site_method",
   "attended_at",
   "no_show_at",
+  "source",
+  "merchant_reschedule_count",
 ];
 
 export type CancelBookingResult = { ok: boolean; message?: string };
@@ -174,23 +177,22 @@ export const PROVIDER_LABELS: Record<string, string> = {
 export const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 export const DEFAULT_PAGE_SIZE = 20;
 
-/** Bangun query string ledger dari nilai yang SUDAH divalidasi -- dipakai
- * tautan Sebelumnya/Berikutnya, pemilih ukuran halaman di
- * DataTablePagination, dan redirect "halaman di luar jangkauan" di
- * bookings-list.tsx. `size` disertakan di sini (bukan cuma `status` dan `q`)
- * supaya berpindah halaman/mengubah ukuran halaman tidak diam-diam
- * menjatuhkan filter atau ukuran halaman yang sedang dipakai. */
+/** Bangun URL halaman Booking dari nilai yang SUDAH divalidasi -- dipakai
+ * tab, paginasi, redirect "halaman di luar jangkauan", dan tautan baris
+ * (`b` = booking yang panelnya terbuka). Param bernilai default dihilangkan. */
 export function buildBookingsHref(params: {
-  status: string;
+  tab: BookingTab;
   q: string;
   page: number;
   size: number;
+  b?: string | null;
 }): string {
   const usp = new URLSearchParams();
-  if (params.status) usp.set("status", params.status);
+  if (params.tab !== "UPCOMING") usp.set("tab", tabParam(params.tab));
   if (params.q) usp.set("q", params.q);
   if (params.page > 1) usp.set("page", String(params.page));
   if (params.size !== DEFAULT_PAGE_SIZE) usp.set("size", String(params.size));
+  if (params.b) usp.set("b", params.b);
   const qs = usp.toString();
   return qs ? `${ROUTES.bookings}?${qs}` : ROUTES.bookings;
 }

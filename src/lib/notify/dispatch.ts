@@ -58,7 +58,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason";
+  "id, merchant_id, service_name, service_price, start_datetime, customer_name, customer_whatsapp, access_token, staff_name, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
 
 /** Paket yang mendapat reminder H-1 (PRD bagian 1: "WhatsApp Reminder" di Pro). */
 const REMINDER_TIERS: Merchant["subscription_tier"][] = ["PRO", "STUDIO"];
@@ -262,10 +262,12 @@ export async function notifyBookingCreated(bookingId: string): Promise<void> {
     if (!ctx) return;
     const { status } = ctx.booking;
     if (status === "CONFIRMED") {
-      await Promise.all([
-        ...toMerchant(ctx, "BOOKING_CONFIRMED_MERCHANT", merchantConfirmedEmail, merchantConfirmedWhatsapp),
-        toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp),
-      ]);
+      // Booking manual: merchant sendiri yang mencatat, jadi hanya pelanggan yang diberi tahu.
+      const merchantMessages =
+        ctx.booking.source === "MANUAL"
+          ? []
+          : toMerchant(ctx, "BOOKING_CONFIRMED_MERCHANT", merchantConfirmedEmail, merchantConfirmedWhatsapp);
+      await Promise.all([...merchantMessages, toCustomer(ctx, "BOOKING_CONFIRMED_CUSTOMER", customerConfirmedWhatsapp)]);
     } else if (status === "REQUESTED") {
       await Promise.all(
         toMerchant(ctx, "BOOKING_REQUESTED_MERCHANT", merchantRequestedEmail, merchantRequestedWhatsapp),

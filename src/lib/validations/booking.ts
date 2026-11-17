@@ -84,13 +84,9 @@ export const bookingSearchSchema = z
   .trim()
   .max(80, "Pencarian maksimal 80 karakter")
   .refine(
-    (value) => !/[,.()%\\]/.test(value),
-    "Pencarian tidak boleh mengandung karakter , . ( ) % atau \\",
+    (value) => !/[,.()%"\\]/.test(value),
+    "Pencarian tidak boleh mengandung karakter , . ( ) % \" atau \\",
   );
-
-/** Filter status ledger (`?status=`). Nilai tak dikenal ditangani di page.tsx
- * lewat `safeParse` -- diperlakukan sebagai "semua status", bukan error. */
-export const bookingStatusFilterSchema = z.enum(["PENDING", "PAID", "CONFIRMED", "REQUESTED", "CANCELLED"]);
 
 /** Body Server Action `cancelBooking` di src/app/dashboard/bookings/actions.ts. */
 export const cancelBookingSchema = z.object({

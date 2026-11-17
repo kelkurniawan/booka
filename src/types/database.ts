@@ -10,6 +10,8 @@
 export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
 export type BookingStatus = "PENDING" | "PAID" | "CANCELLED" | "CONFIRMED" | "REQUESTED";
 export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
+/** ONLINE dari halaman publik, MANUAL dicatat merchant dari dashboard. */
+export type BookingSource = "ONLINE" | "MANUAL";
 export type DepositType = "PERCENT" | "FIXED";
 export type OnSitePaymentMethod = "CASH" | "QRIS" | "TRANSFER";
 export type PaymentProvider = "MIDTRANS" | "XENDIT";
@@ -320,6 +322,9 @@ export type Booking = {
   paid_on_site_method: OnSitePaymentMethod | null;
   attended_at: string | null;
   no_show_at: string | null;
+  source: BookingSource;
+  /** Jumlah jadwal ulang oleh merchant; maksimal 3 (BK036). */
+  merchant_reschedule_count: number;
   created_at: string;
   updated_at: string;
 };
@@ -510,11 +515,15 @@ export type Database = {
           | "paid_on_site_method"
           | "attended_at"
           | "no_show_at"
+          | "source"
+          | "merchant_reschedule_count"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "source"
+              | "merchant_reschedule_count"
               | "payment_mode"
               | "amount_due_now"
               | "amount_due_on_site"
@@ -597,6 +606,26 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      bookings_in_tab: {
+        Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };
+        // Seperti BookingListItem (booking-state.ts) tapi merchant_id tetap ada agar
+        // .eq("merchant_id", ...) lolos tipe. access_token dan payment_url sengaja tidak ada.
+        Returns: Omit<Booking, "access_token" | "payment_url" | "updated_at">[];
+      };
+      dashboard_tab_counts: {
+        Args: Record<string, never>;
+        Returns: { action_count: number; upcoming_count: number }[];
+      };
+      dashboard_week_summary: {
+        Args: Record<string, never>;
+        Returns: {
+          bookings: number;
+          online_revenue: number;
+          on_site_revenue: number;
+          no_show: number;
+          attendance_marked: number;
+        }[];
+      };
       /**
        * Mengganti seluruh FAQ merchant yang sedang login dalam satu
        * statement, sehingga penghapusan lama dan penyisipan baru berhasil
@@ -710,8 +739,32 @@ export type Database = {
           p_staff_id?: string | null;
           /** false bila merchant tidak punya koneksi payment ACTIVE (BK021 bila booking perlu bayar online). */
           p_can_charge?: boolean;
+          /** MANUAL: bayar di tempat, langsung CONFIRMED, tanpa BK020/BK021. */
+          p_source?: BookingSource;
         };
         Returns: Booking[];
+      };
+      /**
+       * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login,
+       * BK035 lebih dari 50 per 24 jam; error slot sama dengan create_booking.
+       */
+      create_manual_booking: {
+        Args: {
+          p_service_id: string;
+          p_start_datetime: string;
+          p_customer_name: string;
+          p_customer_whatsapp: string;
+          p_staff_id?: string | null;
+        };
+        Returns: { id: string }[];
+      };
+      /**
+       * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
+       * BK003 staf nonaktif, BK001 di luar jam, P0006 lampau, 23P01 bentrok.
+       */
+      reschedule_booking_by_merchant: {
+        Args: { p_booking_id: string; p_new_start: string };
+        Returns: undefined;
       };
       /** Merchant menyetujui/menolak booking REQUESTED. BK030 tidak ditemukan, BK031 kedaluwarsa. */
       decide_booking_request: {
@@ -760,6 +813,7 @@ export type Database = {
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
       payment_mode: PaymentMode;
+      booking_source: BookingSource;
       deposit_type: DepositType;
       on_site_payment_method: OnSitePaymentMethod;
       payment_provider: PaymentProvider;

@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 
+import { getSessionUser } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 
 /**
@@ -55,5 +56,22 @@ export const getActivePaymentConnections = cache(
       .eq("merchant_id", merchantId)
       .eq("status", "ACTIVE");
     return data ?? [];
+  },
+);
+
+/**
+ * Jumlah booking yang perlu tindakan (badge navigasi). `null` bila RPC gagal:
+ * badge disembunyikan, halaman tetap jalan.
+ */
+export const getTabCounts = cache(
+  async (): Promise<{ action: number; upcoming: number } | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("dashboard_tab_counts");
+    if (error || !data?.[0]) {
+      const user = await getSessionUser(); // cache(): tanpa round-trip tambahan
+      console.error("dashboard_tab_counts gagal", { merchantId: user?.id, error });
+      return null;
+    }
+    return { action: data[0].action_count, upcoming: data[0].upcoming_count };
   },
 );

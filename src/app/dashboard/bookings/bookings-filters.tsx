@@ -6,25 +6,9 @@ import { Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-const STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "all", label: "Semua status" },
-  { value: "PENDING", label: "Menunggu pembayaran" },
-  { value: "PAID", label: "Dibayar" },
-  { value: "CONFIRMED", label: "Terkonfirmasi" },
-  { value: "REQUESTED", label: "Perlu persetujuan" },
-  { value: "CANCELLED", label: "Dibatalkan" },
-];
 
 /**
- * Filter status + kolom pencarian ledger. `status` dan `q` datang dari
+ * Kotak pencarian daftar booking (nama atau WhatsApp). `q` datang dari
  * page.tsx (nilai mentah dari URL, bukan hasil validasi Zod) supaya kotak
  * pencarian tetap menampilkan apa yang diketik merchant walau nilainya
  * ditolak validasi (mis. kepanjangan atau mengandung karakter terlarang).
@@ -37,7 +21,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
  * key berubah -> React me-remount komponen -> useState(q) di bawah jalan
  * ulang dengan nilai q yang baru.
  */
-export function BookingsFilters({ status, q }: { status: string; q: string }) {
+export function BookingsFilters({ q }: { q: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,15 +33,12 @@ export function BookingsFilters({ status, q }: { status: string; q: string }) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
-    // Filter berubah -> selalu balik ke halaman 1, supaya tidak terdampar di
+    // Pencarian berubah -> selalu balik ke halaman 1, supaya tidak terdampar di
     // halaman yang jadi kosong akibat filter baru.
     params.delete("page");
+    params.delete("b");
     const qs = params.toString();
     router.push(qs ? `${pathname}?${qs}` : pathname);
-  }
-
-  function handleStatusChange(value: string) {
-    navigate({ status: value === "all" ? "" : value });
   }
 
   function handleSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -66,31 +47,20 @@ export function BookingsFilters({ status, q }: { status: string; q: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+    <div className="flex">
       <form onSubmit={handleSearchSubmit} className="flex flex-1 items-center gap-2">
         <Input
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
-          placeholder="Cari nama pelanggan atau nomor WhatsApp..."
+          placeholder="Cari nama atau WhatsApp"
           maxLength={80}
-          aria-label="Cari booking berdasarkan nama pelanggan atau nomor WhatsApp"
+          aria-label="Cari booking"
+          className="h-11"
         />
-        <Button type="submit" variant="outline" size="icon" aria-label="Cari">
+        <Button type="submit" variant="outline" size="icon" aria-label="Cari" className="size-11">
           <Search />
         </Button>
       </form>
-      <Select value={status || "all"} onValueChange={handleStatusChange}>
-        <SelectTrigger className="w-full sm:w-52" aria-label="Filter status booking">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {STATUS_OPTIONS.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }

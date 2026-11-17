@@ -445,13 +445,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2750,13 +2750,14 @@ select case when staff_name = 'Bima'
 from public.bookings where customer_whatsapp = '+6281333000061';
 
 -- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
+-- Sejak 20261115000600 signature terbarunya delapan argumen (p_source).
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)') is null
-       then 'FAIL t33m signature tujuh argumen tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
+       then 'FAIL t33m signature delapan argumen (20261115000600) tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
        then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)'), 'EXECUTE')
        then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
        else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
@@ -2998,3 +2999,517 @@ select pg_temp.act34('t35h mark_booking_attendance NULL ditolak', '34343434-0000
 select case when no_show_at is null and attended_at is null then 'OK   t35h kehadiran tidak tercatat'
             else 'FAIL t35h kehadiran tercatat' end as t35h2
 from public.bookings where customer_whatsapp = '+6281343000036';
+
+-- ===========================================================================
+-- 36. Booking manual dan jadwal ulang merchant (20261115000600)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('36363636-0000-0000-0000-000000000001', 'manual36-a@example.com', '{}'::jsonb),
+  ('36363636-0000-0000-0000-000000000002', 'manual36-b@example.com', '{}'::jsonb),
+  ('36363636-0000-0000-0000-000000000003', 'manual36-c@example.com', '{}'::jsonb),
+  ('36363636-0000-0000-0000-000000000004', 'manual36-d@example.com', '{}'::jsonb);
+update public.merchants set username = 'manual-36', subscription_tier = 'PRO'
+  where id = '36363636-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id = '36363636-0000-0000-0000-000000000004';
+update public.merchants set subscription_tier = 'STUDIO'
+  where id = '36363636-0000-0000-0000-000000000002';
+update public.merchants set subscription_tier = 'STARTER'
+  where id = '36363636-0000-0000-0000-000000000003';
+
+-- Ketiga merchant buka setiap hari 09:00-17:00. Merchant 0001 tanpa baris payment_connections.
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select m, d, '09:00', '17:00'
+from unnest(array['36363636-0000-0000-0000-000000000001', '36363636-0000-0000-0000-000000000002',
+                  '36363636-0000-0000-0000-000000000003', '36363636-0000-0000-0000-000000000004']::uuid[]) m,
+     generate_series(1, 7) d;
+
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, deposit_type, deposit_value, is_active) values
+  ('36363636-5e5e-0000-0000-000000000001', '36363636-0000-0000-0000-000000000001', 'Lunas', 350000, 30, 'FULL', null, null, true),
+  ('36363636-5e5e-0000-0000-000000000002', '36363636-0000-0000-0000-000000000001', 'Permintaan', 1000000, 30, 'REQUEST', 'FIXED', 100000, true),
+  ('36363636-5e5e-0000-0000-000000000003', '36363636-0000-0000-0000-000000000001', 'Nonaktif', 100000, 30, 'FULL', null, null, false),
+  ('36363636-5e5e-0000-0000-000000000004', '36363636-0000-0000-0000-000000000002', 'Potong studio', 100000, 30, 'FULL', null, null, true),
+  ('36363636-5e5e-0000-0000-000000000005', '36363636-0000-0000-0000-000000000003', 'Potong starter', 100000, 30, 'FULL', null, null, true),
+  ('36363636-5e5e-0000-0000-000000000006', '36363636-0000-0000-0000-000000000004', 'Potong batas', 100000, 30, 'FULL', null, null, true);
+
+-- Studio: Ayu (staf A) 09:00-12:00, Bima (staf B) 09:00-17:00.
+insert into public.staff (id, merchant_id, name, sort_order) values
+  ('36363636-57af-0000-0000-000000000001', '36363636-0000-0000-0000-000000000002', 'Ayu', 0),
+  ('36363636-57af-0000-0000-000000000002', '36363636-0000-0000-0000-000000000002', 'Bima', 1);
+insert into public.staff_availability (staff_id, merchant_id, day_of_week, start_time, end_time)
+select '36363636-57af-0000-0000-000000000001'::uuid, '36363636-0000-0000-0000-000000000002'::uuid, d, '09:00'::time, '12:00'::time
+from generate_series(1, 7) d
+union all
+select '36363636-57af-0000-0000-000000000002', '36363636-0000-0000-0000-000000000002', d, '09:00', '17:00'
+from generate_series(1, 7) d;
+
+-- Booking manual lewat RPC; dipanggil di dalam blok set local role authenticated.
+create or replace function pg_temp.mb36(p_service integer, p_start timestamptz, p_phone text, p_staff integer default null)
+returns setof uuid language plpgsql as $$
+begin
+  return query select r.id from public.create_manual_booking(
+    ('36363636-5e5e-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    p_start, 'Pelanggan 36', p_phone,
+    case when p_staff is not null then ('36363636-57af-0000-0000-' || lpad(p_staff::text, 12, '0'))::uuid end) r;
+end $$;
+
+-- Booking langsung (status tertentu), dicari lewat nomor.
+create or replace function pg_temp.ins36(p_merchant integer, p_phone text, p_status public.booking_status,
+  p_start timestamptz, p_expires timestamptz default null, p_staff integer default null)
+returns uuid language sql as $$
+  insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+    customer_name, customer_whatsapp, status, expires_at, amount_due_now, amount_due_on_site, payment_mode, staff_id, staff_name)
+  values (('36363636-0000-0000-0000-' || lpad(p_merchant::text, 12, '0'))::uuid, 'Layanan 36', 100000, 30,
+    p_start, p_start + interval '30 minutes', 'Pelanggan 36', p_phone, p_status,
+    coalesce(p_expires, now() + interval '15 minutes'), 0, 100000, 'ON_SITE',
+    case when p_staff is not null then ('36363636-57af-0000-0000-' || lpad(p_staff::text, 12, '0'))::uuid end,
+    case p_staff when 1 then 'Ayu' when 2 then 'Bima' end)
+  returning id;
+$$;
+
+create or replace function pg_temp.id36(p_phone text) returns uuid language sql as $$
+  select id from public.bookings where customer_whatsapp = p_phone;
+$$;
+
+-- 36a. Manual selalu bayar di tempat dan langsung CONFIRMED, apa pun cara bayar layanannya.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 1, '09:00'), '+6281336000001')$q$,
+  't36a manual layanan FULL');
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(2, pg_temp.jakarta_future(3, 1, '10:00'), '+6281336000002')$q$,
+  't36a manual layanan REQUEST');
+commit;
+select case when status = 'CONFIRMED' and payment_mode = 'ON_SITE' and amount_due_now = 0
+             and amount_due_on_site = 350000 and source::text = 'MANUAL'
+            then 'OK   t36a FULL manual -> CONFIRMED ON_SITE 0/350000 MANUAL'
+            else 'FAIL t36a FULL manual -> ' || status || ' ' || payment_mode || ' ' || amount_due_now
+              || '/' || amount_due_on_site end as t36a1
+from public.bookings where customer_whatsapp = '+6281336000001';
+select case when status = 'CONFIRMED' and payment_mode = 'ON_SITE' and amount_due_now = 0
+             and amount_due_on_site = 1000000 and source::text = 'MANUAL'
+            then 'OK   t36a REQUEST manual -> CONFIRMED ON_SITE 0/1000000 MANUAL'
+            else 'FAIL t36a REQUEST manual -> ' || status || ' ' || payment_mode || ' ' || amount_due_now
+              || '/' || amount_due_on_site end as t36a2
+from public.bookings where customer_whatsapp = '+6281336000002';
+
+-- 36b. Tanpa koneksi payment (t36a), dan aturan bayar di tempat / batas per nomor tidak berlaku.
+select case when not exists (select 1 from public.payment_connections
+                              where merchant_id = '36363636-0000-0000-0000-000000000001')
+             and (select count(*) from public.bookings
+                  where merchant_id = '36363636-0000-0000-0000-000000000001') = 2
+            then 'OK   t36b merchant tanpa koneksi payment bisa membuat booking manual'
+            else 'FAIL t36b merchant tanpa koneksi payment' end as t36b1;
+update public.merchant_settings set allow_pay_on_site = false, max_active_per_phone = 1
+  where merchant_id = '36363636-0000-0000-0000-000000000001';
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 1, '11:00'), '+6281336000003')$q$,
+  't36b manual pertama nomor sama');
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 1, '12:00'), '+6281336000003')$q$,
+  't36b manual kedua nomor sama (bukan BK020)');
+commit;
+select case when count(*) = 2 and bool_and(payment_mode = 'ON_SITE' and status = 'CONFIRMED')
+            then 'OK   t36b allow_pay_on_site=false tidak mengubah manual jadi FULL'
+            else 'FAIL t36b ' || count(*) || ' booking manual nomor sama' end as t36b2
+from public.bookings where customer_whatsapp = '+6281336000003';
+update public.merchant_settings set allow_pay_on_site = true, max_active_per_phone = 2
+  where merchant_id = '36363636-0000-0000-0000-000000000001';
+
+-- 36c. RPC tidak menulis notification_log (notifikasi dikirim dari TS).
+select case when count(*) = 0 then 'OK   t36c RPC tidak membuat baris notification_log'
+            else 'FAIL t36c ' || count(*) || ' baris notification_log' end as t36c
+from public.notification_log where merchant_id = '36363636-0000-0000-0000-000000000001';
+
+-- 36d. Bentrok, jam kerja, masa lalu, dan layanan.
+select pg_temp.ins36(1, '+6281336000010', 'CONFIRMED', pg_temp.jakarta_future(3, 2, '09:00'));
+select pg_temp.ins36(1, '+6281336000011', 'PENDING', pg_temp.jakarta_future(3, 2, '10:00'), now() + interval '10 minutes');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 2, '09:00'), '+6281336000015')$q$,
+  '23P01', 't36d manual di slot CONFIRMED');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 2, '10:00'), '+6281336000015')$q$,
+  '23P01', 't36d manual di slot PENDING yang belum kedaluwarsa');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 2, '20:00'), '+6281336000015')$q$,
+  'BK001', 't36d manual jam 20:00 WIB');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(1, now() - interval '1 hour', '+6281336000015')$q$,
+  'P0006', 't36d manual di masa lalu');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(3, pg_temp.jakarta_future(3, 2, '13:00'), '+6281336000015')$q$,
+  'P0005', 't36d manual layanan nonaktif');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(4, pg_temp.jakarta_future(3, 2, '13:00'), '+6281336000015')$q$,
+  'P0005', 't36d manual layanan milik merchant lain');
+commit;
+
+-- 36e. REQUESTED kedaluwarsa tidak menghalangi manual, lalu dibatalkan.
+select pg_temp.ins36(1, '+6281336000012', 'REQUESTED', pg_temp.jakarta_future(3, 2, '11:00'), now() - interval '1 minute');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 2, '11:00'), '+6281336000013')$q$,
+  't36e manual di slot REQUESTED kedaluwarsa');
+commit;
+select case when status = 'CANCELLED' and cancel_reason = 'Permintaan tidak dijawab dalam batas waktu'
+            then 'OK   t36e REQUESTED kedaluwarsa dibatalkan dengan alasan permintaan'
+            else 'FAIL t36e status lama = ' || status || ' ' || coalesce(cancel_reason, 'NULL') end as t36e
+from public.bookings where customer_whatsapp = '+6281336000012';
+
+-- 36f. Studio: Ayu sudah dipesan jam 10:00; "siapa saja" jatuh ke Bima, Ayu langsung bentrok.
+select pg_temp.ins36(2, '+6281336000040', 'CONFIRMED', pg_temp.jakarta_future(3, 1, '10:00'), null, 1);
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000002';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(4, pg_temp.jakarta_future(3, 1, '10:00'), '+6281336000041')$q$,
+  't36f manual siapa saja jam 10:00');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(4, pg_temp.jakarta_future(3, 1, '10:00'), '+6281336000042', 1)$q$,
+  '23P01', 't36f manual untuk Ayu yang sudah dipesan');
+commit;
+select case when staff_name = 'Bima' then 'OK   t36f siapa saja ditugaskan ke Bima'
+            else 'FAIL t36f siapa saja ditugaskan ke ' || coalesce(staff_name, 'NULL') end as t36f
+from public.bookings where customer_whatsapp = '+6281336000041';
+
+-- 36g. Kuota STARTER tetap berlaku untuk booking manual.
+select pg_temp.ins36(3, '+62813360001' || lpad(i::text, 2, '0'), 'CONFIRMED',
+  pg_temp.jakarta_future(3, 1, '09:00') + i * interval '30 minutes')
+from generate_series(0, 9) i;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000003';
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(5, pg_temp.jakarta_future(3, 2, '09:00'), '+6281336000050')$q$,
+  'P0002', 't36g manual STARTER melewati kuota');
+commit;
+
+-- 36h. create_booking lama (tanpa p_source) tetap ONLINE.
+begin;
+set local role service_role;
+select pg_temp.expect_ok(
+  $q$select * from public.create_booking(
+       '36363636-0000-0000-0000-000000000001', '36363636-5e5e-0000-0000-000000000001',
+       pg_temp.jakarta_future(3, 2, '12:00'), 'Pelanggan 36', '+6281336000014')$q$,
+  't36h create_booking lewat service_role tanpa p_source');
+commit;
+select case when source::text = 'ONLINE' and status = 'PENDING'
+            then 'OK   t36h booking online tersimpan source ONLINE'
+            else 'FAIL t36h source = ' || coalesce(source::text, 'NULL') || ' status = ' || status end as t36h
+from public.bookings where customer_whatsapp = '+6281336000014';
+
+-- 36i. Jadwal ulang: pindah slot, durasi tetap, pengingat H-1 dihapus.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 3, '10:00'), '+6281336000020')$q$,
+  't36i siapkan booking manual jam 10:00');
+commit;
+insert into public.notification_log (booking_id, merchant_id, kind, channel, status) values
+  (pg_temp.id36('+6281336000020'), '36363636-0000-0000-0000-000000000001', 'REMINDER_CUSTOMER', 'WHATSAPP', 'SENT'),
+  (pg_temp.id36('+6281336000020'), '36363636-0000-0000-0000-000000000001', 'BOOKING_CONFIRMED_CUSTOMER', 'WHATSAPP', 'SENT');
+select pg_temp.ins36(1, '+6281336000021', 'CONFIRMED', pg_temp.jakarta_future(3, 3, '15:00'));
+select pg_temp.ins36(1, '+6281336000022', 'CONFIRMED', pg_temp.jakarta_future(3, 4, '09:00'));
+update public.bookings set attended_at = now() where customer_whatsapp = '+6281336000022';
+select pg_temp.ins36(1, '+6281336000023', 'CANCELLED', pg_temp.jakarta_future(3, 4, '10:00'));
+select pg_temp.ins36(1, '+6281336000024', 'PENDING', pg_temp.jakarta_future(3, 4, '11:00'), now() + interval '10 minutes');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000020'), pg_temp.jakarta_future(3, 3, '13:00')),
+  't36i jadwal ulang 10:00 ke 13:00');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000020'), pg_temp.jakarta_future(3, 3, '15:00')),
+  '23P01', 't36i jadwal ulang ke slot booking lain');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000020'), pg_temp.jakarta_future(3, 3, '20:00')),
+  'BK001', 't36i jadwal ulang ke 20:00 WIB');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000020'), now() - interval '1 hour'),
+  'P0006', 't36i jadwal ulang ke masa lalu');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000022'), pg_temp.jakarta_future(3, 4, '14:00')),
+  'BK034', 't36i jadwal ulang booking yang kehadirannya sudah dicatat');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000023'), pg_temp.jakarta_future(3, 4, '14:00')),
+  'BK034', 't36i jadwal ulang booking CANCELLED');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000024'), pg_temp.jakarta_future(3, 4, '14:00')),
+  'BK034', 't36i jadwal ulang booking PENDING');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000040'), pg_temp.jakarta_future(3, 4, '14:00')),
+  'BK034', 't36i jadwal ulang booking merchant lain');
+commit;
+select case when start_datetime = pg_temp.jakarta_future(3, 3, '13:00')
+             and end_datetime - start_datetime = interval '30 minutes'
+            then 'OK   t36i jam mulai pindah ke 13:00, durasi tetap 30 menit'
+            else 'FAIL t36i ' || start_datetime || ' - ' || end_datetime end as t36i1
+from public.bookings where customer_whatsapp = '+6281336000020';
+select case when count(*) filter (where kind = 'REMINDER_CUSTOMER') = 0
+             and count(*) filter (where kind = 'BOOKING_CONFIRMED_CUSTOMER') = 1
+            then 'OK   t36i pengingat H-1 dihapus, notifikasi konfirmasi tetap'
+            else 'FAIL t36i notification_log ' || count(*) || ' baris' end as t36i2
+from public.notification_log where booking_id = pg_temp.id36('+6281336000020');
+-- Satu jadwal ulang berhasil, tiga gagal (23P01, BK001, P0006): penghitung hanya naik sekali.
+select case when merchant_reschedule_count = 1
+            then 'OK   t36i jadwal ulang gagal tidak menaikkan merchant_reschedule_count'
+            else 'FAIL t36i merchant_reschedule_count = ' || merchant_reschedule_count end as t36i3
+from public.bookings where customer_whatsapp = '+6281336000020';
+
+-- 36j. Geser 15 menit di hari yang sama: tidak bentrok dengan dirinya sendiri.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 5, '10:00'), '+6281336000030')$q$,
+  't36j siapkan booking manual jam 10:00');
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000030'), pg_temp.jakarta_future(3, 5, '10:15')),
+  't36j jadwal ulang 10:00 ke 10:15');
+commit;
+select case when start_datetime = pg_temp.jakarta_future(3, 5, '10:15')
+            then 'OK   t36j jam mulai pindah ke 10:15'
+            else 'FAIL t36j jam mulai ' || start_datetime end as t36j
+from public.bookings where customer_whatsapp = '+6281336000030';
+
+-- 36k. Studio: jadwal ulang mengikuti jam kerja staf booking itu.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000040'), pg_temp.jakarta_future(3, 1, '14:00')),
+  'BK001', 't36k Ayu dijadwal ulang ke 14:00 (di luar jamnya)');
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000040'), pg_temp.jakarta_future(3, 1, '11:00')),
+  't36k Ayu dijadwal ulang ke 11:00');
+commit;
+select case when staff_id = '36363636-57af-0000-0000-000000000001'
+            then 'OK   t36k staf booking tetap Ayu setelah jadwal ulang'
+            else 'FAIL t36k staf berubah jadi ' || coalesce(staff_id::text, 'NULL') end as t36k
+from public.bookings where customer_whatsapp = '+6281336000040';
+
+-- 36k2. Staf booking sudah nonaktif: BK003 (Ayu masih aktif, jadi kalender per staf tetap dipakai).
+select pg_temp.ins36(2, '+6281336000043', 'CONFIRMED', pg_temp.jakarta_future(3, 2, '10:00'), null, 2);
+update public.staff set is_active = false where id = '36363636-57af-0000-0000-000000000002';
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000043'), pg_temp.jakarta_future(3, 2, '11:00')),
+  'BK003', 't36k jadwal ulang booking milik staf nonaktif');
+commit;
+update public.staff set is_active = true where id = '36363636-57af-0000-0000-000000000002';
+
+-- 36l. Hak akses.
+select
+  case when has_function_privilege('anon', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE')
+       then 'FAIL t36l anon bisa EXECUTE RPC merchant'
+       when not (has_function_privilege('authenticated', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid)', 'EXECUTE')
+         and has_function_privilege('authenticated', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE'))
+       then 'FAIL t36l authenticated tidak bisa EXECUTE RPC merchant'
+       else 'OK   t36l RPC merchant hanya untuk authenticated' end as t36l1,
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
+       then 'FAIL t36l anon/authenticated bisa EXECUTE create_booking/reap_expired_bookings_for'
+       else 'OK   t36l create_booking dan reap_expired_bookings_for tertutup' end as t36l2,
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean)') is null
+       then 'OK   t36l signature tujuh argumen sudah dihapus'
+       else 'FAIL t36l signature tujuh argumen masih ada' end as t36l3,
+  case when has_column_privilege('authenticated', 'public.bookings', 'source', 'UPDATE')
+         or has_column_privilege('anon', 'public.bookings', 'source', 'SELECT')
+       then 'FAIL t36l kolom source bisa diubah authenticated / dibaca anon'
+       else 'OK   t36l kolom source tidak bisa diubah authenticated / dibaca anon' end as t36l4,
+  case when has_column_privilege('authenticated', 'public.bookings', 'merchant_reschedule_count', 'UPDATE')
+       then 'FAIL t36l authenticated bisa UPDATE merchant_reschedule_count'
+       else 'OK   t36l authenticated tidak bisa UPDATE merchant_reschedule_count' end as t36l5;
+
+-- 36m. Tanpa klaim sub ditolak 42501.
+begin;
+set local role authenticated;
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(1, pg_temp.jakarta_future(3, 6, '09:00'), '+6281336000060')$q$,
+  '42501', 't36m create_manual_booking tanpa login');
+commit;
+
+-- 36n. Maksimal 50 booking manual per 24 jam, termasuk yang sudah CANCELLED.
+-- 49 disisipkan langsung (satu CANCELLED), ke-50 lewat RPC lolos, ke-51 BK035.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site, payment_mode, source)
+select '36363636-0000-0000-0000-000000000004', 'Layanan 36', 100000, 30,
+  pg_temp.jakarta_future(3, 1, '09:00') + i * interval '1 day',
+  pg_temp.jakarta_future(3, 1, '09:30') + i * interval '1 day',
+  'Pelanggan 36', '+62813360002' || lpad(i::text, 2, '0'),
+  case when i = 0 then 'CANCELLED' else 'CONFIRMED' end::public.booking_status,
+  0, 100000, 'ON_SITE', 'MANUAL'
+from generate_series(0, 48) i;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000004';
+select pg_temp.expect_ok($q$select * from pg_temp.mb36(6, pg_temp.jakarta_future(3, 1, '10:00'), '+6281336000300')$q$,
+  't36n booking manual ke-50 dalam 24 jam');
+select pg_temp.expect_fail_code($q$select * from pg_temp.mb36(6, pg_temp.jakarta_future(3, 1, '11:00'), '+6281336000301')$q$,
+  'BK035', 't36n booking manual ke-51 (yang CANCELLED ikut terhitung)');
+commit;
+
+-- 36o. Booking PAID bisa dijadwal ulang; maksimal 3 kali (BK036).
+select pg_temp.ins36(1, '+6281336000025', 'PAID', pg_temp.jakarta_future(3, 6, '09:00'));
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '36363636-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000025'), pg_temp.jakarta_future(3, 6, '10:00')),
+  't36o jadwal ulang booking PAID ke-1');
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000025'), pg_temp.jakarta_future(3, 6, '11:00')),
+  't36o jadwal ulang ke-2');
+select pg_temp.expect_ok(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000025'), pg_temp.jakarta_future(3, 6, '12:00')),
+  't36o jadwal ulang ke-3');
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    pg_temp.id36('+6281336000025'), pg_temp.jakarta_future(3, 6, '13:00')),
+  'BK036', 't36o jadwal ulang ke-4');
+commit;
+select case when merchant_reschedule_count = 3 and status = 'PAID'
+             and start_datetime = pg_temp.jakarta_future(3, 6, '12:00')
+            then 'OK   t36o PAID tetap PAID di 12:00, merchant_reschedule_count = 3'
+            else 'FAIL t36o ' || status || ' ' || start_datetime || ' count ' || merchant_reschedule_count end as t36o
+from public.bookings where customer_whatsapp = '+6281336000025';
+
+-- ===========================================================================
+-- 37. Fungsi baca dashboard (20261115000700)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('37373737-0000-0000-0000-000000000001', 'dash37-a@example.com', '{}'::jsonb),
+  ('37373737-0000-0000-0000-000000000002', 'dash37-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'dash-37', subscription_tier = 'PRO'
+  where id = '37373737-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO'
+  where id = '37373737-0000-0000-0000-000000000002';
+
+-- Merchant 0001: satu baris per tab yang diharapkan (kunci = customer_name).
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, expires_at, payment_mode, amount_due_now, amount_due_on_site,
+  attended_at, no_show_at, paid_on_site_at, paid_on_site_method)
+select '37373737-0000-0000-0000-000000000001', 'Layanan 37', v.price, 30,
+  now() + v.off, now() + v.off + interval '30 minutes', v.name,
+  '+62813370000' || lpad(v.n::text, 2, '0'), v.status::public.booking_status,
+  now() + v.exp, 'ON_SITE', v.price - v.onsite, v.onsite,
+  v.att, v.noshow, v.paidsite, case when v.paidsite is not null then 'CASH'::public.on_site_payment_method end
+from (values
+  (1,  'ACTION_requested', 'REQUESTED', interval '3 days',            interval '1 hour',   100000, 0,      null::timestamptz, null::timestamptz, null::timestamptz),
+  (2,  'ACTION_pending',   'PENDING',   interval '4 days',            interval '10 minutes', 100000, 0,    null, null, null),
+  (3,  'ACTION_unmarked',  'CONFIRMED', interval '-2 days',           interval '15 minutes', 100000, 0,    null, null, null),
+  (4,  'ACTION_unpaid',    'PAID',      interval '-1 day',            interval '15 minutes', 350000, 245000, now() - interval '1 day', null, null),
+  (5,  'UPCOMING_tomorrow','CONFIRMED', interval '1 day',             interval '15 minutes', 100000, 0,    null, null, null),
+  (6,  'UPCOMING_soon',    'PAID',      interval '2 hours',           interval '15 minutes', 100000, 0,    null, null, null),
+  (7,  'HISTORY_done',     'CONFIRMED', interval '-2 days -5 hours',  interval '15 minutes', 100000, 100000, now() - interval '2 days', null, now() - interval '2 days'),
+  (8,  'HISTORY_old',      'CONFIRMED', interval '-10 days',          interval '15 minutes', 100000, 0,    null, null, null),
+  (9,  'HISTORY_noshow',   'CONFIRMED', interval '-1 day -5 hours',   interval '15 minutes', 100000, 100000, null, now() - interval '1 day', null),
+  (10, 'CANCELLED_status', 'CANCELLED', interval '5 days',            interval '15 minutes', 100000, 0,    null, null, null),
+  (11, 'CANCELLED_stale',  'PENDING',   interval '6 days',            interval '-1 hour',    100000, 0,    null, null, null)
+) as v(n, name, status, off, exp, price, onsite, att, noshow, paidsite);
+
+-- 37a. booking_tab: tab tiap baris sama dengan awalan namanya.
+select case when count(*) = 11 and count(*) filter (where public.booking_tab(b) = split_part(b.customer_name, '_', 1)) = 11
+            then 'OK   t37a booking_tab: 11 baris masuk tab yang diharapkan'
+            else 'FAIL t37a booking_tab salah: ' || coalesce(string_agg(b.customer_name || '=' || public.booking_tab(b), ', ')
+                   filter (where public.booking_tab(b) <> split_part(b.customer_name, '_', 1)), '') end as t37a
+from public.bookings b where b.merchant_id = '37373737-0000-0000-0000-000000000001';
+
+-- Merchant 0002: ringkasan minggu dan bukti isolasi merchant.
+insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp, status, paid_at, expires_at, payment_mode, amount_due_now, amount_due_on_site,
+  attended_at, no_show_at, paid_on_site_at, paid_on_site_method)
+select '37373737-0000-0000-0000-000000000002', 'Layanan 37', v.price, 30,
+  now() + v.off, now() + v.off + interval '30 minutes', v.name,
+  '+62813370001' || lpad(v.n::text, 2, '0'), v.status::public.booking_status,
+  v.paid, now() + interval '15 minutes', 'ON_SITE', v.price - v.onsite, v.onsite,
+  v.att, v.noshow, v.paidsite, case when v.paidsite is not null then 'CASH'::public.on_site_payment_method end
+from (values
+  (1, 'B1', 'PAID',      interval '-1 day',   350000, 245000, now() - interval '1 day',   now() - interval '1 day', null::timestamptz, now() - interval '1 day'),
+  (2, 'B2', 'CONFIRMED', interval '-2 days',  450000, 450000, null::timestamptz,          now() - interval '2 days', null, now() - interval '2 days'),
+  (3, 'B3', 'CONFIRMED', interval '-1 day -3 hours', 200000, 200000, null,                 null, now() - interval '1 day', null),
+  (4, 'B4', 'PAID',      interval '-10 days', 350000, 0,      now() - interval '10 days', null, null, null),
+  (5, 'B5', 'CANCELLED', interval '-1 day -6 hours', 100000, 0, null,                      null, null, null)
+) as v(n, name, status, off, price, onsite, paid, att, noshow, paidsite);
+
+-- 37b. Tab ACTION: tepat empat id merchant 0001, tak satu pun milik 0002.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select case when count(*) = 4 and bool_and(customer_name like 'ACTION\_%') and bool_and(merchant_id = '37373737-0000-0000-0000-000000000001')
+            then 'OK   t37b bookings_in_tab(ACTION): empat baris milik sendiri'
+            else 'FAIL t37b ' || count(*) || ' baris' end as t37b
+from public.bookings_in_tab('ACTION');
+commit;
+
+-- 37c. Tab di luar empat nilai ditolak 22023.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code($q$select * from public.bookings_in_tab('SEMUA')$q$, '22023', 't37c tab tidak dikenal');
+select pg_temp.expect_fail_code($q$select * from public.bookings_in_tab(null)$q$, '22023', 't37c tab null');
+commit;
+
+-- 37d. dashboard_tab_counts() = (4, 2).
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000001';
+select case when action_count = 4 and upcoming_count = 2 then 'OK   t37d dashboard_tab_counts = (4, 2)'
+            else 'FAIL t37d (' || action_count || ', ' || upcoming_count || ')' end as t37d
+from public.dashboard_tab_counts();
+commit;
+
+-- 37e. dashboard_week_summary untuk merchant 0002.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '37373737-0000-0000-0000-000000000002';
+select case when bookings = 3 and online_revenue = 105000 and on_site_revenue = 695000
+             and no_show = 1 and attendance_marked = 3
+            then 'OK   t37e dashboard_week_summary = (3, 105000, 695000, 1, 3)'
+            else 'FAIL t37e (' || bookings || ', ' || online_revenue || ', ' || on_site_revenue || ', '
+                 || no_show || ', ' || attendance_marked || ')' end as t37e
+from public.dashboard_week_summary();
+commit;
+
+-- 37f. Tanpa klaim sub: kosong, bukan error.
+begin;
+set local role authenticated;
+select case when (select count(*) from public.bookings_in_tab('ACTION')) = 0
+             and (select action_count + upcoming_count from public.dashboard_tab_counts()) = 0
+            then 'OK   t37f tanpa sub: 0 baris dan hitungan (0, 0)'
+            else 'FAIL t37f tanpa sub bocor' end as t37f;
+commit;
+
+-- 37g. Hak akses.
+select
+  case when has_function_privilege('anon', 'public.booking_tab(public.bookings)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.booking_tab(public.bookings)', 'EXECUTE')
+       then 'FAIL t37g booking_tab bisa di-EXECUTE anon/authenticated'
+       else 'OK   t37g booking_tab tertutup' end as t37g1,
+  case when has_function_privilege('authenticated', 'public.bookings_in_tab(text)', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.dashboard_tab_counts()', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.dashboard_week_summary()', 'EXECUTE')
+       then 'OK   t37g authenticated bisa memanggil ketiga RPC'
+       else 'FAIL t37g authenticated tidak bisa memanggil RPC' end as t37g2,
+  case when has_function_privilege('anon', 'public.bookings_in_tab(text)', 'EXECUTE')
+         or has_function_privilege('anon', 'public.dashboard_tab_counts()', 'EXECUTE')
+         or has_function_privilege('anon', 'public.dashboard_week_summary()', 'EXECUTE')
+       then 'FAIL t37g anon bisa memanggil RPC'
+       else 'OK   t37g anon tidak bisa memanggil RPC' end as t37g3;
