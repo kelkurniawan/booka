@@ -1029,6 +1029,42 @@ export type Database = {
         Args: { p_username: string; p_from: string; p_to: string };
         Returns: { start_datetime: string; end_datetime: string; staff_id: string | null }[];
       };
+      get_seat_availability: {
+        Args: {
+          p_username: string;
+          p_service_id: string;
+          p_party_size: number;
+          p_area_id?: string | null;
+          p_starts: string[];
+        };
+        Returns: { start_datetime: string; available: boolean; tables_left: number | null }[];
+      };
+      get_table_status: {
+        Args: { p_username: string; p_service_id: string; p_start: string; p_party_size: number };
+        Returns: { table_id: string; status: "FREE" | "TAKEN" | "TOO_SMALL" | "TOO_LARGE" }[];
+      };
+      save_dining_layout: {
+        Args: {
+          p_areas: { id: string; name: string; sort_order: number }[];
+          p_tables: {
+            id: string;
+            area_id: string;
+            name: string;
+            min_seats: number;
+            max_seats: number;
+            shape: DiningTableShape;
+            grid_x: number;
+            grid_y: number;
+            grid_w: number;
+            grid_h: number;
+            note: string | null;
+            bookable_online: boolean;
+            joinable_with: string[];
+            sort_order: number;
+          }[];
+        };
+        Returns: undefined;
+      };
       /**
        * `quota` bernilai null untuk paket tanpa batas (PRO/STUDIO).
        *

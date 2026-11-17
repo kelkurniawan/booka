@@ -5397,3 +5397,284 @@ set local request.jwt.claim.sub = '61616161-0000-0000-0000-000000000001';
 select pg_temp.expect_fail_code(pg_temp.rs62((select id from e62), 7, '19:00'), 'BK060', 't62e pindah ke jam berisi 6 kursi');
 select pg_temp.expect_ok(pg_temp.rs62((select id from e62), 7, '15:00'), 't62e pindah ke jam kosong');
 commit;
+
+-- ===========================================================================
+-- 63. Restoran: ketersediaan publik (20261120000300)
+-- ===========================================================================
+-- Merchant ...0001 restoran (PRO, username resto-63). Meja T1 dan T2 (2 sampai
+-- 4, online), T3 (4 sampai 6, offline), K1 (1 sampai 2, online), B1 (6 sampai
+-- 8, online). Tiap sub-bagian memakai minggu berbeda.
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('63636363-0000-0000-0000-000000000001', 'resto63@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO', username = 'resto-63'
+  where id = '63636363-0000-0000-0000-000000000001';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select '63636363-0000-0000-0000-000000000001', d, '10:00', '23:00' from generate_series(1, 7) d;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode,
+                             party_min, party_max, seat_duration_minutes) values
+  ('63636363-5e00-0000-0000-000000000001', '63636363-0000-0000-0000-000000000001', 'Reservasi meja', 0, 60, 'ON_SITE', 1, 12, 90),
+  ('63636363-5e00-0000-0000-000000000002', '63636363-0000-0000-0000-000000000001', 'Biasa', 0, 60, 'ON_SITE', null, null, null);
+insert into public.dining_areas (id, merchant_id, name) values
+  ('63636363-a000-0000-0000-000000000001', '63636363-0000-0000-0000-000000000001', 'Dalam');
+insert into public.dining_tables (id, merchant_id, area_id, name, min_seats, max_seats, grid_x, grid_y,
+                                  bookable_online, sort_order) values
+  ('63636363-7a00-0000-0000-000000000001', '63636363-0000-0000-0000-000000000001',
+   '63636363-a000-0000-0000-000000000001', 'T1', 2, 4, 0, 0, true, 0),
+  ('63636363-7a00-0000-0000-000000000002', '63636363-0000-0000-0000-000000000001',
+   '63636363-a000-0000-0000-000000000001', 'T2', 2, 4, 4, 0, true, 1),
+  ('63636363-7a00-0000-0000-000000000003', '63636363-0000-0000-0000-000000000001',
+   '63636363-a000-0000-0000-000000000001', 'T3', 4, 6, 8, 0, false, 2),
+  ('63636363-7a00-0000-0000-000000000004', '63636363-0000-0000-0000-000000000001',
+   '63636363-a000-0000-0000-000000000001', 'K1', 1, 2, 12, 0, true, 3),
+  ('63636363-7a00-0000-0000-000000000005', '63636363-0000-0000-0000-000000000001',
+   '63636363-a000-0000-0000-000000000001', 'B1', 6, 8, 16, 0, true, 4);
+
+create sequence pg_temp.phone63;
+create or replace function pg_temp.cb63(p_weeks integer, p_time text, p_party integer)
+returns text language sql as $$
+  select format($q$select * from public.create_booking('63636363-0000-0000-0000-000000000001',
+      '63636363-5e00-0000-0000-000000000001', %L, 'Tamu 63', %L, null, true, 'ONLINE', null, %s)$q$,
+    pg_temp.jakarta_future(3, p_weeks, p_time),
+    '+62813630' || lpad(nextval('pg_temp.phone63')::text, 5, '0'), p_party);
+$$;
+-- Hasil get_seat_availability sebagai teks "jam:available:tables_left".
+create or replace function pg_temp.sa63(p_weeks integer, p_party integer, p_service integer default 1)
+returns text language sql as $$
+  select string_agg(to_char(r.start_datetime at time zone 'Asia/Jakarta', 'HH24:MI') || ':' || r.available
+                    || ':' || coalesce(r.tables_left::text, '-'), ' ' order by r.start_datetime)
+  from public.get_seat_availability('resto-63', ('63636363-5e00-0000-0000-' || lpad(p_service::text, 12, '0'))::uuid,
+    p_party, null, array[pg_temp.jakarta_future(3, p_weeks, '19:00'), pg_temp.jakarta_future(3, p_weeks, '21:00')]) r;
+$$;
+
+-- t63a AREA, 10 kursi, 8 terpakai di 19:00. Dipanggil sebagai anon.
+update public.merchant_settings set table_mode = 'AREA', seats_per_slot = 10
+  where merchant_id = '63636363-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.cb63(1, '19:00', 4), 't63a 4 orang pertama');
+select pg_temp.expect_ok(pg_temp.cb63(1, '19:00', 4), 't63a 4 orang kedua');
+begin;
+set local role anon;
+select case when pg_temp.sa63(1, 2) = '19:00:true:- 21:00:true:-'
+            then 'OK   t63a AREA 2 orang: 19:00 dan 21:00 tersedia'
+            else 'FAIL t63a AREA 2 orang -> ' || coalesce(pg_temp.sa63(1, 2), 'NULL') end as t63a1,
+       case when pg_temp.sa63(1, 3) = '19:00:false:- 21:00:true:-'
+            then 'OK   t63a AREA 3 orang: 19:00 penuh, 21:00 tersedia'
+            else 'FAIL t63a AREA 3 orang -> ' || coalesce(pg_temp.sa63(1, 3), 'NULL') end as t63a2,
+       case when pg_temp.sa63(1, 13) = '19:00:false:- 21:00:false:-'
+            then 'OK   t63a 13 orang di luar rentang layanan: semua tidak tersedia'
+            else 'FAIL t63a 13 orang -> ' || coalesce(pg_temp.sa63(1, 13), 'NULL') end as t63a3;
+commit;
+
+-- t63b TABLE: T1 dan T2 terisi di 19:00.
+update public.merchant_settings set table_mode = 'TABLE'
+  where merchant_id = '63636363-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.cb63(2, '19:00', 4), 't63b 4 orang pertama');
+select pg_temp.expect_ok(pg_temp.cb63(2, '19:00', 4), 't63b 4 orang kedua');
+begin;
+set local role anon;
+select case when pg_temp.sa63(2, 4) = '19:00:false:0 21:00:true:2'
+            then 'OK   t63b TABLE 4 orang: 19:00 penuh (T3 offline), 21:00 sisa 2 meja'
+            else 'FAIL t63b TABLE 4 orang -> ' || coalesce(pg_temp.sa63(2, 4), 'NULL') end as t63b;
+commit;
+
+-- t63c status meja di 19:00 untuk 4 orang.
+begin;
+set local role anon;
+select case when (select string_agg(t.name || '=' || s.status, ' ' order by t.name)
+                  from public.get_table_status('resto-63', '63636363-5e00-0000-0000-000000000001',
+                                               pg_temp.jakarta_future(3, 2, '19:00'), 4) s
+                  join (values ('63636363-7a00-0000-0000-000000000001'::uuid, 'T1'),
+                               ('63636363-7a00-0000-0000-000000000002'::uuid, 'T2'),
+                               ('63636363-7a00-0000-0000-000000000003'::uuid, 'T3'),
+                               ('63636363-7a00-0000-0000-000000000004'::uuid, 'K1'),
+                               ('63636363-7a00-0000-0000-000000000005'::uuid, 'B1')) t(id, name)
+                    on t.id = s.table_id)
+                 = 'B1=TOO_LARGE K1=TOO_SMALL T1=TAKEN T2=TAKEN'
+            then 'OK   t63c status meja: T1 T2 TAKEN, K1 TOO_SMALL, B1 TOO_LARGE, T3 tidak muncul'
+            else 'FAIL t63c status meja salah' end as t63c;
+commit;
+
+-- t63d argumen tidak valid dan kembalian kosong.
+select pg_temp.expect_fail_code($q$select * from public.get_seat_availability('resto-63',
+    '63636363-5e00-0000-0000-000000000001', 2, null,
+    array(select pg_temp.jakarta_future(3, 3, '10:00') + g * interval '5 minutes' from generate_series(1, 97) g))$q$,
+  '22023', 't63d 97 jam kandidat');
+select pg_temp.expect_fail_code($q$select * from public.get_seat_availability('resto-63',
+    '63636363-5e00-0000-0000-000000000001', 0, null, array[now()])$q$, '22023', 't63d jumlah tamu 0');
+select case when (select count(*) from public.get_seat_availability('tidak-ada-63',
+                    '63636363-5e00-0000-0000-000000000001', 2, null, array[pg_temp.jakarta_future(3, 3, '19:00')])) = 0
+            then 'OK   t63d username tidak dikenal: kosong' else 'FAIL t63d username tidak dikenal' end as t63d1,
+       case when pg_temp.sa63(3, 2, 2) is null
+             and (select count(*) from public.get_table_status('resto-63', '63636363-5e00-0000-0000-000000000002',
+                    pg_temp.jakarta_future(3, 3, '19:00'), 2)) = 0
+            then 'OK   t63d layanan bukan reservasi: kosong' else 'FAIL t63d layanan bukan reservasi' end as t63d2;
+update public.merchant_settings set table_mode = 'NONE'
+  where merchant_id = '63636363-0000-0000-0000-000000000001';
+select case when pg_temp.sa63(3, 2) is null
+             and (select count(*) from public.get_table_status('resto-63', '63636363-5e00-0000-0000-000000000001',
+                    pg_temp.jakarta_future(3, 3, '19:00'), 2)) = 0
+            then 'OK   t63d table_mode NONE: kosong' else 'FAIL t63d table_mode NONE' end as t63d3;
+update public.merchant_settings set table_mode = 'AREA'
+  where merchant_id = '63636363-0000-0000-0000-000000000001';
+select case when (select count(*) from public.get_table_status('resto-63', '63636363-5e00-0000-0000-000000000001',
+                    pg_temp.jakarta_future(3, 3, '19:00'), 2)) = 0
+            then 'OK   t63d status meja di mode AREA: kosong' else 'FAIL t63d status meja di mode AREA' end as t63d4;
+
+-- t63e hak akses dan bentuk kembalian.
+select
+  case when to_regprocedure('public.get_seat_availability(text, uuid, integer, uuid, timestamptz[])') is null
+         or to_regprocedure('public.get_table_status(text, uuid, timestamptz, integer)') is null
+       then 'FAIL t63e RPC baca tidak ada'
+       when exists (select 1 from unnest(array['anon', 'authenticated']) r, unnest(array[
+                      'public.get_seat_availability(text, uuid, integer, uuid, timestamptz[])',
+                      'public.get_table_status(text, uuid, timestamptz, integer)']) f
+                    where not has_function_privilege(r, to_regprocedure(f), 'EXECUTE'))
+       then 'FAIL t63e anon/authenticated tidak bisa EXECUTE RPC baca'
+       when pg_get_function_result(to_regprocedure('public.get_seat_availability(text, uuid, integer, uuid, timestamptz[])'))
+              <> 'TABLE(start_datetime timestamp with time zone, available boolean, tables_left integer)'
+         or pg_get_function_result(to_regprocedure('public.get_table_status(text, uuid, timestamptz, integer)'))
+              <> 'TABLE(table_id uuid, status text)'
+       then 'FAIL t63e kolom kembalian RPC baca berubah'
+       else 'OK   t63e RPC baca terbuka untuk anon/authenticated, kembalian tanpa data pelanggan' end as t63e;
+
+-- ===========================================================================
+-- 64. Restoran: simpan denah (20261120000300)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('64646464-0000-0000-0000-000000000001', 'resto64@example.com', '{}'::jsonb);
+
+create or replace function pg_temp.a64(n integer) returns uuid language sql immutable as $$
+  select ('64646464-a000-0000-0000-' || lpad(n::text, 12, '0'))::uuid;
+$$;
+create or replace function pg_temp.t64(n integer) returns uuid language sql immutable as $$
+  select ('64646464-7a00-0000-0000-' || lpad(n::text, 12, '0'))::uuid;
+$$;
+create or replace function pg_temp.area64(n integer, p_name text) returns jsonb language sql immutable as $$
+  select jsonb_build_object('id', pg_temp.a64(n), 'name', p_name, 'sort_order', n);
+$$;
+create or replace function pg_temp.table64(n integer, p_area integer, p_name text, p_join uuid[] default '{}')
+returns jsonb language sql immutable as $$
+  select jsonb_build_object('id', pg_temp.t64(n), 'area_id', pg_temp.a64(p_area), 'name', p_name,
+    'min_seats', 2, 'max_seats', 4, 'shape', 'RECT', 'grid_x', n, 'grid_y', 0, 'grid_w', 3, 'grid_h', 3,
+    'note', null, 'bookable_online', true, 'joinable_with', to_jsonb(p_join), 'sort_order', n);
+$$;
+create or replace function pg_temp.save64(p_areas jsonb[], p_tables jsonb[]) returns text language sql as $$
+  select format('select public.save_dining_layout(%L::jsonb, %L::jsonb)',
+    to_jsonb(p_areas), to_jsonb(p_tables));
+$$;
+create or replace function pg_temp.names64() returns text language sql as $$
+  select string_agg(name, ' ' order by name) from public.dining_tables
+  where merchant_id = '64646464-0000-0000-0000-000000000001';
+$$;
+
+-- t64a simpan, ganti nama, hapus, tambah, tukar nama.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '64646464-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(pg_temp.save64(
+    array[pg_temp.area64(1, 'Dalam'), pg_temp.area64(2, 'Luar')],
+    array[pg_temp.table64(1, 1, 'M1'), pg_temp.table64(2, 1, 'M2', array[pg_temp.t64(1)]), pg_temp.table64(3, 2, 'M3')]),
+  't64a simpan pertama');
+select case when pg_temp.names64() = 'M1 M2 M3'
+             and (select count(*) from public.dining_areas where merchant_id = '64646464-0000-0000-0000-000000000001') = 2
+             and (select joinable_with from public.dining_tables where id = pg_temp.t64(2)) = array[pg_temp.t64(1)]
+            then 'OK   t64a simpan pertama: 2 area, 3 meja' else 'FAIL t64a simpan pertama -> ' || coalesce(pg_temp.names64(), 'NULL') end as t64a1;
+select pg_temp.expect_ok(pg_temp.save64(
+    array[pg_temp.area64(1, 'Dalam'), pg_temp.area64(2, 'Luar')],
+    array[pg_temp.table64(1, 1, 'M1b'), pg_temp.table64(3, 2, 'M3'), pg_temp.table64(4, 2, 'M4')]),
+  't64a simpan kedua');
+select case when pg_temp.names64() = 'M1b M3 M4'
+             and not exists (select 1 from public.dining_tables where id = pg_temp.t64(2))
+             and (select area_id from public.dining_tables where id = pg_temp.t64(4)) = pg_temp.a64(2)
+            then 'OK   t64a isi tabel persis payload kedua' else 'FAIL t64a simpan kedua -> ' || coalesce(pg_temp.names64(), 'NULL') end as t64a2;
+select pg_temp.expect_ok(pg_temp.save64(
+    array[pg_temp.area64(1, 'Dalam'), pg_temp.area64(2, 'Luar')],
+    array[pg_temp.table64(1, 1, 'M3'), pg_temp.table64(3, 2, 'M1b'), pg_temp.table64(4, 2, 'M4')]),
+  't64a tukar nama dua meja');
+select case when (select name from public.dining_tables where id = pg_temp.t64(1)) = 'M3'
+             and (select name from public.dining_tables where id = pg_temp.t64(3)) = 'M1b'
+            then 'OK   t64a nama tertukar' else 'FAIL t64a nama tidak tertukar' end as t64a3;
+-- Meja pindah ke area baru, area lamanya dihapus: meja tetap ada (bukan ikut terhapus kaskade).
+select pg_temp.expect_ok(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar'), pg_temp.area64(3, 'Teras')],
+    array[pg_temp.table64(1, 3, 'M3'), pg_temp.table64(3, 2, 'M1b'), pg_temp.table64(4, 2, 'M4')]),
+  't64a pindah meja ke area baru dan hapus area lama');
+select case when (select area_id from public.dining_tables where id = pg_temp.t64(1)) = pg_temp.a64(3)
+             and not exists (select 1 from public.dining_areas where id = pg_temp.a64(1))
+            then 'OK   t64a meja pindah area, area lama terhapus' else 'FAIL t64a pindah area' end as t64a4;
+commit;
+
+-- t64b denah tidak valid dan hak milik.
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '64646464-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array(select pg_temp.area64(g, 'Area ' || g) from generate_series(1, 11) g), array[]::jsonb[]),
+  'BK064', 't64b 11 area');
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar')], array[pg_temp.table64(3, 2, 'M1'), pg_temp.table64(4, 2, ' m1 ')]),
+  'BK064', 't64b nama meja ganda beda huruf besar');
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar'), pg_temp.area64(3, 'Teras')],
+    array[pg_temp.table64(1, 3, 'M3'), pg_temp.table64(3, 2, 'M1b', array[pg_temp.t64(1)])]),
+  'BK064', 't64b joinable_with ke meja area lain');
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar')], array[pg_temp.table64(3, 9, 'M1b')]),
+  'BK064', 't64b area meja tidak ada di payload');
+select pg_temp.expect_fail_code(format('select public.save_dining_layout(%L::jsonb, %L::jsonb)',
+    jsonb_build_array(pg_temp.area64(2, 'Luar')),
+    jsonb_build_array(pg_temp.table64(3, 2, 'M1b') || jsonb_build_object('id', '61616161-7a00-0000-0000-000000000001'))),
+  '42501', 't64b id meja milik merchant lain');
+commit;
+select case when (select merchant_id from public.dining_tables where id = '61616161-7a00-0000-0000-000000000001')
+                 = '61616161-0000-0000-0000-000000000001' and pg_temp.names64() = 'M1b M3 M4'
+            then 'OK   t64b denah kedua merchant tidak berubah' else 'FAIL t64b denah berubah' end as t64b;
+begin;
+set local role authenticated;
+select pg_temp.expect_fail_code(pg_temp.save64(array[]::jsonb[], array[]::jsonb[]), '42501', 't64b tanpa klaim sub');
+commit;
+
+-- t64c meja dengan reservasi mendatang tidak boleh dihapus.
+create or replace function pg_temp.ins64(p_start timestamptz, p_table uuid, p_joined uuid, p_label text)
+returns void language sql as $$
+  insert into public.bookings (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+                               customer_name, customer_whatsapp, status, capacity_mode, party_size, table_id,
+                               joined_table_id, table_label)
+  values ('64646464-0000-0000-0000-000000000001', 'Reservasi meja', 0, 90, p_start, p_start + interval '90 minutes',
+          'Tamu 64', '+6281364000001', 'CONFIRMED', 'TABLE', 4, p_table, p_joined, p_label);
+$$;
+-- Minggu depan: M1b (t64(3)) digabung M4 (t64(4)). Lampau: M3 (t64(1)).
+select pg_temp.ins64(pg_temp.jakarta_future(3, 1, '19:00'), pg_temp.t64(3), pg_temp.t64(4), 'M1b + M4');
+select pg_temp.ins64(now() - interval '3 days', pg_temp.t64(1), null, 'M3');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '64646464-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar'), pg_temp.area64(3, 'Teras')],
+    array[pg_temp.table64(1, 3, 'M3 baru'), pg_temp.table64(4, 2, 'M4')]),
+  'BK062', 't64c hapus meja utama reservasi minggu depan');
+select pg_temp.expect_fail_code(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar'), pg_temp.area64(3, 'Teras')],
+    array[pg_temp.table64(1, 3, 'M3 baru'), pg_temp.table64(3, 2, 'M1b')]),
+  'BK062', 't64c hapus meja gabungan reservasi minggu depan');
+select case when pg_temp.names64() = 'M1b M3 M4'
+            then 'OK   t64c simpan yang ditolak tidak mengubah apa pun' else 'FAIL t64c perubahan sebagian -> ' || pg_temp.names64() end as t64c1;
+select pg_temp.expect_ok(pg_temp.save64(
+    array[pg_temp.area64(2, 'Luar')],
+    array[pg_temp.table64(3, 2, 'M1b'), pg_temp.table64(4, 2, 'M4')]),
+  't64c hapus meja yang hanya punya booking lampau');
+commit;
+select case when b.table_id is null and b.table_label = 'M3' and pg_temp.names64() = 'M1b M4'
+            then 'OK   t64c booking lampau: table_id null, table_label tetap'
+            else 'FAIL t64c booking lampau -> ' || coalesce(b.table_label, 'NULL') end as t64c2
+from public.bookings b
+where b.merchant_id = '64646464-0000-0000-0000-000000000001' and b.start_datetime < now();
+
+-- t64d hak akses.
+select case when to_regprocedure('public.save_dining_layout(jsonb, jsonb)') is null
+            then 'FAIL t64d save_dining_layout tidak ada'
+            when has_function_privilege('anon', to_regprocedure('public.save_dining_layout(jsonb, jsonb)'), 'EXECUTE')
+              or not has_function_privilege('authenticated', to_regprocedure('public.save_dining_layout(jsonb, jsonb)'), 'EXECUTE')
+            then 'FAIL t64d hak save_dining_layout salah'
+            else 'OK   t64d save_dining_layout hanya authenticated' end as t64d;
