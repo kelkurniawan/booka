@@ -21,15 +21,17 @@ export const LANDING_FAQS: readonly Faq[] = [
   {
     question: "Apakah uang pelanggan ditahan Marky?",
     answer:
-      "Tidak. Pembayaran masuk ke akun Midtrans atau Xendit milik Anda. Marky hanya menarik biaya langganan.",
+      "Tidak. Pembayaran pelanggan masuk langsung ke akun Midtrans atau Xendit milik Anda. Marky tidak pernah memegang uangnya.",
   },
   {
     question: "Bisa booking tanpa bayar dulu?",
-    answer: "Bisa. Nyalakan bayar di tempat di pengaturan dan pilih layanan yang memakainya.",
+    answer:
+      "Bisa. Atur cara bayar sebuah layanan menjadi bayar di tempat, dan pelanggan langsung dapat jadwal tanpa membayar dulu.",
   },
   {
     question: "Pelanggan perlu unduh aplikasi?",
-    answer: "Tidak. Semua berjalan di browser HP, termasuk notifikasi pengingat.",
+    answer:
+      "Tidak. Pelanggan memesan lewat browser di HP, dan pengingatnya datang lewat WhatsApp atau email.",
   },
   {
     question: "Bisa pakai voucher dan banner promo?",
@@ -39,7 +41,7 @@ export const LANDING_FAQS: readonly Faq[] = [
   {
     question: "Ada potongan per transaksi dari Marky?",
     answer:
-      "Tidak. Biaya QRIS ditagih langsung oleh Midtrans atau Xendit sesuai tarif mereka. Marky hanya menarik biaya langganan.",
+      "Tidak. Biaya QRIS ditagih langsung oleh Midtrans atau Xendit sesuai tarif mereka. Marky tidak memotong apa pun dari pembayaran pelanggan.",
   },
   {
     question: "Bagaimana kalau saya ingin berhenti?",
@@ -55,11 +57,11 @@ export const POLICIES: readonly Policy[] = [
   },
   {
     title: "Data pribadi",
-    body: "Tidak dijual dan tidak dipakai untuk iklan pihak ketiga. Disimpan di server Singapura.",
+    body: "Data tidak dijual dan tidak dipakai untuk iklan pihak ketiga. Data disimpan di server Singapura.",
   },
   {
     title: "Hak Anda",
-    body: "Unduh salinan data, perbaiki, atau hapus akun kapan saja dari Pengaturan.",
+    body: "Anda bisa mengunduh salinan data, memperbaikinya, atau menghapus akun kapan saja dari Pengaturan.",
   },
   {
     title: "Yang dilarang",

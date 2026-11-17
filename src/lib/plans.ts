@@ -66,7 +66,7 @@ export const PLANS: Plan[] = [
       { label: "Layanan tanpa batas" },
       { label: "Pengingat ke pelanggan lewat WhatsApp, email, dan notifikasi HP" },
       { label: "Tanpa watermark" },
-      { label: "Semua tema, warna, dan font sendiri" },
+      { label: "Semua tema, plus atur warna dan font" },
       { label: "Video pada layanan" },
       { label: "Voucher dan banner promosi" },
       { label: "Foto sampul, gaya tombol, dan latar bergerak" },
@@ -99,7 +99,17 @@ export const EARLY_ACCESS_FREE = true;
 
 /** Catatan harga untuk UI selama masa awal gratis. */
 export const EARLY_ACCESS_NOTE = "Semua fitur gratis selama masa awal.";
-export const EARLY_ACCESS_DETAIL = "Harga di bawah berlaku nanti; kami kabari dulu sebelum ada tagihan.";
+export const EARLY_ACCESS_DETAIL = "Tiga paket di bawah adalah harga nanti. Kami kabari dulu sebelum ada tagihan.";
+
+/** Judul bagian harga di landing selama masa awal gratis. */
+export const FUTURE_PRICE_HEADING = "Harga nanti, setelah masa awal";
+
+/** Kalimat batas paket untuk teks pemasaran; selama masa awal fiturnya sudah terbuka untuk semua. */
+export function planAvailability(tiers: string): string {
+  return EARLY_ACCESS_FREE
+    ? `Gratis selama masa awal, nanti di paket ${tiers}.`
+    : `Tersedia di paket ${tiers}.`;
+}
 
 export const COMING_SOON_LABEL = "Segera hadir";
 
@@ -128,11 +138,11 @@ export const PLAN_COMPARISON: readonly ComparisonRow[] = [
     values: { STARTER: "Ya", PRO: "Ya", STUDIO: "Ya" },
   },
   {
-    label: "Reminder WhatsApp H-1",
+    label: "Pengingat H-1 ke pelanggan",
     values: { STARTER: null, PRO: "Ya", STUDIO: "Ya" },
   },
   {
-    label: "Tema, warna, dan font sendiri",
+    label: "Tema, warna, dan font",
     values: { STARTER: "3 tema", PRO: "Semua", STUDIO: "Semua" },
   },
   {

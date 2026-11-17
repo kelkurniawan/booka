@@ -1,3 +1,4 @@
+import { planAvailability } from "@/lib/plans";
 import { BIZ_EXAMPLES, type BizExample, type Faq } from "./content";
 
 export type IndustrySlug = "salon" | "barbershop" | "restoran" | "fotografer" | "klinik" | "kelas";
@@ -22,7 +23,8 @@ const exampleOf = (label: string): BizExample => {
 };
 
 // Klaim pengingat dan pindah jadwal sama dengan beranda: pengingat H-1 plus
-// opsional pagi hari H (WhatsApp, email, web push) khusus Pro dan Studio;
+// opsional pagi hari H (WhatsApp, email, web push) untuk Pro dan Studio
+// (selama masa awal gratis untuk semua, lihat planAvailability);
 // pelanggan pindah jadwal sendiri hanya bila merchant mengizinkan.
 const FAQ_DP: Faq = {
   question: "Ke mana DP pelanggan masuk?",
@@ -44,7 +46,7 @@ export const INDUSTRIES: readonly Industry[] = [
       "Halaman booking untuk salon dan MUA. Pelanggan pilih layanan dan jadwal, DP masuk langsung ke akun Midtrans atau Xendit Anda.",
     h1: "Booking salon dan MUA yang masuk sendiri.",
     intro:
-      "Pelanggan memilih layanan dan jam dari satu tautan di bio, lalu membayar DP. Jadwal Anda terisi tanpa membalas obrolan satu per satu.",
+      "Pelanggan memilih layanan dan jam dari satu tautan di bio, lalu membayar DP. Anda tidak perlu lagi menjawab \"masih kosong, Kak?\" berkali-kali.",
     example: exampleOf("Salon"),
     paymentFit: {
       title: "DP supaya jadwal tidak kosong",
@@ -61,7 +63,7 @@ export const INDUSTRIES: readonly Industry[] = [
       },
       {
         title: "Pengingat untuk pelanggan",
-        body: "Pengingat H-1 dan opsional pagi hari H lewat WhatsApp, email, atau notifikasi browser. Tersedia di paket Pro dan Studio.",
+        body: `Pengingat H-1 dan opsional pagi hari H lewat WhatsApp, email, atau notifikasi HP. ${planAvailability("Pro dan Studio")}`,
       },
     ],
     faqs: [FAQ_DP, FAQ_RESCHEDULE],
@@ -94,7 +96,7 @@ export const INDUSTRIES: readonly Industry[] = [
     points: [
       {
         title: "Kalender per staf",
-        body: "Di paket Studio, setiap barber punya kalender sendiri dan pelanggan bisa memilih barbernya.",
+        body: `Setiap barber punya kalender sendiri dan pelanggan bisa memilih barbernya. ${planAvailability("Studio")}`,
       },
       {
         title: "Booking manual",
@@ -108,7 +110,7 @@ export const INDUSTRIES: readonly Industry[] = [
     faqs: [
       {
         question: "Bisa tiap barber punya jadwal sendiri?",
-        answer: "Bisa, lewat fitur multi-staf di paket Studio. Setiap staf punya kalender sendiri.",
+        answer: `Bisa, lewat fitur multi-staf. Setiap staf punya kalender sendiri. ${planAvailability("Studio")}`,
       },
       FAQ_DP,
     ],
@@ -121,7 +123,7 @@ export const INDUSTRIES: readonly Industry[] = [
       "Halaman reservasi meja untuk restoran dan kafe. Pelanggan memilih jumlah tamu dan meja, bayar di tempat, tanpa balas obrolan.",
     h1: "Reservasi meja yang masuk sendiri.",
     intro:
-      "Pelanggan memilih tanggal, jam, dan jumlah tamu dari satu tautan. Anda melihat reservasi masuk tanpa membalas pesan satu per satu.",
+      "Pelanggan memilih tanggal, jam, dan jumlah tamu dari satu tautan. Reservasi langsung muncul di dashboard, tanpa pesan \"meja untuk 4 orang masih ada?\".",
     example: exampleOf("Restoran"),
     paymentFit: {
       title: "Reservasi dibayar di tempat",
@@ -162,7 +164,7 @@ export const INDUSTRIES: readonly Industry[] = [
       "Halaman booking untuk fotografer. Pelanggan memilih paket dan jadwal sesi, DP masuk langsung ke akun Midtrans atau Xendit Anda.",
     h1: "Booking sesi foto dengan DP yang masuk sendiri.",
     intro:
-      "Pelanggan memilih paket dan tanggal sesi dari satu tautan. DP mengunci jadwal Anda sebelum Anda membalas apa pun.",
+      "Pelanggan memilih paket dan tanggal sesi dari satu tautan. Begitu DP masuk, tanggal sesi terkunci untuk pelanggan itu.",
     example: exampleOf("Fotografer"),
     paymentFit: {
       title: "DP untuk mengunci sesi, ajukan untuk yang khusus",
@@ -171,15 +173,15 @@ export const INDUSTRIES: readonly Industry[] = [
     points: [
       {
         title: "Galeri di tiap layanan",
-        body: "Pasang gambar contoh hasil kerja di setiap layanan agar calon pelanggan melihat gayanya. Video tersedia di paket Pro dan Studio.",
+        body: `Pasang gambar contoh hasil kerja di setiap layanan agar calon pelanggan melihat gayanya. Video juga bisa dipasang. ${planAvailability("Pro dan Studio")}`,
       },
       {
         title: "Tampilan sesuai merek Anda",
-        body: "Pilih tema, foto profil, dan latar halaman booking dari Dashboard. Warna dan font sendiri tersedia di paket Pro dan Studio.",
+        body: `Pilih tema, foto profil, dan latar halaman booking dari dashboard. Warna dan font bisa disetel juga. ${planAvailability("Pro dan Studio")}`,
       },
       {
         title: "Pengingat sesi",
-        body: "Pengingat H-1 dan opsional pagi hari H bagi pelanggan, di paket Pro dan Studio.",
+        body: `Pelanggan menerima pengingat H-1 dan opsional pagi hari H. ${planAvailability("Pro dan Studio")}`,
       },
     ],
     faqs: [FAQ_DP, FAQ_RESCHEDULE],
@@ -216,11 +218,11 @@ export const INDUSTRIES: readonly Industry[] = [
       },
       {
         title: "Kalender per staf",
-        body: "Di paket Studio, tiap dokter atau terapis punya kalender sendiri.",
+        body: `Tiap dokter atau terapis punya kalender sendiri. ${planAvailability("Studio")}`,
       },
       {
         title: "Pengingat janji temu",
-        body: "Pengingat H-1 dan opsional pagi hari H lewat WhatsApp, email, atau notifikasi browser, di paket Pro dan Studio.",
+        body: `Pengingat H-1 dan opsional pagi hari H lewat WhatsApp, email, atau notifikasi HP. ${planAvailability("Pro dan Studio")}`,
       },
     ],
     faqs: [
@@ -253,7 +255,7 @@ export const INDUSTRIES: readonly Industry[] = [
       },
       {
         title: "Kode diskon dan banner",
-        body: "Buat kode diskon dengan kuota dan masa berlaku, serta pasang banner promo di halaman. Tersedia di paket Pro dan Studio.",
+        body: `Buat kode diskon dengan kuota dan masa berlaku, serta pasang banner promo di halaman. ${planAvailability("Pro dan Studio")}`,
       },
       {
         title: "Pindah jadwal oleh peserta",

@@ -14,6 +14,7 @@ const filled = contactLinks({
   threads: "akun",
   x: "akun",
   tiktok: "akun",
+  discord: "https://discord.gg/abc123",
 });
 
 type Node = Record<string, unknown>;
@@ -46,7 +47,7 @@ test("kontak kosong: tanpa sameAs dan email", () => {
 
 test("kontak terisi: sameAs empat URL (tanpa WhatsApp dan email), email ikut", () => {
   const org = build()[1];
-  assert.equal((org.sameAs as string[]).length, 4);
+  assert.equal((org.sameAs as string[]).length, 5);
   assert.equal(org.email, "halo@contoh.id");
 });
 
