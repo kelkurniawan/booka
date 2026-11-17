@@ -22,3 +22,42 @@ export const staffHoursSchema = z
   );
 
 export type StaffHoursInput = z.input<typeof staffHoursSchema>;
+
+/** Batas isian profil staf. Sejalan dengan constraint `staff_profile_length` di migration 20261119000100. */
+export const STAFF_PROFILE_LIMITS = { roleMax: 40, bioMax: 140, tagsMax: 5, tagMax: 24 } as const;
+
+/** Teks kosong disimpan sebagai null, bukan string kosong. */
+const teksOpsional = (max: number, pesan: string) =>
+  z
+    .string()
+    .trim()
+    .max(max, pesan)
+    .transform((nilai) => (nilai === "" ? null : nilai));
+
+export const staffProfileSchema = z.object({
+  role: teksOpsional(STAFF_PROFILE_LIMITS.roleMax, "Peran maksimal 40 karakter"),
+  bio: teksOpsional(STAFF_PROFILE_LIMITS.bioMax, "Perkenalan maksimal 140 karakter"),
+  tags: z
+    .array(
+      z
+        .string()
+        .trim()
+        .min(1, "Keahlian tidak boleh kosong")
+        .max(STAFF_PROFILE_LIMITS.tagMax, "Keahlian maksimal 24 karakter")
+        .refine((tag) => !/[\r\n]/.test(tag), "Keahlian tidak boleh berisi baris baru"),
+    )
+    .max(STAFF_PROFILE_LIMITS.tagsMax, "Maksimal 5 keahlian")
+    .refine(
+      (tags) => new Set(tags.map((tag) => tag.toLowerCase())).size === tags.length,
+      "Keahlian tidak boleh dobel",
+    ),
+  // Path diperiksa cakupan folder-nya di aksi, karena butuh merchant_id dan staff_id.
+  photo_path: z
+    .string()
+    .nullable()
+    .transform((path) => (path ? path : null)),
+  show_motion: z.boolean(),
+});
+
+export type StaffProfileInput = z.input<typeof staffProfileSchema>;
+export type StaffProfile = z.output<typeof staffProfileSchema>;
