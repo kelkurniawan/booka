@@ -3,7 +3,8 @@ import { EARLY_ACCESS_DETAIL, EARLY_ACCESS_FREE, EARLY_ACCESS_NOTE, PLAN_COMPARI
 import { RadioSwitch, SwitchPanel } from "./radio-switch";
 
 const muted = { color: "var(--color-board-muted)" } as const;
-const ctaFor = (p: Plan) => (p.tier === "STARTER" ? "Mulai dengan Starter" : "Mulai dari Starter");
+const ctaFor = (p: Plan) =>
+  EARLY_ACCESS_FREE ? "Mulai gratis" : p.tier === "STARTER" ? "Mulai dengan Starter" : "Mulai dari Starter";
 const priceHead = (p: Plan) => (p.period === "per bulan" ? `${p.price} / bulan` : p.price);
 
 export function Pricing() {
@@ -83,7 +84,7 @@ export function Pricing() {
           </table>
         </div>
         <div className="price-foot" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "var(--space-md)" }}>
-          <a href="#klaim" className="btn btn--card">Mulai dengan Starter</a>
+          <a href="#klaim" className="btn btn--card">{EARLY_ACCESS_FREE ? "Mulai gratis" : "Mulai dengan Starter"}</a>
           <span style={{ fontSize: "var(--text-small)", ...muted }}>Tanpa kartu kredit.</span>
         </div>
       </div>
