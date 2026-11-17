@@ -25,7 +25,7 @@ export function Workflow({ host }: { host: string }) {
         <li data-switch style={{ ...li, flexWrap: "wrap" }}>
           <div style={text}>
             <h3 style={h3}>1. Pelanggan membuka tautan di bio</h3>
-            <p style={lead}>Mereka melihat layanan, harga, dan jam yang masih kosong, dengan warna dan foto usaha Anda.</p>
+            <p style={lead}>Mereka melihat layanan, harga, dan jam yang masih kosong, dengan warna dan logo usaha Anda.</p>
             <RadioSwitch name="usaha" legend="Contoh usaha" options={BIZ_EXAMPLES.map((b) => b.label)} className="self-start" />
           </div>
           <div className="desk" style={stage}>

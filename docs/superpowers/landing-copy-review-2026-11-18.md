@@ -4,7 +4,7 @@ Cabang `fitur/landing-copy`. Hanya teks yang berubah; tata letak, token desain, 
 
 ## Ringkasan
 
-**A. Tinjauan copy.** 32 perubahan (daftar di bawah). Masalah yang ditemukan: klaim keliru ("rekening Anda", "logo", "font sendiri"), kalimat canggung ("Nyalakan bayar di tempat di pengaturan"), pengulangan ("Marky hanya menarik biaya langganan" dua kali, "tanpa membalas satu per satu" di empat halaman), judul tipis ("Yang diterima pelanggan Anda."), dan istilah tidak seragam ("notifikasi browser" dan "notifikasi HP").
+**A. Tinjauan copy.** 32 perubahan (daftar di bawah). Masalah yang ditemukan: klaim keliru ("rekening Anda", "font sendiri"), kalimat canggung ("Nyalakan bayar di tempat di pengaturan"), pengulangan ("Marky hanya menarik biaya langganan" dua kali, "tanpa membalas satu per satu" di empat halaman), judul tipis ("Yang diterima pelanggan Anda."), dan istilah tidak seragam ("notifikasi browser" dan "notifikasi HP").
 
 **B. Masa awal gratis.** Semua teks yang bergantung pada batas paket dikunci ke `EARLY_ACCESS_FREE` di `src/lib/plans.ts`, jadi mengembalikannya ke `false` memulihkan teks lama. Judul harga kini "Semua fitur gratis selama masa awal." Tiga paket dan tabel perbandingan tetap ada, diberi label "Harga nanti, setelah masa awal" (`FUTURE_PRICE_HEADING`). Kalimat "Tersedia di paket Pro dan Studio" kini lewat `planAvailability()`: selama masa awal berbunyi "Gratis selama masa awal, nanti di paket ...". Tidak ada lama masa uji yang diada-adakan.
 
@@ -30,7 +30,7 @@ Contoh di bawah memakai keadaan `EARLY_ACCESS_FREE = true`.
 | 12 | Kebijakan, data | Tidak dijual dan tidak dipakai untuk iklan pihak ketiga. Disimpan di server Singapura. | Data tidak dijual dan tidak dipakai untuk iklan pihak ketiga. Data disimpan di server Singapura. |
 | 13 | Kebijakan, hak | Unduh salinan data, perbaiki, atau hapus akun kapan saja dari Pengaturan. | Anda bisa mengunduh salinan data, memperbaikinya, atau menghapus akun kapan saja dari Pengaturan. |
 | 14 | Alur, judul | Satu booking, dari tautan sampai kursi terisi. | Satu booking, dari tautan sampai hari H. |
-| 15 | Alur 1 | ...dengan warna dan logo usaha Anda. | ...dengan warna dan foto usaha Anda. |
+| 15 | Alur 1 | (dibatalkan: editor punya unggah logo, teks lama dipertahankan) | ...dengan warna dan logo usaha Anda. |
 | 16 | Alur 2, judul | 2. DP masuk ke rekening Anda | 2. DP masuk ke akun pembayaran Anda |
 | 17 | Alur 2, isi | ...Untuk restoran atau barbershop, pilih bayar di tempat saja. | ...Untuk restoran atau barbershop, layanan bisa diatur bayar di tempat. |
 | 18 | Alur 3 | Pengingat H-1, bisa ditambah pagi hari jadwal, lewat WhatsApp, email, atau notifikasi HP, untuk paket Pro dan Studio. Pelanggan bisa pindah jadwal sendiri bila Anda mengizinkan. | Pengingat H-1 dikirim lewat WhatsApp, email, atau notifikasi HP, dan bisa ditambah pengingat pagi hari H. Gratis selama masa awal, nanti di paket Pro dan Studio. Pelanggan bisa pindah jadwal sendiri bila Anda mengizinkan. |
