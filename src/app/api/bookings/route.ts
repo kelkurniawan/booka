@@ -32,6 +32,9 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  *   5. Hanya bila status PENDING: buat charge QRIS sebesar amount_due_now
  *      (chargeBooking). Kalau gagal, booking PENDING dibatalkan di sini juga.
  *      CONFIRMED/REQUESTED tidak ditagih; hanya notifikasi dikirim.
+ *
+ * Kode voucher (opsional) diteruskan ke create_booking, yang menilai ulang
+ * kelayakannya di dalam transaksi; charge tetap sebesar amount_due_now.
  */
 export async function POST(request: NextRequest) {
   let rawBody: unknown;
@@ -49,7 +52,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp } = parsed.data;
+  const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp, voucherCode } =
+    parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
@@ -142,6 +146,7 @@ export async function POST(request: NextRequest) {
     p_customer_whatsapp: customer_whatsapp,
     p_staff_id: staffId,
     p_can_charge: provider !== null,
+    p_voucher_code: voucherCode,
   });
 
   if (bookingError) {

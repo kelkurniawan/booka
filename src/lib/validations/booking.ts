@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { normalizeVoucherCode, VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
 import { usernameSchema, whatsappSchema } from "./merchant";
 
 /**
@@ -22,6 +23,19 @@ export const customerNameSchema = z
  * termasuk normalisasi `normalizeWhatsapp` ke dalamnya.
  */
 export const customerWhatsappSchema = whatsappSchema;
+
+/** Kode voucher: dinormalkan (trim + kapital) lalu dicocokkan polanya. */
+export const voucherCodeSchema = z
+  .string()
+  .transform(normalizeVoucherCode)
+  .pipe(z.string().regex(VOUCHER_CODE_PATTERN, "Kode voucher 4 sampai 16 huruf atau angka"));
+
+/** Body POST /api/vouchers/check. */
+export const checkVoucherRequestSchema = z.object({
+  username: usernameSchema,
+  serviceId: z.uuid("Layanan tidak valid"),
+  code: voucherCodeSchema,
+});
 
 /**
  * Input form checkout Task 7. `serviceId` dan `startUtc` berasal dari slot
@@ -61,6 +75,7 @@ export const createBookingRequestSchema = z.object({
   startUtc: z.iso.datetime({ message: "Slot tidak valid, silakan pilih ulang" }),
   customer_name: customerNameSchema,
   customer_whatsapp: customerWhatsappSchema,
+  voucherCode: voucherCodeSchema.nullable().default(null),
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;

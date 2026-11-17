@@ -12,6 +12,7 @@ import {
   checkoutSchema,
   createBookingRequestSchema,
   customerNameSchema,
+  voucherCodeSchema,
 } from "./booking";
 
 const VALID_INPUT = {
@@ -140,4 +141,19 @@ test("cancelBookingSchema menerima uuid valid", () => {
 test("cancelBookingSchema menolak id yang bukan uuid", () => {
   const result = cancelBookingSchema.safeParse({ id: "bukan-uuid" });
   assert.equal(result.success, false);
+});
+
+// --- voucherCodeSchema -------------------------------------------------------
+
+test("voucherCodeSchema memangkas dan mengkapitalkan kode", () => {
+  assert.equal(voucherCodeSchema.parse("  wisuda20 "), "WISUDA20");
+});
+
+test("voucherCodeSchema menolak kode dengan tanda hubung atau terlalu pendek", () => {
+  assert.equal(voucherCodeSchema.safeParse("AB-1").success, false);
+});
+
+test("createBookingRequestSchema: voucherCode hilang jadi null", () => {
+  const parsed = createBookingRequestSchema.parse({ ...VALID_INPUT, username: "toko" });
+  assert.equal(parsed.voucherCode, null);
 });

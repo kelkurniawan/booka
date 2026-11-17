@@ -2,12 +2,23 @@
 // evaluate_voucher di supabase/migrations/20261117000100 (satu-satunya aturan kelayakan
 // di SQL); bila keduanya berbeda, SQL yang menang.
 
-import type { Service, Voucher } from "@/types/database";
+import type { Service, Voucher, VoucherKind } from "@/types/database";
 import { formatRupiah } from "@/lib/format";
 
 import { MIN_ONLINE_CHARGE } from "./payment-mode";
 
 export type VoucherTerms = Pick<Voucher, "code" | "kind" | "value" | "max_discount" | "min_spend" | "service_ids">;
+
+/** Respons 200 POST /api/vouchers/check. Tanpa nomor pelanggan (Keputusan 11). */
+export type CheckVoucherResult = {
+  code: string;
+  kind: VoucherKind;
+  value: number;
+  max_discount: number | null;
+  min_spend: number | null;
+  service_ids: string[] | null;
+  discount: number;
+};
 
 export const VOUCHER_CODE_PATTERN = /^[A-Z0-9]{4,16}$/;
 
