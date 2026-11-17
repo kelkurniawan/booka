@@ -46,6 +46,9 @@ function layanan(
     payment_mode: "FULL",
     deposit_type: null,
     deposit_value: null,
+    party_min: null,
+    party_max: null,
+    seat_duration_minutes: null,
     created_at: waktu,
     updated_at: waktu,
   };

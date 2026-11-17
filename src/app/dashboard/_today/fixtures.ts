@@ -34,6 +34,13 @@ const BASE: BookingListItem = {
   voucher_id: null,
   voucher_code: null,
   discount_amount: 0,
+  party_size: null,
+  area_id: null,
+  table_id: null,
+  joined_table_id: null,
+  table_label: null,
+  customer_note: null,
+  capacity_mode: "NONE",
 };
 
 function row(id: string, over: Partial<BookingListItem>): BookingListItem {

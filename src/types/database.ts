@@ -9,6 +9,8 @@
 
 export type SubscriptionTier = "STARTER" | "PRO" | "STUDIO";
 export type BookingStatus = "PENDING" | "PAID" | "CANCELLED" | "CONFIRMED" | "REQUESTED";
+export type TableMode = "NONE" | "AREA" | "TABLE";
+export type DiningTableShape = "ROUND" | "RECT";
 export type PaymentMode = "FULL" | "DEPOSIT" | "ON_SITE" | "REQUEST";
 /** ONLINE dari halaman publik, MANUAL dicatat merchant dari dashboard. */
 export type BookingSource = "ONLINE" | "MANUAL";
@@ -190,6 +192,11 @@ export type Service = {
   payment_mode: PaymentMode;
   deposit_type: DepositType | null;
   deposit_value: number | null;
+  /** Keduanya null atau keduanya terisi (1..200); bila terisi, jumlah tamu wajib. */
+  party_min: number | null;
+  party_max: number | null;
+  /** Terisi = layanan reservasi (15..480 menit), memakai kapasitas restoran. */
+  seat_duration_minutes: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -378,6 +385,15 @@ export type Booking = {
   voucher_code: string | null;
   /** service_price = amount_due_now + amount_due_on_site + discount_amount. */
   discount_amount: number;
+  party_size: number | null;
+  area_id: string | null;
+  table_id: string | null;
+  joined_table_id: string | null;
+  /** Snapshot "D5" atau "D5 + D6", tetap terbaca setelah meja dihapus. */
+  table_label: string | null;
+  customer_note: string | null;
+  /** Cara booking ini memakai tempat; menentukan eksklusi yang berlaku. */
+  capacity_mode: TableMode;
   created_at: string;
   updated_at: string;
 };
@@ -480,6 +496,39 @@ export type MerchantSettings = {
   reminder_push: boolean;
   reminder_day_before: boolean;
   reminder_same_day: boolean;
+  table_mode: TableMode;
+  seats_per_slot: number | null;
+  /** 0..120 menit; 0 = kalimat penahanan meja tidak tampil. */
+  table_hold_minutes: number;
+  auto_join_tables: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DiningArea = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+};
+
+export type DiningTable = {
+  id: string;
+  merchant_id: string;
+  area_id: string;
+  name: string;
+  min_seats: number;
+  max_seats: number;
+  shape: DiningTableShape;
+  grid_x: number;
+  grid_y: number;
+  grid_w: number;
+  grid_h: number;
+  note: string | null;
+  bookable_online: boolean;
+  joinable_with: string[];
+  sort_order: number;
   created_at: string;
   updated_at: string;
 };
@@ -571,11 +620,17 @@ export type Database = {
           | "payment_mode"
           | "deposit_type"
           | "deposit_value"
+          | "party_min"
+          | "party_max"
+          | "seat_duration_minutes"
         > &
           Partial<
             Pick<
               Service,
               | "id"
+              | "party_min"
+              | "party_max"
+              | "seat_duration_minutes"
               | "is_active"
               | "sort_order"
               | "payment_mode"
@@ -708,11 +763,25 @@ export type Database = {
           | "voucher_id"
           | "voucher_code"
           | "discount_amount"
+          | "party_size"
+          | "area_id"
+          | "table_id"
+          | "joined_table_id"
+          | "table_label"
+          | "customer_note"
+          | "capacity_mode"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "party_size"
+              | "area_id"
+              | "table_id"
+              | "joined_table_id"
+              | "table_label"
+              | "customer_note"
+              | "capacity_mode"
               | "source"
               | "merchant_reschedule_count"
               | "voucher_id"
@@ -812,9 +881,29 @@ export type Database = {
             | "reminder_push"
             | "reminder_day_before"
             | "reminder_same_day"
+            | "table_mode"
+            | "seats_per_slot"
+            | "table_hold_minutes"
+            | "auto_join_tables"
           >
         >;
         Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      // Denah hanya ditulis lewat RPC save_dining_layout.
+      dining_areas: {
+        Row: DiningArea;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      dining_tables: {
+        Row: DiningTable;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"merchant_id", "merchants">,
+          Relationship<"area_id", "dining_areas">,
+        ];
       };
       payment_connections: {
         Row: PaymentConnection;
@@ -1124,6 +1213,8 @@ export type Database = {
       banner_target: BannerTarget;
       subscription_tier: SubscriptionTier;
       booking_status: BookingStatus;
+      table_mode: TableMode;
+      dining_table_shape: DiningTableShape;
       payment_mode: PaymentMode;
       booking_source: BookingSource;
       deposit_type: DepositType;

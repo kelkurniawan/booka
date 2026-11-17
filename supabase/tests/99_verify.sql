@@ -4933,3 +4933,160 @@ select pg_temp.expect_fail($q$insert into storage.objects (bucket_id, name) valu
   ('staff-clip-uploads', '55505550-0000-0000-0000-000000000001/55505550-57af-0000-0000-000000000001/a1.gif')$q$,
   't57d merchant Pro tidak bisa mengunggah klip');
 rollback;
+
+-- ===========================================================================
+-- 60. Restoran: skema (20261120000100)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('60606060-0000-0000-0000-000000000001', 'resto60-a@example.com', '{}'::jsonb),
+  ('60606060-0000-0000-0000-000000000002', 'resto60-b@example.com', '{}'::jsonb);
+update public.merchants set subscription_tier = 'PRO', username = 'resto-60'
+  where id = '60606060-0000-0000-0000-000000000001';
+update public.merchants set subscription_tier = 'PRO', username = 'resto-60b'
+  where id = '60606060-0000-0000-0000-000000000002';
+insert into public.services (id, merchant_id, name, price, duration_minutes) values
+  ('60606060-5e00-0000-0000-000000000001', '60606060-0000-0000-0000-000000000001', 'Makan malam', 0, 90);
+insert into public.dining_areas (id, merchant_id, name) values
+  ('60606060-a000-0000-0000-000000000001', '60606060-0000-0000-0000-000000000001', 'Indoor'),
+  ('60606060-a000-0000-0000-000000000002', '60606060-0000-0000-0000-000000000002', 'Teras');
+insert into public.dining_tables (id, merchant_id, area_id, name, max_seats, grid_x, grid_y, bookable_online) values
+  ('60606060-7a00-0000-0000-000000000001', '60606060-0000-0000-0000-000000000001',
+   '60606060-a000-0000-0000-000000000001', 'D1', 4, 0, 0, true),
+  ('60606060-7a00-0000-0000-000000000002', '60606060-0000-0000-0000-000000000001',
+   '60606060-a000-0000-0000-000000000001', 'D2', 2, 4, 0, false);
+
+-- t60a services
+select pg_temp.expect_fail_code(format($q$update public.services set %s
+  where id = '60606060-5e00-0000-0000-000000000001'$q$, c), '23514', 't60a ' || c)
+from unnest(array[
+  $c$party_min = 2$c$,
+  $c$party_min = 5, party_max = 4$c$,
+  $c$party_min = 1, party_max = 201$c$,
+  $c$party_min = 1, party_max = 4, seat_duration_minutes = 10$c$,
+  $c$seat_duration_minutes = 90$c$
+]) as c;
+select pg_temp.expect_ok($q$update public.services set party_min = 1, party_max = 12, seat_duration_minutes = 90
+  where id = '60606060-5e00-0000-0000-000000000001'$q$, 't60a rentang tamu + durasi duduk');
+
+-- t60b merchant_settings
+select case when (select table_mode = 'NONE' and table_hold_minutes = 15 and auto_join_tables
+                         and seats_per_slot is null
+                  from public.merchant_settings where merchant_id = '60606060-0000-0000-0000-000000000001')
+            then 'OK   t60b nilai bawaan merchant_settings' else 'FAIL t60b nilai bawaan merchant_settings' end as t60b;
+select pg_temp.expect_fail_code(format($q$update public.merchant_settings set %s
+  where merchant_id = '60606060-0000-0000-0000-000000000001'$q$, c), '23514', 't60b ' || c)
+from unnest(array[
+  $c$table_mode = 'AREA'$c$,
+  $c$seats_per_slot = 0$c$,
+  $c$table_hold_minutes = 121$c$
+]) as c;
+
+-- t60c dining_tables
+select pg_temp.expect_fail_code(format($q$insert into public.dining_tables
+  (merchant_id, area_id, name, min_seats, max_seats, grid_x, grid_y, grid_w, grid_h)
+  values ('60606060-0000-0000-0000-000000000001', '60606060-a000-0000-0000-000000000001', 'X', %s)$q$, c),
+  '23514', 't60c ' || c)
+from unnest(array[
+  $c$5, 4, 0, 0, 3, 3$c$,
+  $c$1, 51, 0, 0, 3, 3$c$,
+  $c$1, 4, 22, 0, 3, 3$c$,
+  $c$1, 4, 0, 0, 2, 3$c$
+]) as c;
+select pg_temp.expect_fail_code($q$update public.dining_tables
+  set joinable_with = array['60606060-7a00-0000-0000-000000000001'::uuid]
+  where id = '60606060-7a00-0000-0000-000000000001'$q$, '23514', 't60c gabung dengan diri sendiri');
+select pg_temp.expect_fail_code($q$insert into public.dining_tables
+  (merchant_id, area_id, name, max_seats, grid_x, grid_y)
+  values ('60606060-0000-0000-0000-000000000001', '60606060-a000-0000-0000-000000000002', 'Z', 2, 0, 0)$q$,
+  '23503', 't60c area milik merchant lain');
+
+-- t60d bookings
+select pg_temp.expect_fail_code(format($q$insert into public.bookings
+  (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+   customer_name, customer_whatsapp, %s)
+  values ('60606060-0000-0000-0000-000000000001', 'Makan', 0, 90,
+   now() + interval '2 days', now() + interval '2 days 90 minutes', 'Tamu 60', '+6281360000001', %s)$q$, c, v),
+  '23514', 't60d ' || c || ' = ' || v)
+from (values
+  ('capacity_mode', $v$'AREA'$v$),
+  ('table_id', $v$'60606060-7a00-0000-0000-000000000001'$v$),
+  ('party_size', '0'),
+  ('customer_note', $v$''$v$)
+) as t(c, v);
+select pg_temp.expect_fail_code($q$insert into public.bookings
+  (merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+   customer_name, customer_whatsapp, capacity_mode, party_size, table_id, joined_table_id)
+  values ('60606060-0000-0000-0000-000000000001', 'Makan', 0, 90,
+   now() + interval '2 days', now() + interval '2 days 90 minutes', 'Tamu 60', '+6281360000001',
+   'TABLE', 2, '60606060-7a00-0000-0000-000000000001', '60606060-7a00-0000-0000-000000000001')$q$,
+  '23514', 't60d joined_table_id = table_id');
+insert into public.bookings (id, merchant_id, service_name, service_price, duration_minutes, start_datetime, end_datetime,
+  customer_name, customer_whatsapp)
+values ('60606060-b000-0000-0000-000000000001', '60606060-0000-0000-0000-000000000001', 'Biasa', 0, 60,
+  now() + interval '3 days', now() + interval '3 days 1 hour', 'Tamu 60', '+6281360000002');
+select case when (select capacity_mode = 'NONE' and party_size is null and area_id is null and table_id is null
+                         and joined_table_id is null and table_label is null and customer_note is null
+                  from public.bookings where id = '60606060-b000-0000-0000-000000000001')
+            then 'OK   t60d booking lama: capacity_mode NONE, kolom baru null'
+            else 'FAIL t60d nilai bawaan booking' end as t60d;
+
+-- t60e hak akses
+select case when has_column_privilege('anon', 'public.dining_tables', 'name', 'SELECT')
+             and has_column_privilege('anon', 'public.dining_tables', 'grid_x', 'SELECT')
+             and has_column_privilege('anon', 'public.dining_tables', 'note', 'SELECT')
+             and not has_column_privilege('anon', 'public.dining_tables', 'bookable_online', 'SELECT')
+             and not has_column_privilege('anon', 'public.dining_tables', 'joinable_with', 'SELECT')
+            then 'OK   t60e anon: kolom tata letak saja' else 'FAIL t60e kolom dining_tables untuk anon' end as t60e,
+       case when not (has_table_privilege('anon', 'public.dining_tables', 'INSERT')
+                      or has_table_privilege('anon', 'public.dining_tables', 'UPDATE')
+                      or has_table_privilege('anon', 'public.dining_tables', 'DELETE')
+                      or has_table_privilege('anon', 'public.dining_areas', 'INSERT')
+                      or has_table_privilege('anon', 'public.dining_areas', 'UPDATE')
+                      or has_table_privilege('anon', 'public.dining_areas', 'DELETE')
+                      or has_table_privilege('authenticated', 'public.dining_tables', 'INSERT')
+                      or has_table_privilege('authenticated', 'public.dining_tables', 'UPDATE')
+                      or has_table_privilege('authenticated', 'public.dining_tables', 'DELETE')
+                      or has_table_privilege('authenticated', 'public.dining_areas', 'INSERT')
+                      or has_table_privilege('authenticated', 'public.dining_areas', 'UPDATE')
+                      or has_table_privilege('authenticated', 'public.dining_areas', 'DELETE')
+                      or has_column_privilege('authenticated', 'public.dining_tables', 'name', 'INSERT')
+                      or has_column_privilege('authenticated', 'public.dining_tables', 'name', 'UPDATE'))
+            then 'OK   t60e tidak ada hak tulis langsung' else 'FAIL t60e ada hak tulis langsung' end as t60e2,
+       case when has_column_privilege('anon', 'public.merchant_settings', 'table_mode', 'SELECT')
+             and has_column_privilege('anon', 'public.merchant_settings', 'table_hold_minutes', 'SELECT')
+             and not has_column_privilege('anon', 'public.merchant_settings', 'seats_per_slot', 'SELECT')
+             and not has_column_privilege('anon', 'public.merchant_settings', 'auto_join_tables', 'SELECT')
+             and has_column_privilege('authenticated', 'public.merchant_settings', 'table_mode', 'UPDATE')
+             and not has_column_privilege('anon', 'public.bookings', 'party_size', 'SELECT')
+             and not has_column_privilege('anon', 'public.bookings', 'customer_note', 'SELECT')
+            then 'OK   t60e merchant_settings dan bookings' else 'FAIL t60e hak merchant_settings atau bookings' end as t60e3;
+
+-- t60f RLS
+begin;
+set local role anon;
+select case when (select count(*) from public.dining_areas where merchant_id = '60606060-0000-0000-0000-000000000001') = 0
+             and (select count(*) from public.dining_tables where merchant_id = '60606060-0000-0000-0000-000000000001') = 0
+            then 'OK   t60f anon: mode NONE tidak melihat denah' else 'FAIL t60f anon melihat denah mode NONE' end as t60f;
+rollback;
+update public.merchant_settings set table_mode = 'TABLE' where merchant_id = '60606060-0000-0000-0000-000000000001';
+begin;
+set local role anon;
+select case when (select count(*) from public.dining_areas where merchant_id = '60606060-0000-0000-0000-000000000001') = 1
+             and (select count(*) from public.dining_tables where merchant_id = '60606060-0000-0000-0000-000000000001') = 1
+            then 'OK   t60f anon: mode TABLE melihat 1 area dan 1 meja online'
+            else 'FAIL t60f anon mode TABLE salah' end as t60f2;
+rollback;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '60606060-0000-0000-0000-000000000002';
+select case when (select count(*) from public.dining_tables where merchant_id = '60606060-0000-0000-0000-000000000001') = 0
+             and (select count(*) from public.dining_areas where merchant_id = '60606060-0000-0000-0000-000000000001') = 0
+            then 'OK   t60f merchant lain tidak melihat denah' else 'FAIL t60f merchant lain melihat denah' end as t60f3;
+rollback;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '60606060-0000-0000-0000-000000000001';
+select case when (select count(*) from public.dining_tables) = 2
+            then 'OK   t60f pemilik melihat semua mejanya' else 'FAIL t60f pemilik tidak melihat mejanya' end as t60f4;
+rollback;
