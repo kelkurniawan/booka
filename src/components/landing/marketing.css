@@ -116,7 +116,7 @@
 
 /* Pemilih radio asli: kontrol terlihat adalah label, input hanya sr-only. */
 .marketing .groove {
-  display: inline-flex; gap: var(--space-xs); padding: var(--space-xs);
+  display: inline-flex; flex-wrap: wrap; gap: var(--space-xs); padding: var(--space-xs);
   border-radius: 12px; background: var(--color-paper-2); box-shadow: var(--press-groove);
 }
 .marketing .groove label {
@@ -178,7 +178,7 @@
   .marketing .price-table, .marketing .price-foot { display: none !important; }
   .marketing .price-mobile { display: flex; }
   .marketing .hero-motion-bg { display: none; }
-  .marketing .hero-motion-band { display: block; width: 100%; overflow: hidden; padding: 8px 0; border-radius: 16px; background: var(--color-desk); }
+  .marketing .hero-motion-band { display: block; width: calc(100% - 2 * clamp(20px, 4vw, 48px)); overflow: hidden; padding: 8px 0; border-radius: 16px; background: var(--color-desk); }
   .marketing .agenda-stack { height: auto !important; display: flex; flex-direction: column; gap: var(--space-sm); }
   .marketing .agenda-stack > div { position: static !important; }
   .marketing .slip { padding-bottom: 64px !important; }
@@ -210,3 +210,11 @@
 .marketing .hm-stamp { position: absolute; right: 12px; bottom: 6px; font-weight: 700; color: var(--color-paid); }
 .marketing .hm-hero { position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 999px; background: var(--color-ink); box-shadow: 4px 6px 10px -4px oklch(var(--shade) / 0.5); }
 .marketing .hm-pause { min-height: 44px; padding: 0 var(--space-sm); border: 0; background: transparent; color: var(--color-muted); font-size: var(--text-small); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+
+/* Bagian halaman depan. */
+.marketing .claim-form label { min-height: 48px; align-items: center; border: 1px solid var(--color-muted); border-radius: var(--radius-input); background: var(--color-cotton); font-size: 16px; }
+.marketing .claim-form input { color: var(--color-print); font-size: 16px; font-weight: 600; min-height: 44px; }
+.marketing .btn--wrap { height: auto; padding-block: var(--space-sm); text-align: center; max-width: 100%; overflow-wrap: anywhere; }
+.marketing .price-mobile .groove { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-self: stretch; }
+.marketing .price-mobile .groove label { justify-content: center; }
+.marketing .note { font-size: 12px; color: var(--color-muted); overflow-wrap: anywhere; }
