@@ -18,14 +18,14 @@
 }
 
 .layer {
-  position: absolute;
+  /* Setinggi layar di belakang seluruh halaman; di preview editor `fixed`
+     dibatasi bingkai preview lewat transform pada bingkainya. */
+  position: fixed;
   inset: 0;
   z-index: -10;
   overflow: hidden;
+  pointer-events: none;
   background: var(--motion-base);
-  /* Topeng alfa, tidak terlihat sebagai warna: memudarkan latar ke bawah. */
-  -webkit-mask-image: linear-gradient(black 55%, transparent);
-  mask-image: linear-gradient(black 55%, transparent);
 }
 
 .wave { position: absolute; width: 200%; }

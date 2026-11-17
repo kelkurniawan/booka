@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { MotionBackgroundSlot } from "@/components/booking-page/motion-background-slot";
 import { publicMediaUrl } from "@/lib/media/url";
 import { themeToCssVars } from "@/lib/theme/css";
 import { BOOKING_FONT_CLASSNAMES } from "@/lib/theme/fonts";
@@ -48,6 +49,20 @@ export function BookingPageShell({
         fontFamily: "var(--font-sans)",
       }}
     >
+      {theme.motion ? (
+        <>
+          {/* Warna dasar dirender server: tidak ada kedipan saat potongan JS
+              gerak tiba. Lapisan gerak dan tombol jedanya (di luar aria-hidden)
+              fixed dan memakai z-index sendiri di dalam konteks isolate. */}
+          <div
+            aria-hidden
+            className="fixed inset-0 -z-10"
+            style={{ backgroundColor: "var(--motion-base)" }}
+          />
+          <MotionBackgroundSlot preset={theme.motion.preset} speed={theme.motion.speed} />
+        </>
+      ) : null}
+
       {theme.backgroundStyle === "GRADIENT" ? (
         <div
           aria-hidden

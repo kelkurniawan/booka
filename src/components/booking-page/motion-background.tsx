@@ -172,7 +172,7 @@ export function MotionBackground({ preset, speed, forceStatic = false }: MotionB
           aria-pressed={paused}
           aria-label={paused ? "Putar animasi latar" : "Jeda animasi latar"}
           onClick={() => setPaused((p) => !p)}
-          className="absolute right-2 top-2 z-10 flex size-11 items-center justify-center rounded-full border border-border bg-card/85 text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="fixed right-2 top-2 z-30 flex size-11 items-center justify-center rounded-full border border-border bg-card/85 text-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
         >
           {paused ? <Play aria-hidden className="size-4" /> : <Pause aria-hidden className="size-4" />}
         </button>

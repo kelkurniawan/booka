@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ import {
 } from "@/lib/booking/voucher";
 import { formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
+import type { PageSection } from "@/lib/theme/sections";
 import { checkoutSchema } from "@/lib/validations/booking";
 import type {
   Availability,
@@ -56,6 +57,10 @@ export type BookingFlowProps = {
   paymentSettings: PaymentSettings;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
+  /** Urutan bagian halaman yang tampil (theme.sections). */
+  sections: PageSection[];
+  /** Slot FAQ; null bila merchant belum mengisi. */
+  faq: ReactNode;
 };
 
 type Step = 1 | 2 | 3;
@@ -166,6 +171,8 @@ export function BookingFlow({
   paymentSettings,
   banners,
   vouchers,
+  sections,
+  faq,
 }: BookingFlowProps) {
   const router = useRouter();
 
@@ -417,64 +424,93 @@ export function BookingFlow({
 
   const staffName = selectedStaffId ? staff.find((m) => m.id === selectedStaffId)?.name : null;
 
-  return (
-    <div className="flex flex-col gap-6">
+  // Di permukaan solid: teks tidak boleh langsung di atas lapisan gerak.
+  const langkahHead = (
+    <div
+      className="bg-card border-border flex flex-col gap-3 border p-3"
+      style={{ borderRadius: "var(--radius)" }}
+    >
       <BookingStepIndicator current={step} />
       <h2 id="langkah-judul" ref={headingRef} tabIndex={-1} className="text-lg font-medium outline-none">
         {STEP_TITLE[step]}
       </h2>
+    </div>
+  );
+
+  const promoSection = (
+    <PromoBanners
+      banners={banners}
+      voucherCodeById={voucherCodeById}
+      activeServiceIds={services.map((service) => service.id)}
+      onApplyVoucher={handleBannerApplyVoucher}
+      onSelectService={handleBannerSelectService}
+    />
+  );
+
+  const servicesSection = (
+    <>
+      {langkahHead}
+      {appliedVoucher ? (
+        <div
+          className="bg-card border-border flex items-center justify-between gap-3 border p-3"
+          style={{ borderRadius: "var(--radius)" }}
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium">Voucher {appliedVoucher.code}</p>
+            <p className="text-muted-foreground text-xs">{voucherSummary(appliedVoucher)}</p>
+          </div>
+          <Button type="button" variant="outline" className="min-h-11" onClick={() => setAppliedVoucher(null)}>
+            Lepas
+          </Button>
+        </div>
+      ) : null}
+      {voucherNotice ? (
+        <p role="status" className="text-muted-foreground text-sm">
+          {voucherNotice}
+        </p>
+      ) : null}
+      <div
+        ref={serviceListRef}
+        role="radiogroup"
+        aria-labelledby="langkah-judul"
+        className="flex scroll-mt-4 flex-col gap-3"
+      >
+        {services.map((service, index) => (
+          <ServiceOptionCard
+            key={service.id}
+            service={service}
+            media={mediaByService[service.id] ?? []}
+            checked={service.id === selectedServiceId}
+            onSelect={() => handleSelectService(service.id)}
+            eager={index === 0}
+            paymentLabel={paymentLabel(service, paymentSettings)}
+            promoPrice={
+              appliedVoucher && !voucherIneligibleReason(appliedVoucher, service, serviceNames)
+                ? Number(service.price) - computeDiscount(appliedVoucher, Number(service.price))
+                : undefined
+            }
+          />
+        ))}
+      </div>
+    </>
+  );
+
+  const bagian: Record<PageSection, ReactNode> = {
+    PROMO: promoSection,
+    SERVICES: servicesSection,
+    FAQ: faq,
+  };
+  const faqTampil = sections.includes("FAQ");
+
+  return (
+    <div className="flex flex-col gap-6">
+      {step !== 1 ? langkahHead : null}
 
       {step === 1 ? (
         <>
-          <PromoBanners
-            banners={banners}
-            voucherCodeById={voucherCodeById}
-            activeServiceIds={services.map((service) => service.id)}
-            onApplyVoucher={handleBannerApplyVoucher}
-            onSelectService={handleBannerSelectService}
-          />
-          {appliedVoucher ? (
-            <div
-              className="bg-card border-border flex items-center justify-between gap-3 border p-3"
-              style={{ borderRadius: "var(--radius)" }}
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium">Voucher {appliedVoucher.code}</p>
-                <p className="text-muted-foreground text-xs">{voucherSummary(appliedVoucher)}</p>
-              </div>
-              <Button type="button" variant="outline" className="min-h-11" onClick={() => setAppliedVoucher(null)}>
-                Lepas
-              </Button>
-            </div>
-          ) : null}
-          {voucherNotice ? (
-            <p role="status" className="text-muted-foreground text-sm">
-              {voucherNotice}
-            </p>
-          ) : null}
-          <div
-            ref={serviceListRef}
-            role="radiogroup"
-            aria-labelledby="langkah-judul"
-            className="flex scroll-mt-4 flex-col gap-3"
-          >
-            {services.map((service, index) => (
-              <ServiceOptionCard
-                key={service.id}
-                service={service}
-                media={mediaByService[service.id] ?? []}
-                checked={service.id === selectedServiceId}
-                onSelect={() => handleSelectService(service.id)}
-                eager={index === 0}
-                paymentLabel={paymentLabel(service, paymentSettings)}
-                promoPrice={
-                  appliedVoucher && !voucherIneligibleReason(appliedVoucher, service, serviceNames)
-                    ? Number(service.price) - computeDiscount(appliedVoucher, Number(service.price))
-                    : undefined
-                }
-              />
-            ))}
-          </div>
+          {sections.map((key) => (
+            <Fragment key={key}>{bagian[key]}</Fragment>
+          ))}
           <StickyActionBar
             summary={selectedService ? selectedService.name : "Pilih satu layanan"}
             actionLabel="Pilih jadwal"
@@ -668,6 +704,8 @@ export function BookingFlow({
           />
         </form>
       ) : null}
+
+      {step !== 1 && faqTampil ? faq : null}
     </div>
   );
 }

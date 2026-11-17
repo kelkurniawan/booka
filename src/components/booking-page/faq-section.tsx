@@ -14,7 +14,11 @@ export function BookingFaqSection({ faqs }: { faqs: MerchantFaq[] }) {
   if (faqs.length === 0) return null;
 
   return (
-    <section aria-labelledby="faq-heading" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="faq-heading"
+      className="bg-card border-border flex flex-col gap-3 border p-4"
+      style={{ borderRadius: "var(--radius)" }}
+    >
       <h2
         id="faq-heading"
         className="text-sm font-medium"

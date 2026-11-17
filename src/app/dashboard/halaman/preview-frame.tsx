@@ -38,10 +38,14 @@ export function AppearancePreview({
   paymentSettings: PaymentSettings;
 }) {
   return (
-    <div className="border-border mx-auto w-full max-w-[360px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-800">
+    // transform membuat bingkai ini acuan `fixed` lapisan gerak di shell.
+    <div
+      className="border-border mx-auto w-full max-w-[360px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-800"
+      style={{ transform: "translateZ(0)" }}
+    >
       <div className="max-h-[620px] overflow-y-auto">
         <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0">
-          <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} />
+          <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} theme={theme} />
 
           {services.length > 0 ? (
             <section className="flex flex-col gap-4">

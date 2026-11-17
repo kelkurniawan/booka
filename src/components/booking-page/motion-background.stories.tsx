@@ -5,6 +5,7 @@ import type { BackgroundMotion, MotionSpeed } from "@/types/database";
 
 import { sampleTheme } from "./fixtures";
 import { MotionBackground } from "./motion-background";
+import { BookingProfileHeader } from "./profile-header";
 import { BookingPageShell } from "./page-shell";
 
 const meta = {
@@ -33,12 +34,13 @@ function Bingkai({
       background_style: "MOTION",
       background_motion: motion,
       background_motion_speed: speed,
+      cover_path: null,
     });
   return (
     <BookingPageShell theme={t}>
-      <div className="relative h-64">
-        <MotionBackground preset={motion} speed={speed} forceStatic={forceStatic} />
-      </div>
+      <BookingProfileHeader name="Salon Rina" bio="Rias dan perawatan." avatarUrl={null} theme={t} />
+      {/* Shell sudah memasang lapisan bergerak; ini versi diam untuk membandingkan. */}
+      {forceStatic ? <MotionBackground preset={motion} speed={speed} forceStatic /> : null}
     </BookingPageShell>
   );
 }

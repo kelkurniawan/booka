@@ -74,6 +74,7 @@ export function BookingPageView({
         name={name}
         bio={merchant.bio}
         avatarUrl={merchant.avatar_url}
+        theme={theme}
       />
 
       {canAcceptBookings ? (
@@ -87,6 +88,8 @@ export function BookingPageView({
             paymentSettings={paymentSettings}
             banners={banners}
             vouchers={vouchers}
+            sections={theme.sections}
+            faq={<BookingFaqSection faqs={faqs} />}
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,
@@ -95,8 +98,12 @@ export function BookingPageView({
           />
           <DesktopHandoff url={new URL(ROUTES.merchantPage(merchant.username), siteUrl()).toString()} />
         </>
-      ) : (
-        <Empty className="border">
+      ) : null}
+
+      {!canAcceptBookings
+        ? theme.sections.map((key) =>
+            key === "SERVICES" ? (
+              <Empty key={key} className="bg-card border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <CalendarOff />
@@ -107,9 +114,11 @@ export function BookingPageView({
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      )}
-
-      <BookingFaqSection faqs={faqs} />
+            ) : key === "FAQ" ? (
+              <BookingFaqSection key={key} faqs={faqs} />
+            ) : null,
+          )
+        : null}
 
       {faqs.length > 0 ? (
         <script
@@ -135,7 +144,7 @@ export function BookingPageView({
       {merchant.subscription_tier === "STARTER" ? (
         <Link
           href={ROUTES.home}
-          className="text-muted-foreground hover:text-foreground mt-auto self-center text-xs"
+          className="text-muted-foreground hover:text-foreground bg-card mt-auto self-center rounded-full px-3 py-1 text-xs"
         >
           Dibuat dengan Marky
         </Link>

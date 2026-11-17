@@ -71,3 +71,23 @@ const campuran: Service[] = [
 ];
 
 export const CaraBayarCampuran: Story = { args: { services: campuran } };
+
+export const FaqDiAtas: Story = {
+  args: { theme: sampleTheme("HANGAT", { section_order: ["FAQ", "SERVICES", "PROMO"] }) },
+};
+
+export const TanpaPromo: Story = {
+  args: { theme: sampleTheme("HANGAT", { hidden_sections: ["PROMO"] }) },
+};
+
+export const TombolGaris: Story = {
+  args: { theme: sampleTheme("HANGAT", { button_style: "OUTLINE" }) },
+};
+
+export const TombolLembut: Story = {
+  args: { theme: sampleTheme("HANGAT", { button_style: "SOFT" }) },
+};
+
+export const LatarBergerak: Story = {
+  args: { theme: sampleTheme("HANGAT", { background_style: "MOTION", background_motion: "AURORA" }) },
+};

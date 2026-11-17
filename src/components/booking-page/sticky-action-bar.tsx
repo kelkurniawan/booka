@@ -1,5 +1,9 @@
 import { Button } from "@/components/ui/button";
 
+/** Kelas aksi utama; warnanya dari gaya tombol tema (Keputusan 9). */
+export const CTA_BUTTON_CLASS =
+  "min-h-11 shrink-0 px-5 border-2 border-[var(--button-border)] bg-[var(--button-bg)] text-[var(--button-fg)] hover:bg-[var(--button-bg)] hover:opacity-90";
+
 export function StickyActionBar({
   summary,
   actionLabel,
@@ -20,7 +24,7 @@ export function StickyActionBar({
       <p className="min-w-0 truncate text-sm font-medium">{summary}</p>
       <Button
         type={type}
-        className="min-h-11 shrink-0 px-5"
+        className={CTA_BUTTON_CLASS}
         disabled={disabled || busy}
         aria-busy={busy}
         onClick={onAction}
