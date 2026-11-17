@@ -57,6 +57,7 @@ export const PLANS: Plan[] = [
       { label: "Semua tema, warna, dan font sendiri" },
       { label: "Video pada layanan" },
       { label: "Voucher dan banner promosi" },
+      { label: "Foto sampul, gaya tombol, dan latar bergerak" },
     ],
   },
   {

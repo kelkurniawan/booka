@@ -1,12 +1,15 @@
 "use client";
 
+import { PromoBanners } from "@/components/booking-page/promo-banners";
+import { CTA_BUTTON_CLASS } from "@/components/booking-page/sticky-action-bar";
+import { Button } from "@/components/ui/button";
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { paymentLabel, type PaymentSettings } from "@/lib/booking/payment-mode";
 import type { ResolvedTheme } from "@/lib/theme/types";
-import type { MerchantFaq, Service, ServiceMedia } from "@/types/database";
+import type { MerchantFaq, PublicBanner, Service, ServiceMedia } from "@/types/database";
 
 /**
  * Preview memakai komponen yang SAMA PERSIS dengan halaman publik, hanya
@@ -26,6 +29,7 @@ export function AppearancePreview({
   faqs,
   showWatermark,
   paymentSettings,
+  banners,
 }: {
   theme: ResolvedTheme;
   name: string;
@@ -36,6 +40,7 @@ export function AppearancePreview({
   faqs: MerchantFaq[];
   showWatermark: boolean;
   paymentSettings: PaymentSettings;
+  banners: PublicBanner[];
 }) {
   return (
     // transform membuat bingkai ini acuan `fixed` lapisan gerak di shell.
@@ -47,6 +52,21 @@ export function AppearancePreview({
         <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0">
           <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} theme={theme} />
 
+          {theme.sections.map((key) => {
+            if (key === "PROMO")
+              return (
+                <PromoBanners
+                  key={key}
+                  banners={banners}
+                  voucherCodeById={{}}
+                  activeServiceIds={services.map((s) => s.id)}
+                  onApplyVoucher={() => {}}
+                  onSelectService={() => {}}
+                />
+              );
+            if (key === "FAQ") return <BookingFaqSection key={key} faqs={faqs} />;
+            return (
+              <div key={key} className="contents">
           {services.length > 0 ? (
             <section className="flex flex-col gap-4">
               <h2 className="text-sm font-medium">
@@ -65,21 +85,18 @@ export function AppearancePreview({
                   />
                 ))}
               </div>
-              <div
-                aria-hidden
-                className="bg-primary text-primary-foreground py-3 text-center text-sm font-medium"
-                style={{ borderRadius: "var(--radius)" }}
-              >
+              <Button type="button" tabIndex={-1} aria-hidden className={CTA_BUTTON_CLASS}>
                 Pilih jadwal
-              </div>
+              </Button>
             </section>
           ) : (
             <p className="text-muted-foreground text-center text-sm">
               Belum ada layanan aktif untuk ditampilkan.
             </p>
           )}
-
-          <BookingFaqSection faqs={faqs} />
+              </div>
+            );
+          })}
 
           {showWatermark ? (
             <span className="text-muted-foreground mt-auto self-center text-xs">

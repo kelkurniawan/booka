@@ -3,10 +3,14 @@ import type { Metadata } from "next";
 import { PageHeader } from "@/components/layout/page-header";
 import { requireMerchant } from "@/lib/auth/session";
 import { DEFAULT_PAYMENT_SETTINGS } from "@/lib/booking/payment-mode";
+import { bannerStatus, MAX_LIVE_BANNERS } from "@/lib/promo/banner";
 import { createClient } from "@/lib/supabase/server";
-import type { Service, ServiceMedia } from "@/types/database";
+import type { MerchantBanner, PublicBanner, Service, ServiceMedia } from "@/types/database";
 
 import { AppearanceEditor } from "./appearance-editor";
+
+// Di luar komponen supaya lint kemurnian tidak menandai Date.now().
+const currentMs = () => Date.now();
 
 export const metadata: Metadata = { title: "Halaman saya" };
 
@@ -48,6 +52,26 @@ export default async function AppearancePage() {
     return service;
   });
 
+  let banners: PublicBanner[] = [];
+  if (merchant.subscription_tier !== "STARTER") {
+    const { data, error } = await supabase
+      .from("merchant_banners")
+      .select("*")
+      .eq("merchant_id", user.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true });
+    if (error) {
+      console.error("[halaman] gagal memuat banner", error);
+    } else {
+      const now = currentMs();
+      banners = ((data ?? []) as MerchantBanner[])
+        .filter((b) => bannerStatus(b, now) === "Tayang")
+        .slice(0, MAX_LIVE_BANNERS)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars -- buang kolom non-publik
+        .map(({ published, created_at, updated_at, ...publik }) => publik);
+    }
+  }
+
   return (
     <>
       <PageHeader
@@ -66,6 +90,7 @@ export default async function AppearancePage() {
         mediaByService={mediaByService}
         faqs={faqsResult.data ?? []}
         paymentSettings={settingsResult.data ?? DEFAULT_PAYMENT_SETTINGS}
+        banners={banners}
       />
     </>
   );

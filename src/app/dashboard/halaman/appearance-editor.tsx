@@ -25,6 +25,7 @@ import { ROUTES } from "@/lib/routes";
 import { FONT_PAIR_DESCRIPTIONS, FONT_PAIR_LABELS } from "@/lib/theme/font-pairs";
 import { CORNER_LABELS, isFreePreset, THEME_PRESETS } from "@/lib/theme/presets";
 import { resolveTheme } from "@/lib/theme/resolve";
+import { normalizeSectionOrder, PAGE_SECTIONS, type PageSection } from "@/lib/theme/sections";
 import { cn } from "@/lib/utils";
 import type {
   BackgroundStyle,
@@ -32,6 +33,7 @@ import type {
   FontPair,
   MerchantFaq,
   MerchantTheme,
+  PublicBanner,
   Service,
   ServiceMedia,
   SubscriptionTier,
@@ -41,6 +43,11 @@ import type {
 
 import { saveFaqs, updateProfileMedia, updateTheme } from "./actions";
 import { INITIAL_APPEARANCE_STATE } from "./appearance-state";
+import { BrandFields } from "./brand-fields";
+import { ButtonStyleField } from "./button-style-field";
+import { MotionFields } from "./motion-fields";
+import { SectionOrderField } from "./section-order-field";
+import { discardableDraftPath, type ThemeMediaKey } from "./theme-media";
 import { FaqEditor, validasiFaqs, type FaqDraft } from "./faq-editor";
 import { AppearancePreview } from "./preview-frame";
 
@@ -78,6 +85,7 @@ const GAYA_LATAR: { nilai: BackgroundStyle; label: string }[] = [
   { nilai: "SOLID", label: "Polos" },
   { nilai: "GRADIENT", label: "Gradasi" },
   { nilai: "IMAGE", label: "Foto" },
+  { nilai: "MOTION", label: "Bergerak" },
 ];
 
 /** Kunci kecil bertanda Pro untuk kontrol yang belum terbuka di paket Starter. */
@@ -105,6 +113,7 @@ export function AppearanceEditor({
   mediaByService,
   faqs: faqsAwal,
   paymentSettings,
+  banners,
 }: {
   tier: SubscriptionTier;
   merchantId: string;
@@ -117,6 +126,7 @@ export function AppearanceEditor({
   mediaByService: Record<string, ServiceMedia[]>;
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
+  banners: PublicBanner[];
 }) {
   const starter = tier === "STARTER";
 
@@ -153,7 +163,7 @@ export function AppearanceEditor({
   const [faqsTersimpan, setFaqsTersimpan] = useState<FaqDraft[]>(() =>
     faqsAwal.map((faq) => ({ id: faq.id, question: faq.question, answer: faq.answer })),
   );
-  const [mengunggah, setMengunggah] = useState<"avatar" | "background" | null>(null);
+  const [mengunggah, setMengunggah] = useState<"avatar" | "background" | "logo" | "cover" | null>(null);
   const [tampilan, setTampilan] = useState<"atur" | "preview">("atur");
   const [, mulaiTransisi] = useTransition();
 
@@ -232,9 +242,21 @@ export function AppearanceEditor({
       updated_at: "",
     }));
 
+  const kunciMedia: Record<"background" | "logo" | "cover", ThemeMediaKey> = {
+    background: "background_image_path",
+    logo: "logo_path",
+    cover: "cover_path",
+  };
+
+  /** Buang unggahan draf yang belum pernah disimpan; berkas tersimpan dihapus server saat simpan. */
+  async function buangDraf(kunci: ThemeMediaKey) {
+    const draf = discardableDraftPath(temaTersimpan, tema, kunci);
+    if (draf) await removeMedia([draf]);
+  }
+
   async function unggahGambar(
     file: File,
-    jenis: "avatar" | "background",
+    jenis: "avatar" | "background" | "logo" | "cover",
   ): Promise<void> {
     const galat = validateImageFile(file);
     if (galat) {
@@ -244,17 +266,20 @@ export function AppearanceEditor({
 
     setMengunggah(jenis);
     const avatarLama = jenis === "avatar" ? mediaPathFromUrl(avatarUrl) : null;
-    const latarLama = jenis === "background" ? tema.background_image_path : null;
     let pathBaru: string | null = null;
 
     try {
       const { blob } = await compressImage(file, {
         maxSide:
-          jenis === "avatar" ? MEDIA_LIMITS.avatarMaxSide : MEDIA_LIMITS.backgroundMaxSide,
-        square: jenis === "avatar",
+          jenis === "avatar" || jenis === "logo"
+            ? MEDIA_LIMITS.avatarMaxSide
+            : MEDIA_LIMITS.backgroundMaxSide,
+        square: jenis === "avatar" || jenis === "logo",
+        ...(jenis === "cover" ? { aspect: 3 } : {}),
       });
 
-      pathBaru = `${merchantId}/${mediaFileName(jenis === "avatar" ? "avatar" : "bg", "webp")}`;
+      const awalan = jenis === "background" ? "bg" : jenis;
+      pathBaru = `${merchantId}/${mediaFileName(awalan, "webp")}`;
       await uploadMedia(pathBaru, blob, "image/webp");
 
       if (jenis === "avatar") {
@@ -271,17 +296,18 @@ export function AppearanceEditor({
           throw new Error(hasil.message ?? "Foto profil gagal disimpan.");
         }
         toast.success("Foto profil tersimpan");
+        // Berkas lama baru dihapus setelah penggantinya benar-benar mendarat.
+        if (avatarLama) await removeMedia([avatarLama]);
       } else {
+        const kunci = kunciMedia[jenis];
+        await buangDraf(kunci);
+        const baru = pathBaru;
         setTema((lama) => ({
           ...lama,
-          background_style: "IMAGE",
-          background_image_path: pathBaru,
+          ...(jenis === "background" ? { background_style: "IMAGE" as const } : {}),
+          [kunci]: baru,
         }));
       }
-
-      // Berkas lama baru dihapus setelah penggantinya benar-benar mendarat.
-      const lama = avatarLama ?? latarLama;
-      if (lama) await removeMedia([lama]);
     } catch (error) {
       // Berkas sudah terlanjur mendarat tapi rangkaiannya gagal -- bersihkan,
       // jangan tinggalkan berkas yatim di bucket.
@@ -291,6 +317,22 @@ export function AppearanceEditor({
       setMengunggah(null);
     }
   }
+
+  function hapusMerek(jenis: "logo" | "cover") {
+    const kunci = kunciMedia[jenis];
+    void buangDraf(kunci);
+    setTema((lama) => ({ ...lama, [kunci]: null }));
+  }
+
+  const hintBagian: Record<PageSection, string> = {
+    PROMO: starter
+      ? "Banner promo tersedia di paket Pro"
+      : banners.length > 0
+        ? `${banners.length} banner tayang`
+        : "Belum ada banner tayang",
+    SERVICES: "Selalu tampil",
+    FAQ: faqPreview.length > 0 ? `${faqPreview.length} pertanyaan` : "Kosong, otomatis tersembunyi",
+  };
 
   const panel = (
     <div className="flex max-w-lg flex-col gap-8">
@@ -389,6 +431,26 @@ export function AppearanceEditor({
         <input type="hidden" name="font_pair" value={tema.font_pair ?? ""} />
         <input type="hidden" name="text_scale" value={tema.text_scale} />
         <input type="hidden" name="corner_style" value={tema.corner_style ?? ""} />
+        <input type="hidden" name="logo_path" value={tema.logo_path ?? ""} />
+        <input type="hidden" name="cover_path" value={tema.cover_path ?? ""} />
+        <input type="hidden" name="button_style" value={tema.button_style} />
+        <input type="hidden" name="background_motion" value={tema.background_motion} />
+        <input type="hidden" name="background_motion_speed" value={tema.background_motion_speed} />
+        <input type="hidden" name="section_order" value={tema.section_order.join(",")} />
+        <input type="hidden" name="hidden_sections" value={tema.hidden_sections.join(",")} />
+
+        {/* Merek */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium">Merek</h2>
+          <BrandFields
+            logoUrl={tema.logo_path ? publicMediaUrl(tema.logo_path) : null}
+            coverUrl={tema.cover_path ? publicMediaUrl(tema.cover_path) : null}
+            busy={mengunggah === "logo" || mengunggah === "cover" ? mengunggah : null}
+            coverLocked={starter}
+            onUpload={(jenis, file) => void unggahGambar(file, jenis)}
+            onRemove={hapusMerek}
+          />
+        </section>
 
         {/* 2. Tema */}
         <section className="flex flex-col gap-3">
@@ -494,6 +556,17 @@ export function AppearanceEditor({
             </FieldDescription>
           ) : null}
 
+          {!starter && tema.background_style === "MOTION" ? (
+            <MotionFields
+              motion={tema.background_motion}
+              speed={tema.background_motion_speed}
+              onMotionChange={(background_motion) => setTema((l) => ({ ...l, background_motion }))}
+              onSpeedChange={(background_motion_speed) =>
+                setTema((l) => ({ ...l, background_motion_speed }))
+              }
+            />
+          ) : null}
+
           {!starter && tema.background_style !== "IMAGE" ? (
             <div className="flex items-center gap-2">
               <Input
@@ -552,13 +625,12 @@ export function AppearanceEditor({
                     size="sm"
                     className="w-fit"
                     onClick={() => {
-                      const lama = tema.background_image_path;
+                      void buangDraf("background_image_path");
                       setTema((t) => ({
                         ...t,
                         background_style: "SOLID",
                         background_image_path: null,
                       }));
-                      if (lama) void removeMedia([lama]);
                     }}
                   >
                     <Trash2 className="size-4" />
@@ -676,6 +748,29 @@ export function AppearanceEditor({
           </div>
         </section>
 
+        <ButtonStyleField
+          value={tema.button_style}
+          locked={starter}
+          theme={temaJadi}
+          onChange={(button_style) => setTema((l) => ({ ...l, button_style }))}
+        />
+
+        {/* Susunan halaman */}
+        <section className="flex flex-col gap-3">
+          <h2 className="text-sm font-medium">Susunan halaman</h2>
+          <FieldDescription>
+            Atur urutan bagian di bawah profil. Tombol pesan selalu tampil di bawah layar.
+          </FieldDescription>
+          <SectionOrderField
+            order={normalizeSectionOrder(tema.section_order)}
+            hidden={PAGE_SECTIONS.filter((b) => tema.hidden_sections.includes(b))}
+            hints={hintBagian}
+            onChange={({ order, hidden }) =>
+              setTema((l) => ({ ...l, section_order: order, hidden_sections: hidden }))
+            }
+          />
+        </section>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button type="submit" disabled={temaPending || !temaBerubah}>
             {temaPending ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -736,6 +831,7 @@ export function AppearanceEditor({
       faqs={faqPreview}
       showWatermark={starter}
       paymentSettings={paymentSettings}
+      banners={banners}
     />
   );
 
