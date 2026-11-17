@@ -14,6 +14,8 @@ import {
   ActionSkeleton,
   AgendaSection,
   AgendaSkeleton,
+  GettingStartedSection,
+  GettingStartedSkeleton,
   OnSiteSection,
   SideSkeleton,
   WeekSection,
@@ -34,7 +36,11 @@ export default async function DashboardPage() {
         description={formatLongDate(new Date())}
         action={
           <div className="flex items-center gap-2">
-            <Button asChild variant="outline" className="hidden h-11 md:inline-flex">
+            <Button
+              asChild
+              variant="outline"
+              className="hidden h-11 md:inline-flex"
+            >
               <Link href={pagePath} target="_blank" rel="noopener noreferrer">
                 Lihat halaman
               </Link>
@@ -49,6 +55,10 @@ export default async function DashboardPage() {
 
       <Suspense fallback={null}>
         <SetupAlerts />
+      </Suspense>
+
+      <Suspense fallback={<GettingStartedSkeleton />}>
+        <GettingStartedSection />
       </Suspense>
 
       <Suspense fallback={null}>

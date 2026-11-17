@@ -1,3 +1,4 @@
+import { buildChecklist, type OnboardingFacts } from "@/lib/guide/guide";
 import type { BookingListItem } from "../bookings/booking-state";
 
 /** Baris contoh untuk story; semua nama fiktif. */
@@ -95,7 +96,10 @@ export const AGENDA_ROWS = [
     paid_on_site_at: "2026-11-15T03:20:00Z",
     paid_on_site_method: "CASH",
   }),
-  row("a-4", { customer_name: "Contoh Gita", start_datetime: "2026-11-15T04:00:00Z" }),
+  row("a-4", {
+    customer_name: "Contoh Gita",
+    start_datetime: "2026-11-15T04:00:00Z",
+  }),
   row("a-5", {
     customer_name: "Contoh Hadi",
     start_datetime: "2026-11-15T09:00:00Z",
@@ -112,3 +116,28 @@ export const WEEK_SUMMARY = {
   no_show: 2,
   attendance_marked: 20,
 };
+
+const FACTS_BARU: OnboardingFacts = {
+  hasService: true,
+  hasHours: true,
+  hasActivePayment: false,
+  needsOnlinePayment: false,
+  pageCustomized: false,
+  hasOnlineBooking: false,
+};
+
+/** Hasil wizard: layanan dan jam ada, bayar di tempat saja. */
+export const CHECKLIST_BARU = buildChecklist(FACTS_BARU, []);
+export const CHECKLIST_HAMPIR = buildChecklist(
+  { ...FACTS_BARU, hasActivePayment: true, pageCustomized: true },
+  ["SHARE"],
+);
+export const CHECKLIST_SELESAI = buildChecklist(
+  {
+    ...FACTS_BARU,
+    hasActivePayment: true,
+    pageCustomized: true,
+    hasOnlineBooking: true,
+  },
+  [],
+);

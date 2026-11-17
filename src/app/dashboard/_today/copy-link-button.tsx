@@ -3,6 +3,7 @@
 import { Link2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { markGuideStep } from "@/app/dashboard/guide-actions";
 import { Button } from "@/components/ui/button";
 
 /** Tombol ikon 44px (HP) yang menyalin tautan halaman booking. */
@@ -11,6 +12,7 @@ export function CopyLinkButton({ path }: { path: string }) {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}${path}`);
       toast.success("Tautan disalin");
+      void markGuideStep("SHARE"); // tanda ini opsional, salin tetap berhasil bila gagal
     } catch {
       toast("Gagal menyalin tautan.");
     }
