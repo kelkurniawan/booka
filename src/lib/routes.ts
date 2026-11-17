@@ -41,6 +41,9 @@ export const ROUTES = {
   domain: "/dashboard/domain",
   settings: "/dashboard/settings",
 
+  // Pemasaran -- segmen `untuk` dicadangkan di migration 20261122000100.
+  industry: (slug: string) => `/untuk/${slug}`,
+
   merchantPage: (username: string) => `/${username}`,
   bookingStatus: (token: string) => `/pesanan/${token}`,
   bookingPay: (token: string) => `/api/pesanan/${token}/bayar`,

@@ -987,6 +987,11 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Cek klaim username dari landing. Hanya service_role. */
+      check_username_claim: {
+        Args: { p_username: string; p_ip_hash: string };
+        Returns: string;
+      };
       /** Fakta kesiapan merchant + progres panduan. Hanya authenticated. */
       onboarding_state: {
         Args: Record<string, never>;

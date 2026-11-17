@@ -5928,3 +5928,42 @@ select case when count(*) = 0 then 'OK   t67h tanpa sesi: 0 baris'
             else 'FAIL t67h tanpa sesi: ' || count(*) || ' baris' end as t67h
 from public.onboarding_state();
 commit;
+
+-- 70. Klaim username dari landing (20261122000100)
+select pg_temp.expect_fail(
+  $q$update public.merchants set username = 'untuk' where id = '11111111-1111-1111-1111-111111111111'$q$,
+  'username reserved "untuk"');
+
+select
+  case when not has_table_privilege('anon', 'public.username_check_attempts', 'SELECT')
+        and not has_table_privilege('authenticated', 'public.username_check_attempts', 'SELECT')
+       then 'OK   t70b anon/authenticated tanpa SELECT di username_check_attempts'
+       else 'FAIL t70b tabel username_check_attempts terbuka' end as t70b1,
+  case when not has_function_privilege('anon', 'public.check_username_claim(text, text)', 'EXECUTE')
+        and not has_function_privilege('authenticated', 'public.check_username_claim(text, text)', 'EXECUTE')
+        and has_function_privilege('service_role', 'public.check_username_claim(text, text)', 'EXECUTE')
+       then 'OK   t70b check_username_claim hanya service_role'
+       else 'FAIL t70b grant check_username_claim salah' end as t70b2;
+
+select case when public.check_username_claim('untuk', 'hash-70-c') = 'reserved'
+             and public.check_username_claim('dashboard', 'hash-70-c') = 'reserved'
+             and public.check_username_claim((select username from public.merchants where username is not null limit 1), 'hash-70-c') = 'taken'
+             and public.check_username_claim('belum-ada-70', 'hash-70-c') = 'available'
+            then 'OK   t70c reserved/taken/available'
+            else 'FAIL t70c status username salah' end as t70c;
+
+select case when (select count(*) from generate_series(1, 30)
+                  where public.check_username_claim('belum-ada-70', 'hash-70-d') = 'rate_limited') = 0
+             and public.check_username_claim('belum-ada-70', 'hash-70-d') = 'rate_limited'
+            then 'OK   t70d cek ke-31 rate_limited'
+            else 'FAIL t70d batas 30 per hash salah' end as t70d;
+
+select case when public.check_username_claim('belum-ada-70', 'hash-70-e') = 'available'
+            then 'OK   t70e hash lain tidak ikut terblokir'
+            else 'FAIL t70e hash lain terblokir' end as t70e;
+
+select case when (select count(*) from generate_series(1, 40)
+                  where public.check_username_claim('belum-ada-70', '') = 'rate_limited') = 0
+             and (select count(*) from public.username_check_attempts where ip_hash = '') = 0
+            then 'OK   t70f hash kosong: tanpa batas, tanpa catatan'
+            else 'FAIL t70f hash kosong salah' end as t70f;
