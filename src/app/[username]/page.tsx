@@ -171,7 +171,8 @@ const getMerchantPageData = cache(async (username: string) => {
         )
         .eq("merchant_id", onboardedMerchant.id)
         .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: true })
+        // anon tidak punya hak kolom created_at; id cukup sebagai pemecah seri yang stabil.
+        .order("id", { ascending: true })
         .limit(3),
       supabase.rpc("public_vouchers", { p_merchant_id: onboardedMerchant.id }),
     ]);
