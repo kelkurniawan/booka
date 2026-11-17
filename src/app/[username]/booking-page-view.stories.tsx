@@ -54,11 +54,13 @@ const win = (day_of_week: 1 | 2 | 5) => ({ day_of_week, start_time: "09:00", end
 
 export const SatuLayanan: Story = { args: { services: sampleServices.slice(0, 1) } };
 
+const staf = { role: null, bio: null, tags: [], photoPath: null, motionPath: null };
+
 export const DenganStaf: Story = {
   args: {
     staff: [
-      { id: "s1", name: "Sekar", availability: [win(1), win(2)] },
-      { id: "s2", name: "Dewi", availability: [win(5)] },
+      { ...staf, id: "s1", name: "Sekar", role: "Penata rias", availability: [win(1), win(2)] },
+      { ...staf, id: "s2", name: "Dewi", role: null, availability: [win(5)] },
     ],
   },
 };

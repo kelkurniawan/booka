@@ -1,7 +1,7 @@
 "use client";
 
 import { Pause, Play } from "lucide-react";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   BENTUK_SHAPES,
@@ -14,6 +14,7 @@ import type { BackgroundMotion, MotionSpeed } from "@/types/database";
 import { cn } from "@/lib/utils";
 
 import styles from "./motion-background.module.css";
+import { useDocumentHidden, useMedia, useSaveData } from "./use-motion-allowed";
 
 export type MotionBackgroundProps = {
   preset: BackgroundMotion;
@@ -21,46 +22,6 @@ export type MotionBackgroundProps = {
   /** Paksa bingkai diam; untuk story dan sama perilakunya dengan reduced motion. */
   forceStatic?: boolean;
 };
-
-function useMedia(query: string): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      const mq = window.matchMedia(query);
-      mq.addEventListener("change", cb);
-      return () => mq.removeEventListener("change", cb);
-    },
-    () => window.matchMedia(query).matches,
-    () => false,
-  );
-}
-
-function useSaveData(): boolean {
-  const prefersReducedData = useMedia("(prefers-reduced-data: reduce)");
-  const connection = useSyncExternalStore(
-    (cb) => {
-      const c = (navigator as Navigator & { connection?: EventTarget })
-        .connection;
-      c?.addEventListener("change", cb);
-      return () => c?.removeEventListener("change", cb);
-    },
-    () =>
-      (navigator as Navigator & { connection?: { saveData?: boolean } })
-        .connection?.saveData === true,
-    () => false,
-  );
-  return prefersReducedData || connection;
-}
-
-function useDocumentHidden(): boolean {
-  return useSyncExternalStore(
-    (cb) => {
-      document.addEventListener("visibilitychange", cb);
-      return () => document.removeEventListener("visibilitychange", cb);
-    },
-    () => document.hidden,
-    () => false,
-  );
-}
 
 const GELOMBANG_PATHS = [
   "M0 100 Q 195 20 390 100 T 780 100 T 1170 100 T 1560 100 V200 H0Z",

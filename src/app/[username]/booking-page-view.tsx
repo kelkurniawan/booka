@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/empty";
 import type { PaymentSettings } from "@/lib/booking/payment-mode";
 import type { PublicStaff } from "@/lib/booking/staff";
+import { publicMediaUrl } from "@/lib/media/url";
+import { clipPosterPath } from "@/lib/media/staff-paths";
 import { ROUTES } from "@/lib/routes";
 import { siteUrl } from "@/lib/site";
 import type { ResolvedTheme } from "@/lib/theme/types";
@@ -93,6 +95,12 @@ export function BookingPageView({
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,
+              role: member.role,
+              bio: member.bio,
+              tags: member.tags,
+              photoUrl: member.photoPath ? publicMediaUrl(member.photoPath) : null,
+              motionUrl: member.motionPath ? publicMediaUrl(member.motionPath) : null,
+              posterUrl: member.motionPath ? publicMediaUrl(clipPosterPath(member.motionPath)) : null,
               days: [...new Set(member.availability.map((row) => row.day_of_week))],
             }))}
           />

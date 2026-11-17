@@ -137,3 +137,22 @@ export const sampleBooking = {
 
 /** Token contoh (48 hex) untuk story /pesanan/[token]. */
 export const sampleToken = "0".repeat(48);
+
+const svgUri = (fill: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96"><rect width="96" height="96" fill="${fill}"/></svg>`)}`;
+
+/** Staf contoh untuk story; nama dan isinya fiktif. */
+export const sampleStaff = [
+  { id: "s1", name: "Sekar Contoh", role: "Penata rias", bio: null, tags: [], photoUrl: null, motionUrl: null, posterUrl: null },
+  { id: "s2", name: "Dewi Contoh", role: "Terapis", bio: null, tags: [], photoUrl: null, motionUrl: null, posterUrl: null },
+  { id: "s3", name: "Rani Contoh", role: null, bio: null, tags: [], photoUrl: null, motionUrl: null, posterUrl: null },
+];
+
+export const sampleStaffProfile = {
+  ...sampleStaff[0],
+  bio: "Sepuluh tahun merias pengantin dan acara keluarga.",
+  tags: ["Pengantin", "Natural", "Hijab"],
+  photoUrl: svgUri("#c9b8a6"),
+  posterUrl: svgUri("#a89684"),
+  motionUrl: "/contoh-klip.mp4",
+};

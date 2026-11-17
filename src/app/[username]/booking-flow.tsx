@@ -11,6 +11,7 @@ import { PromoBanners } from "@/components/booking-page/promo-banners";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { BookingStepIndicator } from "@/components/booking-page/step-indicator";
 import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
+import { StaffPicker, type NearestState, type StaffOption } from "@/components/booking-page/staff-picker";
 import { TimeSlotPicker, type TimeSlotState } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ import {
   type PaymentSettings,
 } from "@/lib/booking/payment-mode";
 import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
-import { jakartaDateISO, type FreeSlot } from "@/lib/booking/slots";
+import { jakartaDateISO, type FreeSlot, type NearestSlot } from "@/lib/booking/slots";
 import {
   computeDiscount,
   voucherIneligibleReason,
@@ -52,7 +53,7 @@ export type BookingFlowProps = {
   mediaByService: Record<string, ServiceMedia[]>;
   availability: Pick<Availability, "day_of_week">[];
   /** Staf aktif (Studio) beserta hari kerjanya. `days` kosong = ikut jam usaha. */
-  staff: { id: string; name: string; days: DayOfWeek[] }[];
+  staff: (StaffOption & { days: DayOfWeek[] })[];
   /** Hanya petunjuk tampilan; server menentukan mode akhir saat booking dibuat. */
   paymentSettings: PaymentSettings;
   banners: PublicBanner[];
@@ -196,6 +197,31 @@ export function BookingFlow({
   const serviceListRef = useRef<HTMLDivElement>(null);
 
   const [todayISO] = useState(() => jakartaDateISO(new Date()));
+
+  // Jam kosong terdekat per staf, sekali per layanan saat langkah 2 (hasil lama dipakai ulang).
+  const [nearestByService, setNearestByService] = useState<
+    Record<string, Record<string, NearestSlot | null> | "error">
+  >({});
+  const needNearest = step === 2 && staff.length > 0 && selectedServiceId !== null;
+  const nearestLoaded = selectedServiceId !== null && selectedServiceId in nearestByService;
+  useEffect(() => {
+    if (!needNearest || nearestLoaded || !selectedServiceId) return;
+    const serviceId = selectedServiceId;
+    const controller = new AbortController();
+    const params = new URLSearchParams({ username, serviceId });
+    fetch(`/api/slots/nearest?${params}`, { signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((body: { nearest: Record<string, NearestSlot | null> }) =>
+        setNearestByService((prev) => ({ ...prev, [serviceId]: body.nearest })),
+      )
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        console.error("[booking-flow] gagal memuat jam terdekat", error);
+        setNearestByService((prev) => ({ ...prev, [serviceId]: "error" }));
+      });
+    return () => controller.abort();
+  }, [needNearest, nearestLoaded, selectedServiceId, username]);
+  const nearest: NearestState = (selectedServiceId && nearestByService[selectedServiceId]) || "loading";
 
   // Hari buka mengikuti staf yang dipilih: staf dengan jam sendiri bisa
   // bekerja di hari usaha tutup, dan sebaliknya. "Siapa saja" = gabungan.
@@ -538,23 +564,13 @@ export function BookingFlow({
           </div>
 
           {staff.length > 0 ? (
-            <fieldset className="flex flex-col gap-2">
-              <legend className="mb-2 text-sm font-medium">Dengan siapa?</legend>
-              <div className="flex flex-wrap gap-2">
-                {[{ id: null, name: "Siapa saja" }, ...staff].map((member) => (
-                  <Button
-                    key={member.id ?? "siapa-saja"}
-                    type="button"
-                    variant={member.id === selectedStaffId ? "default" : "outline"}
-                    aria-pressed={member.id === selectedStaffId}
-                    className="min-h-11"
-                    onClick={() => handleSelectStaff(member.id)}
-                  >
-                    {member.name}
-                  </Button>
-                ))}
-              </div>
-            </fieldset>
+            <StaffPicker
+              staff={staff}
+              selectedId={selectedStaffId}
+              onSelect={handleSelectStaff}
+              nearest={nearest}
+              todayISO={todayISO}
+            />
           ) : null}
 
           {strip.every((d) => !d.open) ? (

@@ -4,7 +4,15 @@ import type { Database, SubscriptionTier } from "@/types/database";
 
 import type { StaffSchedule } from "./slots";
 
-export type PublicStaff = StaffSchedule & { name: string };
+export type PublicStaff = StaffSchedule & {
+  name: string;
+  role: string | null;
+  bio: string | null;
+  tags: string[];
+  photoPath: string | null;
+  /** null bila show_motion false (batas tampilan, bukan kerahasiaan). */
+  motionPath: string | null;
+};
 
 /**
  * Staf aktif merchant beserta jam kerjanya, dibaca sebagai `anon`.
@@ -24,7 +32,7 @@ export async function loadPublicStaff(
   const [staffResult, hoursResult] = await Promise.all([
     supabase
       .from("staff")
-      .select("id, name")
+      .select("id, name, role, bio, tags, photo_path, motion_path, show_motion")
       .eq("merchant_id", merchantId)
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
@@ -41,6 +49,11 @@ export async function loadPublicStaff(
   return (staffResult.data ?? []).map((member) => ({
     id: member.id,
     name: member.name,
+    role: member.role,
+    bio: member.bio,
+    tags: member.tags,
+    photoPath: member.photo_path,
+    motionPath: member.show_motion ? member.motion_path : null,
     availability: (hoursResult.data ?? [])
       .filter((row) => row.staff_id === member.id)
       .map(({ day_of_week, start_time, end_time }) => ({ day_of_week, start_time, end_time })),
