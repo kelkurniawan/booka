@@ -50,7 +50,7 @@ export function AppearancePreview({
       style={{ transform: "translateZ(0)" }}
     >
       <div className="max-h-[620px] overflow-y-auto">
-        <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0">
+        <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0" preview>
           <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} theme={theme} />
 
           {theme.sections.map((key) => {
