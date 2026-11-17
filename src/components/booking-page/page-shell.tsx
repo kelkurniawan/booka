@@ -24,12 +24,16 @@ export function BookingPageShell({
   children,
   className,
   innerClassName,
+  preview = false,
 }: {
   theme: ResolvedTheme;
   children: ReactNode;
   className?: string;
   innerClassName?: string;
+  /** Preview di dashboard: isi dibungkus div, bukan <main>, supaya tidak ada <main> bersarang. */
+  preview?: boolean;
 }) {
+  const Isi = preview ? "div" : "main";
   const gambarLatar = theme.backgroundImagePath
     ? publicMediaUrl(theme.backgroundImagePath)
     : null;
@@ -94,14 +98,14 @@ export function BookingPageShell({
         </>
       ) : null}
 
-      <div
+      <Isi
         className={cn(
           "mx-auto flex min-h-svh w-full max-w-[440px] flex-col gap-8 px-4 py-10",
           innerClassName,
         )}
       >
         {children}
-      </div>
+      </Isi>
     </div>
   );
 }

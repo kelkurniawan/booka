@@ -322,7 +322,7 @@ export function BannerForm({
         <div className="flex flex-col gap-2">
           <p className="text-sm font-medium">Pratinjau di HP</p>
           <div className="border-border mx-auto w-full max-w-[280px] overflow-hidden rounded-[2rem] border-[6px] border-neutral-800">
-            <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0">
+            <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0" preview>
               <p className="text-sm font-medium">{merchantName}</p>
               {pendingImage ? (
                 <div style={themeToCssVars(theme)}>
