@@ -193,6 +193,12 @@ export function BookingDetailPanel({
               , sisa {formatRupiah(booking.amount_due_on_site)} di tempat
             </p>
           ) : null}
+          {booking.discount_amount > 0 ? (
+            <p className="text-muted-foreground text-sm">
+              Voucher {booking.voucher_code}{" "}
+              <span className="tabular-nums">{"\u2212"}{formatRupiah(booking.discount_amount)}</span>
+            </p>
+          ) : null}
         </div>
 
         {booking.paid_on_site_at ? (

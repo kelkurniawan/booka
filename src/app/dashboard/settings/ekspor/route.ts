@@ -28,7 +28,7 @@ export async function GET() {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 });
   }
 
-  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings] =
+  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners] =
     await Promise.all([
       supabase.from("merchants").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("merchant_profiles").select("*").eq("merchant_id", user.id).maybeSingle(),
@@ -40,7 +40,7 @@ export async function GET() {
       supabase
         .from("bookings")
         .select(
-          "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, cancelled_at, cancel_reason, expires_at, created_at",
+          "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, cancelled_at, cancel_reason, expires_at, created_at, voucher_code, discount_amount",
         )
         .eq("merchant_id", user.id)
         .order("start_datetime", { ascending: true }),
@@ -49,9 +49,11 @@ export async function GET() {
         .select("provider, status, connection_mode, environment, connected_at")
         .eq("merchant_id", user.id),
       supabase.from("merchant_settings").select("*").eq("merchant_id", user.id).maybeSingle(),
+      supabase.from("vouchers").select("*").eq("merchant_id", user.id),
+      supabase.from("merchant_banners").select("*").eq("merchant_id", user.id),
     ]);
 
-  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings]
+  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners]
     .map((result) => result.error)
     .find(Boolean);
 
@@ -78,6 +80,8 @@ export async function GET() {
     bookings: bookings.data,
     payment_connections: connections.data,
     settings: settings.data,
+    vouchers: vouchers.data,
+    banners: banners.data,
   };
 
   const date = payload.exported_at.slice(0, 10);

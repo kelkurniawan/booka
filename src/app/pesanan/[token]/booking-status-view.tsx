@@ -43,6 +43,8 @@ export type BookingPageRow = {
   attended_at: string | null;
   no_show_at: string | null;
   reschedule_count: number;
+  voucher_code: string | null;
+  discount_amount: number;
 };
 
 export type ReminderView = {
@@ -152,6 +154,19 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
+/** Harga asli dan potongan voucher; hanya muncul bila ada diskon. */
+function VoucherRows({ booking }: { booking: BookingPageRow }) {
+  if (!(booking.discount_amount > 0)) return null;
+  return (
+    <>
+      <Row label="Harga layanan">{formatRupiah(Number(booking.service_price))}</Row>
+      <Row label={`Voucher ${booking.voucher_code ?? ""}`.trim()}>
+        {"\u2212"}{formatRupiah(Number(booking.discount_amount))}
+      </Row>
+    </>
+  );
+}
+
 function Booked({
   token,
   booking,
@@ -223,6 +238,7 @@ function Booked({
         {confirmed ? onSiteRow : null}
         <Row label="Atas nama">{booking.customer_name}</Row>
         <Row label="Kode booking">{code}</Row>
+        <VoucherRows booking={booking} />
         {confirmed ? null : (
           <>
             <Row label="Dibayar">{formatRupiah(Number(booking.amount_due_now))} (QRIS)</Row>
@@ -384,6 +400,7 @@ function Pending({ booking, contactButton }: { booking: BookingPageRow; contactB
         <Row label="Layanan">{booking.service_name}</Row>
         <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
         <Row label="Atas nama">{booking.customer_name}</Row>
+        <VoucherRows booking={booking} />
       </dl>
       {contactButton}
     </div>
@@ -396,6 +413,7 @@ function Summary({ booking }: { booking: BookingPageRow }) {
       <Row label="Layanan">{booking.service_name}</Row>
       <Row label="Jadwal">{formatSchedule(booking.start_datetime, booking.end_datetime)}</Row>
       <Row label="Atas nama">{booking.customer_name}</Row>
+      <VoucherRows booking={booking} />
       {booking.amount_due_now > 0 ? (
         <Row label="Dibayar setelah disetujui">{formatRupiah(Number(booking.amount_due_now))}</Row>
       ) : null}
