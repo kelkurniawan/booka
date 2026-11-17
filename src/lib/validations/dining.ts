@@ -81,6 +81,21 @@ export const diningLayoutSchema = z
         if (j === t.id || byId.get(j)?.area_id !== t.area_id) fail(`Gabungan meja ${t.name} tidak cocok`);
       }
     }
+    // Meja yang bertumpuk di satu area tidak bisa diketuk terpisah oleh pelanggan.
+    const tables = v.tables;
+    for (let i = 0; i < tables.length; i++) {
+      for (let k = i + 1; k < tables.length; k++) {
+        const a = tables[i];
+        const b = tables[k];
+        if (a.area_id !== b.area_id) continue;
+        const terpisah =
+          a.grid_x + a.grid_w <= b.grid_x ||
+          b.grid_x + b.grid_w <= a.grid_x ||
+          a.grid_y + a.grid_h <= b.grid_y ||
+          b.grid_y + b.grid_h <= a.grid_y;
+        if (!terpisah) fail(`Meja ${a.name} dan ${b.name} bertumpuk. Geser salah satunya.`);
+      }
+    }
   });
 
 export type DiningLayoutInput = z.input<typeof diningLayoutSchema>;

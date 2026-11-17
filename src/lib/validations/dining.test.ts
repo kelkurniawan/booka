@@ -69,3 +69,14 @@ test("101 meja ditolak", () => {
   const tables = Array.from({ length: 101 }, (_, i) => table(i + 1, 1, `M${i}`));
   assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables }).success, false);
 });
+
+test("meja bertumpuk di area yang sama ditolak, di area lain boleh", () => {
+  const tumpuk = [table(1, 1, "D1"), table(2, 1, "D2", { grid_x: 5, grid_y: 1 })];
+  const hasil = diningLayoutSchema.safeParse({ ...LAYOUT, tables: tumpuk });
+  assert.equal(hasil.success, false);
+  assert.match(hasil.error!.issues[0].message, /D1 dan D2 bertumpuk/);
+  const beda = [table(1, 1, "D1"), table(3, 2, "T1", { grid_x: 5, grid_y: 1 })];
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables: beda }).success, true);
+  const bersebelahan = [table(1, 1, "D1"), table(2, 1, "D2", { grid_x: 7 })];
+  assert.equal(diningLayoutSchema.safeParse({ ...LAYOUT, tables: bersebelahan }).success, true);
+});
