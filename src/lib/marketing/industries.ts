@@ -1,7 +1,14 @@
 import { planAvailability } from "@/lib/plans";
 import { BIZ_EXAMPLES, type BizExample, type Faq } from "./content";
 
-export type IndustrySlug = "salon" | "barbershop" | "restoran" | "fotografer" | "klinik" | "kelas";
+export type IndustrySlug =
+  | "salon"
+  | "barbershop"
+  | "restoran"
+  | "fotografer"
+  | "klinik"
+  | "kelas"
+  | "lapangan";
 
 export type Industry = {
   slug: IndustrySlug;
@@ -263,6 +270,59 @@ export const INDUSTRIES: readonly Industry[] = [
       },
     ],
     faqs: [FAQ_DP, FAQ_RESCHEDULE],
+  },
+  {
+    slug: "lapangan",
+    name: "Lapangan olahraga",
+    metaTitle: "Marky untuk lapangan: sewa per jam tanpa bentrok",
+    metaDescription:
+      "Halaman sewa lapangan untuk padel, futsal, mini soccer, badminton, dan tenis. Pelanggan pilih jam dan lapangan, jadwal tidak pernah terpesan ganda.",
+    h1: "Sewa lapangan per jam yang terisi sendiri.",
+    intro:
+      "Pelanggan memilih tanggal, lama main, jam, dan lapangan dari satu tautan. Jadwal semua lapangan tampil sekaligus di dashboard, dan jam yang sudah dipesan langsung tertutup.",
+    example: {
+      label: "Lapangan",
+      slug: "arenasenja",
+      name: "Arena Senja",
+      bio: "Padel dan futsal, indoor dan outdoor",
+      cta: "Pilih jadwal",
+      items: [
+        { name: "Padel, jam biasa", price: "harga dasar" },
+        { name: "Padel, jam ramai", price: "harga ramai" },
+        { name: "Futsal, jam biasa", price: "harga dasar" },
+      ],
+    },
+    paymentFit: {
+      title: "DP untuk mengunci jam, atau bayar di tempat",
+      body: "Sewa lapangan bisa memakai DP lewat QRIS supaya jam tidak diambil orang lain, atau bayar di tempat untuk sewa harian. Cara bayar dipilih per layanan.",
+    },
+    points: [
+      {
+        title: "Jadwal semua lapangan",
+        body: "Lihat jam kosong dan terisi untuk semua lapangan dalam satu tampilan per hari, dengan setiap lapangan sebagai kolom.",
+      },
+      {
+        title: "Harga jam ramai",
+        body: "Atur harga per jam dan aturan jam ramai per hari, misalnya sore dan malam di akhir pekan. Pelanggan melihat harga yang benar untuk jam yang mereka pilih.",
+      },
+      {
+        title: "Tanpa pesanan ganda",
+        body: "Satu lapangan hanya bisa dipesan sekali untuk jam yang beririsan, termasuk saat dua pelanggan memesan di waktu yang sama.",
+      },
+    ],
+    faqs: [
+      {
+        question: "Apakah pelanggan bisa memilih lapangan tertentu?",
+        answer:
+          "Bisa. Pelanggan memilih lapangan tertentu atau Mana saja, dan sistem memberi lapangan yang masih kosong di jam itu.",
+      },
+      {
+        question: "Bagaimana dengan lama main yang lebih dari satu jam?",
+        answer:
+          "Anda mengatur lama main minimum dan maksimum, dengan kelipatan 30 menit atau 1 jam. Harga dihitung sesuai lama main yang dipilih pelanggan.",
+      },
+      FAQ_DP,
+    ],
   },
 ];
 
