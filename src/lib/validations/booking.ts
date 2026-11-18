@@ -39,6 +39,9 @@ export const checkVoucherRequestSchema = z.object({
   // Sewa lapangan: jam mulai dan lama main supaya pratinjau memakai total sewa.
   startUtc: z.iso.datetime().nullable().default(null),
   durationMinutes: z.number().int().min(30).max(480).nullable().default(null),
+}).refine((v) => (v.startUtc === null) === (v.durationMinutes === null), {
+  message: "startUtc dan durationMinutes harus dikirim bersama",
+  path: ["durationMinutes"],
 });
 
 /**

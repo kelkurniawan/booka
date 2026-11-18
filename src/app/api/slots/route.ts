@@ -14,6 +14,8 @@ import { loadPublicStaff } from "@/lib/booking/staff";
 import { createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
 
+type PublicClient = ReturnType<typeof createPublicClient>;
+
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const querySchema = z.object({
@@ -45,7 +47,10 @@ const querySchema = z.object({
  * `get_seat_availability` menentukan mana yang masih muat untuk `party`
  * tamu (Keputusan 5 F8). Respons: `{ slots: SeatSlot[] }`, hanya yang kosong.
  */
-export async function GET(request: NextRequest) {
+export const GET = (request: NextRequest) => handleSlots(request);
+
+/** Isi GET; klien Supabase disuntikkan supaya cabang sewa bisa diuji tanpa DB. */
+export async function handleSlots(request: Request, createClient: () => PublicClient = createPublicClient) {
   const url = new URL(request.url);
   const parsed = querySchema.safeParse({
     username: url.searchParams.get("username") ?? "",
@@ -80,7 +85,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Tanggal tidak valid" }, { status: 400 });
   }
 
-  const supabase = createPublicClient();
+  const supabase = createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")

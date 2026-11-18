@@ -25,7 +25,13 @@ const querySchema = z.object({
  * "Dengan siapa?". Sama seperti /api/slots: klien anon dan RPC
  * `get_booked_ranges`, tidak pernah membaca tabel `bookings` langsung.
  */
-export async function GET(request: NextRequest) {
+export const GET = (request: NextRequest) => handleNearest(request);
+
+/** Isi GET; klien Supabase disuntikkan supaya bisa diuji tanpa DB. */
+export async function handleNearest(
+  request: Request,
+  createClient: () => ReturnType<typeof createPublicClient> = createPublicClient,
+) {
   const url = new URL(request.url);
   const parsed = querySchema.safeParse({
     username: url.searchParams.get("username") ?? "",
@@ -36,7 +42,7 @@ export async function GET(request: NextRequest) {
   }
   const { username, serviceId } = parsed.data;
 
-  const supabase = createPublicClient();
+  const supabase = createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")

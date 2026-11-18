@@ -36,7 +36,23 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  * Kode voucher (opsional) diteruskan ke create_booking, yang menilai ulang
  * kelayakannya di dalam transaksi; charge tetap sebesar amount_due_now.
  */
-export async function POST(request: NextRequest) {
+export const POST = (request: NextRequest) => handleBooking(request);
+
+type BookingDeps = {
+  createClient: () => ReturnType<typeof createAdminClient>;
+  findProvider: typeof findChargeProvider;
+  schedule: (task: () => unknown) => void;
+  ipHash: (headers: Headers) => string;
+};
+const realDeps: BookingDeps = {
+  createClient: createAdminClient,
+  findProvider: findChargeProvider,
+  schedule: (task) => after(task),
+  ipHash: (h) => hashClientIp(extractClientIp(h)),
+};
+
+/** Isi POST; dependensi disuntikkan supaya pemetaan error dan argumen RPC bisa diuji. */
+export async function handleBooking(request: Request, deps: BookingDeps = realDeps) {
   // Batas ukuran body: payload sah di bawah 2 KB; Content-Length bisa dipalsukan
   // jadi panjang teks yang sudah terbaca diperiksa juga.
   const MAX_BODY_BYTES = 8 * 1024;
@@ -70,7 +86,7 @@ export async function POST(request: NextRequest) {
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
   // (AGENTS.md: createAdminClient() tidak punya jaring pengaman sendiri).
-  const supabase = createAdminClient();
+  const supabase = deps.createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
@@ -118,7 +134,7 @@ export async function POST(request: NextRequest) {
   // mengikuti filosofi yang sama dengan p_ip_hash kosong di fungsi SQL-nya
   // ("membiarkan lewat lebih aman daripada memblokir semua orang"), cukup
   // dicatat di log supaya kalau ini sering terjadi tetap terlihat.
-  const ipHash = hashClientIp(extractClientIp(request.headers));
+  const ipHash = deps.ipHash(request.headers);
   const { data: rateLimitAllowed, error: rateLimitError } = await supabase.rpc(
     "check_booking_rate_limit",
     { p_ip_hash: ipHash, p_merchant_id: merchant.id },
@@ -141,7 +157,7 @@ export async function POST(request: NextRequest) {
   // booking yang harus dibayar online bila provider null.
   let provider;
   try {
-    provider = await findChargeProvider(supabase, merchant.id);
+    provider = await deps.findProvider(supabase, merchant.id);
   } catch (providerError) {
     console.error("[api/bookings] gagal memuat koneksi payment", {
       merchantId: merchant.id,
@@ -213,7 +229,7 @@ export async function POST(request: NextRequest) {
 
   if (booking.status !== "PENDING") {
     // CONFIRMED (bayar di tempat) atau REQUESTED: tidak ada charge.
-    after(() => notifyBookingCreated(booking.id));
+    deps.schedule(() => notifyBookingCreated(booking.id));
     return NextResponse.json(
       { bookingId: booking.id, status: booking.status, bookingUrl, pixelEventId: booking.pixel_event_id, value: Number(booking.amount_due_now) + Number(booking.amount_due_on_site) },
       { status: 201 },
