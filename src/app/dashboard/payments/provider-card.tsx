@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { AlertTriangle, KeyRound, Link2, ShieldCheck, Unlink } from "lucide-react";
+import { AlertTriangle, Copy, KeyRound, Link2, ShieldCheck, Unlink } from "lucide-react";
 import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -48,6 +48,7 @@ export function ProviderCard({
   maskedCredential,
   isUsedForBooking,
   oauthAvailable,
+  webhookUrl,
 }: {
   provider: PaymentProvider;
   connection: PaymentConnection | null;
@@ -67,6 +68,8 @@ export function ProviderCard({
    * "belum aktif" -- jalan buntu yang membuat merchant mengira Marky rusak.
    */
   oauthAvailable: boolean;
+  /** URL webhook Marky untuk provider ini, lihat src/lib/payments/webhook-url.ts. */
+  webhookUrl: string;
 }) {
   const meta = PROVIDER_META[provider];
   const isActive = connection?.status === "ACTIVE";
@@ -90,6 +93,15 @@ export function ProviderCard({
   const [manualKeyOpen, setManualKeyOpen] = useState(false);
   const [disconnectOpen, setDisconnectOpen] = useState(false);
   const [disconnectPending, startDisconnect] = useTransition();
+
+  async function copyWebhookUrl() {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      toast.success("URL notifikasi disalin");
+    } catch {
+      toast("Gagal menyalin. Salin URL secara manual.");
+    }
+  }
 
   function handleDisconnect() {
     startDisconnect(async () => {
@@ -183,6 +195,23 @@ export function ProviderCard({
               akun ini, tidak pernah ditahan Marky.
             </p>
           )}
+          <div className="mt-2 flex flex-col gap-1.5 border-t pt-3">
+            <span className="text-muted-foreground">URL notifikasi pembayaran</span>
+            <div className="flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded bg-muted px-2 py-1.5 text-xs">
+                {webhookUrl}
+              </code>
+              <Button variant="outline" size="icon" onClick={copyWebhookUrl}>
+                <Copy aria-hidden="true" />
+                <span className="sr-only">Salin URL notifikasi {meta.name}</span>
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {provider === "XENDIT"
+                ? "Wajib: tempel URL ini di dashboard Xendit, menu Settings lalu Webhooks, pada baris QR code. Tanpa ini booking yang sudah dibayar tidak tercatat lunas dan otomatis dibatalkan."
+                : "Marky mengirim URL ini otomatis di setiap transaksi QRIS. Sebagai cadangan, tempel juga di dashboard Midtrans pada kolom Payment Notification URL."}
+            </p>
+          </div>
         </CardContent>
 
         <CardFooter className="flex flex-wrap gap-2">

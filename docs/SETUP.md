@@ -41,6 +41,14 @@ Isi nilainya:
 | `NEXT_PUBLIC_SUPPORT_WHATSAPP` | nomor WhatsApp dukungan Marky, format 62… | opsional, tombol bantuan |
 | `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | Vercel → Tokens / Project Settings | domain sendiri (Studio) |
 
+`NEXT_PUBLIC_APP_URL` juga menjadi alamat webhook pembayaran
+(`<APP_URL>/api/webhooks/midtrans` dan `/xendit`). Midtrans menerimanya lewat
+header `X-Override-Notification` di setiap charge, tetapi hanya bila URL-nya
+https publik. Xendit tidak punya header serupa: merchant wajib menempelkan URL
+yang tampil di kartu Xendit `/dashboard/payments` ke Settings, Webhooks, baris
+QR code. Tanpa webhook, booking QRIS yang sudah dibayar tetap PENDING lalu
+dibatalkan cron `cancel-unpaid`.
+
 ### Format API key
 
 Supabase mengganti pasangan anon/service-role JWT dengan **publishable key**

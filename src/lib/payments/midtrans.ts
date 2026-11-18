@@ -49,6 +49,10 @@ async function createQrisCharge(params: QrisChargeParams): Promise<QrisCharge> {
       "Content-Type": "application/json",
       Accept: "application/json",
       Authorization: basicAuthHeader(params.credential),
+      // Webhook transaksi ini ke Marky, apa pun isi Payment Notification URL
+      // di dashboard merchant. Tanpa ini booking lunas tetap PENDING lalu
+      // dibatalkan cron cancel-unpaid.
+      ...(params.notificationUrl ? { "X-Override-Notification": params.notificationUrl } : {}),
     },
     body: JSON.stringify({
       payment_type: "qris",

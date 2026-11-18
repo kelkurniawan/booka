@@ -171,6 +171,28 @@ test("createQrisCharge: memanggil base URL sandbox, Basic auth dari server key, 
     qrString: "00020101...qr-payload",
     expiresAt: "2026-08-01 10:00:00",
   });
+  // Tanpa notificationUrl tidak ada header override.
+  assert.equal(headers["X-Override-Notification"], undefined);
+});
+
+test("createQrisCharge: notificationUrl dikirim sebagai header X-Override-Notification", async () => {
+  mockFetchOnce(201, {
+    status_code: "201",
+    transaction_id: "trx-2",
+    order_id: "booking-456",
+    qr_string: "00020101...qr",
+  });
+
+  await midtransAdapter.createQrisCharge({
+    orderId: "booking-456",
+    amount: 50000,
+    environment: "PRODUCTION",
+    credential: "server-key-abc",
+    notificationUrl: "https://marky.id/api/webhooks/midtrans",
+  });
+
+  const headers = lastCall?.init.headers as Record<string, string>;
+  assert.equal(headers["X-Override-Notification"], "https://marky.id/api/webhooks/midtrans");
 });
 
 test("createQrisCharge: response non-2xx melempar error yang menyertakan status_message", async () => {

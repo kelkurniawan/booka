@@ -20,6 +20,13 @@ export type QrisChargeParams = {
   environment: PaymentEnvironment;
   /** Server Key (Midtrans) / Secret Key (Xendit) merchant, plaintext, sudah didekripsi pemanggil. */
   credential: string;
+  /**
+   * URL webhook Marky untuk transaksi ini (lihat webhook-url.ts). Midtrans
+   * mengirimnya sebagai header X-Override-Notification sehingga merchant tidak
+   * wajib mengisi Payment Notification URL sendiri. Xendit mengabaikannya:
+   * webhook QR Xendit hanya bisa diatur di dashboard merchant.
+   */
+  notificationUrl?: string;
 };
 
 /** Hasil charge QRIS, sudah dinormalisasi lintas provider. */

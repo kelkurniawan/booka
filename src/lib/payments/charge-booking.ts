@@ -5,6 +5,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { ChargeRejectedError, getAdapter, recordChargeRejection, recordChargeSuccess } from "@/lib/payments";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
+import { isDeliverableWebhookUrl, paymentWebhookUrl } from "@/lib/payments/webhook-url";
+import { serverEnv } from "@/lib/env/server";
 import type { Database, PaymentProvider } from "@/types/database";
 
 /**
@@ -61,11 +63,13 @@ export async function chargeBooking(
       throw new Error("Kredensial payment gateway tidak ditemukan");
     }
 
+    const notificationUrl = paymentWebhookUrl(serverEnv().appUrl, provider);
     const charge = await getAdapter(provider).createQrisCharge({
       orderId,
       amount,
       environment: credential.environment,
       credential: credential.credential,
+      notificationUrl: isDeliverableWebhookUrl(notificationUrl) ? notificationUrl : undefined,
     });
 
     const { error: updateError } = await admin
