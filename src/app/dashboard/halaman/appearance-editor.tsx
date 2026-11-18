@@ -53,7 +53,7 @@ import { FaqEditor, validasiFaqs, type FaqDraft } from "./faq-editor";
 import { AppearancePreview } from "./preview-frame";
 
 /** Bagian tema yang bisa disunting; cerminan kolom merchant_themes. */
-type DraftTema = Omit<MerchantTheme, "merchant_id" | "created_at" | "updated_at" | "show_social_icons">;
+type DraftTema = Omit<MerchantTheme, "merchant_id" | "created_at" | "updated_at" | "show_social_icons" | "public_whatsapp">;
 
 const TEMA_KOSONG: DraftTema = {
   preset: "BERSIH",
@@ -231,7 +231,7 @@ export function AppearanceEditor({
   // pemangkasan paket -- jadi merchant STARTER melihat persis apa yang benar
   // benar akan tampil, bukan versi yang lebih bagus dari kenyataan.
   const temaJadi = useMemo(
-    () => resolveTheme(tier, { ...tema, merchant_id: merchantId, created_at: "", updated_at: "", show_social_icons: true }),
+    () => resolveTheme(tier, { ...tema, merchant_id: merchantId, created_at: "", updated_at: "", show_social_icons: true, public_whatsapp: false }),
     [tier, tema, merchantId],
   );
 

@@ -112,7 +112,6 @@ export default async function AnalyticsPage({
   });
   if (funnelError) {
     console.error("[analitik] gagal memuat funnel", { userId: user.id, error: funnelError });
-    throw new Error("Gagal memuat data funnel.");
   }
 
   const summary = aggregateBookings(data ?? [], { from, to }, period.bucket);
@@ -215,12 +214,18 @@ export default async function AnalyticsPage({
         </Card>
       ) : null}
 
-      <FunnelSection
-        rows={(funnelData ?? []) as FunnelRow[]}
-        days={funnelDays}
-        channel={funnelChannel}
-        periode={periodKey}
-      />
+      {funnelError ? (
+        <p role="alert" className="text-muted-foreground text-sm" data-testid="funnel-error">
+          Funnel belum bisa dimuat. Muat ulang sebentar lagi.
+        </p>
+      ) : (
+        <FunnelSection
+          rows={(funnelData ?? []) as FunnelRow[]}
+          days={funnelDays}
+          channel={funnelChannel}
+          periode={periodKey}
+        />
+      )}
     </>
   );
 }

@@ -432,11 +432,15 @@ export function BookingFlow({
     sentStepsRef.current.add(step);
     trackFunnel(step === 2 ? "SERVICE" : "CHECKOUT", selectedServiceId ? { serviceId: selectedServiceId } : {});
     // Pixel iklan: event_id acak per kejadian (deduplikasi hanya untuk Lead/Purchase).
-    firePixel(step === 2 ? "SERVICE" : "CHECKOUT", {
-      eventId: crypto.randomUUID(),
-      value: selectedService ? Number(selectedService.price) : undefined,
-      contentName: selectedService?.name,
-    });
+    try {
+      firePixel(step === 2 ? "SERVICE" : "CHECKOUT", {
+        eventId: crypto.randomUUID(),
+        value: selectedService ? Number(selectedService.price) : undefined,
+        contentName: selectedService?.name,
+      });
+    } catch {
+      // randomUUID tidak tersedia: lewati pixel
+    }
   }, [step, selectedServiceId, selectedService]);
 
   // Masuk dari tautan dengan layanan: langkah Jadwal terbuka, dan Kembali ke Layanan.
@@ -711,6 +715,8 @@ export function BookingFlow({
         value: checkout.value,
         contentName: selectedService?.name,
       });
+      // Beri request pixel waktu keluar sebelum halaman berpindah (Lead tidak boleh hilang).
+      await new Promise((r) => setTimeout(r, 300));
       // Dokumen penuh, bukan router.push: pixel di halaman ini tidak boleh ikut ke URL bertoken (SPA pushState).
       window.location.assign(checkout.bookingUrl);
     } catch (error) {

@@ -28,7 +28,7 @@ export async function GET() {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 });
   }
 
-  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables] =
+  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables, adLinks, merchantLinks, tracking] =
     await Promise.all([
       supabase.from("merchants").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("merchant_profiles").select("*").eq("merchant_id", user.id).maybeSingle(),
@@ -53,9 +53,12 @@ export async function GET() {
       supabase.from("merchant_banners").select("*").eq("merchant_id", user.id),
       supabase.from("dining_areas").select("*").eq("merchant_id", user.id),
       supabase.from("dining_tables").select("*").eq("merchant_id", user.id),
+      supabase.from("ad_links").select("*").eq("merchant_id", user.id),
+      supabase.from("merchant_links").select("*").eq("merchant_id", user.id),
+      supabase.from("merchant_tracking").select("*").eq("merchant_id", user.id).maybeSingle(),
     ]);
 
-  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables]
+  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables, adLinks, merchantLinks, tracking]
     .map((result) => result.error)
     .find(Boolean);
 
@@ -86,6 +89,9 @@ export async function GET() {
     banners: banners.data,
     dining_areas: diningAreas.data,
     dining_tables: diningTables.data,
+    ad_links: adLinks.data,
+    merchant_links: merchantLinks.data,
+    merchant_tracking: tracking.data,
   };
 
   const date = payload.exported_at.slice(0, 10);

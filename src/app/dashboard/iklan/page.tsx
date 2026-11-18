@@ -68,7 +68,7 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
           );
         })}
       </nav>
-      <div className="mt-6">{isPixel ? await PixelTab(user.id, origin, username) : await LinksTab(user.id, origin, username)}</div>
+      <div className="mt-6">{isPixel ? await PixelTab(user.id, origin, username) : await LinksTab(user.id, origin, username, !!domain)}</div>
     </>
   );
 }
@@ -101,7 +101,7 @@ async function PixelTab(userId: string, origin: string, username: string) {
   );
 }
 
-async function LinksTab(userId: string, origin: string, username: string) {
+async function LinksTab(userId: string, origin: string, username: string, customDomain: boolean) {
   const supabase = await createClient();
   const now = currentMs();
   const [linksResult, statsResult, servicesResult, vouchersResult] = await Promise.all([
@@ -139,7 +139,7 @@ async function LinksTab(userId: string, origin: string, username: string) {
       name: l.name,
       slug: l.slug,
       channel: l.channel,
-      shortUrl: adLinkUrls({ origin, username, slug: l.slug, channel: l.channel }).short,
+      shortUrl: adLinkUrls({ origin, username, slug: l.slug, channel: l.channel, customDomain }).short,
       views: s?.views ?? 0,
       booked: s?.booked ?? 0,
       paid: s?.paid ?? 0,
@@ -152,6 +152,7 @@ async function LinksTab(userId: string, origin: string, username: string) {
       <AdLinkForm
         origin={origin}
         username={username}
+        customDomain={customDomain}
         services={servicesResult.data ?? []}
         vouchers={(vouchersResult.data ?? []).map((v) => ({
           code: v.code,

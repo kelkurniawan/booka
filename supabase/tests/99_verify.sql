@@ -4711,7 +4711,7 @@ select case when (select subscription_tier from public.merchants where id = '505
 -- t50a: nilai bawaan.
 insert into public.merchant_themes (merchant_id, preset)
   values ('50505050-0000-0000-0000-000000000001', 'BERSIH');
-select case when (select button_style = 'FILLED' and section_order = '{LINKS,PROMO,SERVICES,FAQ}'
+select case when (select button_style = 'FILLED' and section_order = '{PROMO,SERVICES,FAQ}'
                          and hidden_sections = '{}' and background_motion = 'BENTUK'
                          and background_motion_speed = 'SLOW' and logo_path is null and cover_path is null
                   from public.merchant_themes where merchant_id = '50505050-0000-0000-0000-000000000001')
@@ -6112,13 +6112,13 @@ rollback;
 -- tema: LINKS di depan, constraint empat nilai
 insert into public.merchant_themes (merchant_id) values ('73737373-0000-0000-0000-000000000001');
 select case when (select section_order from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001')
-                 = array['LINKS', 'PROMO', 'SERVICES', 'FAQ']
+                 = array['PROMO', 'SERVICES', 'FAQ']
              and (select show_social_icons from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001')
-            then 'OK   t73q section_order bawaan berisi LINKS di depan, show_social_icons true'
+            then 'OK   t73q section_order bawaan tiga bagian (0600), show_social_icons true'
             else 'FAIL t73q section_order bawaan' end as t73q;
 select pg_temp.expect_fail_code(
-  $q$update public.merchant_themes set section_order = array['PROMO', 'SERVICES', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
-  '23514', 't73r section_order tanpa LINKS ditolak');
+  $q$update public.merchant_themes set section_order = array['LINKS', 'PROMO', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  '23514', 't73r section_order tanpa SERVICES ditolak');
 select pg_temp.expect_ok(
   $q$update public.merchant_themes set hidden_sections = array['LINKS', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
   't73s hidden_sections menerima LINKS');
@@ -6172,8 +6172,8 @@ begin;
 set local role anon;
 select case when (select instagram from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
              and (select tiktok from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = 'toko73'
-             and (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = '+6281200000073'
-            then 'OK   t73z Instagram tersembunyi mengembalikan null ke anon, yang lain tampil'
+             and (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
+            then 'OK   t73z Instagram tersembunyi mengembalikan null ke anon, TikTok tampil, WhatsApp null tanpa opt-in'
             else 'FAIL t73z get_public_contacts membocorkan kontak tersembunyi' end as t73z;
 rollback;
 
@@ -6407,6 +6407,8 @@ select case when not exists (select 1 from public.get_public_contacts('73737373-
             else 'FAIL t73za contact_phone bocor' end as t73za;
 update public.merchant_settings set contact_hidden = array['WHATSAPP']::public.contact_channel[]
   where merchant_id = '73737373-0000-0000-0000-000000000001';
+-- opt-in aktif, supaya null di bawah memang karena disembunyikan
+update public.merchant_themes set public_whatsapp = true where merchant_id = '73737373-0000-0000-0000-000000000001';
 select case when (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
              and (select instagram from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = 'toko73'
             then 'OK   t73zb WhatsApp tersembunyi null'
@@ -6478,3 +6480,41 @@ select pg_temp.expect_fail_code(
   $q$update public.merchant_onboarding_progress set tours_seen = '{beranda}'
      where merchant_id = '74747474-0000-0000-0000-000000000001'$q$,
   '23514', 't76b kunci di luar 15 ditolak');
+
+-- ===========================================================================
+-- 77. Perbaikan review akhir funnel iklan (20261125000600)
+-- ===========================================================================
+-- I1: tiga atau empat bagian diterima, ganda atau kunci asing ditolak
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes set section_order = array['FAQ', 'PROMO', 'SERVICES'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  't77a urutan tiga bagian (aplikasi lama) diterima');
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes set section_order = array['LINKS', 'FAQ', 'PROMO', 'SERVICES'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  't77b urutan empat bagian diterima');
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_themes set section_order = array['LINKS', 'LINKS', 'PROMO', 'SERVICES'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  '23514', 't77c LINKS ganda ditolak');
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_themes set section_order = array['KONTAK', 'PROMO', 'SERVICES', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  '23514', 't77d kunci asing ditolak');
+
+-- I3: WhatsApp publik hanya bila merchant memilih (setel ulang sisa section 73)
+update public.merchant_themes set public_whatsapp = false where merchant_id = '73737373-0000-0000-0000-000000000001';
+update public.merchant_settings set contact_hidden = '{}' where merchant_id = '73737373-0000-0000-0000-000000000001';
+begin;
+set local role anon;
+select case when (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
+            then 'OK   t77e WhatsApp tidak publik secara bawaan'
+            else 'FAIL t77e WhatsApp bocor tanpa opt-in' end as t77e;
+rollback;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '73737373-0000-0000-0000-000000000001';
+select public.save_merchant_links('[]'::jsonb, true, array['LINKS','PROMO','SERVICES','FAQ'], true);
+commit;
+begin;
+set local role anon;
+select case when (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = '+6281200000073'
+            then 'OK   t77f WhatsApp tampil setelah opt-in'
+            else 'FAIL t77f WhatsApp tidak tampil setelah opt-in' end as t77f;
+rollback;

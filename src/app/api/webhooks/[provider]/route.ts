@@ -167,7 +167,11 @@ export async function handleWebhook(
     // kalau pengiriman pertama sempat terputus (fungsi dihentikan sebelum
     // after() selesai), retry gateway menjadi kesempatan kedua. Yang sudah
     // terkirim tidak terkirim lagi -- notification_log yang menjaga.
-    if (booking.status === "PAID") deps.onPaid(booking.id);
+    if (booking.status === "PAID") {
+      deps.onPaid(booking.id);
+      // Retry gateway juga kesempatan kedua mencatat PAID bila percobaan pertama gagal.
+      await recordPaidSafely(deps, booking.id);
+    }
     if (booking.status === "CANCELLED") {
       console.warn(
         "[webhooks] pembayaran diterima untuk booking yang sudah CANCELLED, tidak di-flip ke PAID",
@@ -208,16 +212,20 @@ export async function handleWebhook(
   // dikirim setelah respons terkirim (lihat docs/DECISIONS.md #27).
   deps.onPaid(booking.id);
 
-  // Analitik tidak boleh menggagalkan webhook: kegagalan dicatat saja.
+  await recordPaidSafely(deps, booking.id);
+  return NextResponse.json({ ok: true });
+}
+
+/** Analitik tidak boleh menggagalkan webhook: kegagalan dicatat saja. Idempoten di sisi DB. */
+async function recordPaidSafely(deps: WebhookDeps, bookingId: string) {
   try {
-    const paidEventError = await deps.recordPaidEvent(booking.id);
+    const paidEventError = await deps.recordPaidEvent(bookingId);
     if (paidEventError) {
-      console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId: booking.id, error: paidEventError });
+      console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId, error: paidEventError });
     }
   } catch (e) {
-    console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId: booking.id, error: e });
+    console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId, error: e });
   }
-  return NextResponse.json({ ok: true });
 }
 
 /**

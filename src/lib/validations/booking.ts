@@ -98,8 +98,9 @@ export const createBookingRequestSchema = z.object({
     .nullable()
     .default(null),
   // Atribusi funnel, opsional: klien lama tanpa dua field ini tetap valid.
-  sessionId: z.uuid().nullable().default(null),
-  attribution: eventBodySchema.shape.attribution.nullable().default(null),
+  // .catch(null): analitik tidak boleh membuat booking ditolak (400) bila bentuknya salah.
+  sessionId: z.uuid().nullable().default(null).catch(null),
+  attribution: eventBodySchema.shape.attribution.nullable().default(null).catch(null),
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;

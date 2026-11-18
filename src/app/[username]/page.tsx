@@ -83,7 +83,7 @@ const getMerchantPageData = cache(async (username: string) => {
     .merchant_themes;
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
-  const [servicesResult, availabilityResult, faqsResult, settingsResult, linksResult, contactsResult] = await Promise.all([
+  const [servicesResult, availabilityResult, faqsResult, settingsResult, linksResult, contactsResult, trackingResult] = await Promise.all([
     supabase
       .from("services")
       .select("*, service_media(*)")
@@ -110,6 +110,8 @@ const getMerchantPageData = cache(async (username: string) => {
       .eq("merchant_id", onboardedMerchant.id)
       .order("sort_order", { ascending: true }),
     supabase.rpc("get_public_contacts", { p_merchant_id: onboardedMerchant.id }),
+    // ID pixel aktif; gagal baca = tanpa pixel (halaman tetap jalan).
+    supabase.rpc("get_public_tracking", { p_merchant_id: onboardedMerchant.id }),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -228,6 +230,7 @@ const getMerchantPageData = cache(async (username: string) => {
   const contacts = themeRow?.show_social_icons === false ? null : (contactsResult.data?.[0] ?? null);
 
   return {
+    tracking: trackingResult.data?.[0],
     links,
     contacts,
     banners,
@@ -288,35 +291,27 @@ export default async function MerchantPublicPage({
 }) {
   const { username } = await params;
   const query = await searchParams;
-  const data = await getMerchantPageData(username);
+  // resolve_ad_link memakai username, jadi bisa jalan bersamaan dengan data halaman.
+  const slug = typeof query.t === "string" ? query.t.trim().toLowerCase() : "";
+  const linkRows = /^[a-z0-9-]{3,40}$/.test(slug)
+    ? createPublicClient().rpc("resolve_ad_link", { p_username: username, p_slug: slug })
+    : null;
+  const [data, linkResult] = await Promise.all([getMerchantPageData(username), linkRows]);
 
   if (!data) {
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers, links, contacts } =
+  const { tracking, merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers, links, contacts } =
     data;
 
   // Tautan iklan (?t=) dan kode manual (?kode=); kode di URL menang atas voucher tautan.
-  const slug = typeof query.t === "string" ? query.t.trim().toLowerCase() : "";
   let link: { serviceId: string | null; voucherCode: string | null } | null = null;
-  if (/^[a-z0-9-]{3,40}$/.test(slug)) {
-    const { data: rows } = await createPublicClient().rpc("resolve_ad_link", {
-      p_username: username,
-      p_slug: slug,
-    });
-    const row = rows?.[0];
-    if (row) link = { serviceId: row.service_id, voucherCode: row.voucher_code };
-  }
+  const row = linkResult?.data?.[0];
+  if (row) link = { serviceId: row.service_id, voucherCode: row.voucher_code };
   const kode = typeof query.kode === "string" ? query.kode.trim().toUpperCase() : "";
   if (VOUCHER_CODE_PATTERN.test(kode)) link = { serviceId: link?.serviceId ?? null, voucherCode: kode };
   const entry = resolveEntry(link, services, null);
-
-  // ID pixel aktif; gagal baca = tanpa pixel (halaman tetap jalan).
-  const { data: trackingRows } = await createPublicClient().rpc("get_public_tracking", {
-    p_merchant_id: merchant.id,
-  });
-  const tracking = trackingRows?.[0];
 
   return (
     <>

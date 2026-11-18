@@ -95,6 +95,7 @@ export function sampleTheme(
     section_order: ["LINKS", "PROMO", "SERVICES", "FAQ"],
     hidden_sections: [],
     show_social_icons: true,
+    public_whatsapp: false,
     background_motion: "BENTUK",
     background_motion_speed: "SLOW",
     created_at: waktu,

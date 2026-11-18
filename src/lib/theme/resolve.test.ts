@@ -25,6 +25,7 @@ function baris(ubah: Partial<MerchantTheme> = {}): MerchantTheme {
     section_order: ["LINKS", "PROMO", "SERVICES", "FAQ"],
     hidden_sections: [],
     show_social_icons: true,
+    public_whatsapp: false,
     background_motion: "BENTUK",
     background_motion_speed: "SLOW",
     created_at: "2026-08-20T00:00:00Z",

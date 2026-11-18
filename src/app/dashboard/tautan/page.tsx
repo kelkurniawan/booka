@@ -46,6 +46,8 @@ export default async function LinksPage() {
       <LinksEditor
         initialLinks={(linksResult.data ?? []).map((l) => ({ id: l.id, label: l.label, url: l.url, isVisible: l.is_visible }))}
         initialShowSocial={theme?.show_social_icons ?? true}
+        initialPublicWhatsapp={theme?.public_whatsapp ?? false}
+        hiddenLinks={theme?.hidden_sections?.includes("LINKS") ?? false}
         initialPlacement={placementFromOrder(theme?.section_order)}
         theme={resolveTheme(merchant.subscription_tier, theme)}
         name={merchant.full_name ?? merchant.username ?? ""}

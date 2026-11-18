@@ -10,7 +10,8 @@ test("visibleSections: bawaan, kunci asing, duplikat, dan hidden", () => {
 });
 
 test("normalizeSectionOrder menambahkan kunci yang hilang", () => {
-  assert.deepEqual(normalizeSectionOrder(["FAQ"]), ["FAQ", "LINKS", "PROMO", "SERVICES"]);
+  assert.deepEqual(normalizeSectionOrder(["FAQ"]), ["LINKS", "FAQ", "PROMO", "SERVICES"]);
+  assert.deepEqual(normalizeSectionOrder(["PROMO", "SERVICES", "FAQ"]), ["LINKS", "PROMO", "SERVICES", "FAQ"]);
 });
 
 test("moveSection menukar tetangga dan menahan di ujung", () => {

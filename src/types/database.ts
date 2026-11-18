@@ -207,6 +207,8 @@ export type MerchantTheme = {
   section_order: string[];
   hidden_sections: string[];
   show_social_icons: boolean;
+  /** Ikon WhatsApp publik; bawaan false (opt-in). */
+  public_whatsapp: boolean;
   background_motion: BackgroundMotion;
   background_motion_speed: MotionSpeed;
   created_at: string;
@@ -1115,7 +1117,7 @@ export type Database = {
           ga4_measurement_id: string | null;
         }[];
       };
-      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = merchants.whatsapp_number; contact_phone tidak dikembalikan. */
+      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = merchants.whatsapp_number, null kecuali merchant_themes.public_whatsapp; contact_phone tidak dikembalikan. */
       get_public_contacts: {
         Args: { p_merchant_id: string };
         Returns: { instagram: string | null; tiktok: string | null; whatsapp: string | null }[];
@@ -1126,6 +1128,7 @@ export type Database = {
           p_links: { id: string; label: string; url: string; sort_order: number; is_visible?: boolean }[];
           p_show_social_icons: boolean;
           p_section_order: string[];
+          p_public_whatsapp?: boolean | null;
         };
         Returns: undefined;
       };

@@ -170,7 +170,7 @@ test("handleWebhook: booking sudah CANCELLED (signature valid) -> 200, tidak di-
 });
 
 test("handleWebhook: booking sudah PAID (signature valid, event duplikat) -> 200, nol UPDATE", async () => {
-  const { deps, updateCalls, paidNotifications } = makeDeps({
+  const { deps, updateCalls, paidNotifications, paidEvents } = makeDeps({
     booking: { id: "booking-3", merchant_id: "merchant-1", status: "PAID" },
     credential: VALID_CREDENTIAL,
     verifyResult: true,
@@ -182,6 +182,7 @@ test("handleWebhook: booking sudah PAID (signature valid, event duplikat) -> 200
   assert.equal(updateCalls.length, 0);
   // Dipicu ulang sebagai kesempatan kedua; notification_log mencegah kirim ganda.
   assert.deepEqual(paidNotifications, ["booking-3"]);
+  assert.deepEqual(paidEvents, ["booking-3"]);
 });
 
 // --- (c) booking PENDING + signature valid -> UPDATE bersyarat -------------

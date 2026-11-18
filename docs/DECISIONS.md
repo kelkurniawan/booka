@@ -641,6 +641,7 @@ Putusan implementasi:
 - `BOOKED` dan `PAID` ditulis server saja, hanya untuk booking ONLINE yang punya sesi.
 - `resolve_ad_link` boleh dipanggil `anon` tanpa rate limit SQL, karena hanya membuka apa yang memang diterbitkan iklannya.
 - `/api/events` dibatasi 120 per menit per hash IP per merchant, dan gagal terbuka (kejadian tetap diterima bila pengecekan batas gagal).
-- `get_public_contacts` menghormati `contact_hidden` dan mengambil WhatsApp dari `merchants.whatsapp_number`.
+- `get_public_contacts` menghormati `contact_hidden` dan mengambil WhatsApp dari `merchants.whatsapp_number`. Ini membuka nomor yang sebelumnya hanya terlihat pemegang token booking, jadi ikon WhatsApp opt-in: `merchant_themes.public_whatsapp` bawaan `false` (migration `20261125000600`), dan nomor hanya dikembalikan ke `anon` bila merchant mencentangnya di `/dashboard/tautan`. Merchant lama tidak terpengaruh sampai mereka memilih.
+- Review akhir: `section_order` menerima tiga bagian (tanpa LINKS, aplikasi lama) atau empat bagian, supaya penyimpanan Tampilan tidak gagal di antara migration dan deploy; LINKS yang hilang berarti paling depan. `Referrer-Policy: no-referrer` dipasang lewat header untuk `/pesanan/*` dan `/<username>/terima-kasih`, bukan hanya meta tag.
 - Panduan: kunci `links` dan `ads` ditambahkan ke constraint `tours_seen` (migration `20261125000500`). Langkah checklist "Pasang tautan di bio Instagram" tidak ditambahkan karena butuh pembacaan data baru di `onboarding_state()`.
 

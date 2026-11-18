@@ -130,8 +130,9 @@ export default function PrivacyPage() {
         menerima jenis kejadian (misalnya halaman dilihat, layanan dipilih,
         booking dibuat), nama layanan, dan nilainya, dan dapat memakai cookie
         miliknya sendiri menurut kebijakan platform tersebut. Marky tidak
-        pernah mengirim nama, nomor WhatsApp, atau catatan pelanggan ke
-        platform itu. Pixel tidak dimuat di halaman pesanan pelanggan maupun
+        mengirim nama atau nomor WhatsApp pelanggan ke platform iklan. Skrip
+        platform dapat membaca isian formulir bila pengaturan pencocokan
+        otomatis (Automatic Advanced Matching) aktif di akun iklan merchant. Pixel tidak dimuat di halaman pesanan pelanggan maupun
         dashboard. Merchant mengatur dan dapat mematikan pixel kapan saja di
         menu Iklan, tab Pixel.
       </p>

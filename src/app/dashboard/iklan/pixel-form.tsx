@@ -118,7 +118,7 @@ export function PixelForm({ initial, pageUrl }: { initial: TrackingValues; pageU
         <section aria-labelledby="priv-h" className="bg-muted/40 flex flex-[1_1_320px] flex-col gap-1.5 rounded-xl px-4 py-3.5">
           <h2 id="priv-h" className="text-sm font-semibold">Yang dikirim ke platform iklan</h2>
           <p className="text-foreground/80 text-sm leading-normal">
-            Pixel dimuat di halaman booking dan halaman pembayaran Anda, tidak di dashboard. Marky hanya mengirim jenis kejadian, nama layanan, dan nilai booking. Nama, nomor WhatsApp, dan catatan pelanggan tidak dikirim Marky. Matikan Automatic advanced matching di Events Manager bila tidak ingin platform mengambil data dari form.
+            Pixel dimuat di halaman booking dan halaman pembayaran Anda, tidak di dashboard. Marky hanya mengirim jenis kejadian, nama layanan, dan nilai booking. Nama, nomor WhatsApp, dan catatan pelanggan tidak dikirim Marky. Skrip platform dapat membaca isian formulir bila pencocokan otomatis aktif di akun iklan Anda. Matikan Automatic Advanced Matching di Meta Events Manager dan TikTok Events Manager. Jangan taruh kode voucher rahasia di tautan ?kode= yang dipasangi pixel, karena alamat halamannya ikut terkirim ke platform.
           </p>
         </section>
         <section aria-labelledby="tes-h" className="flex flex-[1_1_320px] flex-col gap-1.5 rounded-xl border px-4 py-3.5">

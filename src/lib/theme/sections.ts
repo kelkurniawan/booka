@@ -13,12 +13,14 @@ export const SECTION_LABELS: Record<PageSection, string> = {
   FAQ: "Pertanyaan umum",
 };
 
-/** Urutan lengkap: kunci asing dan duplikat dibuang, yang hilang ditambahkan di urutan bawaan. */
+/** Urutan lengkap: kunci asing dan duplikat dibuang; LINKS yang hilang di depan, sisanya di urutan bawaan. */
 export function normalizeSectionOrder(
   order: readonly string[] | null | undefined,
 ): PageSection[] {
   const hasil: PageSection[] = [];
-  for (const kunci of [...(order ?? []), ...PAGE_SECTIONS]) {
+  // Baris lama (tiga bagian) tidak punya LINKS: anggap LINKS paling depan.
+  const awal = order?.includes("LINKS") ? [] : ["LINKS"];
+  for (const kunci of [...awal, ...(order ?? []), ...PAGE_SECTIONS]) {
     const bagian = PAGE_SECTIONS.find((s) => s === kunci);
     if (bagian && !hasil.includes(bagian)) hasil.push(bagian);
   }

@@ -11,7 +11,7 @@ const BARIS: MerchantTheme = {
   background_color: null, background_image_path: null, background_overlay: 45,
   font_pair: null, text_scale: "SEDANG", corner_style: null, logo_path: null,
   cover_path: null, button_style: "FILLED", section_order: ["LINKS", "PROMO", "SERVICES", "FAQ"],
-  hidden_sections: [], show_social_icons: true, background_motion: "BENTUK", background_motion_speed: "SLOW",
+  hidden_sections: [], show_social_icons: true, public_whatsapp: false, background_motion: "BENTUK", background_motion_speed: "SLOW",
   created_at: "2026-08-20T00:00:00Z", updated_at: "2026-08-20T00:00:00Z",
 };
 

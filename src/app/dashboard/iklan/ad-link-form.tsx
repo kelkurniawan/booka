@@ -18,7 +18,7 @@ export type VoucherOption = { code: string; label: string };
 
 const SELECT = "border-input bg-background h-9 w-full rounded-lg border px-2.5 text-sm";
 
-export function AdLinkForm({ origin, username, services, vouchers }: { origin: string; username: string; services: ServiceOption[]; vouchers: VoucherOption[] }) {
+export function AdLinkForm({ origin, username, customDomain, services, vouchers }: { origin: string; username: string; customDomain: boolean; services: ServiceOption[]; vouchers: VoucherOption[] }) {
   const [name, setName] = useState("");
   const [channel, setChannel] = useState<AdChannel>("IG_BIO");
   const [serviceId, setServiceId] = useState("");
@@ -37,7 +37,7 @@ export function AdLinkForm({ origin, username, services, vouchers }: { origin: s
   };
 
   const slug = savedSlug ?? slugifyAdLink(name.trim() || "contoh", channel);
-  const urls = adLinkUrls({ origin, username, slug, channel });
+  const urls = adLinkUrls({ origin, username, slug, channel, customDomain });
   const dest = serviceId ? services.find((s) => s.id === serviceId)?.name : null;
 
   const reset = () => {

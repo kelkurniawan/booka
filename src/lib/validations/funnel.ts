@@ -31,6 +31,7 @@ export const merchantLinksSchema = z.object({
 
 export const saveLinksInputSchema = merchantLinksSchema.extend({
   showSocialIcons: z.boolean(),
+  publicWhatsapp: z.boolean(),
   placement: z.enum(LINK_PLACEMENTS),
 });
 

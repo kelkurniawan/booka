@@ -68,7 +68,12 @@ export function trackFunnel(kind: Kind, extra: { serviceId?: string; merchantLin
 
 export function FunnelTracker({ merchantId }: { merchantId: string }) {
   useEffect(() => {
-    ctx = init(merchantId);
+    try {
+      ctx = init(merchantId);
+    } catch {
+      // crypto.randomUUID tidak ada (http biasa, Safari lama): tanpa pelacakan, halaman tetap jalan.
+      ctx = null;
+    }
     // Penjaga atas efek ganda mode dev; muat ulang halaman memulai modul baru.
     if (!viewSent.has(merchantId)) {
       viewSent.add(merchantId);

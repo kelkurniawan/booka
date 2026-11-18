@@ -63,6 +63,16 @@ test("createBookingRequestSchema menerima input valid", () => {
   assert.equal(parsed.customer_whatsapp, "+6281234567890");
 });
 
+test("createBookingRequestSchema: sessionId dan attribution rusak jadi null, booking tetap valid", () => {
+  const parsed = createBookingRequestSchema.parse({
+    ...VALID_BOOKING_REQUEST,
+    sessionId: "bukan-uuid",
+    attribution: { utmSource: 123, aneh: true },
+  });
+  assert.equal(parsed.sessionId, null);
+  assert.equal(parsed.attribution, null);
+});
+
 test("createBookingRequestSchema menolak body kosong dengan issues per-field, bukan 500", () => {
   const result = createBookingRequestSchema.safeParse({});
   assert.equal(result.success, false);

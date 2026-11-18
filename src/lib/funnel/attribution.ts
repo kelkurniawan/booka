@@ -24,9 +24,10 @@ const CHANNEL_UTM: Record<AdChannel, { source: string; medium: string }> = {
 
 export const channelUtm = (channel: AdChannel) => CHANNEL_UTM[channel];
 
-export function adLinkUrls(input: { origin: string; username: string; slug: string; channel: AdChannel }) {
+/** customDomain: domain sendiri melayani halaman di akarnya, jadi tanpa /username (hemat satu redirect). */
+export function adLinkUrls(input: { origin: string; username: string; slug: string; channel: AdChannel; customDomain?: boolean }) {
   const { source, medium } = channelUtm(input.channel);
-  const base = `${input.origin}/${input.username}`;
+  const base = input.customDomain ? `${input.origin}/` : `${input.origin}/${input.username}`;
   const short = `${base}?t=${encodeURIComponent(input.slug)}`;
   const full = `${short}&utm_source=${source}&utm_medium=${medium}&utm_campaign=${encodeURIComponent(input.slug)}`;
   return { short, full };

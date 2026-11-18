@@ -32,6 +32,8 @@ const PLACEMENT_LABELS: Record<LinkPlacement, string> = {
 export function LinksEditor({
   initialLinks,
   initialShowSocial,
+  initialPublicWhatsapp,
+  hiddenLinks,
   initialPlacement,
   theme,
   name,
@@ -41,6 +43,8 @@ export function LinksEditor({
 }: {
   initialLinks: Row[];
   initialShowSocial: boolean;
+  initialPublicWhatsapp: boolean;
+  hiddenLinks: boolean;
   initialPlacement: LinkPlacement;
   theme: ResolvedTheme;
   name: string;
@@ -50,6 +54,7 @@ export function LinksEditor({
 }) {
   const [rows, setRows] = useState(initialLinks);
   const [showSocial, setShowSocial] = useState(initialShowSocial);
+  const [publicWhatsapp, setPublicWhatsapp] = useState(initialPublicWhatsapp);
   const [placement, setPlacement] = useState(initialPlacement);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -76,6 +81,7 @@ export function LinksEditor({
       const res = await saveMerchantLinks({
         links: rows.map((r) => ({ ...r, label: r.label.trim(), url: r.url.trim() })),
         showSocialIcons: showSocial,
+        publicWhatsapp,
         placement,
       });
       if (res.ok) toast.success("Tautan tersimpan");
@@ -94,6 +100,12 @@ export function LinksEditor({
   return (
     <div className="mt-6 flex flex-wrap items-start gap-4">
       <div className="flex min-w-0 flex-[999_1_460px] flex-col gap-4">
+        {hiddenLinks && (
+          <p role="status" className="text-muted-foreground rounded-xl border border-dashed p-3 text-sm">
+            Bagian Tautan sedang disembunyikan di Tampilan.{" "}
+            <Link href={ROUTES.appearance} className="text-foreground font-semibold underline">Atur di Tampilan</Link>
+          </p>
+        )}
         <section aria-labelledby="links-h" className="flex flex-col gap-3 rounded-xl border p-4">
           <div className="flex items-center gap-2.5">
             <h2 id="links-h" className="flex-1 text-[15px] font-semibold">Tautan</h2>
@@ -160,8 +172,13 @@ export function LinksEditor({
           <h2 id="sos-h" className="text-[15px] font-semibold">Ikon sosmed di bawah nama usaha</h2>
           <label className="flex min-h-8 cursor-pointer items-center gap-2.5 text-sm">
             <input type="checkbox" className="size-[18px] accent-black dark:accent-white" checked={showSocial} onChange={(e) => setShowSocial(e.target.checked)} />
-            Tampilkan ikon Instagram, TikTok, dan WhatsApp
+            Tampilkan ikon Instagram dan TikTok
           </label>
+          <label className="flex min-h-8 cursor-pointer items-center gap-2.5 text-sm">
+            <input type="checkbox" className="size-[18px] accent-black dark:accent-white" checked={publicWhatsapp} onChange={(ev) => setPublicWhatsapp(ev.target.checked)} />
+            Tampilkan ikon WhatsApp di halaman booking
+          </label>
+          <p className="text-muted-foreground text-sm">Nomor WhatsApp Anda jadi terlihat oleh siapa pun yang membuka halaman.</p>
           <p className="text-muted-foreground text-sm">
             {kontak.length > 0 ? `Diambil dari kontak di Pengaturan: ${kontak.join(", ")}. ` : "Belum ada kontak yang bisa ditampilkan. "}
             <Link href={ROUTES.settings} className="text-foreground font-semibold underline">Ubah di Pengaturan</Link>

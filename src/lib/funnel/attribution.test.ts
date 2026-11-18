@@ -16,6 +16,11 @@ test("adLinkUrls memuat t dan utm", () => {
   assert.equal(u.full, "https://marky.id/ayu?t=promo-ig&utm_source=instagram&utm_medium=bio&utm_campaign=promo-ig");
 });
 
+test("adLinkUrls domain sendiri langsung ke akar", () => {
+  const u = adLinkUrls({ origin: "https://ayu.id", username: "ayu", slug: "promo-ig", channel: "IG_BIO", customDomain: true });
+  assert.equal(u.short, "https://ayu.id/?t=promo-ig");
+});
+
 test("readAttribution membuang referrer sendiri dan memotong utm", () => {
   const url = new URL(`https://marky.id/ayu?t=promo-ig&utm_source=${"a".repeat(100)}`);
   const a = readAttribution(url, "https://marky.id/x", self);

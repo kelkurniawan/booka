@@ -12,6 +12,7 @@ import { saveLinksInputSchema } from "@/lib/validations/funnel";
 export type SaveLinksInput = {
   links: { id?: string; label: string; url: string; isVisible: boolean }[];
   showSocialIcons: boolean;
+  publicWhatsapp: boolean;
   placement: "BEFORE_SERVICES" | "AFTER_SERVICES" | "END";
 };
 export type SaveLinksResult = { ok: true } | { ok: false; message: string };
@@ -41,6 +42,7 @@ export async function saveMerchantLinks(input: SaveLinksInput): Promise<SaveLink
       is_visible: l.isVisible,
     })),
     p_show_social_icons: parsed.data.showSocialIcons,
+    p_public_whatsapp: parsed.data.publicWhatsapp,
     p_section_order: applyPlacement(theme?.section_order, parsed.data.placement),
   });
   if (error) {

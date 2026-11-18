@@ -81,8 +81,12 @@ test("section_order berupa permutasi persis empat bagian", () => {
   assert.deepEqual(ok.data.section_order, ["FAQ", "PROMO", "SERVICES", "LINKS"]);
 });
 
+test("section_order menerima tiga bagian tanpa LINKS", () => {
+  assert.equal(themeSchema.safeParse({ ...masukanLengkap, section_order: "PROMO,SERVICES,FAQ" }).success, true);
+});
+
 test("section_order menolak yang tidak lengkap, ganda, atau berisi kunci asing", () => {
-  for (const section_order of ["PROMO,SERVICES,FAQ", "PROMO,PROMO,FAQ,LINKS", "PROMO,SERVICES,KONTAK,LINKS"]) {
+  for (const section_order of ["PROMO,SERVICES", "PROMO,PROMO,FAQ", "PROMO,PROMO,FAQ,LINKS", "PROMO,SERVICES,KONTAK,LINKS"]) {
     const gagal = themeSchema.safeParse({ ...masukanLengkap, section_order });
     assert.equal(gagal.success, false, section_order);
     assert.equal(

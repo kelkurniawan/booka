@@ -4,7 +4,7 @@ import { test } from "node:test";
 import { saveLinksInputSchema } from "./funnel";
 
 const link = { label: "Lokasi", url: "https://maps.app.goo.gl/x", isVisible: true };
-const input = (links: unknown[]) => ({ links, showSocialIcons: true, placement: "BEFORE_SERVICES" });
+const input = (links: unknown[]) => ({ links, showSocialIcons: true, publicWhatsapp: false, placement: "BEFORE_SERVICES" });
 
 test("8 tautan diterima, 9 ditolak", () => {
   assert.equal(saveLinksInputSchema.safeParse(input(Array(8).fill(link))).success, true);
