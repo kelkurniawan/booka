@@ -350,6 +350,10 @@ export const GUIDE_PAGES: Record<GuidePageKey, GuidePage> = {
         text: "Tempel Server Key dari dashboard penyedia, pilih Sandbox untuk uji coba atau Production untuk transaksi sungguhan. Hanya empat karakter terakhir yang ditampilkan lagi.",
       },
       {
+        term: "URL notifikasi pembayaran",
+        text: "Alamat yang dipakai gateway untuk memberi tahu Marky bahwa DP sudah dibayar. Midtrans memakainya otomatis. Untuk Xendit, tempel di menu Settings lalu Webhooks. Tanpa itu booking yang sudah dibayar dibatalkan otomatis.",
+      },
+      {
         term: "Hubungkan via OAuth",
         text: "Tombol ini hanya muncul bila penyedia itu mendukungnya di Marky.",
       },

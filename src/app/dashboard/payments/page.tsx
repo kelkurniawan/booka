@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { getSessionUser } from "@/lib/auth/session";
+import { serverEnv } from "@/lib/env/server";
 import { loadMerchantCredential } from "@/lib/payments/credentials";
 import { getOAuthConfig, isOAuthConfigured } from "@/lib/payments/oauth-config";
 import { selectActiveConnection } from "@/lib/payments/select-connection";
+import { paymentWebhookUrl } from "@/lib/payments/webhook-url";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { maskCredential } from "@/lib/validations/payment-connection";
@@ -100,6 +102,7 @@ export default async function PaymentsPage({
             maskedCredential={maskedCredential}
             isUsedForBooking={isUsedForBooking}
             oauthAvailable={isOAuthConfigured(getOAuthConfig(provider))}
+            webhookUrl={paymentWebhookUrl(serverEnv().appUrl, provider)}
           />
         ))}
       </div>
