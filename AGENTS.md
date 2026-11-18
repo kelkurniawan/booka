@@ -13,6 +13,9 @@ pernah ditahan platform.
 Spesifikasi: `docs/PRD-Smart-Booking-Invoicing-SaaS-V3.md`
 Setup: `docs/SETUP.md`
 Penyimpangan dari PRD dan alasannya: `docs/DECISIONS.md`
+Spesifikasi fungsional (use case, fitur, aturan bisnis): `docs/FSD.md`
+Kode error dan pemetaannya per lapisan: `docs/ERROR-CODES.md`
+Papan desain Claude Design (mengikat untuk teks, tata letak, keadaan UI): `docs/design/`
 
 ## Status
 
@@ -108,10 +111,11 @@ JSON-LD, dan sitemap dari data yang sama (DECISIONS #39). Semua host di landing
 berasal dari `NEXT_PUBLIC_APP_URL`, jadi env itu wajib benar di produksi.
 
 F11 selesai: funnel iklan dan link-in-bio. Tautan pendek `?t=slug` dan halaman
-bio di `/dashboard/tautan`, tautan iklan dan pixel (Meta, GA4) di
+bio di `/dashboard/tautan`, tautan iklan dan pixel (Meta, TikTok, GA4) di
 `/dashboard/iklan`, atribusi sentuhan terakhir per sesi tab tanpa cookie,
-kejadian `PAID` dan `BOOKED` ditulis server lewat `/api/events` dengan batas
-laju, analitik funnel per kanal, dan ikon WhatsApp opt-in lewat
+kejadian `VIEW`/`SERVICE`/`CHECKOUT`/`LINK_CLICK` lewat `/api/events` dengan
+batas laju sedangkan `BOOKED` dan `PAID` ditulis server (`create_booking`,
+webhook), analitik funnel per kanal, dan ikon WhatsApp opt-in lewat
 `merchant_themes.public_whatsapp` (bawaan `false`). Pixel tidak pernah dimuat di
 `/pesanan` (DECISIONS #42).
 F12 selesai: booking lapangan (padel, futsal, mini soccer, badminton, tenis).
@@ -210,7 +214,28 @@ dan kolom tetap Inggris.
 dianggap selesai. Harness-nya menerapkan seluruh migration ke Postgres asli dan
 menguji constraint, trigger, serta hak akses peran `anon`. Tambahkan kasus uji
 baru ke `supabase/tests/99_verify.sql` — perhatikan agar constraint lain tidak
-menangkap baris uji lebih dulu sehingga labelnya jadi menyesatkan.
+menangkap baris uji lebih dulu sehingga labelnya jadi menyesatkan. Bagian uji
+bernomor: pakai nomor berikutnya setelah bagian terakhir, jangan pakai ulang label.
+
+**Migration yang sudah di-commit tidak diedit**, walau belum rilis. Saat
+membuat ulang fungsi, salin badannya dari definisi terakhir:
+`grep -l "function public.<nama>" supabase/migrations/* | sort | tail -1`.
+Parameter RPC baru wajib ber-default null, dan migration diterapkan ke
+produksi SEBELUM deploy (app baru di skema lama gagal `PGRST202`).
+
+**Setiap error wajib dipetakan**: status HTTP, kode `error` stabil, dan pesan
+Indonesia; teks Postgres mentah tidak pernah sampai ke klien. Setiap jalur
+error butuh tes positif dan negatif, dan kodenya dicatat di
+`docs/ERROR-CODES.md`.
+
+**Tes fake client tidak melihat CHECK/constraint database.** Kolom ber-CHECK
+yang ditulis app (misal path Storage) butuh kasus di `99_verify.sql`. Route
+Handler diuji lewat seam `handleX(deps)` yang diekspor (pola
+`src/app/api/events/route.ts`), klien palsu di `src/lib/testing/fake-supabase.ts`.
+
+**Harga sewa lapangan punya dua sumber yang wajib identik**: `court_price`
+(SQL) dan `courtPrice()` (`src/lib/booking/court.ts`), dibulatkan sekali di
+akhir. Ubah keduanya bersama tabel kasus yang sama.
 
 ## Perintah
 
@@ -224,3 +249,10 @@ npm run docker:down    # hentikan semua container dan hapus volume
 npm run storybook      # Storybook di :6006 untuk debug komponen frontend
 npm run build-storybook # build statis Storybook
 ```
+
+- `npm run docker:test` tidak berhenti sendiri dan hanya menjalankan
+  `supabase/tests/99_verify.sql`. Tunggu baris "Selesai. Baris diawali FAIL",
+  hitung `grep -cE '\|[[:space:]]+FAIL' <log>`, lalu `npm run docker:down`.
+  Dua run paralel saling mematikan container.
+- Jangan jalankan dua `npm run check`/`next build` bersamaan (bentrok di
+  `.next`). Baseline lint: 0 error, sekitar 28 warning lama.

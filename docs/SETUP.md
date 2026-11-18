@@ -36,6 +36,9 @@ Isi nilainya:
 | `CRON_SECRET` | `openssl rand -hex 32` | Phase 6 |
 | `RESEND_API_KEY`, `EMAIL_FROM`, `WHATSAPP_*` | lihat [NOTIFIKASI.md](NOTIFIKASI.md) | opsional |
 | `NEXT_PUBLIC_SENTRY_DSN` | sentry.io → Project Settings → Client Keys | opsional |
+| `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` | sentry.io → Auth Tokens / Organization | opsional, unggah source map saat build |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`; subject `mailto:` email kontak | pengingat web push (F4) |
+| `NEXT_PUBLIC_SUPPORT_WHATSAPP` | nomor WhatsApp dukungan Marky, format 62… | opsional, tombol bantuan |
 | `VERCEL_API_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | Vercel → Tokens / Project Settings | domain sendiri (Studio) |
 
 ### Format API key
