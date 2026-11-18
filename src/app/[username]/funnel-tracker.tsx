@@ -70,9 +70,13 @@ export function FunnelTracker({ merchantId }: { merchantId: string }) {
   useEffect(() => {
     ctx = init(merchantId);
     // Penjaga atas efek ganda mode dev; muat ulang halaman memulai modul baru.
-    if (viewSent.has(merchantId)) return;
-    viewSent.add(merchantId);
-    trackFunnel("VIEW");
+    if (!viewSent.has(merchantId)) {
+      viewSent.add(merchantId);
+      trackFunnel("VIEW");
+    }
+    return () => {
+      ctx = null;
+    };
   }, [merchantId]);
   return null;
 }

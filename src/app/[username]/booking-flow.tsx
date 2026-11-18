@@ -36,7 +36,7 @@ import {
 } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
 import { funnelContext, trackFunnel } from "./funnel-tracker";
-import { resolveEntry, type Entry, type EntryNotice } from "./entry";
+import { resolveEntry, voucherFailureMessage, type Entry, type EntryNotice } from "./entry";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -311,6 +311,7 @@ export function BookingFlow({
   const serviceListRef = useRef<HTMLDivElement>(null);
   const [entryNotice, setEntryNotice] = useState<EntryNotice | null>(entry.notice);
   const [entryDiscount, setEntryDiscount] = useState(0);
+  const [voucherFail, setVoucherFail] = useState<{ title: string; body: string } | null>(null);
   const pendingCodeRef = useRef(entry.voucherCode);
   const sentStepsRef = useRef(new Set<number>());
 
@@ -409,14 +410,16 @@ export function BookingFlow({
           service_ids: result.service_ids,
           source: vouchers.some((item) => item.code === result.code) ? "PUBLIC" : "PRIVATE",
         };
-        if (voucherIneligibleReason(voucher, service, serviceNames)) throw new Error("tidak cocok");
+        const reason = voucherIneligibleReason(voucher, service, serviceNames);
+        if (reason) throw new Error(reason);
         setAppliedVoucher(voucher);
         setEntryDiscount(result.discount);
         setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "VALID").notice);
       })
-      .catch(() =>
-        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "EXPIRED").notice),
-      );
+      .catch((error: unknown) => {
+        setVoucherFail(voucherFailureMessage(error, code));
+        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "EXPIRED").notice);
+      });
   }, [selectedService, username, vouchers, serviceNames, services]);
 
   // Kejadian funnel: sekali per langkah per kunjungan. Tanpa efek kalau
@@ -812,10 +815,10 @@ export function BookingFlow({
               ) : null}
             </>
           ) : null}
-          {entryNotice === "VOUCHER_EXPIRED" ? (
+          {entryNotice === "VOUCHER_EXPIRED" && voucherFail ? (
             <>
-              <p className="font-medium">Kode {entry.voucherCode} sudah tidak berlaku.</p>
-              <p className="text-muted-foreground">Booking tetap bisa dilanjutkan dengan harga normal.</p>
+              <p className="font-medium">{voucherFail.title}</p>
+              <p className="text-muted-foreground">{voucherFail.body}</p>
             </>
           ) : null}
           {entryNotice === "SERVICE_GONE" ? (

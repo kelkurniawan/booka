@@ -38,3 +38,14 @@ test("belum diperiksa: kode tetap, tanpa pesan", () => {
     notice: null,
   });
 });
+
+import { voucherFailureMessage } from "./entry";
+
+test("pesan gagal voucher: kedaluwarsa, alasan server, jaringan", () => {
+  assert.equal(
+    voucherFailureMessage(new Error("Kode voucher tidak ditemukan atau sudah tidak berlaku."), "ABCD").title,
+    "Kode ABCD sudah tidak berlaku.",
+  );
+  assert.match(voucherFailureMessage(new Error("Kuota voucher ini sudah habis."), "ABCD").body, /^Kuota voucher ini sudah habis\. Booking/);
+  assert.equal(voucherFailureMessage(new TypeError("Failed to fetch"), "ABCD").title, "Voucher belum bisa dicek.");
+});
