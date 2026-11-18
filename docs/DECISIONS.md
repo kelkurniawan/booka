@@ -623,3 +623,24 @@ Produk masih tahap awal, jadi semua merchant mendapat akses penuh gratis; pemili
 ## 41. Batas atas QRIS
 
 Midtrans menerima QRIS 1 sampai 10.000.000 per transaksi. Minimumnya sudah dijaga (`MIN_ONLINE_CHARGE`, BK022), maksimumnya belum, sehingga booking PENDING di atas Rp10.000.000 gagal ditagih lalu dibatalkan. Kini `MAX_ONLINE_CHARGE` di `payment-mode.ts` dipakai form layanan (FULL, DEPOSIT, dan REQUEST karena ditagih QRIS setelah disetujui; hitungannya lewat `computeAmounts`, tanpa voucher) dan trigger `bookings_enforce_max_online_charge` (BK037, 422, migration `20261124000200`) sebagai jaring terakhir untuk status PENDING saja. Layanan lama yang sudah melewati batas tetap bisa dipesan lewat ON_SITE; yang FULL/DEPOSIT ditolak saat booking, sampai merchant mengubahnya.
+
+## 42. Funnel iklan dan link-in-bio
+
+Spek: `docs/superpowers/specs/2026-11-18-ads-funnel-design.md`. Enam keputusan pengendali (boleh dikoreksi pemilik):
+
+1. Tautan pendek `?t=slug` di domain Marky atau domain sendiri merchant, bukan layanan pemendek luar.
+2. Atribusi sentuhan terakhir per sesi tab, tanpa cookie.
+3. `PAID` dan `BOOKED` ditulis server, bukan browser.
+4. Purchase dikirim dari halaman terima kasih tanpa token. Pelanggan yang menutup tab sebelum membukanya tidak memicu Purchase di browser; ini alasan pengiriman dari server ada di rencana berikutnya.
+5. Paket tidak dikunci selama masa awal gratis (#40). Usulan saat penagihan dimulai: link-in-bio dan tautan iklan di semua paket, pixel dan funnel per kanal di Pro dan Studio.
+6. Tanpa banner cookie: Marky sendiri tidak memakai cookie pelacak, dan pixel adalah pilihan merchant yang diungkap di `/privasi`. Pemilik perlu memastikan ini cukup untuk UU PDP sebelum ada merchant yang memasang pixel.
+
+Putusan implementasi:
+
+- Pixel tidak pernah dimuat di `/pesanan` atau dashboard, dan navigasi antara `/pesanan` dan halaman berpixel selalu muat dokumen penuh. Ini pertahanan kebocoran token: URL pesanan memuat token, dan navigasi sisi klien bisa meneruskannya ke pixel. Meta memakai `fbq.disablePushState`; GA4 memakai `page_view` manual.
+- `BOOKED` dan `PAID` ditulis server saja, hanya untuk booking ONLINE yang punya sesi.
+- `resolve_ad_link` boleh dipanggil `anon` tanpa rate limit SQL, karena hanya membuka apa yang memang diterbitkan iklannya.
+- `/api/events` dibatasi 120 per menit per hash IP per merchant, dan gagal terbuka (kejadian tetap diterima bila pengecekan batas gagal).
+- `get_public_contacts` menghormati `contact_hidden` dan mengambil WhatsApp dari `merchants.whatsapp_number`.
+- Panduan: kunci `links` dan `ads` ditambahkan ke constraint `tours_seen` (migration `20261125000500`). Langkah checklist "Pasang tautan di bio Instagram" tidak ditambahkan karena butuh pembacaan data baru di `onboarding_state()`.
+

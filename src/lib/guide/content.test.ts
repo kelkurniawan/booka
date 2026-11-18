@@ -27,7 +27,7 @@ describe("isi panduan", () => {
     }
   });
   it("kunci halaman sama dengan constraint migration", () => {
-    const sql = readFileSync("supabase/migrations/20261121000100_onboarding_progress.sql", "utf8");
+    const sql = readFileSync("supabase/migrations/20261125000500_guide_funnel_pages.sql", "utf8");
     const list = sql.match(/tours_seen <@ array\[([^\]]+)\]/)?.[1] ?? "";
     assert.deepEqual([...list.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort(), [...GUIDE_PAGE_KEYS].sort());
   });

@@ -505,6 +505,82 @@ export const GUIDE_PAGES: Record<GuidePageKey, GuidePage> = {
     ],
   },
 
+  // Sumber: src/app/dashboard/tautan/*
+  links: {
+    title: "Tautan dan sosmed",
+    summary: "Satu halaman untuk bio Instagram dan TikTok: tautan penting Anda tampil di atas tombol booking.",
+    points: [
+      {
+        term: "Tambah tautan",
+        text: "Isi nama dan alamat tautan, misalnya portofolio, daftar harga, atau lokasi studio. Ikonnya dipilih otomatis dari alamat.",
+      },
+      {
+        term: "Tampil atau sembunyi",
+        text: "Matikan sebuah tautan untuk menyembunyikannya dari halaman tanpa menghapusnya.",
+      },
+      {
+        term: "Ikon sosmed",
+        text: "Saklar untuk menampilkan ikon Instagram, TikTok, dan WhatsApp di bawah nama usaha.",
+      },
+      {
+        term: "Letak tautan",
+        text: "Pilih tautan tampil di atas daftar layanan, di bawahnya, atau paling bawah setelah FAQ.",
+      },
+      {
+        term: "Simpan",
+        text: "Perubahan baru terlihat oleh pengunjung setelah Anda menekan Simpan.",
+      },
+    ],
+    note: null,
+    video: null,
+    tour: [
+      intro("Tautan dan sosmed", "Jadikan halaman booking Anda tujuan tunggal di bio Instagram dan TikTok."),
+      {
+        target: "links-editor",
+        title: "Editor tautan",
+        body: "Tambah tautan, atur ikon sosmed, lalu tekan Simpan. Pratinjau di sebelahnya sama dengan halaman publik.",
+      },
+    ],
+  },
+
+  // Sumber: src/app/dashboard/iklan/*
+  ads: {
+    title: "Iklan",
+    summary: "Lacak iklan atau kanal mana yang menghasilkan booking, dan pasang pixel iklan.",
+    points: [
+      {
+        term: "Tautan iklan",
+        text: "Buat satu tautan per iklan atau kanal, misalnya bio Instagram, iklan TikTok, atau status WhatsApp. Pasang tautan itu di tempatnya.",
+      },
+      {
+        term: "Tujuan dan voucher",
+        text: "Pilih ke mana pengunjung langsung diarahkan, dan voucher yang otomatis terpasang bila ada.",
+      },
+      {
+        term: "QR",
+        text: "Setiap tautan punya kode QR yang bisa diunduh untuk materi cetak.",
+      },
+      {
+        term: "Pixel",
+        text: "Isi ID pixel Meta, TikTok, atau Google Analytics 4 di tab Pixel, lalu nyalakan platformnya satu per satu.",
+      },
+      {
+        term: "Data yang dikirim",
+        text: "Hanya jenis kejadian, nama layanan, dan nilai. Nama, nomor WhatsApp, dan catatan pelanggan tidak pernah dikirim ke platform iklan.",
+      },
+    ],
+    note: null,
+    video: null,
+    tour: [
+      intro("Iklan", "Tahu iklan mana yang berhasil, lalu bantu platform iklan belajar dari booking Anda."),
+      {
+        target: "ads-tabs",
+        title: "Tautan iklan dan Pixel",
+        body: "Pindah antara daftar tautan iklan dan pengaturan pixel lewat tab ini.",
+      },
+    ],
+  },
+
   // Sumber: src/app/dashboard/billing/page.tsx, src/lib/plans.ts
   billing: {
     title: "Langganan",

@@ -6464,3 +6464,17 @@ select public.check_event_rate_limit('hash75f', '74747474-0000-0000-0000-0000000
 select case when not exists (select 1 from public.event_attempts where ip_hash = 'hash75-lama')
             then 'OK   t75f baris lama IP lain dibuang global'
             else 'FAIL t75f baris lama IP lain tersisa' end as t75f;
+
+-- ===========================================================================
+-- 76. Kunci panduan Tautan dan Iklan (20261125000500)
+-- ===========================================================================
+insert into public.merchant_onboarding_progress (merchant_id, tours_seen)
+  values ('74747474-0000-0000-0000-000000000001', '{links,ads}');
+select case when (select tours_seen from public.merchant_onboarding_progress
+                   where merchant_id = '74747474-0000-0000-0000-000000000001') = '{links,ads}'
+            then 'OK   t76a kunci links dan ads diterima'
+            else 'FAIL t76a' end as t76a;
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_onboarding_progress set tours_seen = '{beranda}'
+     where merchant_id = '74747474-0000-0000-0000-000000000001'$q$,
+  '23514', 't76b kunci di luar 15 ditolak');

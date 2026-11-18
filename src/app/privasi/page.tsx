@@ -116,10 +116,30 @@ export default function PrivacyPage() {
         pihak yang terdampak dan lembaga yang berwenang paling lambat 3 x 24 jam.
       </p>
 
+      <h2>Kunjungan dan pixel iklan</h2>
+      <p>
+        Marky mencatat kunjungan ke halaman booking merchant tanpa cookie
+        pelacak. Satu kunjungan hanya dikenali lewat nomor sesi acak yang
+        tersimpan di tab peramban dan hilang saat tab ditutup. Catatan ini
+        dipakai merchant untuk melihat dari tautan atau iklan mana pelanggan
+        datang dan di langkah mana mereka berhenti.
+      </p>
+      <p>
+        Merchant boleh memasang pixel Meta, TikTok, atau Google di halaman
+        booking dan halaman terima kasihnya. Bila dipasang, platform itu
+        menerima jenis kejadian (misalnya halaman dilihat, layanan dipilih,
+        booking dibuat), nama layanan, dan nilainya, dan dapat memakai cookie
+        miliknya sendiri menurut kebijakan platform tersebut. Marky tidak
+        pernah mengirim nama, nomor WhatsApp, atau catatan pelanggan ke
+        platform itu. Pixel tidak dimuat di halaman pesanan pelanggan maupun
+        dashboard. Merchant mengatur dan dapat mematikan pixel kapan saja di
+        menu Iklan, tab Pixel.
+      </p>
+
       <h2>Cookie</h2>
       <p>
         Kami hanya memakai cookie yang diperlukan agar Anda tetap masuk ke
-        dashboard. Halaman booking pelanggan tidak memasang cookie pelacak.
+        dashboard. Marky sendiri tidak memasang cookie pelacak di halaman booking pelanggan; pixel pilihan merchant dijelaskan di bagian sebelumnya.
       </p>
 
       <h2>Perubahan dan kontak</h2>

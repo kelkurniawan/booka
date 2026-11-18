@@ -50,7 +50,7 @@ export default async function AdsPage({ searchParams }: { searchParams: Promise<
             : "Satu tautan per iklan atau kanal, supaya Anda tahu mana yang menghasilkan booking."
         }
       />
-      <nav aria-label="Iklan" className="mt-6 flex gap-1 border-b">
+      <nav aria-label="Iklan" className="mt-6 flex gap-1 border-b" data-tour="ads-tabs">
         {TABS.map((t) => {
           const active = t.pixel === isPixel;
           return (

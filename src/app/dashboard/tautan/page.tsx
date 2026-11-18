@@ -42,6 +42,7 @@ export default async function LinksPage() {
         title="Tautan dan sosmed"
         description="Satu halaman untuk bio Instagram dan TikTok: tautan penting Anda tampil di atas tombol booking."
       />
+      <div data-tour="links-editor">
       <LinksEditor
         initialLinks={(linksResult.data ?? []).map((l) => ({ id: l.id, label: l.label, url: l.url, isVisible: l.is_visible }))}
         initialShowSocial={theme?.show_social_icons ?? true}
@@ -52,6 +53,7 @@ export default async function LinksPage() {
         avatarUrl={merchant.avatar_url}
         contacts={contactsResult.data?.[0] ?? null}
       />
+      </div>
     </>
   );
 }

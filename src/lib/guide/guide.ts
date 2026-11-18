@@ -7,6 +7,7 @@ import type { GuidePageKey, ManualStepKey } from "@/types/database";
 export const GUIDE_PAGE_KEYS: readonly GuidePageKey[] = [
   "today", "bookings", "analytics", "services", "availability", "floor_plan", "staff",
   "payments", "appearance", "promo", "domain", "billing", "settings",
+  "links", "ads",
 ];
 
 export const MANUAL_STEP_KEYS: readonly ManualStepKey[] = ["PAGE", "SHARE"];
@@ -67,6 +68,8 @@ const PAGE_ROUTES: readonly [GuidePageKey, string][] = [
   ["domain", ROUTES.domain],
   ["billing", ROUTES.billing],
   ["settings", ROUTES.settings],
+  ["links", ROUTES.links],
+  ["ads", ROUTES.ads],
 ];
 
 export function guidePageForPath(pathname: string): GuidePageKey | null {
@@ -84,7 +87,8 @@ export type TourTarget =
   | "booking-tabs" | "booking-search" | "analytics-summary" | "service-add" | "service-list"
   | "hours-days" | "dining-capacity" | "dining-editor" | "staff-list" | "payment-providers"
   | "appearance-editor" | "appearance-preview" | "promo-tabs" | "domain-form" | "billing-plans"
-  | "settings-profile" | "settings-booking" | "settings-customer" | "settings-reminders" | "settings-account";
+  | "settings-profile" | "settings-booking" | "settings-customer" | "settings-reminders" | "settings-account"
+  | "links-editor" | "ads-tabs";
 
 export type TourStep = { target: TourTarget | null; title: string; body: string; viewport?: TourViewport };
 
