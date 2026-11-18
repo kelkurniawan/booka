@@ -66,11 +66,11 @@ export const trackingSchema = z
 const attr = (max: number) => z.string().max(max).nullable();
 
 export const eventBodySchema = z.object({
-  merchantId: z.string().uuid(),
-  sessionId: z.string().uuid(),
+  merchantId: z.guid(),
+  sessionId: z.guid(),
   kind: z.enum(["VIEW", "SERVICE", "CHECKOUT", "LINK_CLICK"]),
-  serviceId: z.string().uuid().optional(),
-  merchantLinkId: z.string().uuid().optional(),
+  serviceId: z.guid().optional(),
+  merchantLinkId: z.guid().optional(),
   attribution: z.object({
     adLinkSlug: attr(40),
     utmSource: attr(64),
