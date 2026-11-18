@@ -71,6 +71,32 @@ butuh dua sumber daya terpisah dalam satu booking.
 riwayat booking dinonaktifkan, tidak dihapus (`bookings.court_id` memakai
 `NO ACTION`, sama seperti staf di DECISIONS #28).
 
+**Profil lapangan** (kolom tambahan di `courts`): `sport` (PADEL, FUTSAL,
+MINI_SOCCER, BADMINTON, TENIS; menentukan ukuran gambar di denah),
+`environment` (INDOOR, OUTDOOR, OUTDOOR_BERATAP), `surface` (teks bebas,
+maksimal 60), `description` (maksimal 280), `features` (`text[]`, maksimal 5
+ciri pendek seperti "Kaca panoramik"), dan posisi denah `pos_x`, `pos_y`,
+`rotation` (0 atau 90).
+
+**`court_media`**: foto lapangan, maksimal 5 per lapangan, pola sama dengan
+`service_media` (kunci asing gabungan dengan `merchant_id`, `width`/`height`
+disimpan, `sort_order`, foto pertama jadi sampul). Teks alternatif **wajib**;
+foto tanpa alt tidak ditampilkan. Berkas di Storage `{merchant_id}/court/`,
+dibatasi folder merchant seperti DECISIONS #24, dibersihkan saat lapangan
+dihapus.
+
+**`venue_areas`** dan **`venue_markers`**: kotak area berlabel ("Gedung
+utama", "Area outdoor") dan penanda ("Pintu masuk", "Ruang ganti", "Kantin",
+"Parkir", "Toilet") dengan posisi dan ukuran. Denah ditulis hanya lewat satu
+RPC atomik `save_venue_layout` di bawah kunci merchant, meniru
+`save_dining_layout` (DECISIONS #37). `anon` membaca denah dan profil lewat
+RPC `get_court_profiles` yang hanya mengembalikan kolom tampilan, tanpa data
+booking.
+
+Denah bersifat opsional. Tanpa denah, halaman publik hanya menampilkan
+kartu lapangan (foto sampul, nama, ciri, deskripsi); tautan "Lihat denah dan
+foto lapangan" muncul hanya bila setidaknya satu lapangan punya posisi.
+
 **`service_courts`**: `(service_id, court_id, merchant_id)`, kunci asing
 gabungan dengan `merchant_id` supaya tidak bisa menyilang merchant. Tabel
 penghubung, karena satu GOR serbaguna bisa dipakai futsal DAN badminton.
@@ -153,10 +179,20 @@ dicoret, bukan disembunyikan, supaya pelanggan paham polanya. Semua warna dan
 ukuran lewat token tema (`themeToCssVars`), karena komponen ini juga tampil
 di preview dashboard.
 
+### Desain layar
+
+Papan L1 sampai L6 di kanvas
+https://claude.ai/artifact/RSGQtRjX4RQivoVekkfgeo (baris "Sewa lapangan")
+adalah acuan tampilan: L1 pilih lama main, jam, dan kartu lapangan berfoto;
+L1b denah, galeri foto, dan profil lapangan di HP; L2 rincian harga; L3/L4
+jadwal harian di desktop dan HP; L5 form sewa dan jam ramai; L6 editor denah
+dan profil lapangan.
+
 ### Dashboard
 
-- **`/dashboard/lapangan`**: daftar lapangan (tambah, ganti nama, urutkan,
-  nonaktifkan) dan tampilan jadwal harian: lapangan sebagai kolom, jam
+- **`/dashboard/lapangan`**: tab Jadwal (L3/L4) dan tab "Lapangan dan denah"
+  (L6: tambah, ganti nama, urutkan, nonaktifkan, profil, foto, posisi di
+  denah), plus tampilan jadwal harian: lapangan sebagai kolom, jam
   sebagai baris, booking sebagai blok yang membuka panel detail (`?b=`) yang
   sudah ada. Di HP kolom bisa digeser horizontal.
 - **Form layanan**: bagian "Sewa lapangan" (toggle, unit, minimum, maksimum,
