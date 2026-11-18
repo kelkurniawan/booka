@@ -76,6 +76,7 @@ const mapCases: [string, string | undefined, string | undefined, string, number 
   ["42501", "42501", undefined, "forbidden", null],
   ["22023", "22023", undefined, "invalid_data", null],
   ["23514", "23514", undefined, "invalid_data", null],
+  ["23505 foto (jalur ganda)", "23505", "photo", "invalid_path", null],
   ["23503 hapus", "23503", "delete", "has_bookings", null],
   ["23503 foto", "23503", "photo", "court_not_found", null],
   ["P0001 batas foto", "P0001", undefined, "photo_limit", null],
@@ -160,14 +161,19 @@ test("deleteCourt tanpa foto tidak memanggil Storage", async () => {
   assert.equal(f.removed.length, 0);
 });
 test("deleteCourt dengan riwayat booking ditolak dengan pesan L6, tanpa hapus apa pun", async () => {
-  const f = fake({ "bookings.select": { count: 3 } });
+  const f = fake({ "bookings.select": { count: 3 }, "courts.update": { data: [{ id: CID }] } });
   const r = await deleteCourt(f.sb, UID, CID);
-  assert.deepEqual(r, { ok: false, code: "has_bookings", error: "Lapangan yang punya riwayat booking dinonaktifkan, bukan dihapus." });
+  assert.deepEqual(r, { ok: false, code: "has_bookings", deactivated: true, error: "Lapangan yang punya riwayat booking dinonaktifkan, bukan dihapus." });
   assert.ok(!f.calls.some((c) => c.op === "delete") && f.removed.length === 0);
+  const upd = f.calls.find((c) => c.op === "update")!;
+  assert.deepEqual(upd.payload, { is_active: false });
+  assert.deepEqual(upd.filters, [["id", CID], ["merchant_id", UID]]);
 });
 test("deleteCourt: FK 23503 (balapan booking) dipetakan has_bookings dan Storage tidak disentuh", async () => {
-  const f = fake({ "bookings.select": { count: 0 }, "court_media.select": { data: [{ path: PATH }] }, "courts.delete": { error: { code: "23503" } } });
-  assert.equal((await deleteCourt(f.sb, UID, CID) as { code: string }).code, "has_bookings");
+  const f = fake({ "bookings.select": { count: 0 }, "court_media.select": { data: [{ path: PATH }] }, "courts.delete": { error: { code: "23503" } }, "courts.update": { data: [{ id: CID }] } });
+  const r = await deleteCourt(f.sb, UID, CID);
+  assert.equal(r.ok === false && r.code, "has_bookings");
+  assert.equal(r.ok === false && r.deactivated, true);
   assert.equal(f.removed.length, 0);
 });
 test("deleteCourt: lapangan orang lain (0 baris) = court_not_found, Storage tidak disentuh", async () => {
@@ -310,4 +316,52 @@ test("saveVenueLayout: 22023, 42501, tak dikenal dipetakan", async () => {
     assert.equal(r.ok === false && r.code, want);
     assert.ok(r.ok === false && !r.error.includes("mentah"));
   }
+});
+
+test("deleteCourt has_bookings: gagal menonaktifkan dilaporkan deactivated=false", async () => {
+  const f = fake({ "bookings.select": { count: 1 }, "courts.update": { error: { code: "XX000" } } });
+  const r = await deleteCourt(f.sb, UID, CID);
+  assert.equal(r.ok === false && r.code, "has_bookings");
+  assert.equal(r.ok === false && r.deactivated, false);
+});
+
+test("setCourtActive menolak nilai bukan boolean tanpa query", async () => {
+  const f = fake();
+  assert.equal((await setCourtActive(f.sb, UID, CID, "ya" as never) as { code: string }).code, "validation");
+  assert.equal(f.calls.length, 0);
+});
+
+test("reorderCourts: sebagian gagal = reorder_partial, semua gagal = galat pertama", async () => {
+  let n = 0;
+  const partial = fake();
+  const orig = partial.sb as unknown as { from: (t: string) => Record<string, unknown> };
+  const from = orig.from.bind(orig);
+  orig.from = (t: string) => {
+    const chain = from(t);
+    const i = n++;
+    chain.then = (ok: (v: unknown) => unknown) => Promise.resolve(i === 0 ? { data: [{ id: CID }], error: null } : { data: null, error: { code: "XX000" } }).then(ok);
+    return chain;
+  };
+  const r = await reorderCourts(partial.sb, UID, [CID, PID]);
+  assert.equal(r.ok === false && r.code, "reorder_partial");
+  const all = fake({ "courts.update": { error: { code: "42501" } } });
+  assert.equal((await reorderCourts(all.sb, UID, [CID, PID]) as { code: string }).code, "forbidden");
+});
+
+test("registerCourtPhoto: ekstensi di luar webp/jpg/jpeg/png ditolak, JPG huruf besar diterima", async () => {
+  for (const ext of ["gif", "svg", "exe", "html"]) {
+    const f = fake();
+    const r = await registerCourtPhoto(f.sb, UID, { ...photo, path: `${UID}/court/${CID}/a.${ext}` });
+    assert.equal(r.ok === false && r.code, "invalid_path", ext);
+    assert.equal(f.calls.length, 0);
+  }
+  const f = fake({ "court_media.select": { count: 0 }, "court_media.insert": { data: { id: PID } } });
+  assert.equal((await registerCourtPhoto(f.sb, UID, { ...photo, path: `${UID}/court/${CID}/a.JPG` })).ok, true);
+});
+
+test("registerCourtPhoto: abort tidak menghapus objek yang sudah dirujuk baris lain", async () => {
+  const f = fake({ "court_media.select": { count: 2, data: { id: PID } }, "court_media.insert": { error: { code: "23505" } } });
+  const r = await registerCourtPhoto(f.sb, UID, photo);
+  assert.equal(r.ok === false && r.code, "invalid_path");
+  assert.equal(f.removed.length, 0);
 });

@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { venueLayout } from "@/lib/booking/court-ui";
 
-import { canvasSize, clampBox, courtSize, defaultCourtSpot, nudge, rotateAria, rotateCourt } from "./geometry";
+import { canvasSize, needsLayoutSave, nextCourtName, clampBox, courtSize, defaultCourtSpot, nudge, rotateAria, rotateCourt } from "./geometry";
 
 const canvas = { w: 720, h: 560 };
 
@@ -48,4 +48,17 @@ test("canvasSize membesar untuk benda jauh, minimal 720x560", () => {
 test("defaultCourtSpot tidak menumpuk dan aria putar sesuai L6", () => {
   assert.notDeepEqual(defaultCourtSpot(0), defaultCourtSpot(1));
   assert.equal(rotateAria("Lapangan 2"), "Putar Lapangan 2 90 derajat");
+});
+
+test("needsLayoutSave: true bila ada lapangan tanpa posisi tersimpan", () => {
+  assert.equal(needsLayoutSave([{ pos_x: 1, pos_y: 2 }]), false);
+  assert.equal(needsLayoutSave([]), false);
+  assert.equal(needsLayoutSave([{ pos_x: 1, pos_y: 2 }, { pos_x: null, pos_y: null }]), true);
+});
+
+test("nextCourtName melewati nama terpakai", () => {
+  assert.equal(nextCourtName([]), "Lapangan 1");
+  assert.equal(nextCourtName(["Lapangan 1", "Lapangan 2"]), "Lapangan 3");
+  assert.equal(nextCourtName(["Lapangan 2", "Utama"]), "Lapangan 3");
+  assert.equal(nextCourtName(["lapangan 3", "B"]), "Lapangan 4");
 });

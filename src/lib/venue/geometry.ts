@@ -65,3 +65,16 @@ export function defaultCourtSpot(index: number): { x: number; y: number } {
 export function rotateAria(name: string): string {
   return `Putar ${name} 90 derajat`;
 }
+
+/** Denah perlu disimpan bila ada lapangan yang belum punya posisi tersimpan (posisi awalnya hanya di editor). */
+export function needsLayoutSave(courts: { pos_x: number | null; pos_y: number | null }[]): boolean {
+  return courts.some((c) => c.pos_x === null || c.pos_y === null);
+}
+
+/** Nama otomatis tombol "Tambah lapangan": "Lapangan N" terkecil yang belum dipakai. */
+export function nextCourtName(names: string[]): string {
+  const used = new Set(names.map((n) => n.trim().toLowerCase()));
+  let n = names.length + 1;
+  while (used.has(`lapangan ${n}`)) n++;
+  return `Lapangan ${n}`;
+}

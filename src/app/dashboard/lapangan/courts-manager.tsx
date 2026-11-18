@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
-import { defaultCourtSpot, type Rotation } from "@/lib/venue/geometry";
+import { defaultCourtSpot, needsLayoutSave, nextCourtName, type Rotation } from "@/lib/venue/geometry";
 import type { Court, CourtMedia, VenueArea } from "@/types/database";
 
 import { createCourt, deleteCourt, reorderCourts, setCourtActive } from "./actions";
@@ -29,7 +29,8 @@ export function CourtsManager({
 }) {
   const [courts, setCourts] = useState(initialCourts);
   const [selected, setSelected] = useState<string | null>(initialCourts[0]?.id ?? null);
-  const [newName, setNewName] = useState("");
+  const router = useRouter();
+  const [dirty, setDirty] = useState(() => needsLayoutSave(initialCourts));
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [layout, setLayout] = useState<Layout>(() => ({
@@ -41,17 +42,16 @@ export function CourtsManager({
   const sel = courts.find((c) => c.id === selected) ?? null;
   const patch = (id: string, p: Partial<ManagedCourt>) => setCourts((cs) => cs.map((c) => (c.id === id ? { ...c, ...p } : c)));
 
-  function add(e: React.FormEvent) {
-    e.preventDefault();
+  function add() {
     setError(null);
     start(async () => {
-      const r = await createCourt(newName);
+      const r = await createCourt(nextCourtName(courts.map((c) => c.name)));
       if (!r.ok) { setError(r.error); return; }
       const c: ManagedCourt = { id: r.court.id, name: r.court.name, sport: "PADEL", environment: "INDOOR", surface: null, description: null, features: [], is_active: true, pos_x: null, pos_y: null, rotation: 0, photos: [] };
       setCourts((cs) => [...cs, c]);
       setLayout((l) => ({ ...l, pos: { ...l.pos, [c.id]: { ...defaultCourtSpot(courts.length), rotation: 0 } } }));
+      setDirty(true); // posisi awal baru ada di editor; publik menunggu "Simpan denah"
       setSelected(c.id);
-      setNewName("");
     });
   }
 
@@ -61,7 +61,9 @@ export function CourtsManager({
     setCourts(next);
     start(async () => {
       const r = await reorderCourts(next.map((c) => c.id));
-      if (!r.ok) { setCourts(courts); toast.error(r.error); }
+      if (r.ok) return;
+      toast.error(r.error);
+      if (r.code === "reorder_partial") router.refresh(); else setCourts(courts);
     });
   }
 
@@ -77,7 +79,11 @@ export function CourtsManager({
     if (!window.confirm(`Hapus ${c.name}? Foto lapangan ikut terhapus.`)) return;
     start(async () => {
       const r = await deleteCourt(c.id);
-      if (!r.ok) { toast.error(r.error); return; }
+      if (!r.ok) {
+        toast.error(r.error);
+        if (r.deactivated) patch(c.id, { is_active: false });
+        return;
+      }
       setCourts((cs) => cs.filter((x) => x.id !== c.id));
       setLayout((l) => { const pos = { ...l.pos }; delete pos[c.id]; return { ...l, pos }; });
       setSelected((s) => (s === c.id ? null : s));
@@ -88,13 +94,8 @@ export function CourtsManager({
     <div className="flex flex-col gap-4">
       <section aria-labelledby="list-h" className="flex flex-col gap-2 rounded-xl border p-3" data-tour="court-list">
         <h2 id="list-h" className="text-[15px] font-semibold">Daftar lapangan</h2>
-        <form onSubmit={add} className="flex flex-wrap gap-2">
-          <label htmlFor="new-court" className="sr-only">Nama lapangan baru</label>
-          <input id="new-court" maxLength={40} value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Lapangan 1" className="h-11 min-w-48 flex-1 rounded-lg border px-2.5 text-sm" />
-          <Button type="submit" className="h-11" disabled={pending}>Tambah lapangan</Button>
-        </form>
         {error ? <p role="alert" className="rounded-lg bg-red-50 p-2 text-sm text-red-800">{error}</p> : null}
-        {courts.length === 0 ? <p className="text-muted-foreground text-sm">Belum ada lapangan. Tambahkan yang pertama di atas.</p> : null}
+        {courts.length === 0 ? <p className="text-muted-foreground text-sm">Belum ada lapangan. Pakai Tambah lapangan di denah.</p> : null}
         <ul className="flex flex-col gap-1">
           {courts.map((c, i) => (
             <li key={c.id} className="flex flex-wrap items-center gap-2 text-sm">
@@ -103,7 +104,6 @@ export function CourtsManager({
               </button>
               <button type="button" aria-label={`Naikkan ${c.name}`} disabled={i === 0 || pending} onClick={() => move(i, -1)} className="size-11 rounded-lg border disabled:opacity-40">Naik</button>
               <button type="button" aria-label={`Turunkan ${c.name}`} disabled={i === courts.length - 1 || pending} onClick={() => move(i, 1)} className="size-11 rounded-lg border disabled:opacity-40">Turun</button>
-              <button type="button" onClick={() => toggle(c)} disabled={pending} className="h-11 rounded-lg border px-3">{c.is_active ? "Nonaktifkan" : "Aktifkan"}</button>
               <button type="button" onClick={() => remove(c)} disabled={pending} className="h-11 rounded-lg border px-3 text-red-700">Hapus</button>
             </li>
           ))}
@@ -111,18 +111,24 @@ export function CourtsManager({
         <span className="text-muted-foreground text-xs">Lapangan yang punya riwayat booking dinonaktifkan, bukan dihapus.</span>
       </section>
 
-      {courts.length > 0 ? (
-        <div className="flex flex-wrap items-start gap-4">
-          <VenueEditor courts={courts} layout={layout} onLayout={setLayout} selectedCourtId={selected} onSelectCourt={setSelected} />
+      <div className="flex flex-wrap items-start gap-4">
+          <VenueEditor courts={courts} layout={layout} onLayout={setLayout} selectedCourtId={selected} onSelectCourt={setSelected} dirty={dirty} onDirty={setDirty} onAddCourt={add} adding={pending} />
           {sel ? (
             <aside aria-labelledby="prof-h" className="flex min-w-72 flex-[1_1_300px] flex-col gap-3.5 rounded-xl border p-4">
               <h2 id="prof-h" className="text-[15px] font-semibold">Profil {sel.name}</h2>
               <CourtProfileForm key={sel.id} courtId={sel.id} value={sel} onSaved={(v) => patch(sel.id, v)} />
               <CourtPhotos merchantId={merchantId} courtId={sel.id} photos={sel.photos} onChange={(photos) => patch(sel.id, { photos })} />
+              <label className="flex min-h-8 cursor-pointer items-center gap-2.5">
+                <input type="checkbox" className="size-[18px]" checked={sel.is_active} disabled={pending} onChange={() => toggle(sel)} />
+                Bisa dipesan online
+              </label>
+              <button type="button" disabled={pending} onClick={() => toggle(sel)} className="h-9 self-start rounded-lg border px-2.5 text-sm font-medium text-red-700">
+                {sel.is_active ? "Nonaktifkan lapangan" : "Aktifkan lapangan"}
+              </button>
+              <span className="text-muted-foreground text-xs">Lapangan yang punya riwayat booking dinonaktifkan, bukan dihapus.</span>
             </aside>
           ) : null}
-        </div>
-      ) : null}
+      </div>
     </div>
   );
 }

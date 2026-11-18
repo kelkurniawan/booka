@@ -21,7 +21,7 @@ import type { Database } from "@/types/database";
  * actions.ts; yang bisa diuji ada di sini. Daftar kode di docs/ERROR-CODES.md.
  */
 type Sb = SupabaseClient<Database>;
-export type Fail = { ok: false; code: string; error: string };
+export type Fail = { ok: false; code: string; error: string; /** has_bookings: lapangan sudah dinonaktifkan. */ deactivated?: boolean };
 export type Result<T = object> = ({ ok: true } & T) | Fail;
 type Ctx = "delete" | "photo" | undefined;
 
@@ -35,6 +35,7 @@ const MSG = {
   photo_not_found: "Foto tidak ditemukan. Muat ulang halaman lalu coba lagi.",
   photo_limit: "Satu lapangan maksimal 5 foto.",
   invalid_path: "Berkas tidak dikenali. Coba unggah ulang gambarnya.",
+  reorder_partial: "Urutan hanya tersimpan sebagian. Muat ulang halaman untuk melihat urutan sebenarnya.",
   server_error: "Terjadi kesalahan. Coba lagi.",
 } as const;
 type Code = keyof typeof MSG;
@@ -44,7 +45,7 @@ const fail = (code: Code, error?: string): Fail => ({ ok: false, code, error: er
 /** Kode Postgres ke galat form; teks mentah tidak pernah ikut. Tak dikenal dicatat. */
 export function mapCourtManageError(pgCode: string | undefined, ctx?: Ctx): Fail {
   switch (pgCode) {
-    case "23505": return fail("name_taken");
+    case "23505": return ctx === "photo" ? fail("invalid_path") : fail("name_taken");
     case "42501": return fail("forbidden");
     case "22023":
     case "23514": return fail("invalid_data");
@@ -57,6 +58,8 @@ export function mapCourtManageError(pgCode: string | undefined, ctx?: Ctx): Fail
 }
 
 const zodFail = (e: z.ZodError) => fail("validation", e.issues[0]?.message ?? MSG.validation);
+/** MIME dibatasi bucket (allowed_mime_types); di sini ekstensinya. */
+const PHOTO_EXT = /\.(webp|jpe?g|png)$/i;
 const idSchema = z.uuid();
 const notFound = (rows: unknown) => !Array.isArray(rows) || rows.length === 0;
 
@@ -99,7 +102,10 @@ export async function renameCourt(sb: Sb, uid: string, id: string, name: string)
   return p.success ? updateOwn(sb, uid, id, { name: p.data }) : zodFail(p.error);
 }
 
-export const setCourtActive = (sb: Sb, uid: string, id: string, active: boolean) => updateOwn(sb, uid, id, { is_active: active });
+export async function setCourtActive(sb: Sb, uid: string, id: string, active: boolean): Promise<Result> {
+  if (typeof active !== "boolean") return fail("validation");
+  return updateOwn(sb, uid, id, { is_active: active });
+}
 
 export async function saveCourtProfile(sb: Sb, uid: string, id: string, input: CourtProfileInput): Promise<Result> {
   const p = courtProfileSchema.safeParse(input);
@@ -110,7 +116,16 @@ export async function reorderCourts(sb: Sb, uid: string, ids: string[]): Promise
   const p = z.array(z.uuid()).max(100).safeParse(ids);
   if (!p.success || new Set(p.data).size !== p.data.length) return fail("validation");
   const res = await Promise.all(p.data.map((id, i) => updateOwn(sb, uid, id, { sort_order: i })));
-  return res.find((r) => !r.ok) ?? { ok: true };
+  const failed = res.filter((r): r is Fail => !r.ok);
+  if (failed.length === 0) return { ok: true };
+  // Sebagian berhasil: jangan berpura-pura gagal total atau sukses.
+  return failed.length === res.length ? failed[0] : fail("reorder_partial");
+}
+
+/** Pesan "dinonaktifkan, bukan dihapus" harus benar: lapangan benar-benar dinonaktifkan. */
+async function deactivateInstead(sb: Sb, uid: string, id: string): Promise<Fail> {
+  const r = await updateOwn(sb, uid, id, { is_active: false });
+  return { ...fail("has_bookings"), deactivated: r.ok };
 }
 
 /**
@@ -123,13 +138,13 @@ export async function deleteCourt(sb: Sb, uid: string, id: string): Promise<Resu
   if (!idSchema.safeParse(id).success) return fail("validation");
   const bk = await sb.from("bookings").select("id", { count: "exact", head: true }).eq("merchant_id", uid).eq("court_id", id);
   if (bk.error) return mapCourtManageError(bk.error.code, "delete");
-  if ((bk.count ?? 0) > 0) return fail("has_bookings");
+  if ((bk.count ?? 0) > 0) return deactivateInstead(sb, uid, id);
 
   const media = await sb.from("court_media").select("path").eq("merchant_id", uid).eq("court_id", id);
   if (media.error) return mapCourtManageError(media.error.code, "delete");
 
   const { data, error } = await sb.from("courts").delete().eq("id", id).eq("merchant_id", uid).select("id");
-  if (error) return mapCourtManageError(error.code, "delete");
+  if (error) return error.code === "23503" ? deactivateInstead(sb, uid, id) : mapCourtManageError(error.code, "delete");
   if (notFound(data)) return fail("court_not_found");
 
   const orphanedFiles = await removeObjects(sb, (media.data ?? []).map((m) => m.path));
@@ -145,10 +160,12 @@ export async function registerCourtPhoto(sb: Sb, uid: string, input: CourtPhotoI
   const p = courtPhotoSchema.safeParse(input);
   if (!p.success) return zodFail(p.error);
   const v = p.data;
-  if (!v.path.startsWith(`${uid}/court/${v.courtId}/`) || !isScopedMediaPath(v.path, uid)) return fail("invalid_path");
+  if (!v.path.startsWith(`${uid}/court/${v.courtId}/`) || !isScopedMediaPath(v.path, uid) || !PHOTO_EXT.test(v.path)) return fail("invalid_path");
 
+  // Objek hanya dihapus bila tidak dirujuk baris mana pun (jalur yang sudah dipakai foto lain tetap aman).
   const abort = async (f: Fail) => {
-    await removeObjects(sb, [v.path]);
+    const used = await sb.from("court_media").select("id").eq("merchant_id", uid).eq("path", v.path).maybeSingle();
+    if (!used.data) await removeObjects(sb, [v.path]);
     return f;
   };
   const cnt = await sb.from("court_media").select("id", { count: "exact", head: true }).eq("merchant_id", uid).eq("court_id", v.courtId);

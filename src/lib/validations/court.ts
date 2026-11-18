@@ -46,7 +46,9 @@ export const courtPhotoSchema = z.object({
 export type CourtPhotoInput = z.input<typeof courtPhotoSchema>;
 
 const coord = z.number().int().min(0, "Posisi di luar denah").max(VENUE_MAX, "Posisi di luar denah");
-const label = z.string().trim().min(1, "Label wajib diisi").max(40, "Label maksimal 40 karakter");
+// Sama dengan CHECK venue_areas/venue_markers.label (1 sampai 30).
+export const VENUE_LABEL_MAX = 30;
+const label = z.string().trim().min(1, "Label wajib diisi").max(VENUE_LABEL_MAX, "Label maksimal 30 karakter");
 const box = z.object({
   id: z.uuid(),
   label,

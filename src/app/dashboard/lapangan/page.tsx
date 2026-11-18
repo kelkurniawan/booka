@@ -31,7 +31,7 @@ export const metadata: Metadata = { title: "Jadwal lapangan" };
 
 const TABS = [
   { key: "jadwal", label: "Jadwal" },
-  { key: "lapangan", label: "Daftar lapangan" },
+  { key: "lapangan", label: "Lapangan dan denah" },
 ] as const;
 
 function parseDate(raw: string | undefined, todayISO: string): string {

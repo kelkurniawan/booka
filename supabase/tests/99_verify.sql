@@ -6606,8 +6606,8 @@ select pg_temp.expect_fail_code(
 create or replace function pg_temp.photo78(n integer, p_court text default '78787878-c000-0000-0000-000000000001') returns text language sql as $$
   select format($f$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height, sort_order)
     values (%L, '78787878-0000-0000-0000-000000000001',
-            '78787878-0000-0000-0000-000000000001/court/f%s.webp', %L, 800, 600, %s)$f$,
-    p_court, n, case when n = 3 then null else 'Foto ' || n end, n);
+            '78787878-0000-0000-0000-000000000001/court/%s/f%s.webp', %L, 800, 600, %s)$f$,
+    p_court, p_court, n, case when n = 3 then null else 'Foto ' || n end, n);
 $$;
 select pg_temp.expect_ok(pg_temp.photo78(1), 't78.8a foto 1');
 select pg_temp.expect_ok(pg_temp.photo78(2), 't78.8a foto 2');
@@ -6618,12 +6618,12 @@ select pg_temp.expect_fail_code(pg_temp.photo78(6), 'P0001', 't78.8b foto ke-6 d
 select pg_temp.expect_fail_code(
   $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
      values ('78787878-c000-0000-0000-000000000002', '78787878-0000-0000-0000-000000000001',
-             '78787878-0000-0000-0000-000000000002/court/x.webp', 'x', 800, 600)$q$,
+             '78787878-0000-0000-0000-000000000002/court/78787878-c000-0000-0000-000000000002/x.webp', 'x', 800, 600)$q$,
   '23514', 't78.8c path di folder merchant lain ditolak');
 select pg_temp.expect_fail_code(
   $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
      values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000001',
-             '78787878-0000-0000-0000-000000000001/court/y.webp', 'y', 800, 600)$q$,
+             '78787878-0000-0000-0000-000000000001/court/78787878-c000-0000-0000-000000000003/y.webp', 'y', 800, 600)$q$,
   '23503', 't78.8d foto ke lapangan merchant lain ditolak FK');
 -- 78.9 nilai profil
 select pg_temp.expect_fail_code(
@@ -7426,3 +7426,30 @@ select pg_temp.is79('t82.5b layanan biasa, nol lapangan',
 select case when has_function_privilege('anon',
   'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb, public.court_sport, smallint, integer, smallint)', 'EXECUTE')
   then 'FAIL t82.6 anon bisa EXECUTE' else 'OK   t82.6 anon tidak bisa EXECUTE' end;
+
+-- 84 foto lapangan: path bersarang {merchant}/court/{court}/berkas (migration 20261126001200)
+select pg_temp.expect_ok(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002',
+             '78787878-0000-0000-0000-000000000002/court/78787878-c000-0000-0000-000000000003/a1b2.webp', 'ok', 800, 600)$q$,
+  't84.1 path bersarang milik lapangan sendiri diterima');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002',
+             '78787878-0000-0000-0000-000000000002/court/78787878-c000-0000-0000-000000000002/z.webp', 'x', 800, 600)$q$,
+  '23514', 't84.2 folder lapangan lain ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002',
+             '78787878-0000-0000-0000-000000000001/court/78787878-c000-0000-0000-000000000003/z.webp', 'x', 800, 600)$q$,
+  '23514', 't84.3 prefix merchant lain ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002',
+             '78787878-0000-0000-0000-000000000002/court/78787878-c000-0000-0000-000000000003/../z.webp', 'x', 800, 600)$q$,
+  '23514', 't84.4 traversal ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002',
+             '78787878-0000-0000-0000-000000000002/court/78787878-c000-0000-0000-000000000003/a/b.webp', 'x', 800, 600)$q$,
+  '23514', 't84.5 subfolder tambahan ditolak');

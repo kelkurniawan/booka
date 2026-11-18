@@ -53,6 +53,10 @@ test("foto: ukuran di luar 1..4096 dan alt 141 ditolak, alt kosong boleh disimpa
 const area = { id: ID, label: "Kantin", pos_x: 10, pos_y: 10, width: 100, height: 60, sort_order: 0 };
 const layout = { courts: [{ id: ID, pos_x: 24, pos_y: 24, rotation: 0 }], areas: [area], markers: [] };
 
+test("label 30 karakter diterima, 31 ditolak", () => {
+  assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, label: "k".repeat(30) }] }).success, true);
+});
+
 test("layout sah diterima", () => {
   assert.equal(venueLayoutSchema.safeParse(layout).success, true);
 });
@@ -62,7 +66,7 @@ test("layout: posisi negatif, rotation 45, label 0 dan 41, id ganda ditolak", ()
   assert.equal(venueLayoutSchema.safeParse({ ...layout, courts: [{ ...c, pos_x: -1 }] }).success, false);
   assert.equal(venueLayoutSchema.safeParse({ ...layout, courts: [{ ...c, rotation: 45 }] }).success, false);
   assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, label: " " }] }).success, false);
-  assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, label: "k".repeat(41) }] }).success, false);
+  assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, label: "k".repeat(31) }] }).success, false);
   assert.equal(venueLayoutSchema.safeParse({ ...layout, courts: [c, c] }).success, false);
   assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, pos_y: 4001 }] }).success, false);
   assert.equal(venueLayoutSchema.safeParse({ ...layout, areas: [{ ...area, width: 10 }] }).success, false);
