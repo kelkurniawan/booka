@@ -14,7 +14,7 @@ import {
 
 const MON = "2026-11-23"; // Senin
 const SAT = "2026-11-28"; // Sabtu
-const rules: CourtPriceRule[] = [{ dayOfWeek: 1, start: "17:00", end: "21:00", pricePerHour: 250000 }];
+const rules: CourtPriceRule[] = [{ dayOfWeek: 1, start: "17:00", end: "22:00", pricePerHour: 250000 }];
 const p = (dateISO: string, startHHMM: string, durationMinutes: number, unitMinutes: 30 | 60 = 30, base = 150000, r = rules) =>
   courtPrice({ basePerHour: base, rules: r, dateISO, startHHMM, durationMinutes, unitMinutes });
 
@@ -26,6 +26,7 @@ test("courtPrice: kasus tabel bersama SQL", () => {
   assert.equal(p(MON, "16:00", 120, 60).total, 400000);
   assert.equal(p(MON, "10:00", 30, 30, 100000, []).total, 50000);
   assert.equal(p(MON, "10:00", 30, 30, 99999, []).total, 50000); // 49999,5 dibulatkan naik
+  assert.equal(p(MON, "21:30", 60).total, 200000); // t79.1h
 });
 
 test("courtPrice: segmen biasa lalu ramai", () => {
@@ -106,14 +107,14 @@ test("pickCourt: diminta, atau urut sort_order lalu nama", () => {
 });
 
 test("courtPrice: booking berakhir tepat di akhir aturan semuanya ramai, unit berikutnya dasar", () => {
-  assert.equal(p(MON, "20:00", 60).total, 250000); // 20:00-21:00 habis di ujung aturan
-  assert.deepEqual(p(MON, "20:00", 60).segments.map((s) => s.peak), [true]);
-  assert.equal(p(MON, "20:30", 60).total, 200000); // 20:30 ramai, 21:00 sudah dasar (ujung eksklusif)
-  assert.equal(p(MON, "21:00", 30).total, 75000);
+  assert.equal(p(MON, "21:00", 60).total, 250000); // 21:00-22:00 habis di ujung aturan
+  assert.deepEqual(p(MON, "21:00", 60).segments.map((s) => s.peak), [true]);
+  assert.equal(p(MON, "21:30", 60).total, 200000); // kembaran t79.1h: 21:30 ramai, 22:00 sudah dasar (ujung eksklusif)
+  assert.equal(p(MON, "22:00", 30).total, 75000);
 });
 
 test("courtPrice: aturan hari lain tidak memengaruhi hari Senin", () => {
-  const tue: CourtPriceRule[] = [{ dayOfWeek: 2, start: "17:00", end: "21:00", pricePerHour: 250000 }];
+  const tue: CourtPriceRule[] = [{ dayOfWeek: 2, start: "17:00", end: "22:00", pricePerHour: 250000 }];
   assert.equal(p(MON, "17:00", 60, 30, 150000, tue).total, 150000);
   assert.equal(p("2026-11-24", "17:00", 60, 30, 150000, tue).total, 250000);
 });

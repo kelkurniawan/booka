@@ -20,7 +20,7 @@ const data = (booked: CourtData["booked"] = []): CourtData => ({
     { id: "c1", name: "Lapangan 1", sortOrder: 1 },
     { id: "c2", name: "Lapangan 2", sortOrder: 2 },
   ],
-  rules: [{ dayOfWeek: 1, start: "17:00", end: "21:00", pricePerHour: 250000 }],
+  rules: [{ dayOfWeek: 1, start: "17:00", end: "22:00", pricePerHour: 250000 }],
   booked,
 });
 const run = (durationRaw: string | null, d: CourtData | Error = data(), svc = service) =>
@@ -114,12 +114,12 @@ test("loadCourtData: hanya lapangan terkait layanan, aturan dan rentang terpakai
         { id: "c2", name: "B", sort_order: 2, service_ids: ["lain"] },
       ] }] };
     if (name === "get_court_price_rules")
-      return { error: null, data: [{ day_of_week: 1, start_time: "17:00:00", end_time: "21:00:00", price_per_hour: "250000.00" }] };
+      return { error: null, data: [{ day_of_week: 1, start_time: "17:00:00", end_time: "22:00:00", price_per_hour: "250000.00" }] };
     return { error: null, data: [{ court_id: "c1", court_name: "A", start_datetime: "x", end_datetime: "y" }] };
   };
   const out = await loadCourtData({ rpc } as never, "m1", "s1", MON);
   assert.deepEqual(out.courts, [{ id: "c1", name: "A", sortOrder: 1 }]);
-  assert.deepEqual(out.rules, [{ dayOfWeek: 1, start: "17:00", end: "21:00", pricePerHour: 250000 }]);
+  assert.deepEqual(out.rules, [{ dayOfWeek: 1, start: "17:00", end: "22:00", pricePerHour: 250000 }]);
   assert.deepEqual(out.booked, [{ courtId: "c1", start_datetime: "x", end_datetime: "y" }]);
   assert.equal(calls.length, 3);
 });
