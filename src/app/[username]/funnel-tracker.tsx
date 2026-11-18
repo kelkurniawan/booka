@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 import { readAttribution, type Attribution } from "@/lib/funnel/attribution";
 
-type Kind = "VIEW" | "SERVICE" | "CHECKOUT";
+type Kind = "VIEW" | "SERVICE" | "CHECKOUT" | "LINK_CLICK";
 type Ctx = { merchantId: string; sessionId: string; attribution: Attribution };
 
 // Diisi FunnelTracker saat halaman publik terpasang. Preview dashboard tidak
@@ -50,7 +50,7 @@ function init(merchantId: string): Ctx {
 /** Sesi dan atribusi untuk dikirim bersama booking; null di luar halaman publik. */
 export const funnelContext = () => (ctx ? { sessionId: ctx.sessionId, attribution: ctx.attribution } : null);
 
-export function trackFunnel(kind: Kind, extra: { serviceId?: string } = {}) {
+export function trackFunnel(kind: Kind, extra: { serviceId?: string; merchantLinkId?: string } = {}) {
   if (!ctx) return;
   try {
     const body = JSON.stringify({ ...ctx, kind, ...extra });

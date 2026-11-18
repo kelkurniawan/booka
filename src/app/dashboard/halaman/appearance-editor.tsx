@@ -32,6 +32,7 @@ import type {
   CornerStyle,
   FontPair,
   MerchantFaq,
+  MerchantLink,
   MerchantTheme,
   PublicBanner,
   Service,
@@ -114,6 +115,8 @@ export function AppearanceEditor({
   faqs: faqsAwal,
   paymentSettings,
   banners,
+  links,
+  contacts,
 }: {
   tier: SubscriptionTier;
   merchantId: string;
@@ -127,6 +130,8 @@ export function AppearanceEditor({
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
   banners: PublicBanner[];
+  links: Pick<MerchantLink, "id" | "label" | "url">[];
+  contacts: { instagram: string | null; tiktok: string | null; whatsapp: string | null } | null;
 }) {
   const starter = tier === "STARTER";
 
@@ -833,6 +838,8 @@ export function AppearanceEditor({
       showWatermark={starter}
       paymentSettings={paymentSettings}
       banners={banners}
+      links={links}
+      contacts={contacts}
     />
   );
 

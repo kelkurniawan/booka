@@ -108,6 +108,7 @@ export type BookingFlowProps = {
   sections: PageSection[];
   /** Slot FAQ; null bila merchant belum mengisi. */
   faq: ReactNode;
+  links: ReactNode;
   /** Masuk dari tautan iklan atau ?kode=. */
   entry: Entry;
 };
@@ -271,6 +272,7 @@ export function BookingFlow({
   vouchers,
   sections,
   faq,
+  links,
   entry,
 }: BookingFlowProps) {
   const router = useRouter();
@@ -927,7 +929,7 @@ export function BookingFlow({
   );
 
   const bagian: Record<PageSection, ReactNode> = {
-    LINKS: null, // dirender di Task 8
+    LINKS: links,
     PROMO: promoSection,
     SERVICES: servicesSection,
     FAQ: faq,

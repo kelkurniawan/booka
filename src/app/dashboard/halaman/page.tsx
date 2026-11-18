@@ -18,7 +18,7 @@ export default async function AppearancePage() {
   const { user, merchant } = await requireMerchant();
   const supabase = await createClient();
 
-  const [themeResult, profilResult, servicesResult, faqsResult, settingsResult] = await Promise.all([
+  const [themeResult, profilResult, servicesResult, faqsResult, settingsResult, linksResult, contactsResult] = await Promise.all([
     supabase.from("merchant_themes").select("*").eq("merchant_id", user.id).maybeSingle(),
     // requireMerchant() tidak membawa `bio`, sedangkan halaman publik
     // menampilkannya. Diambil di sini supaya preview tidak diam-diam berbeda
@@ -41,6 +41,13 @@ export default async function AppearancePage() {
       .select("allow_pay_on_site, auto_confirm_on_site")
       .eq("merchant_id", user.id)
       .maybeSingle(),
+    supabase
+      .from("merchant_links")
+      .select("id, label, url")
+      .eq("merchant_id", user.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true }),
+    supabase.rpc("get_public_contacts", { p_merchant_id: user.id }),
   ]);
 
   const servicesWithMedia = (servicesResult.data ?? []) as (Service & {
@@ -91,6 +98,8 @@ export default async function AppearancePage() {
         faqs={faqsResult.data ?? []}
         paymentSettings={settingsResult.data ?? DEFAULT_PAYMENT_SETTINGS}
         banners={banners}
+        links={linksResult.data ?? []}
+        contacts={themeResult.data?.show_social_icons === false ? null : (contactsResult.data?.[0] ?? null)}
       />
     </>
   );

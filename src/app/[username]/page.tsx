@@ -82,7 +82,7 @@ const getMerchantPageData = cache(async (username: string) => {
     .merchant_themes;
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
-  const [servicesResult, availabilityResult, faqsResult, settingsResult] = await Promise.all([
+  const [servicesResult, availabilityResult, faqsResult, settingsResult, linksResult, contactsResult] = await Promise.all([
     supabase
       .from("services")
       .select("*, service_media(*)")
@@ -102,6 +102,13 @@ const getMerchantPageData = cache(async (username: string) => {
       .select("allow_pay_on_site, auto_confirm_on_site, table_mode, table_hold_minutes")
       .eq("merchant_id", onboardedMerchant.id)
       .maybeSingle(),
+    // Anon hanya melihat tautan tampil; kontak lewat fungsi yang menghormati contact_hidden.
+    supabase
+      .from("merchant_links")
+      .select("id, label, url")
+      .eq("merchant_id", onboardedMerchant.id)
+      .order("sort_order", { ascending: true }),
+    supabase.rpc("get_public_contacts", { p_merchant_id: onboardedMerchant.id }),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -213,7 +220,15 @@ const getMerchantPageData = cache(async (username: string) => {
     }
   }
 
+  // Tautan dan ikon sosial pelengkap: gagal baca dicatat, halaman tetap jalan.
+  if (linksResult.error) console.error("[booking-page] gagal memuat tautan", { username, error: linksResult.error });
+  if (contactsResult.error) console.error("[booking-page] gagal memuat kontak", { username, error: contactsResult.error });
+  const links = linksResult.error ? [] : (linksResult.data ?? []);
+  const contacts = themeRow?.show_social_icons === false ? null : (contactsResult.data?.[0] ?? null);
+
   return {
+    links,
+    contacts,
     banners,
     vouchers,
     paymentSettings,
@@ -278,7 +293,7 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers } =
+  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers, links, contacts } =
     data;
 
   // Tautan iklan (?t=) dan kode manual (?kode=); kode di URL menang atas voucher tautan.
@@ -312,6 +327,8 @@ export default async function MerchantPublicPage({
       restaurant={restaurant}
       banners={banners}
       vouchers={vouchers}
+      links={links}
+      contacts={contacts}
     />
     </>
   );

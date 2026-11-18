@@ -5,11 +5,13 @@ import { CTA_BUTTON_CLASS } from "@/components/booking-page/sticky-action-bar";
 import { Button } from "@/components/ui/button";
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
+import { LinksSection } from "@/components/booking-page/links-section";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
+import { SocialIcons } from "@/components/booking-page/social-icons";
 import { ServiceOptionCard } from "@/components/booking-page/service-option-card";
 import { paymentLabel, type PaymentSettings } from "@/lib/booking/payment-mode";
 import type { ResolvedTheme } from "@/lib/theme/types";
-import type { MerchantFaq, PublicBanner, Service, ServiceMedia } from "@/types/database";
+import type { MerchantFaq, MerchantLink, PublicBanner, Service, ServiceMedia } from "@/types/database";
 
 /**
  * Preview memakai komponen yang SAMA PERSIS dengan halaman publik, hanya
@@ -30,6 +32,8 @@ export function AppearancePreview({
   showWatermark,
   paymentSettings,
   banners,
+  links,
+  contacts,
 }: {
   theme: ResolvedTheme;
   name: string;
@@ -41,6 +45,8 @@ export function AppearancePreview({
   showWatermark: boolean;
   paymentSettings: PaymentSettings;
   banners: PublicBanner[];
+  links: Pick<MerchantLink, "id" | "label" | "url">[];
+  contacts: { instagram: string | null; tiktok: string | null; whatsapp: string | null } | null;
 }) {
   return (
     // transform membuat bingkai ini acuan `fixed` lapisan gerak di shell.
@@ -51,10 +57,13 @@ export function AppearancePreview({
     >
       <div className="max-h-[620px] overflow-y-auto">
         <BookingPageShell theme={theme} className="min-h-0" innerClassName="min-h-0" preview>
-          <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} theme={theme} />
+          <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl}
+            theme={theme}
+            socials={contacts ? <SocialIcons name={name} {...contacts} /> : null}
+          />
 
           {theme.sections.map((key) => {
-            if (key === "LINKS") return null;
+            if (key === "LINKS") return <LinksSection key={key} links={links} />;
             if (key === "PROMO")
               return (
                 <PromoBanners

@@ -18,4 +18,5 @@ test("isSafeLinkUrl", () => {
   assert.equal(isSafeLinkUrl("http://a.b"), false);
   assert.equal(isSafeLinkUrl("https://a.b/x"), true);
   assert.equal(isSafeLinkUrl("https://a.b/" + "x".repeat(500)), false);
+  for (const u of ["https://a.b/x y", "https://a.b/x\n", "https://a.b/\tx", " https://a.b"]) assert.equal(isSafeLinkUrl(u), false, u);
 });

@@ -4,6 +4,7 @@ import { CalendarOff } from "lucide-react";
 import { BookingFaqSection } from "@/components/booking-page/faq-section";
 import { BookingPageShell } from "@/components/booking-page/page-shell";
 import { BookingProfileHeader } from "@/components/booking-page/profile-header";
+import { SocialIcons } from "@/components/booking-page/social-icons";
 import { DesktopHandoff } from "@/components/booking-page/desktop-handoff";
 import {
   Empty,
@@ -23,6 +24,7 @@ import type {
   Availability,
   Merchant,
   MerchantFaq,
+  MerchantLink,
   PublicBanner,
   PublicVoucher,
   Service,
@@ -31,6 +33,7 @@ import type {
 
 import { BookingFlow, type RestaurantInfo } from "./booking-flow";
 import { NO_ENTRY, type Entry } from "./entry";
+import { PublicLinks } from "./public-links";
 
 export type BookingPageViewProps = {
   merchant: Pick<
@@ -47,6 +50,9 @@ export type BookingPageViewProps = {
   restaurant: RestaurantInfo;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
+  links?: Pick<MerchantLink, "id" | "label" | "url">[];
+  /** Null bila ikon sosial dimatikan merchant. */
+  contacts?: { instagram: string | null; tiktok: string | null; whatsapp: string | null } | null;
   /** Masuk dari tautan iklan atau ?kode=; kosong di Storybook. */
   entry?: Entry;
 };
@@ -67,6 +73,8 @@ export function BookingPageView({
   restaurant,
   banners,
   vouchers,
+  links = [],
+  contacts = null,
   entry = NO_ENTRY,
 }: BookingPageViewProps) {
   const name = merchant.full_name ?? merchant.username;
@@ -83,6 +91,7 @@ export function BookingPageView({
         bio={merchant.bio}
         avatarUrl={merchant.avatar_url}
         theme={theme}
+        socials={contacts ? <SocialIcons name={name} {...contacts} /> : null}
       />
 
       {canAcceptBookings ? (
@@ -100,6 +109,7 @@ export function BookingPageView({
             entry={entry}
             sections={theme.sections}
             faq={<BookingFaqSection faqs={faqs} />}
+            links={<PublicLinks links={links} />}
             staff={staff.map((member) => ({
               id: member.id,
               name: member.name,
@@ -132,6 +142,8 @@ export function BookingPageView({
         </Empty>
             ) : key === "FAQ" ? (
               <BookingFaqSection key={key} faqs={faqs} />
+            ) : key === "LINKS" ? (
+              <PublicLinks key={key} links={links} />
             ) : null,
           )
         : null}

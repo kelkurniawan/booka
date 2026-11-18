@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { publicMediaUrl } from "@/lib/media/url";
 import type { ResolvedTheme } from "@/lib/theme/types";
@@ -11,11 +13,14 @@ export function BookingProfileHeader({
   bio,
   avatarUrl,
   theme,
+  socials,
 }: {
   name: string;
   bio: string | null;
   avatarUrl: string | null;
   theme: ResolvedTheme;
+  /** Ikon sosial; null/kosong tidak dirender. */
+  socials?: ReactNode;
 }) {
   const avatarSrc = theme.logoPath ? publicMediaUrl(theme.logoPath) : avatarUrl;
 
@@ -58,6 +63,7 @@ export function BookingProfileHeader({
         </h1>
         {bio ? <p className="text-muted-foreground text-sm text-pretty">{bio}</p> : null}
       </div>
+      {socials}
     </header>
   );
 }
