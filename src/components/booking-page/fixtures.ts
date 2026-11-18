@@ -50,6 +50,8 @@ function layanan(
     party_min: null,
     party_max: null,
     seat_duration_minutes: null,
+    court_unit_minutes: null,
+    court_max_minutes: null,
     created_at: waktu,
     updated_at: waktu,
   };

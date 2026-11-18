@@ -44,6 +44,9 @@ export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
 export type MediaKind = "IMAGE" | "VIDEO";
 
+export type CourtSport = "PADEL" | "FUTSAL" | "MINI_SOCCER" | "BADMINTON" | "TENIS";
+export type CourtEnvironment = "INDOOR" | "OUTDOOR" | "OUTDOOR_BERATAP";
+
 export type BusinessCategory =
   | "KECANTIKAN"
   | "KESEHATAN"
@@ -233,6 +236,10 @@ export type Service = {
   party_max: number | null;
   /** Terisi = layanan reservasi (15..480 menit), memakai kapasitas restoran. */
   seat_duration_minutes: number | null;
+  /** Terisi (30 atau 60) = layanan sewa lapangan; `price` jadi harga per jam. */
+  court_unit_minutes: number | null;
+  /** Lama main maksimum, kelipatan unit, maksimal 480; null bila bukan sewa. */
+  court_max_minutes: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -608,6 +615,81 @@ export type MerchantSettings = {
   updated_at: string;
 };
 
+export type Court = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  sport: CourtSport;
+  environment: CourtEnvironment;
+  surface: string | null;
+  description: string | null;
+  features: string[];
+  /** Posisi denah; hanya ditulis save_venue_layout. Keduanya null atau terisi. */
+  pos_x: number | null;
+  pos_y: number | null;
+  rotation: 0 | 90;
+  created_at: string;
+};
+
+export type ServiceCourt = {
+  service_id: string;
+  court_id: string;
+  merchant_id: string;
+};
+
+export type CourtPriceRule = {
+  id: string;
+  merchant_id: string;
+  service_id: string;
+  /** 1 (Senin) sampai 7 (Minggu), ISO. */
+  day_of_week: number;
+  /** "HH:MM:SS", tanpa lewat tengah malam. */
+  start_time: string;
+  end_time: string;
+  price_per_hour: number;
+};
+
+export type CourtMedia = {
+  id: string;
+  court_id: string;
+  merchant_id: string;
+  path: string;
+  /** Kosong tersimpan, tetapi foto tanpa alt tidak tampil di halaman publik. */
+  alt_text: string | null;
+  width: number;
+  height: number;
+  sort_order: number;
+  created_at: string;
+};
+
+export type VenueArea = {
+  id: string;
+  merchant_id: string;
+  label: string;
+  pos_x: number;
+  pos_y: number;
+  width: number;
+  height: number;
+  sort_order: number;
+};
+
+export type VenueMarker = VenueArea;
+
+/** Bentuk jsonb dari get_court_profiles (anon): hanya kolom tampilan. */
+export type CourtProfile = Pick<
+  Court,
+  | "id" | "name" | "sort_order" | "sport" | "environment" | "surface" | "description"
+  | "features" | "pos_x" | "pos_y" | "rotation"
+> & {
+  service_ids: string[];
+  /** Hanya foto beralt-teks, urut sort_order. */
+  photos: Pick<CourtMedia, "path" | "alt_text" | "width" | "height" | "sort_order">[];
+};
+
+export type VenueAreaView = Pick<VenueArea, "id" | "label" | "pos_x" | "pos_y" | "width" | "height">;
+
 export type DiningArea = {
   id: string;
   merchant_id: string;
@@ -732,6 +814,8 @@ export type Database = {
           | "party_min"
           | "party_max"
           | "seat_duration_minutes"
+          | "court_unit_minutes"
+          | "court_max_minutes"
         > &
           Partial<
             Pick<
@@ -740,6 +824,8 @@ export type Database = {
               | "party_min"
               | "party_max"
               | "seat_duration_minutes"
+              | "court_unit_minutes"
+              | "court_max_minutes"
               | "is_active"
               | "sort_order"
               | "payment_mode"
@@ -1040,6 +1126,81 @@ export type Database = {
         >;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      courts: {
+        Row: Court;
+        // pos_x, pos_y, rotation hanya lewat save_venue_layout.
+        Insert: Pick<Court, "merchant_id" | "name"> &
+          Partial<
+            Pick<
+              Court,
+              | "id"
+              | "sort_order"
+              | "is_active"
+              | "sport"
+              | "environment"
+              | "surface"
+              | "description"
+              | "features"
+            >
+          >;
+        Update: Partial<
+          Pick<
+            Court,
+            | "name"
+            | "sort_order"
+            | "is_active"
+            | "sport"
+            | "environment"
+            | "surface"
+            | "description"
+            | "features"
+          >
+        >;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      service_courts: {
+        Row: ServiceCourt;
+        Insert: ServiceCourt;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"court_id", "courts">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      // Aturan harga hanya ditulis lewat RPC save_court_pricing.
+      court_price_rules: {
+        Row: CourtPriceRule;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      court_media: {
+        Row: CourtMedia;
+        Insert: Omit<CourtMedia, "id" | "created_at" | "sort_order"> &
+          Partial<Pick<CourtMedia, "id" | "sort_order">>;
+        Update: Partial<Pick<CourtMedia, "alt_text" | "sort_order">>;
+        Relationships: [
+          Relationship<"court_id", "courts">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      // Area dan penanda denah venue hanya ditulis lewat RPC save_venue_layout.
+      venue_areas: {
+        Row: VenueArea;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      venue_markers: {
+        Row: VenueMarker;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       // Denah hanya ditulis lewat RPC save_dining_layout.
       dining_areas: {
         Row: DiningArea;
@@ -1257,6 +1418,30 @@ export type Database = {
       get_table_status: {
         Args: { p_username: string; p_service_id: string; p_start: string; p_party_size: number };
         Returns: { table_id: string; status: "FREE" | "TAKEN" | "TOO_SMALL" | "TOO_LARGE" }[];
+      };
+      get_court_profiles: {
+        Args: { p_merchant_id: string };
+        Returns: { courts: CourtProfile[]; areas: VenueAreaView[]; markers: VenueAreaView[] }[];
+      };
+      save_court_pricing: {
+        Args: {
+          p_service_id: string;
+          p_rules: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+            price_per_hour: number;
+          }[];
+        };
+        Returns: undefined;
+      };
+      save_venue_layout: {
+        Args: {
+          p_courts: { id: string; pos_x: number | null; pos_y: number | null; rotation: 0 | 90 }[];
+          p_areas: Omit<VenueArea, "merchant_id">[];
+          p_markers: Omit<VenueMarker, "merchant_id">[];
+        };
+        Returns: undefined;
       };
       save_dining_layout: {
         Args: {

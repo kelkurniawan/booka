@@ -6531,3 +6531,197 @@ select pg_temp.expect_fail_code(
   $q$update public.merchant_profiles set business_category = 'BOWLING'
      where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
   '22P02', 't78.0b nilai di luar enum ditolak');
+
+-- 78.1+ skema lapangan (20261126000200, 20261126000300)
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('78787878-0000-0000-0000-000000000001', 'court78a@example.com', '{}'::jsonb),
+  ('78787878-0000-0000-0000-000000000002', 'court78b@example.com', '{}'::jsonb);
+update public.merchants set username = 'court78a' where id = '78787878-0000-0000-0000-000000000001';
+update public.merchants set username = 'court78b' where id = '78787878-0000-0000-0000-000000000002';
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode) values
+  ('78787878-5e00-0000-0000-000000000001', '78787878-0000-0000-0000-000000000001', 'Padel 78', 150000, 60, 'FULL'),
+  ('78787878-5e00-0000-0000-000000000002', '78787878-0000-0000-0000-000000000002', 'Padel 78b', 150000, 60, 'FULL');
+insert into public.courts (id, merchant_id, name, sort_order, sport) values
+  ('78787878-c000-0000-0000-000000000001', '78787878-0000-0000-0000-000000000001', 'Lapangan 1', 1, 'PADEL'),
+  ('78787878-c000-0000-0000-000000000002', '78787878-0000-0000-0000-000000000001', 'Lapangan 2', 2, 'PADEL'),
+  ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000002', 'Lapangan B', 1, 'PADEL');
+
+-- 78.1 unit bukan 30 atau 60
+select pg_temp.expect_fail_code(
+  $q$update public.services set court_unit_minutes = 45, court_max_minutes = 135
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, '23514', 't78.1 court_unit_minutes 45 ditolak');
+-- 78.2 durasi minimum bukan kelipatan unit (unit 60, durasi 90)
+select pg_temp.expect_fail_code(
+  $q$update public.services set court_unit_minutes = 60, court_max_minutes = 120, duration_minutes = 90
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, '23514', 't78.2 duration_minutes bukan kelipatan unit ditolak');
+-- 78.3 maksimum 500 menit
+select pg_temp.expect_fail_code(
+  $q$update public.services set court_unit_minutes = 30, court_max_minutes = 500
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, '23514', 't78.3 court_max_minutes 500 ditolak');
+-- 78.3b maksimum di bawah minimum
+select pg_temp.expect_fail_code(
+  $q$update public.services set court_unit_minutes = 30, court_max_minutes = 30
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, '23514', 't78.3b court_max_minutes < duration_minutes ditolak');
+-- 78.4 reservasi kursi dan sewa lapangan sekaligus
+select pg_temp.expect_fail_code(
+  $q$update public.services set court_unit_minutes = 30, court_max_minutes = 120,
+       party_min = 1, party_max = 4, seat_duration_minutes = 60
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, '23514', 't78.4 seat_duration dan court_unit sekaligus ditolak');
+select pg_temp.expect_ok(
+  $q$update public.services set court_unit_minutes = 30, court_max_minutes = 120
+     where id = '78787878-5e00-0000-0000-000000000001'$q$, 't78.4b layanan sewa valid diterima');
+-- 78.5 service_courts ke lapangan merchant lain
+select pg_temp.expect_ok(
+  $q$insert into public.service_courts (service_id, court_id, merchant_id) values
+     ('78787878-5e00-0000-0000-000000000001', '78787878-c000-0000-0000-000000000001', '78787878-0000-0000-0000-000000000001')$q$,
+  't78.5a service_courts milik sendiri diterima');
+select pg_temp.expect_fail_code(
+  $q$insert into public.service_courts (service_id, court_id, merchant_id) values
+     ('78787878-5e00-0000-0000-000000000001', '78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000001')$q$,
+  '23503', 't78.5b service_courts ke lapangan merchant lain ditolak FK');
+-- 78.6 aturan harga tumpang tindih
+select pg_temp.expect_ok(
+  $q$insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour) values
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 1, '17:00', '22:00', 250000)$q$,
+  't78.6a aturan harga pertama');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour) values
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 1, '21:00', '23:00', 300000)$q$,
+  '23P01', 't78.6b aturan tumpang tindih di hari sama ditolak');
+select pg_temp.expect_ok(
+  $q$insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour) values
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 2, '21:00', '23:00', 300000),
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 1, '22:00', '23:00', 300000)$q$,
+  't78.6c hari berbeda dan rentang bersambung diterima');
+-- 78.7 rentang jam terbalik
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour) values
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 3, '22:00', '22:00', 300000)$q$,
+  '23514', 't78.7 start_time >= end_time ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour) values
+     ('78787878-0000-0000-0000-000000000001', '78787878-5e00-0000-0000-000000000001', 8, '10:00', '11:00', 300000)$q$,
+  '23514', 't78.7b day_of_week 8 ditolak');
+-- 78.8 foto: maksimal 5 per lapangan, path di folder court merchant
+create or replace function pg_temp.photo78(n integer, p_court text default '78787878-c000-0000-0000-000000000001') returns text language sql as $$
+  select format($f$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height, sort_order)
+    values (%L, '78787878-0000-0000-0000-000000000001',
+            '78787878-0000-0000-0000-000000000001/court/f%s.webp', %L, 800, 600, %s)$f$,
+    p_court, n, case when n = 3 then null else 'Foto ' || n end, n);
+$$;
+select pg_temp.expect_ok(pg_temp.photo78(1), 't78.8a foto 1');
+select pg_temp.expect_ok(pg_temp.photo78(2), 't78.8a foto 2');
+select pg_temp.expect_ok(pg_temp.photo78(3), 't78.8a foto 3 (tanpa alt, tersimpan)');
+select pg_temp.expect_ok(pg_temp.photo78(4), 't78.8a foto 4');
+select pg_temp.expect_ok(pg_temp.photo78(5), 't78.8a foto 5');
+select pg_temp.expect_fail_code(pg_temp.photo78(6), 'P0001', 't78.8b foto ke-6 ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000002', '78787878-0000-0000-0000-000000000001',
+             '78787878-0000-0000-0000-000000000002/court/x.webp', 'x', 800, 600)$q$,
+  '23514', 't78.8c path di folder merchant lain ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.court_media (court_id, merchant_id, path, alt_text, width, height)
+     values ('78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000001',
+             '78787878-0000-0000-0000-000000000001/court/y.webp', 'y', 800, 600)$q$,
+  '23503', 't78.8d foto ke lapangan merchant lain ditolak FK');
+-- 78.9 nilai profil
+select pg_temp.expect_fail_code(
+  $q$update public.courts set rotation = 45 where id = '78787878-c000-0000-0000-000000000001'$q$, '23514', 't78.9a rotation 45 ditolak');
+select pg_temp.expect_fail_code(
+  $q$update public.courts set features = array['a','b','c','d','e','f'] where id = '78787878-c000-0000-0000-000000000001'$q$, '23514', 't78.9b 6 ciri ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.courts (merchant_id, name) values ('78787878-0000-0000-0000-000000000001', 'Lapangan 1')$q$, '23505', 't78.9c nama ganda ditolak');
+
+-- 78.10 anon tidak membaca tabel lapangan langsung
+begin;
+set local role anon;
+select pg_temp.expect_fail_code($q$select * from public.courts$q$, '42501', 't78.10a anon select courts ditolak');
+select pg_temp.expect_fail_code($q$select * from public.court_media$q$, '42501', 't78.10b anon select court_media ditolak');
+select pg_temp.expect_fail_code($q$select * from public.court_price_rules$q$, '42501', 't78.10c anon select court_price_rules ditolak');
+select pg_temp.expect_fail_code($q$select * from public.service_courts$q$, '42501', 't78.10d anon select service_courts ditolak');
+select pg_temp.expect_fail_code($q$select * from public.venue_areas$q$, '42501', 't78.10e anon select venue_areas ditolak');
+select pg_temp.expect_fail_code($q$select * from public.venue_markers$q$, '42501', 't78.10f anon select venue_markers ditolak');
+select case when (select court_unit_minutes from public.services where id = '78787878-5e00-0000-0000-000000000001') = 30
+            then 'OK   t78.10g kolom sewa layanan terbaca anon' else 'FAIL t78.10g' end as t78_10g;
+rollback;
+
+-- 78.11 get_court_profiles: anon, tanpa foto tanpa alt, tanpa lapangan nonaktif
+update public.courts set is_active = false where id = '78787878-c000-0000-0000-000000000002';
+begin;
+set local role anon;
+select case when (select jsonb_array_length(courts) from public.get_court_profiles('78787878-0000-0000-0000-000000000001')) = 1
+            then 'OK   t78.11a lapangan nonaktif tidak tampil' else 'FAIL t78.11a' end as t78_11a;
+select case when (select jsonb_array_length(courts -> 0 -> 'photos') from public.get_court_profiles('78787878-0000-0000-0000-000000000001')) = 4
+            then 'OK   t78.11b foto tanpa alt tidak tampil (4 dari 5)' else 'FAIL t78.11b' end as t78_11b;
+select case when (select courts -> 0 -> 'service_ids' from public.get_court_profiles('78787878-0000-0000-0000-000000000001'))
+                 = jsonb_build_array('78787878-5e00-0000-0000-000000000001')
+            then 'OK   t78.11c service_ids lapangan' else 'FAIL t78.11c' end as t78_11c;
+select case when (select count(*) from public.get_court_profiles('78787878-0000-0000-0000-000000000001') p
+                  where p::text ~* 'booking|customer|phone') = 0
+            then 'OK   t78.11d profil tanpa data booking' else 'FAIL t78.11d' end as t78_11d;
+rollback;
+
+-- 78.12 save_court_pricing
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '78787878-0000-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001', '[]'::jsonb)$q$,
+  '42501', 't78.12a save_court_pricing layanan merchant lain ditolak');
+rollback;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '78787878-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001', '[
+     {"day_of_week":4,"start_time":"10:00","end_time":"14:00","price_per_hour":200000},
+     {"day_of_week":4,"start_time":"13:00","end_time":"16:00","price_per_hour":220000}]'::jsonb)$q$,
+  '23P01', 't78.12b payload tumpang tindih ditolak');
+select case when (select count(*) from public.court_price_rules where service_id = '78787878-5e00-0000-0000-000000000001') = 3
+            then 'OK   t78.12c aturan lama utuh setelah simpan gagal' else 'FAIL t78.12c' end as t78_12c;
+select pg_temp.expect_ok(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001', '[
+     {"day_of_week":4,"start_time":"10:00","end_time":"14:00","price_per_hour":200000},
+     {"day_of_week":5,"start_time":"10:00","end_time":"14:00","price_per_hour":200000}]'::jsonb)$q$,
+  't78.12d simpan aturan baru');
+select case when (select count(*) from public.court_price_rules where service_id = '78787878-5e00-0000-0000-000000000001') = 2
+            then 'OK   t78.12e aturan diganti seluruhnya' else 'FAIL t78.12e' end as t78_12e;
+rollback;
+
+-- 78.13 save_venue_layout atomik
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '78787878-0000-0000-0000-000000000001';
+select pg_temp.expect_ok(
+  $q$select public.save_venue_layout(
+     '[{"id":"78787878-c000-0000-0000-000000000001","pos_x":48,"pos_y":52,"rotation":90}]'::jsonb,
+     '[{"id":"78787878-a000-0000-0000-000000000001","label":"Gedung utama","pos_x":0,"pos_y":0,"width":300,"height":200,"sort_order":0}]'::jsonb,
+     '[{"id":"78787878-b000-0000-0000-000000000001","label":"Pintu masuk","pos_x":10,"pos_y":10,"width":40,"height":40,"sort_order":0}]'::jsonb)$q$,
+  't78.13a simpan denah');
+select case when (select pos_x from public.courts where id = '78787878-c000-0000-0000-000000000001') = 48
+             and (select rotation from public.courts where id = '78787878-c000-0000-0000-000000000001') = 90
+             and (select count(*) from public.venue_areas where merchant_id = '78787878-0000-0000-0000-000000000001') = 1
+             and (select count(*) from public.venue_markers where merchant_id = '78787878-0000-0000-0000-000000000001') = 1
+            then 'OK   t78.13b denah tertulis' else 'FAIL t78.13b' end as t78_13b;
+select pg_temp.expect_fail_code(
+  $q$select public.save_venue_layout(
+     '[{"id":"78787878-c000-0000-0000-000000000001","pos_x":999,"pos_y":999,"rotation":0}]'::jsonb,
+     '[]'::jsonb,
+     '[{"id":"78787878-b000-0000-0000-000000000002","label":"","pos_x":10,"pos_y":10,"width":40,"height":40,"sort_order":0}]'::jsonb)$q$,
+  '22023', 't78.13c payload dengan satu baris tak valid ditolak');
+select case when (select pos_x from public.courts where id = '78787878-c000-0000-0000-000000000001') = 48
+             and (select count(*) from public.venue_areas where merchant_id = '78787878-0000-0000-0000-000000000001') = 1
+             and (select count(*) from public.venue_markers where merchant_id = '78787878-0000-0000-0000-000000000001') = 1
+            then 'OK   t78.13d simpan gagal tidak mengubah apa pun' else 'FAIL t78.13d' end as t78_13d;
+select pg_temp.expect_fail_code(
+  $q$select public.save_venue_layout(
+     '[{"id":"78787878-c000-0000-0000-000000000003","pos_x":1,"pos_y":1,"rotation":0}]'::jsonb, '[]'::jsonb, '[]'::jsonb)$q$,
+  '42501', 't78.13e lapangan merchant lain ditolak');
+-- area/penanda yang hilang dari payload terhapus, lapangan tidak
+select pg_temp.expect_ok(
+  $q$select public.save_venue_layout('[]'::jsonb, '[]'::jsonb, '[]'::jsonb)$q$, 't78.13f payload kosong');
+select case when (select count(*) from public.venue_areas where merchant_id = '78787878-0000-0000-0000-000000000001') = 0
+             and (select count(*) from public.courts where merchant_id = '78787878-0000-0000-0000-000000000001') = 2
+            then 'OK   t78.13g area dan penanda terhapus, lapangan utuh' else 'FAIL t78.13g' end as t78_13g;
+rollback;
