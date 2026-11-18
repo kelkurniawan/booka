@@ -23,6 +23,7 @@ const base: BookingPageRow = {
   table_label: null,
   customer_note: null,
   capacity_mode: "NONE" as const,
+  pixel_event_id: "00000000-0000-4000-8000-000000000001",
 };
 const aturan = {
   ...DEFAULT_MANAGE_SETTINGS,

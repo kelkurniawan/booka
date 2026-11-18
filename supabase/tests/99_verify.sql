@@ -450,13 +450,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2755,14 +2755,14 @@ select case when staff_name = 'Bima'
 from public.bookings where customer_whatsapp = '+6281333000061';
 
 -- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
--- Sejak 20261120000200 signature terbarunya tiga belas argumen (F8 restoran).
+-- Sejak 20261125000300 signature terbarunya sembilan belas argumen (atribusi funnel).
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
-       then 'FAIL t33m signature tiga belas argumen (20261120000200) tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+       then 'FAIL t33m signature sembilan belas argumen (20261125000300) tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
        then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
        then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
        else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
@@ -3323,8 +3323,8 @@ select
          and has_function_privilege('authenticated', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE'))
        then 'FAIL t36l authenticated tidak bisa EXECUTE RPC merchant'
        else 'OK   t36l RPC merchant hanya untuk authenticated' end as t36l1,
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
-         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
          or has_function_privilege('authenticated', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
        then 'FAIL t36l anon/authenticated bisa EXECUTE create_booking/reap_expired_bookings_for'
@@ -4472,14 +4472,14 @@ select case when status = 'CONFIRMED' and amount_due_on_site = service_price and
             else 'FAIL t47j manual -> ' || status || ' ' || amount_due_on_site || ' diskon ' || discount_amount end as t47j
 from public.bookings where customer_whatsapp = '+6281347000071';
 
--- 47k. Hak akses: signature terbaru (sejak 20261120000200 tiga belas argumen) hanya untuk service_role.
+-- 47k. Hak akses: signature terbaru (sejak 20261125000300 sembilan belas argumen) hanya untuk service_role.
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
        then 'FAIL t47k signature terbaru tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
        then 'FAIL t47k anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
        then 'FAIL t47k service_role tidak bisa EXECUTE create_booking'
        else 'OK   t47k create_booking terbaru hanya untuk service_role' end as t47k1,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
@@ -5293,14 +5293,14 @@ select case when (select count(*) from public.get_booked_ranges('resto-61', pg_t
 
 -- t61h hak akses.
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
-       then 'FAIL t61h signature tiga belas argumen tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)'), 'EXECUTE')
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+       then 'FAIL t61h signature sembilan belas argumen tidak ada'
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
        then 'FAIL t61h anon/authenticated bisa EXECUTE create_booking'
        when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is not null
        then 'FAIL t61h signature sembilan argumen masih ada'
-       else 'OK   t61h create_booking tiga belas argumen tertutup, sembilan argumen hilang' end as t61h1,
+       else 'OK   t61h create_booking sembilan belas argumen tertutup, sembilan argumen hilang' end as t61h1,
   case when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)') is null
        then 'FAIL t61h create_manual_booking baru tidak ada'
        when not has_function_privilege('authenticated', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)'), 'EXECUTE')
@@ -6175,3 +6175,226 @@ select case when (select instagram from public.get_public_contacts('73737373-000
             then 'OK   t73z Instagram tersembunyi mengembalikan null ke anon, yang lain tampil'
             else 'FAIL t73z get_public_contacts membocorkan kontak tersembunyi' end as t73z;
 rollback;
+
+-- ===========================================================================
+-- 74. Kejadian funnel dan atribusi booking (20261125000300)
+-- ===========================================================================
+-- Merchant A ...0001, B ...0002. Sesi 1..3 membuka halaman A lewat tautan
+-- IG_BIO; sesi 1 dan 2 booking, sesi 1 membayar.
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('74747474-0000-0000-0000-000000000001', 'funnel74-a@example.com', '{}'::jsonb),
+  ('74747474-0000-0000-0000-000000000002', 'funnel74-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'funnel74a' where id = '74747474-0000-0000-0000-000000000001';
+update public.merchants set username = 'funnel74b' where id = '74747474-0000-0000-0000-000000000002';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time)
+select m, d, '08:00', '22:00'
+from generate_series(1, 7) d,
+     unnest(array['74747474-0000-0000-0000-000000000001', '74747474-0000-0000-0000-000000000002']::uuid[]) m;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode) values
+  ('74747474-5e00-0000-0000-000000000001', '74747474-0000-0000-0000-000000000001', 'Potong 74', 50000, 60, 'FULL'),
+  ('74747474-5e00-0000-0000-000000000002', '74747474-0000-0000-0000-000000000002', 'Potong 74b', 50000, 60, 'FULL');
+insert into public.ad_links (id, merchant_id, slug, name, channel) values
+  ('74747474-1111-0000-0000-000000000001', '74747474-0000-0000-0000-000000000001', 'ig-74', 'Bio IG', 'IG_BIO'),
+  ('74747474-1111-0000-0000-000000000002', '74747474-0000-0000-0000-000000000002', 'ig-74b', 'Bio IG B', 'IG_BIO');
+
+insert into public.funnel_events (merchant_id, session_id, kind, ad_link_id, utm_source, utm_medium, utm_campaign)
+select '74747474-0000-0000-0000-000000000001', ('74747474-5555-0000-0000-00000000000' || n)::uuid, 'VIEW',
+       '74747474-1111-0000-0000-000000000001', 'instagram', 'bio', 'ig-74'
+from generate_series(1, 3) n;
+insert into public.funnel_events (merchant_id, session_id, kind, ad_link_id)
+values ('74747474-0000-0000-0000-000000000002', '74747474-5555-0000-0000-000000000009', 'VIEW',
+        '74747474-1111-0000-0000-000000000002');
+
+-- Booking sesi n, jam berbeda supaya bookings_no_overlap tidak ikut campur.
+create or replace function pg_temp.cb74(p_session integer, p_time text, p_ad_link uuid,
+  p_utm_source text default 'instagram', p_referrer text default null,
+  p_source public.booking_source default 'ONLINE')
+returns setof public.bookings language plpgsql as $$
+begin
+  return query select * from public.create_booking(
+    p_merchant_id => '74747474-0000-0000-0000-000000000001',
+    p_service_id => '74747474-5e00-0000-0000-000000000001',
+    p_start_datetime => pg_temp.jakarta_future(2, 1, p_time),
+    p_customer_name => 'Tamu 74',
+    p_customer_whatsapp => '+6281374000' || lpad(coalesce(p_session, 0)::text, 3, '0'),
+    p_source => p_source,
+    p_session_id => case when p_session is null then null
+                         else ('74747474-5555-0000-0000-00000000000' || p_session)::uuid end,
+    p_ad_link_id => p_ad_link,
+    p_utm_source => p_utm_source,
+    p_utm_medium => 'bio',
+    p_utm_campaign => 'ig-74',
+    p_referrer_host => p_referrer);
+end $$;
+
+select pg_temp.expect_ok(
+  $q$select * from pg_temp.cb74(1, '10:00', '74747474-1111-0000-0000-000000000001',
+      'instagram' || repeat('x', 80), 'https://WWW.Instagram.com/p/abc?x=1')$q$,
+  't74a booking sesi 1 dengan atribusi');
+select pg_temp.expect_ok(
+  $q$select * from pg_temp.cb74(2, '12:00', '74747474-1111-0000-0000-000000000001')$q$,
+  't74a booking sesi 2 dengan atribusi');
+
+select case when b.session_id = '74747474-5555-0000-0000-000000000001'
+             and b.ad_link_id = '74747474-1111-0000-0000-000000000001'
+             and b.utm_source = left('instagram' || repeat('x', 80), 64)
+             and b.utm_medium = 'bio' and b.utm_campaign = 'ig-74'
+             and b.referrer_host = 'www.instagram.com'
+             and b.pixel_event_id is not null
+             and (select count(*) from public.funnel_events e
+                  where e.booking_id = b.id and e.kind = 'BOOKED'
+                    and e.session_id = b.session_id and e.ad_link_id = b.ad_link_id
+                    and e.utm_source = b.utm_source and e.referrer_host = 'www.instagram.com'
+                    and e.service_id = b.service_id) = 1
+            then 'OK   t74b atribusi tersimpan (utm dipotong 64, host saja) dan satu BOOKED tertulis'
+            else 'FAIL t74b atribusi atau BOOKED salah' end as t74b
+from public.bookings b
+where b.merchant_id = '74747474-0000-0000-0000-000000000001' and b.customer_whatsapp = '+6281374000001';
+
+-- ad_link milik merchant lain menjadi null, bukan error.
+begin;
+select pg_temp.expect_ok(
+  $q$select * from pg_temp.cb74(4, '14:00', '74747474-1111-0000-0000-000000000002')$q$,
+  't74c booking dengan ad_link merchant lain tetap dibuat');
+select case when (select ad_link_id from public.bookings where customer_whatsapp = '+6281374000004') is null
+             and (select e.ad_link_id from public.funnel_events e join public.bookings b on b.id = e.booking_id
+                  where b.customer_whatsapp = '+6281374000004') is null
+            then 'OK   t74c ad_link merchant lain diabaikan (null)'
+            else 'FAIL t74c ad_link merchant lain tersimpan' end as t74c;
+rollback;
+
+-- Tanpa sesi atau MANUAL: tidak masuk funnel, atribusi tidak disimpan.
+begin;
+select pg_temp.expect_ok($q$select * from pg_temp.cb74(null, '15:00', null)$q$, 't74d booking ONLINE tanpa sesi');
+select pg_temp.expect_ok(
+  $q$select * from pg_temp.cb74(5, '16:00', '74747474-1111-0000-0000-000000000001', 'instagram', null, 'MANUAL')$q$,
+  't74d booking MANUAL dengan sesi');
+select case when (select count(*) from public.funnel_events e join public.bookings b on b.id = e.booking_id
+                  where b.customer_whatsapp in ('+6281374000005') or (b.merchant_id = '74747474-0000-0000-0000-000000000001'
+                        and b.session_id is null and b.source = 'ONLINE')) = 0
+             and (select session_id is null and ad_link_id is null and utm_source is null
+                  from public.bookings where customer_whatsapp = '+6281374000005')
+            then 'OK   t74d tanpa sesi dan MANUAL tidak menulis BOOKED'
+            else 'FAIL t74d BOOKED tertulis untuk booking tanpa sesi atau MANUAL' end as t74d;
+rollback;
+
+-- record_paid_event: hanya PAID, sekali.
+select public.record_paid_event((select id from public.bookings where customer_whatsapp = '+6281374000001'));
+select case when (select count(*) from public.funnel_events where kind = 'PAID'
+                  and merchant_id = '74747474-0000-0000-0000-000000000001') = 0
+            then 'OK   t74e record_paid_event mengabaikan booking PENDING'
+            else 'FAIL t74e PAID tertulis untuk PENDING' end as t74e;
+update public.bookings set status = 'PAID', paid_at = now() where customer_whatsapp = '+6281374000001';
+select public.record_paid_event((select id from public.bookings where customer_whatsapp = '+6281374000001'));
+select public.record_paid_event((select id from public.bookings where customer_whatsapp = '+6281374000001'));
+select case when (select count(*) from public.funnel_events where kind = 'PAID'
+                  and merchant_id = '74747474-0000-0000-0000-000000000001') = 1
+            then 'OK   t74f record_paid_event dua kali hanya satu PAID'
+            else 'FAIL t74f PAID ganda' end as t74f;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '74747474-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select public.record_paid_event((select id from public.bookings where customer_whatsapp = '+6281374000001'))$q$,
+  '42501', 't74g authenticated tidak boleh record_paid_event');
+rollback;
+
+-- get_paid_event (anon)
+-- pixel_event_id diambil sebagai superuser lalu dipanggil sebagai anon.
+create temp table t74_ids as
+  select customer_whatsapp, pixel_event_id from public.bookings
+  where merchant_id = '74747474-0000-0000-0000-000000000001';
+grant select on t74_ids to anon;
+begin;
+set local role anon;
+select case when (select count(*) from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000001'))) = 1
+             and (select amount from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000001'))) = 50000
+             and (select currency from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000001'))) = 'IDR'
+             and (select service_name from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000001'))) = 'Potong 74'
+            then 'OK   t74h get_paid_event mengembalikan booking PAID ke anon'
+            else 'FAIL t74h get_paid_event booking PAID' end as t74h;
+select case when (select count(*) from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000002'))) = 0
+            then 'OK   t74i get_paid_event menolak booking PENDING'
+            else 'FAIL t74i get_paid_event mengembalikan PENDING' end as t74i;
+rollback;
+begin;
+update public.bookings set paid_at = now() - interval '25 hours' where customer_whatsapp = '+6281374000001';
+set local role anon;
+select case when (select count(*) from public.get_paid_event(
+                    (select pixel_event_id from t74_ids where customer_whatsapp = '+6281374000001'))) = 0
+            then 'OK   t74j get_paid_event menolak pembayaran lewat 24 jam'
+            else 'FAIL t74j get_paid_event mengembalikan pembayaran lama' end as t74j;
+rollback;
+
+-- funnel_summary dan ad_link_stats
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '74747474-0000-0000-0000-000000000001';
+select case when s.views = 3 and s.service_views = 0 and s.checkouts = 0
+             and s.booked = 2 and s.paid = 1 and s.revenue = 50000
+            then 'OK   t74k funnel_summary IG_BIO views=3 booked=2 paid=1 revenue=50000'
+            else format('FAIL t74k funnel_summary %s', row_to_json(s)) end as t74k
+from public.funnel_summary(now() - interval '1 day', now() + interval '1 day') s
+where s.channel = 'IG_BIO';
+select case when (select sum(views) from public.funnel_summary(now() - interval '1 day', now() + interval '1 day')) = 3
+            then 'OK   t74l funnel_summary merchant A tidak melihat kejadian merchant B'
+            else 'FAIL t74l funnel_summary membocorkan kejadian merchant lain' end as t74l;
+select case when a.views = 3 and a.booked = 2 and a.paid = 1 and a.revenue = 50000
+             and (select count(*) from public.ad_link_stats(now() - interval '1 day', now() + interval '1 day')) = 1
+            then 'OK   t74m ad_link_stats per tautan, hanya milik sendiri'
+            else 'FAIL t74m ad_link_stats' end as t74m
+from public.ad_link_stats(now() - interval '1 day', now() + interval '1 day') a
+where a.ad_link_id = '74747474-1111-0000-0000-000000000001';
+rollback;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '74747474-0000-0000-0000-000000000002';
+select case when (select sum(views) from public.funnel_summary(now() - interval '1 day', now() + interval '1 day')) = 1
+             and (select count(*) from public.funnel_events) = 1
+            then 'OK   t74n merchant B hanya melihat kejadiannya sendiri'
+            else 'FAIL t74n merchant B melihat kejadian merchant lain' end as t74n;
+rollback;
+
+begin;
+set local role anon;
+select pg_temp.expect_fail_code($q$select * from public.funnel_events$q$, '42501', 't74o anon select funnel_events ditolak');
+select pg_temp.expect_fail_code(
+  $q$select * from public.funnel_summary(now() - interval '1 day', now())$q$,
+  '42501', 't74p anon tidak boleh funnel_summary');
+select pg_temp.expect_fail_code(
+  $q$select * from public.ad_link_stats(now() - interval '1 day', now())$q$,
+  '42501', 't74p anon tidak boleh ad_link_stats');
+select pg_temp.expect_fail_code($q$select public.prune_funnel_events()$q$, '42501', 't74p anon tidak boleh prune_funnel_events');
+rollback;
+
+-- CHECK host saja: path atau skema ditolak di tabel.
+select pg_temp.expect_fail_code(
+  $q$insert into public.funnel_events (merchant_id, session_id, kind, referrer_host)
+     values ('74747474-0000-0000-0000-000000000001', gen_random_uuid(), 'VIEW', 'contoh.id/pesanan/abc')$q$,
+  '23514', 't74q referrer_host berisi path ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.funnel_events (merchant_id, session_id, kind, ad_link_id)
+     values ('74747474-0000-0000-0000-000000000001', gen_random_uuid(), 'VIEW', '74747474-1111-0000-0000-000000000002')$q$,
+  '23503', 't74r ad_link merchant lain ditolak FK gabungan');
+
+-- prune_funnel_events: lebih tua dari 13 bulan dihapus.
+insert into public.funnel_events (merchant_id, session_id, kind, created_at) values
+  ('74747474-0000-0000-0000-000000000001', '74747474-5555-0000-0000-000000000007', 'VIEW', now() - interval '14 months'),
+  ('74747474-0000-0000-0000-000000000001', '74747474-5555-0000-0000-000000000008', 'VIEW', now() - interval '12 months');
+select public.prune_funnel_events();
+select case when not exists (select 1 from public.funnel_events where session_id = '74747474-5555-0000-0000-000000000007')
+             and exists (select 1 from public.funnel_events where session_id = '74747474-5555-0000-0000-000000000008')
+            then 'OK   t74s prune_funnel_events menghapus yang lebih tua dari 13 bulan saja'
+            else 'FAIL t74s prune_funnel_events' end as t74s;
+
+select case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
+            then 'OK   t74t signature tiga belas argumen sudah dihapus'
+            else 'FAIL t74t signature tiga belas argumen masih ada' end as t74t;

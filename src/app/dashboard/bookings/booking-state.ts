@@ -22,7 +22,18 @@ import type { Booking, BookingStatus } from "@/types/database";
  */
 export type BookingListItem = Omit<
   Booking,
-  "merchant_id" | "access_token" | "payment_url" | "updated_at"
+  | "merchant_id"
+  | "access_token"
+  | "payment_url"
+  | "updated_at"
+  // Atribusi funnel belum di-SELECT daftar booking.
+  | "session_id"
+  | "ad_link_id"
+  | "utm_source"
+  | "utm_medium"
+  | "utm_campaign"
+  | "referrer_host"
+  | "pixel_event_id"
 >;
 
 /**

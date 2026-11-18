@@ -49,6 +49,8 @@ export type BookingPageRow = {
   table_label: string | null;
   customer_note: string | null;
   capacity_mode: TableMode;
+  /** Untuk /{username}/terima-kasih?e=; bukan token akses. */
+  pixel_event_id: string;
 };
 
 export type ReminderView = {

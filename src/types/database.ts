@@ -425,6 +425,18 @@ export type Booking = {
   customer_note: string | null;
   /** Cara booking ini memakai tempat; menentukan eksklusi yang berlaku. */
   capacity_mode: TableMode;
+  /** Atribusi funnel; hanya booking ONLINE. Tanpa session_id booking tidak masuk funnel. */
+  session_id: string | null;
+  /** null juga bila ad_link yang dikirim milik merchant lain. */
+  ad_link_id: string | null;
+  /** Maksimal 64 karakter. */
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  /** Host saja, maksimal 100. */
+  referrer_host: string | null;
+  /** event_id pixel: Lead = ini, Purchase = ini + ":paid". Bukan token akses. */
+  pixel_event_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -503,6 +515,24 @@ export type AdLink = {
   service_id: string | null;
   voucher_code: string | null;
   archived_at: string | null;
+  created_at: string;
+};
+
+/** Kejadian funnel. Anon tidak punya akses; BOOKED/PAID hanya ditulis server. */
+export type FunnelEvent = {
+  id: string;
+  merchant_id: string;
+  session_id: string;
+  kind: FunnelEventKind;
+  ad_link_id: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  /** Host saja, pola ^[a-z0-9.-]{1,100}$. */
+  referrer_host: string | null;
+  service_id: string | null;
+  booking_id: string | null;
+  merchant_link_id: string | null;
   created_at: string;
 };
 
@@ -844,11 +874,25 @@ export type Database = {
           | "table_label"
           | "customer_note"
           | "capacity_mode"
+          | "session_id"
+          | "ad_link_id"
+          | "utm_source"
+          | "utm_medium"
+          | "utm_campaign"
+          | "referrer_host"
+          | "pixel_event_id"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "session_id"
+              | "ad_link_id"
+              | "utm_source"
+              | "utm_medium"
+              | "utm_campaign"
+              | "referrer_host"
+              | "pixel_event_id"
               | "party_size"
               | "area_id"
               | "table_id"
@@ -919,6 +963,14 @@ export type Database = {
         Insert: Pick<AdLink, "merchant_id" | "slug" | "name" | "channel"> &
           Partial<Pick<AdLink, "service_id" | "voucher_code">>;
         Update: Partial<Pick<AdLink, "name" | "channel" | "service_id" | "voucher_code" | "archived_at">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      // Ditulis service_role (/api/events) dan fungsi definer; authenticated hanya membaca miliknya.
+      funnel_events: {
+        Row: FunnelEvent;
+        Insert: Pick<FunnelEvent, "merchant_id" | "session_id" | "kind"> &
+          Partial<Omit<FunnelEvent, "id" | "merchant_id" | "session_id" | "kind" | "created_at">>;
+        Update: Record<string, never>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       merchant_tracking: {
@@ -1314,8 +1366,51 @@ export type Database = {
           p_area_id?: string | null;
           p_table_id?: string | null;
           p_customer_note?: string | null;
+          /** Atribusi, hanya ONLINE. Dengan session_id, BOOKED ikut ditulis. */
+          p_session_id?: string | null;
+          /** Milik merchant lain menjadi null, bukan error. */
+          p_ad_link_id?: string | null;
+          /** Dipotong 64 karakter di SQL. */
+          p_utm_source?: string | null;
+          p_utm_medium?: string | null;
+          p_utm_campaign?: string | null;
+          /** Disaring jadi host saja, maksimal 100. */
+          p_referrer_host?: string | null;
         };
         Returns: Booking[];
+      };
+      /** Tulis PAID sekali per booking PAID yang punya session_id. Hanya service_role. */
+      record_paid_event: {
+        Args: { p_booking_id: string };
+        Returns: undefined;
+      };
+      /** Ringkasan halaman terima kasih: booking PAID dibayar dalam 24 jam. amount = nominal QRIS. */
+      get_paid_event: {
+        Args: { p_event_id: string };
+        Returns: { merchant_id: string; service_name: string; amount: number; currency: string }[];
+      };
+      /** Funnel per kanal (ad_links.channel, utm_source, atau "LANGSUNG") untuk merchant yang login. */
+      funnel_summary: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          channel: string;
+          views: number;
+          service_views: number;
+          checkouts: number;
+          booked: number;
+          paid: number;
+          revenue: number;
+        }[];
+      };
+      /** Angka per tautan iklan untuk merchant yang login. */
+      ad_link_stats: {
+        Args: { p_from: string; p_to: string };
+        Returns: { ad_link_id: string; views: number; booked: number; paid: number; revenue: number }[];
+      };
+      /** Hapus kejadian lebih tua dari 13 bulan; mengembalikan jumlah baris. Hanya service_role. */
+      prune_funnel_events: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       /**
        * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login,
