@@ -7,14 +7,14 @@
  * tidak diam-diam tayang apa adanya.
  */
 export const LEGAL_IDENTITY = {
-  /** Nama badan usaha atau perorangan yang menyelenggarakan Marky. */
-  operatorName: "[NAMA BADAN USAHA]",
+  /** Nama lengkap perorangan yang menyelenggarakan Marky (bukan badan usaha). */
+  operatorName: "[NAMA PENYELENGGARA]",
   /** Alamat korespondensi (minimal kota dan provinsi). */
   address: "[ALAMAT]",
   /** Email untuk pertanyaan privasi, permintaan data, dan keluhan. */
   contactEmail: "[EMAIL KONTAK]",
   /** Tanggal berlaku versi dokumen ini, format bebas berbahasa Indonesia. */
-  effectiveDate: "5 Oktober 2026",
+  effectiveDate: "18 November 2026",
 } as const;
 
 export const LEGAL_PLACEHOLDER_PATTERN = /^\[.+\]$/;
