@@ -23,6 +23,20 @@ export async function createAdLink(input: unknown): Promise<CreateAdLinkResult> 
   const { name, channel, serviceId, voucherCode } = parsed.data;
 
   const supabase = await createClient();
+  // Tidak ada FK ke vouchers: pastikan kode memang milik merchant ini.
+  if (voucherCode) {
+    const { data: voucher, error: voucherError } = await supabase
+      .from("vouchers")
+      .select("id")
+      .eq("merchant_id", user.id)
+      .eq("code", voucherCode)
+      .maybeSingle();
+    if (voucherError) {
+      console.error("[iklan] gagal memeriksa voucher", voucherError);
+      return { ok: false, message: GENERIC };
+    }
+    if (!voucher) return { ok: false, message: "Voucher tidak ditemukan. Pilih voucher dari daftar Anda." };
+  }
   // Dua kali coba: pembuatan serentak bisa merebut slug yang sama (unik per merchant).
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: rows, error: readError } = await supabase.from("ad_links").select("slug").eq("merchant_id", user.id);
