@@ -6,20 +6,13 @@ import { z, type ZodError } from "zod";
 
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { courtServiceSchema, serviceSchema, type CourtServiceValues } from "@/lib/validations/service";
+import { courtServiceSchema, serviceSchema } from "@/lib/validations/service";
 import { isScopedMediaPath, PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
 import { serviceMediaSchema } from "@/lib/validations/service-media";
 
 import { mapCourtError } from "./court-errors";
+import { createServiceRecord, updateServiceRecord } from "./save-service";
 import type { AddCourtResult, ServiceFormState } from "./service-state";
-
-/** Pesan ramah untuk error P0001 yang dilempar trigger enforce_service_limit. */
-const LIMIT_MESSAGE =
-  "Paket Starter hanya mengizinkan 1 layanan. Upgrade paket untuk menambah layanan lagi.";
-
-/** Pesan ramah untuk constraint check services_deposit_* (23514). */
-const DEPOSIT_MESSAGE =
-  "Besar DP tidak valid. Persen 1 sampai 90, atau nominal tetap yang lebih kecil dari harga.";
 
 function toFieldErrors(error: ZodError): ServiceFormState {
   const fieldErrors: ServiceFormState["fieldErrors"] = {};
@@ -86,58 +79,6 @@ function parseServiceForm(formData: FormData) {
   });
 }
 
-/** Kolom sewa di tabel services; layanan biasa mengosongkannya kembali. */
-function courtColumns(court: CourtServiceValues | null) {
-  return {
-    court_unit_minutes: court?.unit ?? null,
-    court_max_minutes: court?.maxMinutes ?? null,
-  };
-}
-
-type Supabase = Awaited<ReturnType<typeof createClient>>;
-
-/** Tautan service_courts lalu aturan jam ramai. Mengembalikan kode error Postgres pertama, atau null. */
-async function saveCourtParts(
-  supabase: Supabase,
-  merchantId: string,
-  serviceId: string,
-  court: CourtServiceValues,
-): Promise<{ code: string } | null> {
-  const { data: existing, error: readError } = await supabase
-    .from("service_courts")
-    .select("court_id")
-    .eq("service_id", serviceId)
-    .eq("merchant_id", merchantId);
-  if (readError) return { code: readError.code };
-
-  const have = new Set((existing ?? []).map((r) => r.court_id));
-  const stale = [...have].filter((id) => !court.courtIds.includes(id));
-  if (stale.length > 0) {
-    const { error } = await supabase
-      .from("service_courts")
-      .delete()
-      .eq("service_id", serviceId)
-      .eq("merchant_id", merchantId)
-      .in("court_id", stale);
-    if (error) return { code: error.code };
-  }
-  const fresh = court.courtIds.filter((id) => !have.has(id));
-  if (fresh.length > 0) {
-    const { error } = await supabase
-      .from("service_courts")
-      .insert(fresh.map((court_id) => ({ service_id: serviceId, court_id, merchant_id: merchantId })));
-    if (error) return { code: error.code };
-  }
-
-  const { error } = await supabase.rpc("save_court_pricing", {
-    p_service_id: serviceId,
-    p_rules: court.rules.flatMap((r) =>
-      r.days.map((day) => ({ day_of_week: day, start_time: r.start, end_time: r.end, price_per_hour: r.pricePerHour })),
-    ),
-  });
-  return error ? { code: error.code } : null;
-}
-
 export async function createService(
   _prevState: ServiceFormState,
   formData: FormData,
@@ -148,7 +89,6 @@ export async function createService(
   if (courtParsed && !courtParsed.success) {
     return { ...COURT_FORM_ERROR, courtError: courtParsed.error.issues[0].message };
   }
-  const court = courtParsed?.data ?? null;
 
   const supabase = await createClient();
   const {
@@ -157,46 +97,12 @@ export async function createService(
 
   if (!user) redirect(ROUTES.login);
 
-  const { data, error } = await supabase
-    .from("services")
-    .insert({
-      merchant_id: user.id,
-      name: parsed.data.name,
-      description: parsed.data.description,
-      price: parsed.data.price,
-      duration_minutes: parsed.data.duration_minutes,
-      payment_mode: parsed.data.payment_mode,
-      deposit_type: parsed.data.deposit_type,
-      deposit_value: parsed.data.deposit_value,
-      party_min: parsed.data.partyMin,
-      party_max: parsed.data.partyMax,
-      seat_duration_minutes: parsed.data.seatDurationMinutes,
-      ...courtColumns(court),
-    })
-    .select("id")
-    .single();
-
-  if (error) {
-    // P0001 — trigger enforce_service_limit menolak layanan kedua paket Starter.
-    if (error.code === "P0001") {
-      return { status: "error", message: LIMIT_MESSAGE, limitReached: true };
-    }
-    if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
-    return { status: "error", message: "Gagal menyimpan layanan. Coba lagi." };
+  const result = await createServiceRecord(supabase, user.id, parsed.data, courtParsed?.data ?? null);
+  if (result.status === "success") {
+    revalidatePath(ROUTES.services);
+    revalidatePath(ROUTES.dashboard);
   }
-
-  if (court && data) {
-    const failed = await saveCourtParts(supabase, user.id, data.id, court);
-    if (failed) {
-      // Jangan tinggalkan layanan sewa setengah jadi: mencoba lagi akan membuat duplikat.
-      await supabase.from("services").delete().eq("id", data.id).eq("merchant_id", user.id);
-      return { status: "error", message: mapCourtError(failed.code), courtError: mapCourtError(failed.code), fieldErrors: {} };
-    }
-  }
-
-  revalidatePath(ROUTES.services);
-  revalidatePath(ROUTES.dashboard);
-  return { status: "success", serviceId: data?.id };
+  return result;
 }
 
 export async function updateService(
@@ -212,7 +118,6 @@ export async function updateService(
   if (courtParsed && !courtParsed.success) {
     return { ...COURT_FORM_ERROR, courtError: courtParsed.error.issues[0].message };
   }
-  const court = courtParsed?.data ?? null;
 
   const supabase = await createClient();
   const {
@@ -221,41 +126,16 @@ export async function updateService(
 
   if (!user) redirect(ROUTES.login);
 
-  const { error } = await supabase
-    .from("services")
-    .update({
-      name: parsed.data.name,
-      description: parsed.data.description,
-      price: parsed.data.price,
-      duration_minutes: parsed.data.duration_minutes,
-      payment_mode: parsed.data.payment_mode,
-      deposit_type: parsed.data.deposit_type,
-      deposit_value: parsed.data.deposit_value,
-      party_min: parsed.data.partyMin,
-      party_max: parsed.data.partyMax,
-      seat_duration_minutes: parsed.data.seatDurationMinutes,
-      ...courtColumns(court),
-    })
-    .eq("id", id)
-    // RLS sudah membatasi ke merchant pemilik, tapi filter eksplisit ini
-    // membuat maksudnya jelas terbaca di kode dan bukan hanya bergantung
-    // pada policy database.
-    .eq("merchant_id", user.id);
-
-  if (error) {
-    if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
-    return { status: "error", message: "Gagal menyimpan perubahan. Coba lagi." };
-  }
-
-  if (court) {
-    const failed = await saveCourtParts(supabase, user.id, id, court);
-    if (failed) {
-      return { status: "error", message: mapCourtError(failed.code), courtError: mapCourtError(failed.code), fieldErrors: {} };
-    }
-  }
-
-  revalidatePath(ROUTES.services);
-  return { status: "success" };
+  const result = await updateServiceRecord(
+    supabase,
+    user.id,
+    id,
+    parsed.data,
+    courtParsed?.data ?? null,
+    formData.get("courtWas") === "1",
+  );
+  if (result.status === "success") revalidatePath(ROUTES.services);
+  return result;
 }
 
 export async function deleteService(

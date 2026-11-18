@@ -1447,6 +1447,23 @@ export type Database = {
         Args: { p_merchant_id: string };
         Returns: { courts: CourtProfile[]; areas: VenueAreaView[]; markers: VenueAreaView[] }[];
       };
+      save_court_service: {
+        Args: {
+          p_service_id: string;
+          p_rental: boolean;
+          p_unit: number | null;
+          p_max: number | null;
+          p_duration: number | null;
+          p_court_ids: string[];
+          p_rules: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+            price_per_hour: number;
+          }[];
+        };
+        Returns: undefined;
+      };
       save_court_pricing: {
         Args: {
           p_service_id: string;

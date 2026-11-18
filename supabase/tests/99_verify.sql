@@ -7274,3 +7274,73 @@ select case when (select count(*) from pg_proc where proname = 'court_slot_fits'
              and not has_function_privilege('anon', 'public.court_slot_fits(uuid, timestamptz, integer, integer)', 'EXECUTE')
              and not has_function_privilege('authenticated', 'public.court_slot_fits(uuid, timestamptz, integer, integer)', 'EXECUTE')
             then 'OK   t80.9d court_slot_fits tertutup' else 'FAIL t80.9d court_slot_fits terbuka' end as t80_9d;
+
+-- ===========================================================================
+-- 81. save_court_service: simpan layanan sewa secara atomik (20261126000800)
+-- ===========================================================================
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('81818181-0000-0000-0000-000000000001', 'court81a@example.com', '{}'::jsonb),
+  ('81818181-0000-0000-0000-000000000002', 'court81b@example.com', '{}'::jsonb);
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, seat_duration_minutes, party_min, party_max) values
+  ('81818181-5e00-0000-0000-000000000001', '81818181-0000-0000-0000-000000000001', 'Padel 81', 150000, 60, 'FULL', null, null, null),
+  ('81818181-5e00-0000-0000-000000000002', '81818181-0000-0000-0000-000000000001', 'Resto 81', 100000, 60, 'FULL', 90, 1, 4),
+  ('81818181-5e00-0000-0000-000000000099', '81818181-0000-0000-0000-000000000002', 'Padel B 81', 150000, 60, 'FULL', null, null, null);
+insert into public.courts (id, merchant_id, name, sort_order) values
+  ('81818181-c000-0000-0000-000000000001', '81818181-0000-0000-0000-000000000001', 'Lapangan 1', 1),
+  ('81818181-c000-0000-0000-000000000002', '81818181-0000-0000-0000-000000000001', 'Lapangan 2', 2),
+  ('81818181-c000-0000-0000-000000000099', '81818181-0000-0000-0000-000000000002', 'Lapangan B', 1);
+
+-- unit:max:durasi:seat:jumlah tautan:jumlah aturan
+create or replace function pg_temp.s81(p_svc text) returns text language sql as $$
+  select coalesce(s.court_unit_minutes::text, '-') || ':' || coalesce(s.court_max_minutes::text, '-') || ':'
+    || s.duration_minutes || ':' || coalesce(s.seat_duration_minutes::text, '-') || ':'
+    || (select count(*) from public.service_courts c where c.service_id = s.id) || ':'
+    || (select count(*) from public.court_price_rules r where r.service_id = s.id)
+  from public.services s where s.id = p_svc::uuid;
+$$;
+
+select pg_temp.act34('t81.1a sewa menyala: kolom, tautan, aturan tersimpan', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001', '81818181-c000-0000-0000-000000000002']::uuid[],
+    '[{"day_of_week":6,"start_time":"17:00","end_time":"22:00","price_per_hour":250000},
+      {"day_of_week":7,"start_time":"17:00","end_time":"22:00","price_per_hour":250000}]'::jsonb)$q$);
+select pg_temp.is79('t81.1b hasil: 30:120:60, 2 lapangan, 2 aturan', pg_temp.s81('81818181-5e00-0000-0000-000000000001'), '30:120:60:-:2:2');
+
+select pg_temp.act34('t81.2a aturan tumpang tindih ditolak 23P01', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', true, 60::smallint, 240::smallint, 120,
+    array['81818181-c000-0000-0000-000000000001']::uuid[],
+    '[{"day_of_week":6,"start_time":"17:00","end_time":"18:00","price_per_hour":250000},
+      {"day_of_week":6,"start_time":"17:30","end_time":"19:00","price_per_hour":200000}]'::jsonb)$q$, '23P01');
+select pg_temp.is79('t81.2b atomik: kolom, tautan, dan aturan tidak berubah', pg_temp.s81('81818181-5e00-0000-0000-000000000001'), '30:120:60:-:2:2');
+
+select pg_temp.act34('t81.3a payload melanggar CHECK (max < durasi) ditolak 22023', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', true, 30::smallint, 60::smallint, 120,
+    array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb)$q$, '22023');
+select pg_temp.act34('t81.3b tanpa lapangan ditolak 22023', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', true, 30::smallint, 120::smallint, 60,
+    '{}'::uuid[], '[]'::jsonb)$q$, '22023');
+select pg_temp.is79('t81.3c tetap utuh setelah dua penolakan', pg_temp.s81('81818181-5e00-0000-0000-000000000001'), '30:120:60:-:2:2');
+
+select pg_temp.act34('t81.4a layanan merchant lain 42501', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000099', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb)$q$, '42501');
+select pg_temp.act34('t81.4b lapangan merchant lain 42501', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000099']::uuid[], '[]'::jsonb)$q$, '42501');
+select pg_temp.is79('t81.4c layanan merchant lain tak tersentuh', pg_temp.s81('81818181-5e00-0000-0000-000000000099'), '-:-:60:-:0:0');
+select pg_temp.is79('t81.4d layanan sendiri utuh setelah lapangan asing ditolak', pg_temp.s81('81818181-5e00-0000-0000-000000000001'), '30:120:60:-:2:2');
+
+select pg_temp.act34('t81.5a sewa mati: kolom null, tautan dan aturan terhapus', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000001', false, null, null, null, '{}'::uuid[], '[]'::jsonb)$q$);
+select pg_temp.is79('t81.5b hasil: -:-:60, 0 lapangan, 0 aturan', pg_temp.s81('81818181-5e00-0000-0000-000000000001'), '-:-:60:-:0:0');
+
+select pg_temp.act34('t81.6a sewa menyala pada layanan restoran: seat dan tamu dikosongkan', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000002', true, 60::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb)$q$);
+select pg_temp.is79('t81.6b hasil: 60:120:60, seat null', pg_temp.s81('81818181-5e00-0000-0000-000000000002'), '60:120:60:-:1:0');
+select pg_temp.is79('t81.6c party dikosongkan',
+  (select (party_min is null and party_max is null)::text from public.services where id = '81818181-5e00-0000-0000-000000000002'), 'true');
+
+select case when has_function_privilege('anon', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb)', 'EXECUTE')
+              or not has_function_privilege('authenticated', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb)', 'EXECUTE')
+            then 'FAIL t81.7 hak eksekusi save_court_service salah' else 'OK   t81.7 save_court_service hanya authenticated' end as t81_7;
