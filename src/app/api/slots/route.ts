@@ -9,6 +9,7 @@ import {
   jakartaWallClockToUtc,
   type SeatSlot,
 } from "@/lib/booking/slots";
+import { courtSlotsResponse, isCourtService, loadCourtData } from "@/lib/booking/court-loader";
 import { loadPublicStaff } from "@/lib/booking/staff";
 import { createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
@@ -97,7 +98,7 @@ export async function GET(request: NextRequest) {
 
   const { data: service, error: serviceError } = await supabase
     .from("services")
-    .select("id, duration_minutes, party_max, seat_duration_minutes")
+    .select("id, price, duration_minutes, party_max, seat_duration_minutes, court_unit_minutes, court_max_minutes")
     .eq("id", serviceId)
     .eq("merchant_id", merchant.id)
     .eq("is_active", true)
@@ -119,6 +120,24 @@ export async function GET(request: NextRequest) {
   if (availabilityError) {
     console.error("[api/slots] gagal memuat jam kerja", { username, error: availabilityError });
     return NextResponse.json({ error: "Gagal memuat jam kerja" }, { status: 500 });
+  }
+
+  // Sewa lapangan: grid unit, lapangan, dan harga jam ramai (court-loader.ts).
+  // Melewati staf, kursi, dan `party`.
+  if (isCourtService(service)) {
+    return courtSlotsResponse({
+      service: {
+        price: Number(service.price),
+        court_unit_minutes: service.court_unit_minutes as 30 | 60,
+        court_max_minutes: service.court_max_minutes!,
+        duration_minutes: service.duration_minutes,
+      },
+      availability: availability ?? [],
+      dateISO: date,
+      durationRaw: url.searchParams.get("durationMinutes"),
+      now: new Date(),
+      load: () => loadCourtData(supabase, merchant.id, serviceId, date),
+    });
   }
 
   // Tidak ada baris merchant_settings = mode NONE (grant anon: Task 1 F8).

@@ -8,6 +8,7 @@ import {
   jakartaWallClockToUtc,
   nearestStaffSlots,
 } from "@/lib/booking/slots";
+import { courtApiError, isCourtService } from "@/lib/booking/court-loader";
 import { loadPublicStaff } from "@/lib/booking/staff";
 import { createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
 
   const { data: service, error: serviceError } = await supabase
     .from("services")
-    .select("id, duration_minutes")
+    .select("id, duration_minutes, court_unit_minutes")
     .eq("id", serviceId)
     .eq("merchant_id", merchant.id)
     .eq("is_active", true)
@@ -64,6 +65,8 @@ export async function GET(request: NextRequest) {
   if (!service) {
     return NextResponse.json({ error: "Layanan tidak ditemukan" }, { status: 404 });
   }
+  // Keputusan 8 spec: sewa lapangan tidak punya "jam terdekat".
+  if (isCourtService(service)) return courtApiError("court_service_not_supported");
 
   const { data: availability, error: availabilityError } = await supabase
     .from("availability")

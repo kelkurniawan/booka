@@ -104,3 +104,28 @@ test("pickCourt: diminta, atau urut sort_order lalu nama", () => {
   assert.equal(pickCourt(free, "x"), null);
   assert.equal(pickCourt([], null), null);
 });
+
+test("courtPrice: booking berakhir tepat di akhir aturan semuanya ramai, unit berikutnya dasar", () => {
+  assert.equal(p(MON, "20:00", 60).total, 250000); // 20:00-21:00 habis di ujung aturan
+  assert.deepEqual(p(MON, "20:00", 60).segments.map((s) => s.peak), [true]);
+  assert.equal(p(MON, "20:30", 60).total, 200000); // 20:30 ramai, 21:00 sudah dasar (ujung eksklusif)
+  assert.equal(p(MON, "21:00", 30).total, 75000);
+});
+
+test("courtPrice: aturan hari lain tidak memengaruhi hari Senin", () => {
+  const tue: CourtPriceRule[] = [{ dayOfWeek: 2, start: "17:00", end: "21:00", pricePerHour: 250000 }];
+  assert.equal(p(MON, "17:00", 60, 30, 150000, tue).total, 150000);
+  assert.equal(p("2026-11-24", "17:00", 60, 30, 150000, tue).total, 250000);
+});
+
+test("computeCourtSlots: unit 60 menit memakai grid per jam", () => {
+  const out = computeCourtSlots({
+    dateISO: MON, availability: avail, courts, booked: [], unitMinutes: 60, durationMinutes: 60, now,
+  });
+  assert.deepEqual(out.map((s) => s.time), ["08:00", "09:00"]);
+});
+
+test("durationOptions: unit nol atau negatif tidak menggantung", () => {
+  assert.deepEqual(durationOptions({ minMinutes: 60, maxMinutes: 120, unitMinutes: 0 }), []);
+  assert.deepEqual(durationOptions({ minMinutes: 60, maxMinutes: 120, unitMinutes: -30 }), []);
+});

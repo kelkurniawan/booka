@@ -1338,7 +1338,13 @@ export type Database = {
       };
       /** Cek kode untuk route /api/vouchers/check (service_role). Syarat hanya terisi bila reason null. */
       check_voucher: {
-        Args: { p_merchant_id: string; p_code: string; p_service_id: string };
+        Args: {
+          p_merchant_id: string;
+          p_code: string;
+          p_service_id: string;
+          p_start_datetime?: string;
+          p_duration_minutes?: number;
+        };
         Returns: {
           code: string | null;
           kind: VoucherKind | null;
@@ -1431,6 +1437,11 @@ export type Database = {
       get_court_availability: {
         Args: { p_merchant_id: string; p_service_id: string; p_date: string };
         Returns: { court_id: string; court_name: string; start_datetime: string; end_datetime: string }[];
+      };
+      /** Aturan jam ramai satu layanan aktif untuk halaman publik; tanpa data pelanggan. */
+      get_court_price_rules: {
+        Args: { p_merchant_id: string; p_service_id: string };
+        Returns: { day_of_week: number; start_time: string; end_time: string; price_per_hour: number }[];
       };
       get_court_profiles: {
         Args: { p_merchant_id: string };

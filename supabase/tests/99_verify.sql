@@ -4080,12 +4080,12 @@ select
          or has_table_privilege('authenticated', 'public.voucher_attempts', 'SELECT')
        then 'FAIL t45f voucher_attempts terbaca' else 'OK   t45f voucher_attempts tertutup' end as t45f3,
   case when exists (select 1 from unnest(array['anon', 'authenticated']) r,
-                      unnest(array['public.evaluate_voucher(uuid, text, uuid, text)', 'public.check_voucher(uuid, text, uuid)',
+                      unnest(array['public.evaluate_voucher(uuid, text, uuid, text)', 'public.check_voucher(uuid, text, uuid, timestamptz, integer)',
                                    'public.check_voucher_rate_limit(text, uuid)']) f
                     where has_function_privilege(r, f, 'EXECUTE'))
        then 'FAIL t45f fungsi internal voucher terbuka'
        else 'OK   t45f evaluate/check/rate limit tertutup untuk anon dan authenticated' end as t45f4,
-  case when has_function_privilege('service_role', 'public.check_voucher(uuid, text, uuid)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.check_voucher(uuid, text, uuid, timestamptz, integer)', 'EXECUTE')
         and has_function_privilege('service_role', 'public.check_voucher_rate_limit(text, uuid)', 'EXECUTE')
        then 'OK   t45f service_role bisa check_voucher dan rate limit'
        else 'FAIL t45f service_role tidak bisa check_voucher/rate limit' end as t45f5,
@@ -7160,3 +7160,45 @@ select pg_temp.act34('t80.4j manual ketiga tanpa lapangan kosong = BK072', '7979
 -- 80.5 lapangan yang punya booking tidak bisa dihapus (FK NO ACTION)
 select pg_temp.expect_fail_code(
   $q$delete from public.courts where id = '79797979-c000-0000-0000-000000000002'$q$, '23503', 't80.5 hapus lapangan berbooking ditolak');
+
+-- 80.6 check_voucher (pratinjau) untuk layanan sewa memakai total sewa
+begin;
+set local role service_role;
+select case when reason is null and code = 'LAP79' and discount = 30000
+            then 'OK   t80.6a pratinjau: total 300000 memenuhi minimal, diskon 10% = 30000'
+            else 'FAIL t80.6a ' || coalesce(reason, discount::text) end
+  from public.check_voucher('79797979-0000-0000-0000-000000000001', 'LAP79', '79797979-5e00-0000-0000-000000000001',
+                            pg_temp.jakarta_future(6, 4, '10:00'), 120);
+select case when reason = 'BK054' and code is null
+            then 'OK   t80.6b pratinjau: total 150000 di bawah minimal = BK054'
+            else 'FAIL t80.6b ' || coalesce(reason, 'NULL') end
+  from public.check_voucher('79797979-0000-0000-0000-000000000001', 'LAP79', '79797979-5e00-0000-0000-000000000001',
+                            pg_temp.jakarta_future(6, 4, '14:00'), 60);
+select case when reason = 'BK071' and code is null
+            then 'OK   t80.6c pratinjau: lama main 45 menit = BK071'
+            else 'FAIL t80.6c ' || coalesce(reason, 'NULL') end
+  from public.check_voucher('79797979-0000-0000-0000-000000000001', 'LAP79', '79797979-5e00-0000-0000-000000000001',
+                            pg_temp.jakarta_future(6, 4, '10:00'), 45);
+select case when reason = 'BK054'
+            then 'OK   t80.6d tanpa jam dan lama main: harga per jam (perilaku lama)'
+            else 'FAIL t80.6d ' || coalesce(reason, 'NULL') end
+  from public.check_voucher('79797979-0000-0000-0000-000000000001', 'LAP79', '79797979-5e00-0000-0000-000000000001');
+rollback;
+
+-- 80.7 get_court_price_rules: anon membaca aturan publik, tidak lintas merchant
+begin;
+set local role anon;
+select case when count(*) = 5 and min(price_per_hour) = 250000 and max(day_of_week) = 5
+            and (select array_agg(k order by k) from (
+                   select jsonb_object_keys(to_jsonb(r)) k
+                   from public.get_court_price_rules('79797979-0000-0000-0000-000000000001',
+                     '79797979-5e00-0000-0000-000000000001') r limit 4) x)
+                = array['day_of_week', 'end_time', 'price_per_hour', 'start_time']
+            then 'OK   t80.7a anon membaca 5 aturan jam ramai, hanya kolom harga dan jam'
+            else 'FAIL t80.7a ' || count(*) end
+  from public.get_court_price_rules('79797979-0000-0000-0000-000000000001', '79797979-5e00-0000-0000-000000000001');
+select case when count(*) = 0
+            then 'OK   t80.7b layanan merchant A dengan id merchant B = kosong'
+            else 'FAIL t80.7b ' || count(*) end
+  from public.get_court_price_rules('79797979-0000-0000-0000-000000000002', '79797979-5e00-0000-0000-000000000001');
+rollback;

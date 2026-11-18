@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Data kode voucher tidak valid" }, { status: 400 });
   }
-  const { username, serviceId, code } = parsed.data;
+  const { username, serviceId, code, startUtc, durationMinutes } = parsed.data;
 
   const supabase = createAdminClient();
 
@@ -72,6 +72,9 @@ export async function POST(request: NextRequest) {
     p_merchant_id: merchant.id,
     p_code: code,
     p_service_id: serviceId,
+    // Hanya dipakai layanan sewa: min_spend dan diskon dihitung dari total sewa.
+    p_start_datetime: startUtc ?? undefined,
+    p_duration_minutes: durationMinutes ?? undefined,
   });
   const row = data?.[0];
   if (error || !row) {

@@ -36,6 +36,9 @@ export const checkVoucherRequestSchema = z.object({
   username: usernameSchema,
   serviceId: z.uuid("Layanan tidak valid"),
   code: voucherCodeSchema,
+  // Sewa lapangan: jam mulai dan lama main supaya pratinjau memakai total sewa.
+  startUtc: z.iso.datetime().nullable().default(null),
+  durationMinutes: z.number().int().min(30).max(480).nullable().default(null),
 });
 
 /**

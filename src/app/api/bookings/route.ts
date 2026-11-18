@@ -65,6 +65,7 @@ export async function POST(request: NextRequest) {
   const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp, voucherCode } =
     parsed.data;
   const { partySize, areaId, tableId, customerNote, sessionId, attribution } = parsed.data;
+  const { courtId, durationMinutes } = parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
@@ -180,6 +181,9 @@ export async function POST(request: NextRequest) {
     p_utm_medium: attribution?.utmMedium ?? null,
     p_utm_campaign: attribution?.utmCampaign ?? null,
     p_referrer_host: attribution?.referrerHost ?? null,
+    // Sewa lapangan: layanan lain mengabaikan keduanya di dalam create_booking.
+    p_court_id: courtId,
+    p_duration_minutes: durationMinutes,
   });
 
   if (bookingError) {

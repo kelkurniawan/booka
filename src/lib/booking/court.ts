@@ -48,6 +48,7 @@ export function startingPrice(basePerHour: number, rules: CourtPriceRule[]): num
 }
 
 export function durationOptions(params: { minMinutes: number; maxMinutes: number; unitMinutes: number }): number[] {
+  if (params.unitMinutes <= 0) return [];
   const out: number[] = [];
   for (let m = params.minMinutes; m <= params.maxMinutes; m += params.unitMinutes) out.push(m);
   return out;
@@ -58,7 +59,8 @@ export function formatDuration(minutes: number): string {
 }
 
 type CourtRef = { id: string; name: string; sortOrder: number };
-const byOrder = (a: CourtRef, b: CourtRef) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
+type Ordered = { name: string; sortOrder: number };
+const byOrder = (a: Ordered, b: Ordered) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name);
 
 export function computeCourtSlots(params: {
   dateISO: string;
@@ -99,5 +101,5 @@ export function computeCourtSlots(params: {
 /** Null bila lapangan yang diminta tidak kosong; tanpa permintaan ("Mana saja") urut sort_order lalu nama. */
 export function pickCourt(free: { courtId: string; name: string; sortOrder: number }[], requested: string | null): string | null {
   if (requested) return free.some((f) => f.courtId === requested) ? requested : null;
-  return [...free].sort((a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name))[0]?.courtId ?? null;
+  return [...free].sort(byOrder)[0]?.courtId ?? null;
 }

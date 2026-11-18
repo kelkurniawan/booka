@@ -173,6 +173,28 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Semua lapangan penuh untuk lama main ini di tanggal ini. Coba lama main lebih singkat atau pilih tanggal lain.",
   },
+  // create_booking / RPC lapangan: argumen tidak valid (RAISE ... USING ERRCODE
+  // = '22023'), mis. payload ditolak validasi di dalam fungsi.
+  "22023": {
+    status: 422,
+    message: "Data tidak valid. Periksa isian lalu coba lagi.",
+  },
+  // CHECK constraint (mis. lama main atau durasi layanan di luar batas tabel).
+  "23514": {
+    status: 422,
+    message: "Data tidak valid. Periksa isian lalu coba lagi.",
+  },
+  // FK gabungan: lapangan atau layanan bukan milik merchant ini.
+  "23503": {
+    status: 409,
+    message: "Lapangan atau layanan yang dipilih tidak cocok. Muat ulang halaman lalu coba lagi.",
+  },
+  // Perlu login atau bukan milik merchant (RPC bersesi). Tidak pernah dialami
+  // pengunjung bila konfigurasi benar; tetap dipetakan agar tidak jadi 500 mentah.
+  "42501": {
+    status: 403,
+    message: "Anda tidak punya akses untuk tindakan ini.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {
