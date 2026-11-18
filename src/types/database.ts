@@ -34,6 +34,8 @@ export type ThemePreset =
   | "BERANI"
   | "ELEGAN";
 export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE" | "MOTION";
+export type AdChannel = "IG_BIO" | "META_ADS" | "TIKTOK_ADS" | "WA_STATUS" | "OTHER";
+export type FunnelEventKind = "VIEW" | "SERVICE" | "CHECKOUT" | "BOOKED" | "PAID" | "LINK_CLICK";
 export type ButtonStyle = "FILLED" | "OUTLINE" | "SOFT";
 export type BackgroundMotion = "BENTUK" | "GELOMBANG" | "AURORA" | "PARTIKEL";
 export type MotionSpeed = "SLOW" | "NORMAL";
@@ -202,6 +204,7 @@ export type MerchantTheme = {
   button_style: ButtonStyle;
   section_order: string[];
   hidden_sections: string[];
+  show_social_icons: boolean;
   background_motion: BackgroundMotion;
   background_motion_speed: MotionSpeed;
   created_at: string;
@@ -489,6 +492,43 @@ export type MerchantBanner = {
 
 /** Kolom yang boleh dibaca anon; hanya banner yang sedang tayang. */
 export type PublicBanner = Omit<MerchantBanner, "published" | "created_at" | "updated_at">;
+
+/** Tautan iklan per kanal. Anon tidak punya akses langsung; resolve lewat resolve_ad_link. */
+export type AdLink = {
+  id: string;
+  merchant_id: string;
+  slug: string;
+  name: string;
+  channel: AdChannel;
+  service_id: string | null;
+  voucher_code: string | null;
+  archived_at: string | null;
+  created_at: string;
+};
+
+/** ID pixel merchant. Anon hanya lewat get_public_tracking (ID yang aktif). */
+export type MerchantTracking = {
+  merchant_id: string;
+  meta_pixel_id: string | null;
+  tiktok_pixel_id: string | null;
+  ga4_measurement_id: string | null;
+  meta_enabled: boolean;
+  tiktok_enabled: boolean;
+  ga4_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Tautan link-in-bio, maksimal 8 per merchant, url selalu https. */
+export type MerchantLink = {
+  id: string;
+  merchant_id: string;
+  label: string;
+  url: string;
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+};
 
 export type MerchantSettings = {
   merchant_id: string;
@@ -874,6 +914,26 @@ export type Database = {
         Update: Partial<Omit<Voucher, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      ad_links: {
+        Row: AdLink;
+        Insert: Pick<AdLink, "merchant_id" | "slug" | "name" | "channel"> &
+          Partial<Pick<AdLink, "service_id" | "voucher_code">>;
+        Update: Partial<Pick<AdLink, "name" | "channel" | "service_id" | "voucher_code" | "archived_at">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_tracking: {
+        Row: MerchantTracking;
+        Insert: Partial<Omit<MerchantTracking, "merchant_id" | Timestamps>> & { merchant_id: string };
+        Update: Partial<Omit<MerchantTracking, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_links: {
+        Row: MerchantLink;
+        Insert: Pick<MerchantLink, "merchant_id" | "label" | "url"> &
+          Partial<Pick<MerchantLink, "id" | "sort_order" | "is_visible">>;
+        Update: Partial<Pick<MerchantLink, "label" | "url" | "sort_order" | "is_visible">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       merchant_banners: {
         Row: MerchantBanner;
         Insert: Pick<MerchantBanner, "merchant_id" | "source"> &
@@ -987,6 +1047,34 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Me-resolve ?t= untuk anon; tautan diarsipkan tidak dikembalikan. */
+      resolve_ad_link: {
+        Args: { p_username: string; p_slug: string };
+        Returns: { id: string; service_id: string | null; voucher_code: string | null; channel: AdChannel }[];
+      };
+      /** ID pixel yang aktif saja; ID yang dimatikan null. Kosong bila merchant belum publik. */
+      get_public_tracking: {
+        Args: { p_merchant_id: string };
+        Returns: {
+          meta_pixel_id: string | null;
+          tiktok_pixel_id: string | null;
+          ga4_measurement_id: string | null;
+        }[];
+      };
+      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = contact_phone. */
+      get_public_contacts: {
+        Args: { p_merchant_id: string };
+        Returns: { instagram: string | null; tiktok: string | null; whatsapp: string | null }[];
+      };
+      /** Simpan seluruh tautan link-in-bio + show_social_icons + section_order. Hanya authenticated. */
+      save_merchant_links: {
+        Args: {
+          p_links: { id: string; label: string; url: string; sort_order: number; is_visible?: boolean }[];
+          p_show_social_icons: boolean;
+          p_section_order: string[];
+        };
+        Returns: undefined;
+      };
       /** Cek klaim username dari landing. Hanya service_role. */
       check_username_claim: {
         Args: { p_username: string; p_ip_hash: string };

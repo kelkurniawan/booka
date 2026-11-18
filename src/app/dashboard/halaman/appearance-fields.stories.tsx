@@ -63,6 +63,7 @@ export const Gerak: Story = {
 };
 
 const HINTS: Record<PageSection, string> = {
+  LINKS: "3 tautan",
   PROMO: "2 banner tayang",
   SERVICES: "Selalu tampil",
   FAQ: "3 pertanyaan",

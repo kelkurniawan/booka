@@ -1,12 +1,13 @@
 // Harus sama dengan constraint merchant_themes_section_order_valid dan
-// merchant_themes_hidden_sections_valid di migration 20261118000200.
-export const PAGE_SECTIONS = ["PROMO", "SERVICES", "FAQ"] as const;
+// merchant_themes_hidden_sections_valid di migration 20261125000200.
+export const PAGE_SECTIONS = ["LINKS", "PROMO", "SERVICES", "FAQ"] as const;
 export type PageSection = (typeof PAGE_SECTIONS)[number];
 
 /** SERVICES tidak bisa disembunyikan: halaman tanpa layanan tidak bisa menerima pesanan. */
-export const HIDEABLE_SECTIONS = ["PROMO", "FAQ"] as const;
+export const HIDEABLE_SECTIONS = ["LINKS", "PROMO", "FAQ"] as const;
 
 export const SECTION_LABELS: Record<PageSection, string> = {
+  LINKS: "Tautan",
   PROMO: "Banner promo",
   SERVICES: "Layanan",
   FAQ: "Pertanyaan umum",
@@ -24,7 +25,7 @@ export function normalizeSectionOrder(
   return hasil;
 }
 
-/** Urutan tampil: urutan lengkap tanpa bagian yang disembunyikan (hanya PROMO/FAQ). */
+/** Urutan tampil: urutan lengkap tanpa bagian yang disembunyikan (LINKS/PROMO/FAQ). */
 export function visibleSections(
   order: readonly string[] | null | undefined,
   hidden: readonly string[] | null | undefined,

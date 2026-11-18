@@ -76,7 +76,7 @@ const campuran: Service[] = [
 export const CaraBayarCampuran: Story = { args: { services: campuran } };
 
 export const FaqDiAtas: Story = {
-  args: { theme: sampleTheme("HANGAT", { section_order: ["FAQ", "SERVICES", "PROMO"] }) },
+  args: { theme: sampleTheme("HANGAT", { section_order: ["FAQ", "SERVICES", "PROMO", "LINKS"] }) },
 };
 
 export const TanpaPromo: Story = {

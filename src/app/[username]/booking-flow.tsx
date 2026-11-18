@@ -837,6 +837,7 @@ export function BookingFlow({
   );
 
   const bagian: Record<PageSection, ReactNode> = {
+    LINKS: null, // dirender di Task 8
     PROMO: promoSection,
     SERVICES: servicesSection,
     FAQ: faq,

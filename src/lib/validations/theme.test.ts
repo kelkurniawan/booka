@@ -71,18 +71,18 @@ const masukanLengkap = {
   background_style: "SOLID",
   background_overlay: "45",
   text_scale: "SEDANG",
-  section_order: "FAQ,PROMO,SERVICES",
+  section_order: "FAQ,PROMO,SERVICES,LINKS",
   hidden_sections: "",
 };
 
-test("section_order berupa permutasi persis tiga bagian", () => {
+test("section_order berupa permutasi persis empat bagian", () => {
   const ok = themeSchema.safeParse(masukanLengkap);
   assert.ok(ok.success, JSON.stringify(ok.error?.issues));
-  assert.deepEqual(ok.data.section_order, ["FAQ", "PROMO", "SERVICES"]);
+  assert.deepEqual(ok.data.section_order, ["FAQ", "PROMO", "SERVICES", "LINKS"]);
 });
 
 test("section_order menolak yang tidak lengkap, ganda, atau berisi kunci asing", () => {
-  for (const section_order of ["PROMO,SERVICES", "PROMO,PROMO,FAQ", "PROMO,SERVICES,KONTAK"]) {
+  for (const section_order of ["PROMO,SERVICES,FAQ", "PROMO,PROMO,FAQ,LINKS", "PROMO,SERVICES,KONTAK,LINKS"]) {
     const gagal = themeSchema.safeParse({ ...masukanLengkap, section_order });
     assert.equal(gagal.success, false, section_order);
     assert.equal(

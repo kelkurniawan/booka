@@ -54,6 +54,7 @@ export function AppearancePreview({
           <BookingProfileHeader name={name} bio={bio} avatarUrl={avatarUrl} theme={theme} />
 
           {theme.sections.map((key) => {
+            if (key === "LINKS") return null;
             if (key === "PROMO")
               return (
                 <PromoBanners

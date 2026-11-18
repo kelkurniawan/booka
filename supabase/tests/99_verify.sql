@@ -4711,7 +4711,7 @@ select case when (select subscription_tier from public.merchants where id = '505
 -- t50a: nilai bawaan.
 insert into public.merchant_themes (merchant_id, preset)
   values ('50505050-0000-0000-0000-000000000001', 'BERSIH');
-select case when (select button_style = 'FILLED' and section_order = '{PROMO,SERVICES,FAQ}'
+select case when (select button_style = 'FILLED' and section_order = '{LINKS,PROMO,SERVICES,FAQ}'
                          and hidden_sections = '{}' and background_motion = 'BENTUK'
                          and background_motion_speed = 'SLOW' and logo_path is null and cover_path is null
                   from public.merchant_themes where merchant_id = '50505050-0000-0000-0000-000000000001')
@@ -4737,7 +4737,7 @@ from unnest(array[
 
 -- t50c: nilai sah diterima.
 select pg_temp.expect_ok($q$update public.merchant_themes set
-  section_order = '{FAQ,PROMO,SERVICES}', hidden_sections = '{PROMO,FAQ}',
+  section_order = '{FAQ,LINKS,PROMO,SERVICES}', hidden_sections = '{PROMO,FAQ}',
   logo_path = '50505050-0000-0000-0000-000000000001/logo-ab12cd34.webp',
   cover_path = '50505050-0000-0000-0000-000000000001/cover-ab12cd34.webp',
   background_style = 'MOTION', background_motion = 'GELOMBANG', background_motion_speed = 'NORMAL'
@@ -4751,7 +4751,7 @@ select pg_temp.expect_ok($q$update public.merchant_themes set
 select pg_temp.expect_ok($q$insert into public.merchant_themes
   (merchant_id, preset, logo_path, section_order, hidden_sections)
   values ('50505050-0000-0000-0000-000000000002', 'BERSIH',
-          '50505050-0000-0000-0000-000000000002/logo-ab12cd34.webp', '{FAQ,SERVICES,PROMO}', '{PROMO}')$q$,
+          '50505050-0000-0000-0000-000000000002/logo-ab12cd34.webp', '{FAQ,SERVICES,PROMO,LINKS}', '{PROMO}')$q$,
   't51a STARTER logo, susunan, sembunyikan bagian');
 -- t51b: STARTER ditolak untuk fitur Pro.
 select pg_temp.expect_fail_code(format($q$update public.merchant_themes set %s
@@ -6017,3 +6017,161 @@ select pg_temp.expect_ok(
        now() + interval '12 days 30 minutes', 'Pelanggan 72', '+6281372000003', 'CONFIRMED',
        now() + interval '15 minutes', 0, 50000000, 'ON_SITE', 'ONLINE')$q$,
   't72c CONFIRMED harga di atas batas diterima');
+
+-- ===========================================================================
+-- 73. Tautan iklan, pixel, link-in-bio (20261125000200)
+-- ===========================================================================
+
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('73737373-0000-0000-0000-000000000001', 'funnel73-a@example.com', '{}'::jsonb),
+  ('73737373-0000-0000-0000-000000000002', 'funnel73-b@example.com', '{}'::jsonb);
+update public.merchants set username = 'funnel73a' where id = '73737373-0000-0000-0000-000000000001';
+update public.merchants set username = 'funnel73b' where id = '73737373-0000-0000-0000-000000000002';
+
+insert into public.ad_links (id, merchant_id, slug, name, channel, voucher_code) values
+  ('73737373-1111-0000-0000-000000000001', '73737373-0000-0000-0000-000000000001', 'bio-ig', 'Bio IG', 'IG_BIO', 'HEMAT'),
+  ('73737373-1111-0000-0000-000000000002', '73737373-0000-0000-0000-000000000001', 'lama', 'Lama', 'META_ADS', null);
+update public.ad_links set archived_at = now() where id = '73737373-1111-0000-0000-000000000002';
+
+-- anon tidak boleh membaca tabel mentah
+begin;
+set local role anon;
+select pg_temp.expect_fail_code($q$select * from public.ad_links$q$, '42501', 't73a anon select ad_links ditolak');
+select pg_temp.expect_fail_code($q$select * from public.merchant_tracking$q$, '42501', 't73b anon select merchant_tracking ditolak');
+rollback;
+
+-- CHECK ID pixel
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_tracking (merchant_id, meta_pixel_id) values ('73737373-0000-0000-0000-000000000001', '12345-678')$q$,
+  '23514', 't73c meta_pixel_id "12345-678" ditolak CHECK');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_tracking (merchant_id, ga4_measurement_id) values ('73737373-0000-0000-0000-000000000001', 'G-abc')$q$,
+  '23514', 't73d ga4 tidak cocok pola ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_tracking (merchant_id, tiktok_pixel_id) values ('73737373-0000-0000-0000-000000000001', 'abc')$q$,
+  '23514', 't73e tiktok tidak cocok pola ditolak');
+
+insert into public.merchant_tracking (merchant_id, meta_pixel_id, tiktok_pixel_id, ga4_measurement_id, meta_enabled, tiktok_enabled, ga4_enabled)
+values ('73737373-0000-0000-0000-000000000001', '123456789012345', 'ABCDEFGHIJ0123456789', 'G-ABC123XYZ', true, false, true);
+
+select case when (select meta_pixel_id from public.get_public_tracking('73737373-0000-0000-0000-000000000001')) = '123456789012345'
+             and (select tiktok_pixel_id from public.get_public_tracking('73737373-0000-0000-0000-000000000001')) is null
+             and (select ga4_measurement_id from public.get_public_tracking('73737373-0000-0000-0000-000000000001')) = 'G-ABC123XYZ'
+            then 'OK   t73f get_public_tracking hanya mengembalikan ID yang aktif'
+            else 'FAIL t73f get_public_tracking membocorkan ID yang dimatikan' end as t73f;
+
+begin;
+set local role anon;
+select case when (select count(*) from public.get_public_tracking('73737373-0000-0000-0000-000000000001')) = 1
+            then 'OK   t73g anon boleh memanggil get_public_tracking'
+            else 'FAIL t73g anon tidak bisa get_public_tracking' end as t73g;
+rollback;
+
+-- resolve_ad_link
+select case when (select count(*) from public.resolve_ad_link('funnel73a', 'bio-ig')) = 1
+             and (select voucher_code from public.resolve_ad_link('funnel73a', 'bio-ig')) = 'HEMAT'
+             and (select channel::text from public.resolve_ad_link('funnel73a', 'bio-ig')) = 'IG_BIO'
+            then 'OK   t73h resolve_ad_link mengembalikan tautan aktif'
+            else 'FAIL t73h resolve_ad_link tautan aktif' end as t73h;
+select case when (select count(*) from public.resolve_ad_link('funnel73a', 'lama')) = 0
+             and (select count(*) from public.resolve_ad_link('funnel73b', 'bio-ig')) = 0
+            then 'OK   t73i resolve_ad_link mengabaikan slug diarsipkan dan milik merchant lain'
+            else 'FAIL t73i resolve_ad_link mengembalikan slug diarsipkan/merchant lain' end as t73i;
+
+-- slug tidak valid
+select pg_temp.expect_fail_code(
+  $q$insert into public.ad_links (merchant_id, slug, name, channel) values ('73737373-0000-0000-0000-000000000001', 'Ab', 'x', 'OTHER')$q$,
+  '23514', 't73j slug tidak valid ditolak');
+
+-- merchant_links: URL dan batas 8
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_links (merchant_id, label, url) values ('73737373-0000-0000-0000-000000000001', 'x', 'javascript:alert(1)')$q$,
+  '23514', 't73k url javascript: ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_links (merchant_id, label, url) values ('73737373-0000-0000-0000-000000000001', 'x', 'http://a.b')$q$,
+  '23514', 't73l url http:// ditolak');
+
+insert into public.merchant_links (merchant_id, label, url, sort_order)
+select '73737373-0000-0000-0000-000000000001', 'Tautan ' || n, 'https://contoh.id/' || n, n from generate_series(1, 8) n;
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_links (merchant_id, label, url) values ('73737373-0000-0000-0000-000000000001', 'Ke-9', 'https://contoh.id/9')$q$,
+  'BK080', 't73m tautan ke-9 ditolak trigger');
+
+-- anon hanya melihat tautan is_visible
+update public.merchant_links set is_visible = false
+  where merchant_id = '73737373-0000-0000-0000-000000000001' and sort_order = 1;
+begin;
+set local role anon;
+select case when (select count(*) from public.merchant_links where merchant_id = '73737373-0000-0000-0000-000000000001') = 7
+            then 'OK   t73n anon hanya melihat tautan is_visible'
+            else 'FAIL t73n anon melihat tautan tersembunyi' end as t73n;
+select pg_temp.expect_fail_code($q$select is_visible from public.merchant_links$q$, '42501', 't73o anon tidak boleh membaca kolom is_visible');
+select pg_temp.expect_fail_code($q$select contact_instagram from public.merchant_settings$q$, '42501', 't73p anon tidak boleh membaca kontak mentah');
+rollback;
+
+-- tema: LINKS di depan, constraint empat nilai
+insert into public.merchant_themes (merchant_id) values ('73737373-0000-0000-0000-000000000001');
+select case when (select section_order from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001')
+                 = array['LINKS', 'PROMO', 'SERVICES', 'FAQ']
+             and (select show_social_icons from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001')
+            then 'OK   t73q section_order bawaan berisi LINKS di depan, show_social_icons true'
+            else 'FAIL t73q section_order bawaan' end as t73q;
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_themes set section_order = array['PROMO', 'SERVICES', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  '23514', 't73r section_order tanpa LINKS ditolak');
+select pg_temp.expect_ok(
+  $q$update public.merchant_themes set hidden_sections = array['LINKS', 'FAQ'] where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  't73s hidden_sections menerima LINKS');
+
+-- save_merchant_links
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '73737373-0000-0000-0000-000000000001';
+select public.save_merchant_links(
+  '[{"id":"73737373-2222-0000-0000-000000000001","label":"Menu","url":"https://menu.id","sort_order":0,"is_visible":true}]'::jsonb,
+  false, array['FAQ', 'LINKS', 'SERVICES', 'PROMO']);
+commit;
+select case when (select count(*) from public.merchant_links where merchant_id = '73737373-0000-0000-0000-000000000001') = 1
+             and (select show_social_icons from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001') = false
+             and (select section_order from public.merchant_themes where merchant_id = '73737373-0000-0000-0000-000000000001')
+                 = array['FAQ', 'LINKS', 'SERVICES', 'PROMO']
+            then 'OK   t73t save_merchant_links mengganti daftar (8 lama dihapus) dan tema'
+            else 'FAIL t73t save_merchant_links' end as t73t;
+
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '73737373-0000-0000-0000-000000000002';
+select pg_temp.expect_fail_code(
+  $q$select public.save_merchant_links('[{"id":"73737373-2222-0000-0000-000000000001","label":"Curi","url":"https://x.id","sort_order":0}]'::jsonb, true, array['LINKS','PROMO','SERVICES','FAQ'])$q$,
+  '42501', 't73u save_merchant_links menolak id milik merchant lain');
+select pg_temp.expect_fail_code(
+  $q$select public.save_merchant_links('[{"id":"73737373-2222-0000-0000-000000000009","label":"x","url":"http://x.id","sort_order":0}]'::jsonb, true, array['LINKS','PROMO','SERVICES','FAQ'])$q$,
+  'BK081', 't73v save_merchant_links menolak url http://');
+select pg_temp.expect_fail_code(
+  $q$select public.save_merchant_links('[]'::jsonb, true, array['LINKS','PROMO','FAQ'])$q$,
+  'BK081', 't73w save_merchant_links menolak section_order tidak lengkap');
+select pg_temp.expect_fail_code(
+  $q$select public.save_merchant_links((select jsonb_agg(jsonb_build_object('id', gen_random_uuid(), 'label', 'x', 'url', 'https://x.id', 'sort_order', n)) from generate_series(1, 9) n), true, array['LINKS','PROMO','SERVICES','FAQ'])$q$,
+  'BK081', 't73x save_merchant_links menolak 9 tautan');
+rollback;
+
+begin;
+set local role anon;
+select pg_temp.expect_fail_code(
+  $q$select public.save_merchant_links('[]'::jsonb, true, array['LINKS','PROMO','SERVICES','FAQ'])$q$,
+  '42501', 't73y anon tidak boleh menjalankan save_merchant_links');
+rollback;
+
+-- get_public_contacts menghormati contact_hidden
+insert into public.merchant_settings (merchant_id) values ('73737373-0000-0000-0000-000000000001') on conflict do nothing;
+update public.merchant_settings set contact_instagram = 'toko73', contact_tiktok = 'toko73', contact_phone = '+6281200000073',
+  contact_hidden = array['INSTAGRAM']::public.contact_channel[]
+  where merchant_id = '73737373-0000-0000-0000-000000000001';
+begin;
+set local role anon;
+select case when (select instagram from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
+             and (select tiktok from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = 'toko73'
+             and (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = '+6281200000073'
+            then 'OK   t73z Instagram tersembunyi mengembalikan null ke anon, yang lain tampil'
+            else 'FAIL t73z get_public_contacts membocorkan kontak tersembunyi' end as t73z;
+rollback;
