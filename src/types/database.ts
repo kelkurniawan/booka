@@ -54,6 +54,7 @@ export type BusinessCategory =
   | "OTOMOTIF"
   | "SERVIS"
   | "KONSULTASI"
+  | "OLAHRAGA"
   | "LAINNYA";
 
 export type TeamSize = "SENDIRI" | "KECIL_2_5" | "MENENGAH_6_15" | "BESAR_15_PLUS";

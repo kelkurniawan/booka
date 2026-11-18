@@ -6518,3 +6518,16 @@ select case when (select whatsapp from public.get_public_contacts('73737373-0000
             then 'OK   t77f WhatsApp tampil setelah opt-in'
             else 'FAIL t77f WhatsApp tidak tampil setelah opt-in' end as t77f;
 rollback;
+
+-- ===========================================================================
+-- 78. Booking lapangan (20261126000100 dan seterusnya)
+-- ===========================================================================
+-- 78.0 nilai enum OLAHRAGA
+select pg_temp.expect_ok(
+  $q$insert into public.merchant_profiles (merchant_id, business_category)
+     values ('73737373-0000-0000-0000-000000000001', 'OLAHRAGA')$q$,
+  't78.0a business_category OLAHRAGA diterima');
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_profiles set business_category = 'BOWLING'
+     where merchant_id = '73737373-0000-0000-0000-000000000001'$q$,
+  '22P02', 't78.0b nilai di luar enum ditolak');
