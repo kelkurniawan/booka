@@ -6427,3 +6427,32 @@ select pg_temp.expect_fail_code(
   $q$insert into public.merchant_links (merchant_id, label, url) values ('73737373-0000-0000-0000-000000000003', 'Ke-9', 'https://contoh.id/9')$q$,
   'BK080', 't73ze tautan ke-9 tetap ditolak');
 rollback;
+
+-- ===========================================================================
+-- 75. Batas laju kejadian dan VIEW sekali per sesi (20261125000400)
+-- ===========================================================================
+select case when public.check_event_rate_limit('hash75', '74747474-0000-0000-0000-000000000001') then 'OK   t75a kejadian pertama lolos'
+            else 'FAIL t75a kejadian pertama ditolak' end as t75a;
+do $$
+declare i int; r boolean;
+begin
+  for i in 1..125 loop
+    r := public.check_event_rate_limit('hash75b', '74747474-0000-0000-0000-000000000001');
+  end loop;
+  if r then raise exception 'FAIL t75b kejadian ke-125 per menit masih lolos'; end if;
+end $$;
+select 'OK   t75b kejadian di atas 120 per menit ditolak' as t75b;
+select case when not has_function_privilege('anon', 'public.check_event_rate_limit(text, uuid)', 'EXECUTE')
+             and not has_function_privilege('authenticated', 'public.check_event_rate_limit(text, uuid)', 'EXECUTE')
+             and has_function_privilege('service_role', 'public.check_event_rate_limit(text, uuid)', 'EXECUTE')
+            then 'OK   t75c rate limit kejadian hanya service_role'
+            else 'FAIL t75c hak eksekusi rate limit kejadian salah' end as t75c;
+insert into public.funnel_events (merchant_id, session_id, kind)
+  values ('74747474-0000-0000-0000-000000000001', '75757575-0000-0000-0000-000000000001', 'VIEW');
+select pg_temp.expect_fail_code(
+  $q$insert into public.funnel_events (merchant_id, session_id, kind) values ('74747474-0000-0000-0000-000000000001', '75757575-0000-0000-0000-000000000001', 'VIEW')$q$,
+  '23505', 't75d VIEW kedua satu sesi ditolak');
+select case when (select count(*) from public.funnel_events where session_id = '75757575-0000-0000-0000-000000000001' and kind = 'SERVICE') = 0
+             and public.check_event_rate_limit('hash75e', '74747474-0000-0000-0000-000000000001')
+            then 'OK   t75e jenis lain tidak terkena batas VIEW'
+            else 'FAIL t75e' end as t75e;

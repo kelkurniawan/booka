@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 
   const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp, voucherCode } =
     parsed.data;
-  const { partySize, areaId, tableId, customerNote } = parsed.data;
+  const { partySize, areaId, tableId, customerNote, sessionId, attribution } = parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
@@ -149,6 +149,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Gagal memuat data pembayaran merchant" }, { status: 500 });
   }
 
+  // Tautan iklan diurai di server, difilter merchant; tautan terarsip tetap mengatribusi.
+  let adLinkId: string | null = null;
+  if (attribution?.adLinkSlug) {
+    const { data: adLink } = await supabase
+      .from("ad_links")
+      .select("id")
+      .eq("merchant_id", merchant.id)
+      .eq("slug", attribution.adLinkSlug)
+      .maybeSingle();
+    adLinkId = adLink?.id ?? null;
+  }
+
   const { data: bookingRows, error: bookingError } = await supabase.rpc("create_booking", {
     p_merchant_id: merchant.id,
     p_service_id: serviceId,
@@ -162,6 +174,12 @@ export async function POST(request: NextRequest) {
     p_area_id: areaId,
     p_table_id: tableId,
     p_customer_note: customerNote,
+    p_session_id: sessionId,
+    p_ad_link_id: adLinkId,
+    p_utm_source: attribution?.utmSource ?? null,
+    p_utm_medium: attribution?.utmMedium ?? null,
+    p_utm_campaign: attribution?.utmCampaign ?? null,
+    p_referrer_host: attribution?.referrerHost ?? null,
   });
 
   if (bookingError) {

@@ -110,16 +110,22 @@ function makeDeps(params: {
   // gampang salah kalau null dianggap "tidak diisi" oleh `??`.
   credential: MerchantCredential | null;
   verifyResult?: boolean;
+  paidEventError?: unknown;
 }) {
   const { admin, updateCalls } = createFakeAdmin(params.booking);
   const paidNotifications: string[] = [];
+  const paidEvents: string[] = [];
   const deps: WebhookDeps = {
     createAdminClient: () => admin as unknown as ReturnType<WebhookDeps["createAdminClient"]>,
     loadMerchantCredential: async () => params.credential,
     getAdapter: () => makeAdapter(params.verifyResult ?? true),
     onPaid: (bookingId) => paidNotifications.push(bookingId),
+    recordPaidEvent: async (bookingId) => {
+      paidEvents.push(bookingId);
+      return params.paidEventError ?? null;
+    },
   };
-  return { deps, updateCalls, paidNotifications };
+  return { deps, updateCalls, paidNotifications, paidEvents };
 }
 
 const midtransSettlementBody = {
@@ -217,4 +223,15 @@ test("handleWebhook: kredensial merchant tidak ditemukan -> 401, nol UPDATE (sig
 
   assert.equal(response.status, 401);
   assert.equal(updateCalls.length, 0);
+});
+
+test("handleWebhook: PENDING -> PAID mencatat kejadian PAID; kegagalannya tidak menggagalkan webhook", async () => {
+  const { deps, paidEvents } = makeDeps({
+    booking: { id: "booking-1", merchant_id: "merchant-1", status: "PENDING" },
+    credential: VALID_CREDENTIAL,
+    paidEventError: { code: "XX000" },
+  });
+  const res = await handleWebhook("MIDTRANS", midtransSettlementBody, {}, deps);
+  assert.equal(res.status, 200);
+  assert.deepEqual(paidEvents, ["booking-1"]);
 });

@@ -59,6 +59,8 @@ export type WebhookDeps = {
    * lebih dari sekali untuk booking yang sama.
    */
   onPaid: (bookingId: string) => void;
+  /** Menulis kejadian PAID funnel (idempoten). Mengembalikan error bila gagal; tidak pernah melempar. */
+  recordPaidEvent: (bookingId: string) => Promise<unknown>;
 };
 
 const defaultDeps: WebhookDeps = {
@@ -66,6 +68,10 @@ const defaultDeps: WebhookDeps = {
   loadMerchantCredential,
   getAdapter,
   onPaid: (bookingId) => after(() => notifyBookingPaid(bookingId)),
+  recordPaidEvent: async (bookingId) => {
+    const { error } = await createAdminClient().rpc("record_paid_event", { p_booking_id: bookingId });
+    return error;
+  },
 };
 
 /**
@@ -201,6 +207,16 @@ export async function handleWebhook(
   // `after()` memberi hal yang sama tanpa infrastruktur tambahan: email/WA
   // dikirim setelah respons terkirim (lihat docs/DECISIONS.md #27).
   deps.onPaid(booking.id);
+
+  // Analitik tidak boleh menggagalkan webhook: kegagalan dicatat saja.
+  try {
+    const paidEventError = await deps.recordPaidEvent(booking.id);
+    if (paidEventError) {
+      console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId: booking.id, error: paidEventError });
+    }
+  } catch (e) {
+    console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId: booking.id, error: e });
+  }
   return NextResponse.json({ ok: true });
 }
 

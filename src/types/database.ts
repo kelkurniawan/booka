@@ -1185,6 +1185,11 @@ export type Database = {
         Args: { p_ip_hash: string; p_merchant_id: string };
         Returns: boolean;
       };
+      /** 120 kejadian funnel per (hash IP, merchant) per menit (service_role). */
+      check_event_rate_limit: {
+        Args: { p_ip_hash: string; p_merchant_id: string };
+        Returns: boolean;
+      };
       prune_push_subscriptions: { Args: Record<string, never>; Returns: number };
       bookings_in_tab: {
         Args: { p_tab: "ACTION" | "UPCOMING" | "HISTORY" | "CANCELLED" };

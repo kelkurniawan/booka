@@ -69,5 +69,12 @@ export async function GET(request: NextRequest) {
     console.info("[cron/cancel-unpaid] booking kedaluwarsa dibatalkan", { cancelledCount });
   }
 
+  // Cron ini jalan sekali sehari, jadi pemangkasan kejadian funnel cukup di sini tiap run.
+  // Gagal memangkas tidak menggagalkan pembatalan di atas.
+  const { error: pruneError } = await supabase.rpc("prune_funnel_events");
+  if (pruneError) {
+    console.error("[cron/cancel-unpaid] gagal memangkas funnel_events", { error: pruneError });
+  }
+
   return NextResponse.json({ cancelledCount });
 }

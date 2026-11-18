@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { normalizeVoucherCode, VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
+import { eventBodySchema } from "./funnel";
 import { usernameSchema, whatsappSchema } from "./merchant";
 
 /**
@@ -96,6 +97,9 @@ export const createBookingRequestSchema = z.object({
     .transform((v) => v || null)
     .nullable()
     .default(null),
+  // Atribusi funnel, opsional: klien lama tanpa dua field ini tetap valid.
+  sessionId: z.uuid().nullable().default(null),
+  attribution: eventBodySchema.shape.attribution.nullable().default(null),
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;
