@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+  BUSINESS_CATEGORY_VALUES,
   businessStepSchema,
   completeOnboardingSchema,
   hoursStepSchema,
@@ -214,5 +217,24 @@ describe("optionalProfileSchema", () => {
     assert.equal(hasil.success, true);
     assert.equal(hasil.data?.goals, null);
     assert.equal(hasil.data?.current_channels, null);
+  });
+});
+
+describe("BUSINESS_CATEGORY_VALUES", () => {
+  it("sama persis dengan enum business_category di migration", () => {
+    const dir = join(process.cwd(), "supabase", "migrations");
+    const sql = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .sort()
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .join("\n");
+    const quoted = (list: string) => [...list.matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]);
+    const created = sql.match(/create type public\.business_category as enum \(([^)]*)\)/);
+    assert.ok(created, "create type business_category tidak ditemukan");
+    const db = quoted(created[1]);
+    for (const m of sql.matchAll(/alter type public\.business_category add value(?: if not exists)? '([A-Z_]+)'/g)) {
+      db.push(m[1]);
+    }
+    assert.deepEqual([...BUSINESS_CATEGORY_VALUES].sort(), [...db].sort());
   });
 });

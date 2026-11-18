@@ -20,7 +20,45 @@ describe("answersToPayload", () => {
       business_type_slug: "barbershop",
       service: { name: "Potong rambut", duration_minutes: 45, price: "50000" },
       hours: { days: [1, 2, 3, 4, 5], start_time: "09:00", end_time: "17:00" },
+      court: null,
     });
+  });
+
+  it("jenis padel menghasilkan payload sewa; salon tanpa court", () => {
+    const padel: WizardAnswers = {
+      ...LENGKAP,
+      category: "OLAHRAGA",
+      typeSlug: "padel",
+      service: {
+        name: "Sewa lapangan Padel",
+        durationMinutes: 60,
+        price: "150000",
+        court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+      },
+    };
+    assert.deepEqual(answersToPayload(padel).court, { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 });
+    assert.equal(answersToPayload(LENGKAP).court, null);
+    const dasar = { full_name: "Padel Kita", username: "padel-kita", whatsapp_number: "081234567890" };
+    assert.equal(completeOnboardingSchema.safeParse({ ...dasar, ...answersToPayload(padel) }).success, true);
+  });
+
+  it("court ditolak untuk jenis tanpa sport, minimum tak sama dengan durasi, atau angka tak valid", () => {
+    const dasar = { full_name: "Padel Kita", username: "padel-kita", whatsapp_number: "081234567890" };
+    const court = { unitMinutes: 30 as const, minMinutes: 60, maxMinutes: 120 };
+    const salon = { ...answersToPayload(LENGKAP), court };
+    const padel = answersToPayload({
+      ...LENGKAP,
+      category: "OLAHRAGA",
+      typeSlug: "padel",
+      service: { name: "Sewa", durationMinutes: 60, price: "150000", court },
+    });
+    const gagal = (v: unknown) => completeOnboardingSchema.safeParse({ ...dasar, ...(v as object) });
+    assert.equal(gagal(salon).success, false);
+    assert.equal(gagal({ ...padel, court: { ...court, minMinutes: 90 } }).success, false);
+    assert.equal(gagal({ ...padel, court: { ...court, unitMinutes: 45 } }).success, false);
+    assert.equal(gagal({ ...padel, court: { ...court, maxMinutes: 30 } }).success, false);
+    assert.equal(gagal({ ...padel, court: { ...court, maxMinutes: 600 } }).success, false);
+    assert.equal(gagal({ ...padel, court: { ...court, minMinutes: 45 } }).success, false);
   });
 
   it("mempertahankan harga sebagai string, bukan angka", () => {
@@ -59,6 +97,7 @@ describe("answersToPayload", () => {
       business_type_slug: null,
       service: null,
       hours: null,
+      court: null,
     });
   });
 });

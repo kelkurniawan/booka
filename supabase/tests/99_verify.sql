@@ -1709,12 +1709,12 @@ select
 -- 27b. Hak EXECUTE complete_onboarding
 select
   case when has_function_privilege('anon',
-         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb, public.court_sport, smallint, integer, smallint)',
          'EXECUTE')
        then 'FAIL t27b anon bisa EXECUTE complete_onboarding'
        else 'OK   t27b anon tidak bisa EXECUTE complete_onboarding' end as t27b,
   case when has_function_privilege('authenticated',
-         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb)',
+         'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb, public.court_sport, smallint, integer, smallint)',
          'EXECUTE')
        then 'OK   t27b authenticated bisa EXECUTE complete_onboarding'
        else 'FAIL t27b authenticated tidak bisa EXECUTE complete_onboarding' end as t27b2;
@@ -7363,3 +7363,66 @@ select pg_temp.act34('t81.8e simpan ulang tanpa p_activate tidak menayangkan lay
   $q$select public.save_court_service('81818181-5e00-0000-0000-000000000004', true, 30::smallint, 120::smallint, 60,
     array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb)$q$);
 select pg_temp.is79('t81.8f tetap nonaktif', (select is_active::text from public.services where id = '81818181-5e00-0000-0000-000000000004'), 'false');
+
+-- ===========================================================================
+-- 82. complete_onboarding kategori Olahraga (20261126001000)
+-- ===========================================================================
+insert into auth.users (id, email) values
+  ('82828282-0000-0000-0000-000000000001', 'olahraga82a@example.com'),
+  ('82828282-0000-0000-0000-000000000002', 'olahraga82b@example.com'),
+  ('82828282-0000-0000-0000-000000000003', 'olahraga82c@example.com');
+
+-- layanan sewa : unit : min : max : jumlah lapangan : jumlah tautan : aktif
+create or replace function pg_temp.s82(p_sub text) returns text language sql as $$
+  select coalesce(
+    (select s.court_unit_minutes || ':' || s.duration_minutes || ':' || s.court_max_minutes || ':'
+       || (select count(*) from public.courts c where c.merchant_id = s.merchant_id) || ':'
+       || (select count(*) from public.service_courts sc where sc.service_id = s.id) || ':' || s.is_active
+       from public.services s where s.merchant_id = p_sub::uuid), 'tidak ada layanan');
+$$;
+
+select pg_temp.act34('t82.1 sukses: layanan sewa, dua lapangan, dua tautan', '82828282-0000-0000-0000-000000000001',
+  $q$select public.complete_onboarding('Padel 82', 'padel-82', '+6281200008201', 'OLAHRAGA', 'padel',
+       'Sewa lapangan Padel', 60, 150000, '[{"day_of_week":1,"start_time":"08:00","end_time":"22:00"}]'::jsonb,
+       'PADEL', 30::smallint, 60, 120::smallint)$q$);
+select pg_temp.is79('t82.1b isi layanan dan lapangan', pg_temp.s82('82828282-0000-0000-0000-000000000001'), '30:60:120:2:2:true');
+select pg_temp.is79('t82.1c sport dan environment lapangan',
+  (select string_agg(sport || '/' || environment, ',' order by name) from public.courts where merchant_id = '82828282-0000-0000-0000-000000000001'),
+  'PADEL/INDOOR,PADEL/INDOOR');
+
+-- gagal di tahap akhir (hari 9): layanan, lapangan, dan identitas ikut batal
+select pg_temp.act34('t82.2 jam kerja salah: seluruh onboarding batal', '82828282-0000-0000-0000-000000000002',
+  $q$select public.complete_onboarding('Padel 82b', 'padel-82b', '+6281200008202', 'OLAHRAGA', 'padel',
+       'Sewa lapangan Padel', 60, 150000, '[{"day_of_week":9,"start_time":"08:00","end_time":"22:00"}]'::jsonb,
+       'PADEL', 30::smallint, 60, 120::smallint)$q$, '23514');
+select pg_temp.is79('t82.2b tanpa layanan dan tanpa lapangan',
+  (select (select count(*) from public.services where merchant_id = '82828282-0000-0000-0000-000000000002')
+       || ':' || (select count(*) from public.courts where merchant_id = '82828282-0000-0000-0000-000000000002')
+       || ':' || coalesce((select username from public.merchants where id = '82828282-0000-0000-0000-000000000002'), 'null')), '0:0:null');
+
+-- pengaturan sewa tidak valid (min 45 bukan kelipatan unit 30): 22023 dan tidak ada sisa
+select pg_temp.act34('t82.3 durasi minimum bukan kelipatan unit', '82828282-0000-0000-0000-000000000003',
+  $q$select public.complete_onboarding('Padel 82c', 'padel-82c', '+6281200008203', 'OLAHRAGA', 'padel',
+       'Sewa lapangan Padel', 45, 150000, '[{"day_of_week":1,"start_time":"08:00","end_time":"22:00"}]'::jsonb,
+       'PADEL', 30::smallint, 45, 120::smallint)$q$, '22023');
+select pg_temp.is79('t82.3b tanpa layanan dan tanpa lapangan',
+  (select (select count(*) from public.services where merchant_id = '82828282-0000-0000-0000-000000000003')
+       || ':' || (select count(*) from public.courts where merchant_id = '82828282-0000-0000-0000-000000000003')), '0:0');
+
+-- sport terisi tapi unit kosong: 22023
+select pg_temp.act34('t82.4 sewa tidak lengkap', '82828282-0000-0000-0000-000000000003',
+  $q$select public.complete_onboarding('Padel 82c', 'padel-82c', '+6281200008203', 'OLAHRAGA', 'padel',
+       'Sewa lapangan Padel', 60, 150000, '[{"day_of_week":1,"start_time":"08:00","end_time":"22:00"}]'::jsonb,
+       'PADEL', null, 60, 120::smallint)$q$, '22023');
+
+-- layanan biasa (9 argumen lama) tidak membuat lapangan
+select pg_temp.act34('t82.5 salon 9 argumen: tanpa lapangan', '82828282-0000-0000-0000-000000000003',
+  $q$select public.complete_onboarding('Salon 82', 'salon-82', '+6281200008203', 'KECANTIKAN', 'barbershop',
+       'Potong rambut', 45, 50000, '[{"day_of_week":1,"start_time":"09:00","end_time":"17:00"}]'::jsonb)$q$);
+select pg_temp.is79('t82.5b layanan biasa, nol lapangan',
+  (select (select count(*) from public.services where merchant_id = '82828282-0000-0000-0000-000000000003' and court_unit_minutes is null)
+       || ':' || (select count(*) from public.courts where merchant_id = '82828282-0000-0000-0000-000000000003')), '1:0');
+
+select case when has_function_privilege('anon',
+  'public.complete_onboarding(text, text, text, public.business_category, text, text, integer, numeric, jsonb, public.court_sport, smallint, integer, smallint)', 'EXECUTE')
+  then 'FAIL t82.6 anon bisa EXECUTE' else 'OK   t82.6 anon tidak bisa EXECUTE' end;

@@ -1741,6 +1741,11 @@ export type Database = {
             start_time: string;
             end_time: string;
           }[];
+          // Sewa lapangan: semua null = layanan biasa (migration 20261126001000).
+          p_court_sport?: CourtSport | null;
+          p_court_unit?: number | null;
+          p_court_min?: number | null;
+          p_court_max?: number | null;
         };
         Returns: undefined;
       };

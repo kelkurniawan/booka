@@ -12,7 +12,7 @@ import {
   optionalProfileSchema,
 } from "@/lib/validations/onboarding";
 
-import { hoursToRows } from "./wizard-state";
+import { saveOnboarding } from "./save-onboarding";
 
 export type OnboardingState = {
   // "missing_profile" -- lihat komentar di saveOptionalProfile/
@@ -117,6 +117,9 @@ export async function completeOnboarding(
         key === "hours"
       ) {
         fieldErrors[key] ??= issue.message;
+      } else if (key === "court") {
+        // Alert "Layanan perlu diperbaiki" di form hanya membaca `service`.
+        fieldErrors.service ??= issue.message;
       }
     }
     // Zod bisa gagal di path yang tidak punya field renderable di form ini
@@ -140,50 +143,8 @@ export async function completeOnboarding(
     redirect(ROUTES.login);
   }
 
-  const { error } = await supabase.rpc("complete_onboarding", {
-    p_full_name: parsed.data.full_name,
-    p_username: parsed.data.username,
-    p_whatsapp_number: parsed.data.whatsapp_number,
-    p_business_category: parsed.data.business_category,
-    p_business_type_slug: parsed.data.business_type_slug,
-    p_service_name: parsed.data.service.name,
-    p_service_duration_minutes: parsed.data.service.duration_minutes,
-    p_service_price: parsed.data.service.price,
-    p_availability: hoursToRows({
-      days: parsed.data.hours.days,
-      startTime: parsed.data.hours.start_time,
-      endTime: parsed.data.hours.end_time,
-    }),
-  });
-
-  if (error) {
-    // 23505 unique_violation -- dua merchant mengirim username sama bersamaan;
-    // validasi optimistis di form bisa kalah cepat dari constraint.
-    if (error.code === "23505") {
-      return {
-        status: "error",
-        message: "Username baru saja diambil orang lain. Coba yang lain.",
-        fieldErrors: { username: "Username sudah dipakai" },
-      };
-    }
-    // 23514 check_violation dipakai trigger reject_reserved_username.
-    if (error.code === "23514") {
-      return {
-        status: "error",
-        message: "Username tidak dapat digunakan.",
-        fieldErrors: { username: "Username ini dipakai sistem" },
-      };
-    }
-    // 23P01 exclusion_violation -- jam kerja tumpang tindih.
-    if (error.code === "23P01") {
-      return {
-        status: "error",
-        message: "Jam kerja yang dipilih tumpang tindih. Periksa kembali.",
-        fieldErrors: { hours: "Jam kerja tumpang tindih" },
-      };
-    }
-    return { status: "error", message: "Gagal menyimpan data. Coba lagi." };
-  }
+  const failed = await saveOnboarding(supabase, parsed.data);
+  if (failed) return failed;
 
   // Sengaja TIDAK redirect ke dashboard di sini -- wizard menampilkan layar
   // sukses dulu, baru merchant lanjut sendiri (atau ke blok opsional).
