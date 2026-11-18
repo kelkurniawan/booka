@@ -1113,7 +1113,7 @@ export type Database = {
           ga4_measurement_id: string | null;
         }[];
       };
-      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = contact_phone. */
+      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = merchants.whatsapp_number; contact_phone tidak dikembalikan. */
       get_public_contacts: {
         Args: { p_merchant_id: string };
         Returns: { instagram: string | null; tiktok: string | null; whatsapp: string | null }[];

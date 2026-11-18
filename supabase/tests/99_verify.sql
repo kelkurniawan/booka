@@ -6164,7 +6164,8 @@ rollback;
 
 -- get_public_contacts menghormati contact_hidden
 insert into public.merchant_settings (merchant_id) values ('73737373-0000-0000-0000-000000000001') on conflict do nothing;
-update public.merchant_settings set contact_instagram = 'toko73', contact_tiktok = 'toko73', contact_phone = '+6281200000073',
+update public.merchants set whatsapp_number = '+6281200000073' where id = '73737373-0000-0000-0000-000000000001';
+update public.merchant_settings set contact_instagram = 'toko73', contact_tiktok = 'toko73', contact_phone = '+6281200009999',
   contact_hidden = array['INSTAGRAM']::public.contact_channel[]
   where merchant_id = '73737373-0000-0000-0000-000000000001';
 begin;
@@ -6398,3 +6399,31 @@ select case when not exists (select 1 from public.funnel_events where session_id
 select case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text)') is null
             then 'OK   t74t signature tiga belas argumen sudah dihapus'
             else 'FAIL t74t signature tiga belas argumen masih ada' end as t74t;
+
+-- t73za: contact_phone tidak pernah keluar; WhatsApp tersembunyi null
+select case when not exists (select 1 from public.get_public_contacts('73737373-0000-0000-0000-000000000001') c
+                             where c.whatsapp = '+6281200009999')
+            then 'OK   t73za contact_phone tidak dikembalikan sebagai WhatsApp'
+            else 'FAIL t73za contact_phone bocor' end as t73za;
+update public.merchant_settings set contact_hidden = array['WHATSAPP']::public.contact_channel[]
+  where merchant_id = '73737373-0000-0000-0000-000000000001';
+select case when (select whatsapp from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) is null
+             and (select instagram from public.get_public_contacts('73737373-0000-0000-0000-000000000001')) = 'toko73'
+            then 'OK   t73zb WhatsApp tersembunyi null'
+            else 'FAIL t73zb WhatsApp tersembunyi bocor' end as t73zb;
+
+-- t73zc: simpan 8 tautan, sunting di tempat berhasil, insert ke-9 tetap ditolak
+insert into auth.users (id, email, raw_user_meta_data) values ('73737373-0000-0000-0000-000000000003', 'funnel73-c@example.com', '{}'::jsonb);
+update public.merchants set username = 'funnel73c' where id = '73737373-0000-0000-0000-000000000003';
+create or replace function pg_temp.links73(p_suffix text) returns jsonb language sql as $$
+  select jsonb_agg(jsonb_build_object('id', '73737373-3333-0000-0000-00000000000' || n, 'label', 'Tautan ' || p_suffix || n,
+    'url', 'https://contoh.id/' || n, 'sort_order', n)) from generate_series(1, 8) n $$;
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '73737373-0000-0000-0000-000000000003';
+select pg_temp.expect_ok($q$select public.save_merchant_links(pg_temp.links73('a'), true, array['LINKS','PROMO','SERVICES','FAQ'])$q$, 't73zc simpan 8 tautan');
+select pg_temp.expect_ok($q$select public.save_merchant_links(pg_temp.links73('b'), true, array['LINKS','PROMO','SERVICES','FAQ'])$q$, 't73zd simpan ulang 8 tautan dengan label disunting');
+select pg_temp.expect_fail_code(
+  $q$insert into public.merchant_links (merchant_id, label, url) values ('73737373-0000-0000-0000-000000000003', 'Ke-9', 'https://contoh.id/9')$q$,
+  'BK080', 't73ze tautan ke-9 tetap ditolak');
+rollback;

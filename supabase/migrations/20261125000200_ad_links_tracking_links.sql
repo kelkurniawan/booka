@@ -149,6 +149,10 @@ set search_path = ''
 as $$
 begin
   perform pg_advisory_xact_lock(hashtext('links:' || new.merchant_id::text));
+  -- Upsert menyunting baris yang sudah ada: BEFORE INSERT tetap jalan, jangan dihitung sebagai tautan baru.
+  if exists (select 1 from public.merchant_links l where l.id = new.id) then
+    return new;
+  end if;
   if (select count(*) from public.merchant_links l where l.merchant_id = new.merchant_id) >= 8 then
     raise exception 'Maksimal 8 tautan' using errcode = 'BK080';
   end if;
@@ -186,7 +190,8 @@ create policy "merchant_links_delete_own" on public.merchant_links for delete to
 
 -- Ikon sosial di link-in-bio: kontak dibaca anon hanya lewat fungsi ini, tanpa grant
 -- kolom merchant_settings, supaya kontak yang disembunyikan (contact_hidden) tidak bocor.
--- WhatsApp memakai contact_phone.
+-- WhatsApp = merchants.whatsapp_number (sama dengan contactLinks di src/lib/booking/contact.ts);
+-- contact_phone adalah kanal PHONE terpisah dan sengaja tidak dikembalikan.
 create function public.get_public_contacts(p_merchant_id uuid)
 returns table (instagram text, tiktok text, whatsapp text)
 language sql
@@ -195,12 +200,12 @@ security definer
 set search_path = ''
 as $$
   select
-    case when not ('INSTAGRAM' = any (s.contact_hidden)) then s.contact_instagram end,
-    case when not ('TIKTOK' = any (s.contact_hidden)) then s.contact_tiktok end,
-    case when not ('WHATSAPP' = any (s.contact_hidden)) then s.contact_phone end
-  from public.merchant_settings s
-  join public.merchants m on m.id = s.merchant_id
-  where s.merchant_id = p_merchant_id and m.username is not null;
+    case when not ('INSTAGRAM' = any (coalesce(s.contact_hidden, '{}'))) then s.contact_instagram end,
+    case when not ('TIKTOK' = any (coalesce(s.contact_hidden, '{}'))) then s.contact_tiktok end,
+    case when not ('WHATSAPP' = any (coalesce(s.contact_hidden, '{}'))) then m.whatsapp_number end
+  from public.merchants m
+  left join public.merchant_settings s on s.merchant_id = m.id
+  where m.id = p_merchant_id and m.username is not null;
 $$;
 revoke execute on function public.get_public_contacts(uuid) from public, anon, authenticated;
 grant execute on function public.get_public_contacts(uuid) to anon, authenticated;
