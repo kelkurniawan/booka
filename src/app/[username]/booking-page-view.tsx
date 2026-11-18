@@ -31,6 +31,7 @@ import type {
   ServiceMedia,
 } from "@/types/database";
 
+import { NO_COURT_VENUE, type CourtVenueData } from "@/lib/booking/court-ui";
 import { BookingFlow, type RestaurantInfo } from "./booking-flow";
 import { NO_ENTRY, type Entry } from "./entry";
 import { PublicLinks } from "./public-links";
@@ -48,6 +49,8 @@ export type BookingPageViewProps = {
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
   restaurant: RestaurantInfo;
+  /** Lapangan, denah, dan aturan jam ramai; kosong bila tidak ada layanan sewa. */
+  courtVenue?: CourtVenueData;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
   links?: Pick<MerchantLink, "id" | "label" | "url">[];
@@ -71,6 +74,7 @@ export function BookingPageView({
   faqs,
   paymentSettings,
   restaurant,
+  courtVenue = NO_COURT_VENUE,
   banners,
   vouchers,
   links = [],
@@ -104,6 +108,7 @@ export function BookingPageView({
             availability={availability}
             paymentSettings={paymentSettings}
             restaurant={restaurant}
+            courtVenue={courtVenue}
             banners={banners}
             vouchers={vouchers}
             entry={entry}

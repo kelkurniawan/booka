@@ -62,6 +62,9 @@ export const checkoutSchema = z.object({
   partySize: z.number().int().min(1).max(200).nullable().default(null),
   areaId: z.uuid().nullable().default(null),
   tableId: z.uuid().nullable().default(null),
+  // Sewa lapangan: null courtId = "Mana saja"; keduanya null untuk layanan lain.
+  courtId: z.uuid("Lapangan tidak valid").nullable().default(null),
+  durationMinutes: z.number().int("Lama main tidak valid").min(30, "Lama main tidak valid").max(480, "Lama main tidak valid").nullable().default(null),
   customerNote: z
     .string()
     .trim()

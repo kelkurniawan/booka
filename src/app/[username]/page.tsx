@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ROUTES } from "@/lib/routes";
+import { isCourtService, loadCourtVenue } from "@/lib/booking/court-loader";
+import type { CourtVenueData } from "@/lib/booking/court-ui";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { DEFAULT_PAYMENT_SETTINGS, type PaymentSettings } from "@/lib/booking/payment-mode";
@@ -166,6 +168,15 @@ const getMerchantPageData = cache(async (username: string) => {
     throw new Error("Gagal memuat staf merchant.");
   }
 
+  // Lapangan hanya dimuat bila ada layanan sewa; merchant lain tidak memicu RPC.
+  let courtVenue: CourtVenueData;
+  try {
+    courtVenue = await loadCourtVenue(supabase, onboardedMerchant.id, services.filter(isCourtService).map((s) => s.id));
+  } catch (error) {
+    console.error("[booking-page] gagal memuat lapangan", { username, error });
+    throw new Error("Gagal memuat lapangan merchant.");
+  }
+
   // Tanpa baris atau gagal baca: pakai bawaan. Label hanya petunjuk; server
   // yang menentukan hasil akhir saat booking dibuat.
   const settings = !settingsResult.error ? settingsResult.data : null;
@@ -237,6 +248,7 @@ const getMerchantPageData = cache(async (username: string) => {
     vouchers,
     paymentSettings,
     restaurant,
+    courtVenue,
     merchant: onboardedMerchant,
     staff,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
@@ -302,7 +314,7 @@ export default async function MerchantPublicPage({
     notFound();
   }
 
-  const { tracking, merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers, links, contacts } =
+  const { tracking, merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, courtVenue, banners, vouchers, links, contacts } =
     data;
 
   // Tautan iklan (?t=) dan kode manual (?kode=); kode di URL menang atas voucher tautan.
@@ -330,6 +342,7 @@ export default async function MerchantPublicPage({
       faqs={faqs}
       paymentSettings={paymentSettings}
       restaurant={restaurant}
+      courtVenue={courtVenue}
       banners={banners}
       vouchers={vouchers}
       links={links}

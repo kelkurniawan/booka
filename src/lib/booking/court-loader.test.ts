@@ -7,6 +7,7 @@ import {
   courtSlotsResponse,
   isCourtService,
   loadCourtData,
+  loadCourtVenue,
   type CourtData,
   type CourtServiceInfo,
 } from "./court-loader";
@@ -128,4 +129,36 @@ test("loadCourtData: error RPC dilempar", async () => {
   const rpc = async (name: string) =>
     name === "get_court_availability" ? { error: { code: "PGRST202" }, data: null } : { error: null, data: [] };
   await assert.rejects(loadCourtData({ rpc } as never, "m1", "s1", MON));
+});
+
+test("loadCourtVenue: profil, denah, dan aturan jam ramai per layanan sewa", async () => {
+  const rpc = async (name: string, args: Record<string, unknown>) => {
+    if (name === "get_court_profiles")
+      return { error: null, data: [{ courts: [{ id: "c1" }], areas: [{ id: "a1" }], markers: [{ id: "k1" }] }] };
+    assert.equal(name, "get_court_price_rules");
+    return {
+      error: null,
+      data: [{ day_of_week: 1, start_time: "17:00:00", end_time: "22:00:00", price_per_hour: args.p_service_id === "s1" ? "250000.00" : "99000" }],
+    };
+  };
+  const out = await loadCourtVenue({ rpc } as never, "m1", ["s1", "s2"]);
+  assert.equal(out.courts.length, 1);
+  assert.equal(out.areas.length, 1);
+  assert.equal(out.markers.length, 1);
+  assert.deepEqual(out.rulesByService.s1, [{ dayOfWeek: 1, start: "17:00", end: "22:00", pricePerHour: 250000 }]);
+  assert.equal(out.rulesByService.s2[0].pricePerHour, 99000);
+});
+
+test("loadCourtVenue: tanpa layanan sewa tidak memanggil RPC apa pun", async () => {
+  const rpc = async () => {
+    throw new Error("tidak boleh dipanggil");
+  };
+  const out = await loadCourtVenue({ rpc } as never, "m1", []);
+  assert.deepEqual(out, { courts: [], areas: [], markers: [], rulesByService: {} });
+});
+
+test("loadCourtVenue: error RPC dilempar", async () => {
+  const rpc = async (name: string) =>
+    name === "get_court_price_rules" ? { error: { code: "PGRST202" }, data: null } : { error: null, data: [] };
+  await assert.rejects(loadCourtVenue({ rpc } as never, "m1", ["s1"]));
 });

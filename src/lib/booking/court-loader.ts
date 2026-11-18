@@ -10,6 +10,7 @@ import {
   durationOptions,
   type CourtPriceRule,
 } from "./court";
+import type { CourtVenueData } from "./court-ui";
 import type { AvailabilityWindow } from "./slots";
 
 export type CourtServiceInfo = {
@@ -70,17 +71,43 @@ export async function loadCourtData(
     courts: (profiles.data?.[0]?.courts ?? [])
       .filter((c) => c.service_ids.includes(serviceId))
       .map((c) => ({ id: c.id, name: c.name, sortOrder: c.sort_order })),
-    rules: (rules.data ?? []).map((r) => ({
-      dayOfWeek: r.day_of_week as DayOfWeek,
-      start: r.start_time.slice(0, 5),
-      end: r.end_time.slice(0, 5),
-      pricePerHour: Number(r.price_per_hour),
-    })),
+    rules: (rules.data ?? []).map(mapRule),
     booked: (busy.data ?? []).map((b) => ({
       courtId: b.court_id,
       start_datetime: b.start_datetime,
       end_datetime: b.end_datetime,
     })),
+  };
+}
+
+const mapRule = (r: { day_of_week: number; start_time: string; end_time: string; price_per_hour: number }): CourtPriceRule => ({
+  dayOfWeek: r.day_of_week as DayOfWeek,
+  start: r.start_time.slice(0, 5),
+  end: r.end_time.slice(0, 5),
+  pricePerHour: Number(r.price_per_hour),
+});
+
+/**
+ * Data lapangan untuk render halaman publik. Tanpa layanan sewa tidak ada RPC
+ * yang dipanggil. Melempar bila salah satu RPC gagal (caller memutuskan).
+ */
+export async function loadCourtVenue(
+  supabase: SupabaseClient<Database>,
+  merchantId: string,
+  courtServiceIds: string[],
+): Promise<CourtVenueData> {
+  if (courtServiceIds.length === 0) return { courts: [], areas: [], markers: [], rulesByService: {} };
+  const [profiles, ...rules] = await Promise.all([
+    supabase.rpc("get_court_profiles", { p_merchant_id: merchantId }),
+    ...courtServiceIds.map((id) => supabase.rpc("get_court_price_rules", { p_merchant_id: merchantId, p_service_id: id })),
+  ]);
+  const failed = profiles.error ?? rules.find((r) => r.error)?.error;
+  if (failed) throw failed;
+  return {
+    courts: profiles.data?.[0]?.courts ?? [],
+    areas: profiles.data?.[0]?.areas ?? [],
+    markers: profiles.data?.[0]?.markers ?? [],
+    rulesByService: Object.fromEntries(courtServiceIds.map((id, i) => [id, (rules[i].data ?? []).map(mapRule)])),
   };
 }
 
