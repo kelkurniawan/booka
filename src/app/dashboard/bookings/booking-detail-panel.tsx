@@ -54,6 +54,7 @@ export function BookingDetailPanel({
   notifications,
   origin = null,
   actions,
+  labels,
 }: {
   booking: BookingListItem;
   /** Instant "sekarang" dari server (lihat getDisplayStatus). */
@@ -64,6 +65,8 @@ export function BookingDetailPanel({
   /** Asal booking dari iklan/tautan; null = tak ada atribusi (baris disembunyikan). */
   origin?: { label: string; adLinkName: string | null } | null;
   actions: BookingDetailActions;
+  /** Teks tombol khusus (papan L3 lapangan); kosong = teks bawaan. */
+  labels?: { markPaid?: string; whatsapp?: string };
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -153,7 +156,7 @@ export function BookingDetailPanel({
           rel="noreferrer"
         >
           <MessageCircle />
-          Chat WhatsApp
+          {labels?.whatsapp ?? "Chat WhatsApp"}
         </a>
       </Button>
 
@@ -308,7 +311,7 @@ export function BookingDetailPanel({
                 disabled={pending}
                 onClick={() => setConfirm("paid")}
               >
-                Tandai lunas
+                {labels?.markPaid ?? "Tandai lunas"}
               </Button>
             </div>
           )
@@ -422,6 +425,7 @@ export function BookingDetailPanel({
               staffId={booking.staff_id}
               partySize={booking.party_size}
               durationMinutes={booking.court_id ? booking.duration_minutes : null}
+              excludeBookingId={booking.id}
               dateISO={dateISO}
               value={newStart}
               onChange={setNewStart}

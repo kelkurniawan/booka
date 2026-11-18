@@ -231,7 +231,10 @@ export default async function CourtsPage({
   return (
     <>
       {header}
-      <p className="text-muted-foreground -mt-4 text-sm">{countsText(grid.counts, courts.length)}</p>
+      <p className="text-muted-foreground -mt-4 text-sm">
+        <span className="md:hidden">{countsText(grid.counts)}</span>
+        <span className="hidden md:inline">{countsText(grid.counts, courts.length)}</span>
+      </p>
       <div data-tour="court-date-nav" className="flex flex-wrap items-center gap-1.5">
         <Link href={dateHref(shiftDateISO(dateISO, -1))} aria-label="Hari sebelumnya" className={navBtn}>
           <ChevronLeft className="size-4" />
@@ -260,6 +263,7 @@ export default async function CourtsPage({
               username={merchant.username}
               notifications={notifications}
               origin={origin}
+              labels={{ markPaid: "Tandai sisa sudah dibayar", whatsapp: "Kirim WhatsApp" }}
               actions={{
                 cancel: cancelBooking,
                 decide: decideRequest,

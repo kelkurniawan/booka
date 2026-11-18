@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   BLOCK_LABEL,
+  BLOCK_LABEL_SHORT,
   blockKind,
   buildScheduleGrid,
   countsText,
@@ -160,4 +161,24 @@ test("peakMatcher: batas akhir eksklusif", () => {
   assert.equal(peak(16 * 60 + 59), false);
   assert.equal(peak(22 * 60), false);
   assert.equal(peakMatcher([])(18 * 60), false);
+});
+
+test("booking 23.00 sampai tengah malam tetap tergambar dan dihitung", () => {
+  const g = grid([bk({ id: "late", courtId: "c1", status: "PAID" }, "23:00", "24:00")], { startHour: 7, endHour: 24 });
+  assert.equal(g.counts.total, 1);
+  const b = g.columns[0].blocks[0];
+  assert.deepEqual([b.rowStart, b.rowSpan], [32, 2]);
+  assert.equal(b.time, "23.00 sampai 24.00");
+});
+
+test("label HP (L4) memakai teks papan, label desktop tetap panjang", () => {
+  const g = grid([
+    bk({ id: "a", courtId: "c1", status: "PAID", amountDueOnSite: 1000 }, "16:00", "17:00"),
+    bk({ id: "b", courtId: "c2", status: "PENDING" }, "16:00", "17:00"),
+  ]);
+  assert.equal(g.columns[0].blocks[0].statusLabelShort, "Sisa di tempat");
+  assert.equal(g.columns[0].blocks[0].statusLabel, "DP dibayar, sisa di tempat");
+  assert.equal(g.columns[1].blocks[0].statusLabelShort, "Menunggu bayar");
+  assert.equal(g.columns[1].blocks[0].statusLabel, "Menunggu bayar QRIS");
+  assert.equal(BLOCK_LABEL_SHORT.paid, "Lunas");
 });

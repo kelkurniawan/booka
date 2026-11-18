@@ -48,6 +48,8 @@ export type BookingPageRow = {
   discount_amount: number;
   party_size: number | null;
   table_label: string | null;
+  /** Sewa lapangan: nama lapangan yang dipesan. */
+  court_name: string | null;
   customer_note: string | null;
   capacity_mode: TableMode;
   /** Untuk /{username}/terima-kasih?e=; bukan token akses. */
@@ -165,6 +167,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function ReservationRows({ booking }: { booking: BookingPageRow }) {
   return (
     <>
+      {booking.court_name ? <Row label="Lapangan">{booking.court_name}</Row> : null}
       {booking.party_size ? (
         <Row label="Tamu">
           {booking.capacity_mode !== "NONE"

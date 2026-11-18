@@ -13,9 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { OnSitePaymentMethod } from "@/types/database";
 import { cancelBookingSchema } from "@/lib/validations/booking";
 
+import { createManualBookingOp } from "./manual-booking-op";
 import {
-  manualBookingErrorMessage,
-  manualBookingSchema,
   rescheduleErrorMessage,
   type ManualBookingInput,
   type ManualBookingResult,
@@ -195,26 +194,11 @@ export async function rescheduleBooking(id: string, newStartISO: string): Promis
 
 /** Catat booking dari telepon/walk-in: langsung CONFIRMED, bayar di tempat. */
 export async function createManualBooking(input: ManualBookingInput): Promise<ManualBookingResult> {
-  const parsed = manualBookingSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, message: "Periksa lagi isian form." };
-
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("create_manual_booking", {
-    p_service_id: parsed.data.serviceId,
-    p_start_datetime: parsed.data.startISO,
-    p_customer_name: parsed.data.customerName,
-    p_customer_whatsapp: parsed.data.customerWhatsapp,
-    p_staff_id: parsed.data.staffId,
-    p_party_size: parsed.data.partySize,
-    p_table_id: parsed.data.tableId,
-    p_customer_note: parsed.data.customerNote || null,
-    p_court_id: parsed.data.courtId,
-    p_duration_minutes: parsed.data.durationMinutes,
-  });
-  const id = data?.[0]?.id;
-  if (error || !id) return { ok: false, message: manualBookingErrorMessage(error?.code) };
+  const result = await createManualBookingOp(supabase, input);
+  if (!result.ok) return result;
 
-  after(() => notifyBookingCreated(id));
+  after(() => notifyBookingCreated(result.id));
   revalidatePath(ROUTES.dashboard, "layout");
-  return { ok: true, id };
+  return result;
 }

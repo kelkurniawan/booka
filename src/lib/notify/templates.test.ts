@@ -271,3 +271,15 @@ test("pesan non-sewa tidak berubah: tanpa baris Lapangan", () => {
   assert.doesNotMatch(merchantPaidEmail(base).text, /Lapangan/);
   assert.doesNotMatch(merchantPaidWhatsapp({ ...base, courtName: null }), /Lapangan/);
 });
+
+test("pesan non-sewa persis sama dengan keluaran sebelum fitur lapangan (snapshot)", () => {
+  const d = { ...base, staffName: "Dewi", amountDueNow: 100000, amountDueOnSite: 50000 };
+  assert.equal(
+    merchantPaidWhatsapp(d),
+    "*Booking baru sudah dibayar*\nMakeup Wisuda \u00b7 Rabu, 19 Agustus 2026 pukul 17:30 WIB\nStaf: Dewi\nPelanggan: Rina (+6289876543210)\nDibayar: Rp\u00a0100.000\nSisa di tempat: Rp\u00a050.000\n\nhttps://marky.id/dashboard/bookings",
+  );
+  assert.equal(
+    merchantPaidEmail(d).text,
+    "Booking baru di Studio Mawar sudah dibayar.\n\nLayanan: Makeup Wisuda\nJadwal: Rabu, 19 Agustus 2026 pukul 17:30 WIB\nStaf: Dewi\nPelanggan: Rina\nWhatsApp: +6289876543210\nDibayar: Rp\u00a0100.000\nSisa di tempat: Rp\u00a050.000\n\nChat pelanggan: https://wa.me/6289876543210\nLihat di dashboard: https://marky.id/dashboard/bookings",
+  );
+});

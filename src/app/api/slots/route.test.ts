@@ -6,7 +6,7 @@ import { computeFreeSlots } from "@/lib/booking/slots";
 import { fakeClient } from "@/lib/testing/fake-supabase";
 
 import { handleNearest } from "./nearest/route";
-import { handleSlots } from "./route";
+import { handleSlots, ownBookingRange, type OwnBookingResolver } from "./route";
 
 const MERCHANT = "11111111-1111-4111-8111-111111111111";
 const SERVICE = "22222222-2222-4222-8222-222222222222";
@@ -115,4 +115,81 @@ test("nearest: layanan salon tetap berjalan (200)", async () => {
   const f = setup(salonService);
   const r = await handleNearest(req("/api/slots/nearest", {}), () => f.client as never);
   assert.equal(r.status, 200);
+});
+
+// --- excludeBookingId (jadwal ulang dari dashboard) ---
+const BOOKING = "33333333-3333-4333-8333-333333333333";
+// 16.00-17.30 WIB di Senin 2030-01-07 = 09:00Z-10:30Z.
+const OWN = { courtId: "c1", start: "2030-01-07T09:00:00.000Z", end: "2030-01-07T10:30:00.000Z" };
+const withBusy = (service: unknown) => {
+  const f = setup(service);
+  const rpcs = f.client.rpc.bind(f.client);
+  f.client.rpc = ((name: string, args: Record<string, unknown>) =>
+    name === "get_court_availability"
+      ? Promise.resolve({ data: [
+          { court_id: "c1", court_name: "Lapangan 1", start_datetime: OWN.start, end_datetime: OWN.end },
+          { court_id: "c2", court_name: "Lapangan 2", start_datetime: OWN.start, end_datetime: OWN.end },
+        ], error: null })
+      : name === "get_booked_ranges"
+        ? Promise.resolve({ data: [{ start_datetime: OWN.start, end_datetime: OWN.end }], error: null })
+        : rpcs(name, args)) as never;
+  return f;
+};
+const ask = (f: ReturnType<typeof setup>, qs: Record<string, string>, resolver: OwnBookingResolver) =>
+  handleSlots(req("/api/slots", { date: MON, ...qs }), () => f.client as never, resolver);
+
+test("excludeBookingId sewa: rentang booking sendiri dilepas, lapangan lain tetap penuh", async () => {
+  const calls: unknown[][] = [];
+  const f = withBusy(courtService);
+  const r = await ask(f, { durationMinutes: "60", excludeBookingId: BOOKING }, async (...a) => (calls.push(a), OWN));
+  const body = await r.json();
+  const t1600 = body.slots.find((s: { time: string }) => s.time === "16:00");
+  // Lapangan 1 (milik booking) kosong lagi; Lapangan 2 masih terpakai booking lain.
+  assert.deepEqual(t1600.courts.map((c: { id: string }) => c.id), ["c1"]);
+  assert.deepEqual(calls, [[BOOKING, MERCHANT, SERVICE]]);
+});
+
+test("excludeBookingId sewa: tanpa pelepasan (resolver null) jam itu tetap penuh", async () => {
+  const f = withBusy(courtService);
+  const r = await ask(f, { durationMinutes: "60", excludeBookingId: BOOKING }, async () => null);
+  const body = await r.json();
+  assert.equal(body.slots.find((s: { time: string }) => s.time === "16:00").full, true);
+});
+
+test("excludeBookingId bukan uuid: diabaikan tanpa memanggil resolver", async () => {
+  let called = false;
+  const f = withBusy(courtService);
+  const r = await ask(f, { durationMinutes: "60", excludeBookingId: "x" }, async () => ((called = true), OWN));
+  assert.equal(r.status, 200);
+  assert.equal(called, false);
+  assert.equal((await r.json()).slots.find((s: { time: string }) => s.time === "16:00").full, true);
+});
+
+test("excludeBookingId salon: satu rentang sama persis dilepas; tanpa resolver tetap penuh", async () => {
+  const f = withBusy(salonService);
+  const free = await (await ask(f, { excludeBookingId: BOOKING }, async () => OWN)).json();
+  const busy = await (await ask(withBusy(salonService), { excludeBookingId: BOOKING }, async () => null)).json();
+  assert.ok(free.slots.some((s: { label: string }) => s.label === "16:00"));
+  assert.ok(!busy.slots.some((s: { label: string }) => s.label === "16:00"));
+});
+
+function sessionClient(user: { id: string } | null, row: unknown, spy: string[] = []) {
+  const chain: Record<string, unknown> = {};
+  for (const m of ["select", "eq", "in"]) chain[m] = (...a: unknown[]) => (spy.push(`${m}:${a[0]}=${a[1]}`), chain);
+  chain.maybeSingle = () => Promise.resolve({ data: row, error: null });
+  return async () => ({ auth: { getUser: async () => ({ data: { user } }) }, from: () => chain }) as never;
+}
+const rowOk = { court_id: "c1", start_datetime: OWN.start, end_datetime: OWN.end };
+
+test("ownBookingRange: merchant pemilik sesi -> rentang; kueri difilter merchant, layanan, dan id", async () => {
+  const spy: string[] = [];
+  assert.deepEqual(await ownBookingRange(BOOKING, MERCHANT, SERVICE, sessionClient({ id: MERCHANT }, rowOk, spy)), OWN);
+  for (const f of [`eq:id=${BOOKING}`, `eq:merchant_id=${MERCHANT}`, `eq:service_id=${SERVICE}`]) assert.ok(spy.includes(f), f);
+});
+
+test("ownBookingRange: anon, merchant lain, booking tak ketemu, dan galat -> null", async () => {
+  assert.equal(await ownBookingRange(BOOKING, MERCHANT, SERVICE, sessionClient(null, rowOk)), null);
+  assert.equal(await ownBookingRange(BOOKING, MERCHANT, SERVICE, sessionClient({ id: "lain" }, rowOk)), null);
+  assert.equal(await ownBookingRange(BOOKING, MERCHANT, SERVICE, sessionClient({ id: MERCHANT }, null)), null);
+  assert.equal(await ownBookingRange(BOOKING, MERCHANT, SERVICE, async () => { throw new Error("x"); }), null);
 });

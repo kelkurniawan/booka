@@ -114,7 +114,8 @@ export function ScheduleView({
               >
                 <span className="truncate font-semibold">{b.label}</span>
                 <span className="text-xs">{b.time}</span>
-                <span className="text-xs">{b.statusLabel}</span>
+                <span className="text-xs md:hidden">{b.statusLabelShort}</span>
+                <span className="hidden text-xs md:inline">{b.statusLabel}</span>
               </Link>
             ))}
           </div>

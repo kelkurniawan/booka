@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Ellipsis, LayoutList, Palette, Plus, Sun, type LucideIcon } from "lucide-react";
+import { CalendarRange, Ellipsis, LayoutList, Palette, Plus, Sun, type LucideIcon } from "lucide-react";
 
 import { useSidebar } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ function NavLink({
   );
 }
 
-export function MobileNav({ actionCount }: { actionCount: number | null }) {
+export function MobileNav({ actionCount, showCourts = false }: { actionCount: number | null; showCourts?: boolean }) {
   const pathname = usePathname();
   const { setOpenMobile } = useSidebar();
   const onBookings =
@@ -96,7 +96,18 @@ export function MobileNav({ actionCount }: { actionCount: number | null }) {
           <Plus className="size-6" />
         </Link>
       </div>
-      <NavLink href={ROUTES.appearance} label="Halaman" icon={Palette} active={onAppearance} />
+      {showCourts ? (
+        // Papan L4: tab Lapangan menggantikan "Halaman" (tetap terjangkau lewat Lainnya).
+        <NavLink
+          href={ROUTES.courts}
+          label="Lapangan"
+          icon={CalendarRange}
+          active={pathname === ROUTES.courts || pathname.startsWith(`${ROUTES.courts}/`)}
+          tour="nav-courts"
+        />
+      ) : (
+        <NavLink href={ROUTES.appearance} label="Halaman" icon={Palette} active={onAppearance} />
+      )}
       <button
         type="button"
         onClick={() => setOpenMobile(true)}

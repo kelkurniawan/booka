@@ -23,6 +23,13 @@ export const BLOCK_LABEL: Record<BlockKind, string> = {
   request: "Permintaan, perlu jawaban",
 };
 
+/** Label ringkas papan L4 (HP). */
+export const BLOCK_LABEL_SHORT: Record<BlockKind, string> = {
+  ...BLOCK_LABEL,
+  dp: "Sisa di tempat",
+  pending: "Menunggu bayar",
+};
+
 /** Null untuk CANCELLED: tidak digambar. */
 export function blockKind(b: Pick<ScheduleBooking, "status" | "amountDueOnSite" | "paidOnSiteAt">): BlockKind | null {
   const owes = b.amountDueOnSite > 0 && !b.paidOnSiteAt;
@@ -53,6 +60,8 @@ export type ScheduleBlock = {
   rowSpan: number;
   status: BlockKind;
   statusLabel: string;
+  /** Label HP (L4). */
+  statusLabelShort: string;
   label: string;
   time: string;
   aria: string;
@@ -91,18 +100,22 @@ export function buildScheduleGrid(params: {
       if (b.courtId !== court.id) continue;
       const kind = blockKind(b);
       if (!kind) continue;
-      const s = Math.max(jakartaMinutes(b.startISO), gridStart);
-      const e = Math.min(jakartaMinutes(b.endISO), gridEnd);
+      const startMin = jakartaMinutes(b.startISO);
+      // Akhir dihitung dari awal hari booking, jadi booking sampai tengah malam berakhir di 1440, bukan 0.
+      const endMin = startMin + Math.round((Date.parse(b.endISO) - Date.parse(b.startISO)) / 60_000);
+      const s = Math.max(startMin, gridStart);
+      const e = Math.min(endMin, gridEnd);
       if (e <= s) continue;
       const rowStart = Math.floor((s - gridStart) / rowMinutes);
       const rowSpan = Math.ceil((e - gridStart) / rowMinutes) - rowStart;
-      const time = `${fmt(s)} sampai ${fmt(e)}`;
+      const time = `${fmt(s)} sampai ${e === 1440 ? "24.00" : fmt(e)}`;
       blocks.push({
         bookingId: b.id,
         rowStart,
         rowSpan,
         status: kind,
         statusLabel: BLOCK_LABEL[kind],
+        statusLabelShort: BLOCK_LABEL_SHORT[kind],
         label: b.customerName,
         time,
         aria: `${b.customerName}, ${court.name}, ${time}, ${BLOCK_LABEL[kind]}`,

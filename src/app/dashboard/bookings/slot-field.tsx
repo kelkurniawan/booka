@@ -28,6 +28,7 @@ export function SlotField({
   labelledBy,
   durationMinutes,
   courtId,
+  excludeBookingId,
 }: {
   username: string;
   serviceId: string | null;
@@ -43,9 +44,11 @@ export function SlotField({
   durationMinutes?: number | null;
   /** Sewa: batasi ke satu lapangan; null = Mana saja. */
   courtId?: string | null;
+  /** Jadwal ulang: booking yang sedang dipindah tidak menghitung dirinya sebagai terpakai. */
+  excludeBookingId?: string | null;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const key = `${username}|${serviceId}|${staffId}|${partySize ?? ""}|${durationMinutes ?? ""}|${courtId ?? ""}|${dateISO}|${attempt}`;
+  const key = `${username}|${serviceId}|${staffId}|${partySize ?? ""}|${durationMinutes ?? ""}|${courtId ?? ""}|${excludeBookingId ?? ""}|${dateISO}|${attempt}`;
   // Hasil dikunci ke parameter kueri; kunci beda berarti masih memuat.
   const [result, setResult] = useState<(Result & { key: string }) | null>(null);
   const state = result && result.key === key ? result : ({ kind: "loading" } as const);
@@ -57,6 +60,7 @@ export function SlotField({
     if (staffId) params.set("staffId", staffId);
     if (partySize) params.set("party", String(partySize));
     if (durationMinutes) params.set("durationMinutes", String(durationMinutes));
+    if (excludeBookingId) params.set("excludeBookingId", excludeBookingId);
     fetch(`/api/slots?${params}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
       .then((body: { slots: FreeSlot[] | CourtSlotDto[]; courtService?: boolean }) => {
@@ -74,7 +78,7 @@ export function SlotField({
     return () => controller.abort();
     // `value`/`onChange` sengaja di luar dependensi: fetch hanya mengikuti parameter kueri.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, serviceId, staffId, partySize, durationMinutes, courtId, dateISO, attempt]);
+  }, [username, serviceId, staffId, partySize, durationMinutes, courtId, excludeBookingId, dateISO, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

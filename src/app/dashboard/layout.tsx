@@ -66,7 +66,7 @@ export default async function DashboardLayout({
             {children}
           </div>
         </SidebarInset>
-        <MobileNav actionCount={actionCount} />
+        <MobileNav actionCount={actionCount} showCourts={showCourts} />
       </SidebarProvider>
     </GuideProvider>
   );
