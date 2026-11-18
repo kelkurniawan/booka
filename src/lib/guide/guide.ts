@@ -7,7 +7,7 @@ import type { GuidePageKey, ManualStepKey } from "@/types/database";
 export const GUIDE_PAGE_KEYS: readonly GuidePageKey[] = [
   "today", "bookings", "analytics", "services", "availability", "floor_plan", "staff",
   "payments", "appearance", "promo", "domain", "billing", "settings",
-  "links", "ads",
+  "links", "ads", "courts",
 ];
 
 export const MANUAL_STEP_KEYS: readonly ManualStepKey[] = ["PAGE", "SHARE"];
@@ -70,6 +70,7 @@ const PAGE_ROUTES: readonly [GuidePageKey, string][] = [
   ["settings", ROUTES.settings],
   ["links", ROUTES.links],
   ["ads", ROUTES.ads],
+  ["courts", ROUTES.courts],
 ];
 
 export function guidePageForPath(pathname: string): GuidePageKey | null {
@@ -88,7 +89,9 @@ export type TourTarget =
   | "hours-days" | "dining-capacity" | "dining-editor" | "staff-list" | "payment-providers"
   | "appearance-editor" | "appearance-preview" | "promo-tabs" | "domain-form" | "billing-plans"
   | "settings-profile" | "settings-booking" | "settings-customer" | "settings-reminders" | "settings-account"
-  | "links-editor" | "ads-tabs";
+  | "links-editor" | "ads-tabs"
+  | "court-tabs" | "court-date-nav" | "court-legend" | "court-grid" | "court-add-manual"
+  | "court-list" | "court-profile" | "court-photos" | "court-venue" | "nav-courts" | "nav-courts-mobile";
 
 export type TourStep = { target: TourTarget | null; title: string; body: string; viewport?: TourViewport };
 

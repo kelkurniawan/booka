@@ -178,7 +178,8 @@ export type GuidePageKey =
   | "billing"
   | "settings"
   | "links"
-  | "ads";
+  | "ads"
+  | "courts";
 
 /** Progres panduan. Klien hanya membaca; tulis lewat save_onboarding_progress. */
 export type MerchantOnboardingProgress = {

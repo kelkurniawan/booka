@@ -7533,3 +7533,17 @@ select pg_temp.act34('t85.8-setup salon Senin 10.00', '79797979-0000-0000-0000-0
     pg_temp.jakarta_future(1, 30, '10:00')));
 select pg_temp.act34('t85.8a booking salon dengan lapangan tujuan = BK070', '79797979-0000-0000-0000-000000000001',
   pg_temp.mv85('+6281850000009', pg_temp.jakarta_future(1, 30, '10:00'), '79797979-c000-0000-0000-000000000001'), 'BK070');
+
+-- ===========================================================================
+-- 86. Kunci panduan Lapangan (20261126001400)
+-- ===========================================================================
+update public.merchant_onboarding_progress set tours_seen = '{courts}'
+  where merchant_id = '74747474-0000-0000-0000-000000000001';
+select case when (select tours_seen from public.merchant_onboarding_progress
+                   where merchant_id = '74747474-0000-0000-0000-000000000001') = '{courts}'
+            then 'OK   t86a kunci courts diterima'
+            else 'FAIL t86a' end as t86a;
+select pg_temp.expect_fail_code(
+  $q$update public.merchant_onboarding_progress set tours_seen = '{beranda}'
+     where merchant_id = '74747474-0000-0000-0000-000000000001'$q$,
+  '23514', 't86b kunci di luar 16 ditolak');

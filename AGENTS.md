@@ -107,6 +107,26 @@ perbandingan di `src/lib/plans.ts`; halaman `/untuk/<slug>` dari
 JSON-LD, dan sitemap dari data yang sama (DECISIONS #39). Semua host di landing
 berasal dari `NEXT_PUBLIC_APP_URL`, jadi env itu wajib benar di produksi.
 
+F11 selesai: funnel iklan dan link-in-bio. Tautan pendek `?t=slug` dan halaman
+bio di `/dashboard/tautan`, tautan iklan dan pixel (Meta, GA4) di
+`/dashboard/iklan`, atribusi sentuhan terakhir per sesi tab tanpa cookie,
+kejadian `PAID` dan `BOOKED` ditulis server lewat `/api/events` dengan batas
+laju, analitik funnel per kanal, dan ikon WhatsApp opt-in lewat
+`merchant_themes.public_whatsapp` (bawaan `false`). Pixel tidak pernah dimuat di
+`/pesanan` (DECISIONS #42).
+F12 selesai: booking lapangan (padel, futsal, mini soccer, badminton, tenis).
+Tabel `courts`, `service_courts`, `court_price_rules`, `court_media`,
+`venue_areas`, `venue_markers`; layanan sewa lewat `court_unit_minutes` dengan
+lama main pilihan dan harga jam ramai (`court_price` di SQL, `courtPrice()` di
+`src/lib/booking/court.ts` mencerminkannya), bentrok dicegah
+`bookings_court_no_overlap` per lapangan di bawah kunci merchant. Pelanggan
+memilih tanggal, lama main, jam, lalu lapangan di `BookingFlow`; `anon` membaca
+lewat RPC `get_court_availability`/`get_court_profiles`, tanpa data pelanggan.
+Dashboard di `/dashboard/lapangan` (Jadwal, Lapangan dan denah), `save_court_service`
+atomik, onboarding kategori Olahraga, dan landing `/untuk/lapangan`. Pelanggan
+tidak bisa pindah ke slot lebih mahal (BK073). Kode BK070 sampai BK073 dan semua
+pemetaan error ada di `docs/ERROR-CODES.md` (DECISIONS #43).
+
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
 tetap tersedia.
