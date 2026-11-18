@@ -206,7 +206,7 @@ export const hoursStepSchema = z
  */
 export const courtSetupSchema = z
   .object({
-    unitMinutes: z.union([z.literal(30), z.literal(60)]),
+    unitMinutes: z.literal(30), // semua olahraga memakai unit 30 menit
     minMinutes: z.number().int(),
     maxMinutes: z.number().int().max(480),
   })

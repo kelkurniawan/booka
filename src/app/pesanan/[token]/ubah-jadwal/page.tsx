@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 
 // access_token sengaja tidak dipilih: hanya dipakai sebagai filter WHERE.
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, start_datetime, status, attended_at, no_show_at, reschedule_count, amount_due_now, service_id, staff_id, paid_at, party_size" as const;
+  "id, merchant_id, service_name, start_datetime, status, attended_at, no_show_at, reschedule_count, amount_due_now, service_id, staff_id, paid_at, party_size, duration_minutes, court_id" as const;
 
 type MerchantRow = {
   username: string | null;
@@ -120,6 +120,8 @@ export default async function RescheduleBookingPage({ params }: { params: Promis
         serviceId={booking.service_id}
         staffId={booking.staff_id}
         partySize={booking.party_size}
+        // Booking lapangan: lama main dikirim ke /api/slots; lapangan dijaga/dipilih RPC.
+        durationMinutes={booking.court_id ? booking.duration_minutes : null}
         serviceName={booking.service_name}
         code={code}
         currentStart={booking.start_datetime}

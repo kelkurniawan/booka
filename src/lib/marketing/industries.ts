@@ -287,9 +287,9 @@ export const INDUSTRIES: readonly Industry[] = [
       bio: "Padel dan futsal, indoor dan outdoor",
       cta: "Pilih jadwal",
       items: [
-        { name: "Padel, jam biasa", price: "harga dasar" },
-        { name: "Padel, jam ramai", price: "harga ramai" },
-        { name: "Futsal, jam biasa", price: "harga dasar" },
+        { name: "Padel, jam biasa", price: "150.000/jam" },
+        { name: "Padel, jam ramai", price: "250.000/jam" },
+        { name: "Futsal, jam biasa", price: "120.000/jam" },
       ],
     },
     paymentFit: {

@@ -3,7 +3,7 @@ import { after, NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { z } from "zod";
 
-import { customerManageErrorMessage } from "@/lib/booking/customer-manage";
+import { customerManageErrorCode, customerManageErrorMessage } from "@/lib/booking/customer-manage";
 import { notifyCustomerChange } from "@/lib/notify/dispatch";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -20,16 +20,22 @@ const MAX_BODY_BYTES = 4096;
  * kunci baris, dan filter merchant ada di RPC reschedule_booking, yang
  * mencari lewat access_token; token tidak pernah dikembalikan.
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ token: string }> },
+export const POST = (request: NextRequest, ctx: { params: Promise<{ token: string }> }) =>
+  handleReschedule(request, ctx.params);
+
+/** Isi POST; klien admin dan penjadwal tugas susulan disuntikkan supaya bisa diuji tanpa DB. */
+export async function handleReschedule(
+  request: Request,
+  params: Promise<{ token: string }>,
+  createClient: () => ReturnType<typeof createAdminClient> = createAdminClient,
+  schedule: (task: () => unknown) => void = after,
 ) {
   const { token } = await params;
   if (!/^[0-9a-f]{48}$/.test(token)) {
-    return NextResponse.json({ error: "Pesanan tidak ditemukan" }, { status: 404 });
+    return NextResponse.json({ error: "Pesanan tidak ditemukan", code: "not_found" }, { status: 404 });
   }
 
-  const invalid = () => NextResponse.json({ error: "Jadwal baru tidak valid" }, { status: 400 });
+  const invalid = () => NextResponse.json({ error: "Jadwal baru tidak valid", code: "invalid_body" }, { status: 400 });
   const text = await readBodyText(request, MAX_BODY_BYTES);
   if (text === null) return invalid();
   let json: unknown = null;
@@ -43,20 +49,20 @@ export async function POST(
     return invalid();
   }
 
-  const { data, error } = await createAdminClient().rpc("reschedule_booking", {
+  const { data, error } = await createClient().rpc("reschedule_booking", {
     p_token: token,
     p_new_start: body.data.startUtc,
   });
   if (error) {
     const message = customerManageErrorMessage(error.code);
     if (message !== customerManageErrorMessage(undefined)) {
-      return NextResponse.json({ error: message }, { status: 409 });
+      return NextResponse.json({ error: message, code: customerManageErrorCode(error.code) }, { status: 409 });
     }
     console.error("[api/pesanan/ubah-jadwal] RPC gagal", { code: error.code, message: error.message });
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, code: "save_failed" }, { status: 500 });
   }
 
   const row = data?.[0];
-  if (row) after(() => notifyCustomerChange(row.booking_id, { type: "RESCHEDULED", oldStart: row.old_start }));
+  if (row) schedule(() => notifyCustomerChange(row.booking_id, { type: "RESCHEDULED", oldStart: row.old_start }));
   return NextResponse.json({ ok: true });
 }

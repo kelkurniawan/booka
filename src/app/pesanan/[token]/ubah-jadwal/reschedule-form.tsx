@@ -9,12 +9,13 @@ import { StickyActionBar } from "@/components/booking-page/sticky-action-bar";
 import { TimeSlotPicker, type TimeSlotState } from "@/components/booking-page/time-slot-picker";
 import { Button } from "@/components/ui/button";
 import { nextOpenDate, type DateStripDay } from "@/lib/booking/schedule";
+import { courtSlotsToFree, type CourtSlotDto } from "@/lib/booking/court-ui";
 import type { FreeSlot } from "@/lib/booking/slots";
 import { formatDateTime, formatRupiah } from "@/lib/format";
 import { ROUTES } from "@/lib/routes";
 
 export function RescheduleForm({
-  token, username, serviceId, staffId, partySize, serviceName, code, currentStart,
+  token, username, serviceId, staffId, partySize, durationMinutes = null, serviceName, code, currentStart,
   earliestNewStart, left, max, paidAmount, strip,
 }: {
   token: string;
@@ -23,6 +24,8 @@ export function RescheduleForm({
   staffId: string | null;
   /** Terisi untuk booking ber-jumlah tamu; slot reservasi dihitung dari angka ini. */
   partySize: number | null;
+  /** Booking lapangan: lama main (menit); wajib dikirim ke /api/slots. */
+  durationMinutes?: number | null;
   serviceName: string;
   code: string;
   currentStart: string;
@@ -50,12 +53,17 @@ export function RescheduleForm({
       const params = new URLSearchParams({ username, serviceId, date: dateISO });
       if (staffId) params.set("staffId", staffId);
       if (partySize) params.set("party", String(partySize));
+      if (durationMinutes) params.set("durationMinutes", String(durationMinutes));
       const response = await fetch(`/api/slots?${params.toString()}`);
       if (!response.ok) throw new Error("Gagal memuat jadwal");
-      const body = (await response.json()) as { slots: FreeSlot[] };
+      const body = (await response.json()) as { slots: FreeSlot[] | CourtSlotDto[]; courtService?: boolean };
       if (requestIdRef.current !== requestId) return;
+      // Sewa: pelanggan tidak memilih lapangan ("Mana saja"), RPC menjaga atau memilihkan.
+      const all = body.courtService
+        ? courtSlotsToFree(body.slots as CourtSlotDto[], durationMinutes ?? 0, null)
+        : (body.slots as FreeSlot[]);
       // Keputusan 3: slot yang lebih dekat dari batas minimum tidak ditawarkan.
-      const slots = body.slots.filter((slot) => Date.parse(slot.startUtc) >= Date.parse(earliestNewStart));
+      const slots = all.filter((slot) => Date.parse(slot.startUtc) >= Date.parse(earliestNewStart));
       setSlotState(
         slots.length === 0 ? { kind: "empty", nextDate: nextOpenDate(strip, dateISO) } : { kind: "ready", slots },
       );

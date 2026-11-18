@@ -121,6 +121,30 @@ const ERROR_MESSAGES = new Map<string, string>([
   ["BK073", "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini."],
 ]);
 
+/** Kode mesin stabil per kode RPC; klien boleh bercabang pada ini, bukan pada teks pesan. */
+const ERROR_CODES = new Map<string, string>([
+  ["BK040", "booking_not_changeable"],
+  ["BK041", "reschedule_not_allowed"],
+  ["BK042", "reschedule_deadline_passed"],
+  ["BK043", "reschedule_limit_reached"],
+  ["BK044", "cancel_not_allowed"],
+  ["BK045", "cancel_deadline_passed"],
+  ["BK046", "new_slot_too_soon"],
+  ["BK003", "staff_unavailable"],
+  ["23P01", "slot_taken"],
+  ["BK001", "outside_hours"],
+  ["P0006", "slot_in_past"],
+  ["BK060", "table_full"],
+  ["BK061", "table_occupied"],
+  ["BK072", "no_court_free"],
+  ["BK073", "price_higher"],
+]);
+
+/** Kode mesin stabil; kode tak dikenal menjadi "save_failed" (500). */
+export function customerManageErrorCode(code: string | undefined): string {
+  return ERROR_CODES.get(code ?? "") ?? "save_failed";
+}
+
 /** Pesan aman untuk pelanggan; error Postgres mentah tidak pernah diteruskan. */
 export function customerManageErrorMessage(code: string | undefined): string {
   return ERROR_MESSAGES.get(code ?? "") ?? "Gagal menyimpan. Coba lagi.";

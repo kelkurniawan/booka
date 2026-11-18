@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 
 import { requireMerchant } from "@/lib/auth/session";
+import { linksErrorMessage } from "@/lib/funnel/links-errors";
 import { applyPlacement } from "@/lib/funnel/link-placement";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
@@ -47,7 +48,7 @@ export async function saveMerchantLinks(input: SaveLinksInput): Promise<SaveLink
   });
   if (error) {
     console.error("[tautan] gagal menyimpan", error);
-    return { ok: false, message: "Perubahan gagal disimpan. Coba lagi sebentar lagi." };
+    return { ok: false, message: linksErrorMessage(error.code) };
   }
 
   if (merchant.username) revalidatePath(ROUTES.merchantPage(merchant.username));
