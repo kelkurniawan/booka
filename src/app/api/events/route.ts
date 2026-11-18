@@ -52,6 +52,23 @@ const defaultDeps = (): EventDeps => {
   };
 };
 
+const HOST_PATTERN = /^[a-z0-9.-]{1,100}$/;
+const clean = (v: string | null, lower: boolean) => {
+  const t = v?.trim().slice(0, 64);
+  return t ? (lower ? t.toLowerCase() : t) : null;
+};
+
+// Aturan sama dengan readAttribution, supaya nilai aneh dari klien tidak jatuh di CHECK.
+function normalize(a: EventBody["attribution"]) {
+  const host = a.referrerHost?.trim().toLowerCase() ?? null;
+  return {
+    utm_source: clean(a.utmSource, true),
+    utm_medium: clean(a.utmMedium, true),
+    utm_campaign: clean(a.utmCampaign, false),
+    referrer_host: host && HOST_PATTERN.test(host) ? host : null,
+  };
+}
+
 export async function handleEvent(body: EventBody, ipHash: string, deps: EventDeps): Promise<NextResponse> {
   const { merchantId, attribution: a } = body;
   if (!(await deps.merchantExists(merchantId))) {
@@ -61,18 +78,20 @@ export async function handleEvent(body: EventBody, ipHash: string, deps: EventDe
     return NextResponse.json({ error: "Terlalu banyak permintaan" }, { status: 429 });
   }
 
-  const failure = await deps.insert({
+  const row = {
     merchant_id: merchantId,
     session_id: body.sessionId,
     kind: body.kind,
     ad_link_id: a.adLinkSlug ? await deps.adLinkId(merchantId, a.adLinkSlug) : null,
-    utm_source: a.utmSource,
-    utm_medium: a.utmMedium,
-    utm_campaign: a.utmCampaign,
-    referrer_host: a.referrerHost,
+    ...normalize(a),
     service_id: body.serviceId ?? null,
     merchant_link_id: body.merchantLinkId ?? null,
-  });
+  };
+  let failure = await deps.insert(row);
+  // CHECK atribusi masih menolak: simpan kejadiannya tanpa atribusi, jangan hilang.
+  if (failure?.code === "23514") {
+    failure = await deps.insert({ ...row, ad_link_id: null, utm_source: null, utm_medium: null, utm_campaign: null, referrer_host: null });
+  }
   // 23505: VIEW ganda. 23503/23514: id milik merchant lain atau nilai di luar batas.
   // Semuanya no-op; hanya error lain yang dicatat.
   if (failure && !["23505", "23503", "23514"].includes(failure.code ?? "")) {

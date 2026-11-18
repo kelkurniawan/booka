@@ -6,6 +6,7 @@ create table public.event_attempts (
   merchant_id uuid not null references public.merchants (id) on delete cascade,
   created_at timestamptz not null default now()
 );
+create index event_attempts_created_idx on public.event_attempts (created_at);
 create index event_attempts_lookup_idx on public.event_attempts (ip_hash, merchant_id, created_at desc);
 alter table public.event_attempts enable row level security;
 revoke all on public.event_attempts from anon, authenticated;
@@ -20,8 +21,8 @@ as $$
 declare
   v_recent integer;
 begin
-  delete from public.event_attempts
-  where ip_hash = p_ip_hash and created_at < now() - interval '1 hour';
+  -- Global, bukan per ip: IP yang tidak kembali tidak boleh meninggalkan baris selamanya.
+  delete from public.event_attempts where created_at < now() - interval '1 hour';
 
   insert into public.event_attempts (ip_hash, merchant_id) values (p_ip_hash, p_merchant_id);
 

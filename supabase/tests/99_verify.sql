@@ -6456,3 +6456,11 @@ select case when (select count(*) from public.funnel_events where session_id = '
              and public.check_event_rate_limit('hash75e', '74747474-0000-0000-0000-000000000001')
             then 'OK   t75e jenis lain tidak terkena batas VIEW'
             else 'FAIL t75e' end as t75e;
+
+-- t75f: baris event_attempts lama milik IP lain ikut dibuang
+insert into public.event_attempts (ip_hash, merchant_id, created_at)
+  values ('hash75-lama', '74747474-0000-0000-0000-000000000001', now() - interval '2 hours');
+select public.check_event_rate_limit('hash75f', '74747474-0000-0000-0000-000000000001') as t75f_call;
+select case when not exists (select 1 from public.event_attempts where ip_hash = 'hash75-lama')
+            then 'OK   t75f baris lama IP lain dibuang global'
+            else 'FAIL t75f baris lama IP lain tersisa' end as t75f;

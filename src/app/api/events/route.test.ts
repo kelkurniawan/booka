@@ -68,3 +68,30 @@ test("body tidak valid ditolak schema (400 di POST)", async () => {
   const { eventBodySchema } = await import("@/lib/validations/funnel");
   assert.equal(eventBodySchema.safeParse({ ...body, kind: "X" }).success, false);
 });
+
+test("atribusi dinormalkan sebelum insert: huruf besar dan host aneh", async () => {
+  const { d, rows } = deps();
+  const attribution = { adLinkSlug: null, utmSource: " Instagram ", utmMedium: "BIO", utmCampaign: "Promo", referrerHost: "L.Instagram.com" };
+  await handleEvent({ ...body, attribution }, "h", d);
+  assert.equal(rows[0].utm_source, "instagram");
+  assert.equal(rows[0].utm_medium, "bio");
+  assert.equal(rows[0].utm_campaign, "Promo");
+  assert.equal(rows[0].referrer_host, "l.instagram.com");
+  await handleEvent({ ...body, sessionId: "44444444-4444-4444-8444-444444444444", attribution: { ...attribution, referrerHost: "bad_host/x" } }, "h", d);
+  assert.equal(rows[1].referrer_host, null);
+});
+
+test("23514 -> ulangi sekali dengan atribusi null", async () => {
+  const inserts: Record<string, unknown>[] = [];
+  const { d } = deps({
+    insert: async (row) => {
+      inserts.push(row);
+      return inserts.length === 1 ? { code: "23514" } : null;
+    },
+  });
+  assert.equal((await handleEvent(body, "h", d)).status, 204);
+  assert.equal(inserts.length, 2);
+  assert.equal(inserts[1].ad_link_id, null);
+  assert.equal(inserts[1].referrer_host, null);
+  assert.equal(inserts[1].kind, "VIEW");
+});
