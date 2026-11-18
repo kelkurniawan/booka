@@ -7,7 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { courtPrice, durationOptions, formatDuration, type CourtPriceRule } from "@/lib/booking/court";
 import { isSeatService, partyRangeLabel } from "@/lib/booking/reservation";
+import { formatRupiah, formatTime } from "@/lib/format";
+import { jakartaWallClockToUtc } from "@/lib/booking/slots";
 import { ROUTES } from "@/lib/routes";
 import type { TableMode } from "@/types/database";
 
@@ -23,6 +26,15 @@ type ServiceOption = {
   party_min?: number | null;
   party_max?: number | null;
   seat_duration_minutes?: number | null;
+  /** Terisi hanya untuk layanan sewa lapangan. */
+  court_unit_minutes?: number | null;
+  court_max_minutes?: number | null;
+};
+
+export type CourtFormInfo = {
+  courts: { id: string; name: string }[];
+  linksByService: Record<string, string[]>;
+  rulesByService: Record<string, CourtPriceRule[]>;
 };
 
 const SELECT_CLASS =
@@ -35,6 +47,8 @@ export function ManualBookingForm({
   staff,
   tableMode = "NONE",
   tables = [],
+  courtInfo = { courts: [], linksByService: {}, rulesByService: {} },
+  prefill,
   action = createManualBooking,
 }: {
   username: string;
@@ -45,11 +59,14 @@ export function ManualBookingForm({
   tableMode?: TableMode;
   /** Semua meja merchant, termasuk yang tidak bisa dipesan online. */
   tables?: { id: string; name: string; max_seats: number }[];
+  courtInfo?: CourtFormInfo;
+  /** Dari ketukan sel kosong jadwal lapangan. */
+  prefill?: { serviceId: string | null; courtId: string | null; dateISO: string | null; timeHHMM: string | null };
   /** Bisa diganti di Storybook. */
   action?: (input: ManualBookingInput) => Promise<ManualBookingResult>;
 }) {
   const router = useRouter();
-  const [serviceId, setServiceId] = useState(services[0]?.id ?? "");
+  const [serviceId, setServiceId] = useState(prefill?.serviceId ?? services[0]?.id ?? "");
   const [party, setParty] = useState("");
   const service = services.find((s) => s.id === serviceId);
   const needsParty = service?.party_max != null;
@@ -57,9 +74,21 @@ export function ManualBookingForm({
   // Layanan reservasi tidak memakai staf (Keputusan 10 F8).
   const seat = !!service && isSeatService({ seat_duration_minutes: service.seat_duration_minutes ?? null }, tableMode);
   const showTables = seat && needsParty && tableMode === "TABLE";
+  const unit = service?.court_unit_minutes === 30 || service?.court_unit_minutes === 60 ? service.court_unit_minutes : null;
+  const isCourt = unit !== null;
+  const [courtId, setCourtId] = useState(prefill?.courtId ?? "");
+  const [duration, setDuration] = useState<number | null>(null);
+  const durations = isCourt
+    ? durationOptions({ minMinutes: service!.duration_minutes, maxMinutes: service!.court_max_minutes ?? service!.duration_minutes, unitMinutes: unit })
+    : [];
+  // Lama main terpilih harus ada di opsi layanan aktif; jatuh ke minimum.
+  const effectiveDuration = isCourt ? (duration !== null && durations.includes(duration) ? duration : (durations[0] ?? null)) : null;
+  const serviceCourts = courtInfo.courts.filter((c) => (courtInfo.linksByService[serviceId] ?? []).includes(c.id));
   const [staffId, setStaffId] = useState("");
-  const [dateISO, setDateISO] = useState(todayISO);
-  const [startISO, setStartISO] = useState<string | null>(null);
+  const [dateISO, setDateISO] = useState(prefill?.dateISO ?? todayISO);
+  const [startISO, setStartISO] = useState<string | null>(
+    prefill?.dateISO && prefill.timeHHMM ? jakartaWallClockToUtc(prefill.dateISO, prefill.timeHHMM).toISOString() : null,
+  );
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [tableId, setTableId] = useState("");
@@ -83,13 +112,15 @@ export function ManualBookingForm({
     startTransition(async () => {
       const result = await action({
         serviceId,
-        staffId: seat ? null : staffId || null,
+        staffId: seat || isCourt ? null : staffId || null,
         startISO,
         customerName: name,
         customerWhatsapp: whatsapp,
         partySize: partyNumber,
         tableId: showTables && tableId ? tableId : null,
         customerNote: needsParty && note.trim() ? note.trim() : null,
+        courtId: isCourt && courtId ? courtId : null,
+        durationMinutes: effectiveDuration,
       });
       if (result.ok) router.push(`${ROUTES.bookings}?tab=mendatang&b=${result.id}`);
       else {
@@ -97,7 +128,9 @@ export function ManualBookingForm({
         if (
           result.message === manualBookingErrorMessage("23P01") ||
           result.message === manualBookingErrorMessage("BK060") ||
-          result.message === manualBookingErrorMessage("BK061")
+          result.message === manualBookingErrorMessage("BK061") ||
+          result.message === manualBookingErrorMessage("BK070") ||
+          result.message === manualBookingErrorMessage("BK072")
         ) {
           setStartISO(null);
           setSlotsRound((n) => n + 1);
@@ -112,6 +145,8 @@ export function ManualBookingForm({
         <Label htmlFor="mb-service">Layanan</Label>
         <select id="mb-service" className={SELECT_CLASS} value={serviceId} onChange={(e) => {
             setServiceId(e.target.value);
+            setCourtId("");
+            setDuration(null);
             setStartISO(null);
             setTableId("");
           }}>
@@ -142,7 +177,7 @@ export function ManualBookingForm({
           {service ? <p className="text-muted-foreground text-sm">{partyRangeLabel({ party_min: service.party_min ?? null, party_max: service.party_max ?? null })}</p> : null}
         </div>
       ) : null}
-      {staff.length > 0 && !seat ? (
+      {staff.length > 0 && !seat && !isCourt ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="mb-staff">Staf</Label>
           <select id="mb-staff" className={SELECT_CLASS} value={staffId} onChange={(e) => {
@@ -157,6 +192,31 @@ export function ManualBookingForm({
             ))}
           </select>
         </div>
+      ) : null}
+      {isCourt ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="mb-court">Lapangan</Label>
+            <select id="mb-court" className={SELECT_CLASS} value={courtId} onChange={(e) => { setCourtId(e.target.value); setStartISO(null); }}>
+              <option value="">Mana saja</option>
+              {serviceCourts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="mb-duration">Lama main</Label>
+            <select id="mb-duration" className={SELECT_CLASS} value={effectiveDuration ?? ""} onChange={(e) => { setDuration(Number(e.target.value)); setStartISO(null); }}>
+              {durations.map((m) => (
+                <option key={m} value={m}>
+                  {formatDuration(m)}
+                </option>
+              ))}
+            </select>
+          </div>
+        </>
       ) : null}
       <div className="flex flex-col gap-2">
         <Label htmlFor="mb-date">Tanggal</Label>
@@ -179,14 +239,31 @@ export function ManualBookingForm({
           key={slotsRound}
           username={username}
           serviceId={serviceId || null}
-          staffId={seat ? null : staffId || null}
+          staffId={seat || isCourt ? null : staffId || null}
           partySize={partyNumber}
+          durationMinutes={effectiveDuration}
+          courtId={isCourt && courtId ? courtId : null}
           dateISO={dateISO}
           value={startISO}
           onChange={setStartISO}
           labelledBy="mb-jam-label"
         />
       </div>
+      {isCourt && startISO && effectiveDuration && service ? (
+        <p role="status" className="rounded-md border px-3 py-2 text-sm" data-tour="manual-court-price">
+          {(() => {
+            const { total, segments } = courtPrice({
+              basePerHour: service.price,
+              rules: courtInfo.rulesByService[serviceId] ?? [],
+              dateISO,
+              startHHMM: formatTime(startISO),
+              durationMinutes: effectiveDuration,
+              unitMinutes: unit,
+            });
+            return `Harga ${formatRupiah(total)}${segments.some((x) => x.peak) ? ", termasuk jam ramai" : ""}`;
+          })()}
+        </p>
+      ) : null}
       {showTables ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="mb-table">Meja</Label>

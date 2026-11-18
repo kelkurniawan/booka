@@ -208,6 +208,8 @@ export async function createManualBooking(input: ManualBookingInput): Promise<Ma
     p_party_size: parsed.data.partySize,
     p_table_id: parsed.data.tableId,
     p_customer_note: parsed.data.customerNote || null,
+    p_court_id: parsed.data.courtId,
+    p_duration_minutes: parsed.data.durationMinutes,
   });
   const id = data?.[0]?.id;
   if (error || !id) return { ok: false, message: manualBookingErrorMessage(error?.code) };

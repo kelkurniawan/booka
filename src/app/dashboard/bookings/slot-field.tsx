@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { courtSlotsToFree, type CourtSlotDto } from "@/lib/booking/court-ui";
 import { groupSlotsByPeriod, SLOT_PERIOD_LABEL } from "@/lib/booking/schedule";
 import type { FreeSlot } from "@/lib/booking/slots";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,8 @@ export function SlotField({
   value,
   onChange,
   labelledBy,
+  durationMinutes,
+  courtId,
 }: {
   username: string;
   serviceId: string | null;
@@ -36,9 +39,13 @@ export function SlotField({
   onChange: (startISO: string | null) => void;
   /** id elemen label untuk radiogroup. */
   labelledBy?: string;
+  /** Layanan sewa lapangan: lama main (menit); wajib dikirim ke /api/slots. */
+  durationMinutes?: number | null;
+  /** Sewa: batasi ke satu lapangan; null = Mana saja. */
+  courtId?: string | null;
 }) {
   const [attempt, setAttempt] = useState(0);
-  const key = `${username}|${serviceId}|${staffId}|${partySize ?? ""}|${dateISO}|${attempt}`;
+  const key = `${username}|${serviceId}|${staffId}|${partySize ?? ""}|${durationMinutes ?? ""}|${courtId ?? ""}|${dateISO}|${attempt}`;
   // Hasil dikunci ke parameter kueri; kunci beda berarti masih memuat.
   const [result, setResult] = useState<(Result & { key: string }) | null>(null);
   const state = result && result.key === key ? result : ({ kind: "loading" } as const);
@@ -49,11 +56,15 @@ export function SlotField({
     const params = new URLSearchParams({ username, serviceId, date: dateISO });
     if (staffId) params.set("staffId", staffId);
     if (partySize) params.set("party", String(partySize));
+    if (durationMinutes) params.set("durationMinutes", String(durationMinutes));
     fetch(`/api/slots?${params}`, { signal: controller.signal })
       .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
-      .then((body: { slots: FreeSlot[] }) => {
-        setResult({ key, kind: "ready", slots: body.slots });
-        if (value && !body.slots.some((s) => s.startUtc === value)) onChange(null);
+      .then((body: { slots: FreeSlot[] | CourtSlotDto[]; courtService?: boolean }) => {
+        const slots = body.courtService
+          ? courtSlotsToFree(body.slots as CourtSlotDto[], durationMinutes ?? 0, courtId ?? null)
+          : (body.slots as FreeSlot[]);
+        setResult({ key, kind: "ready", slots });
+        if (value && !slots.some((s) => s.startUtc === value)) onChange(null);
       })
       .catch((e: unknown) => {
         if (e instanceof DOMException && e.name === "AbortError") return;
@@ -63,7 +74,7 @@ export function SlotField({
     return () => controller.abort();
     // `value`/`onChange` sengaja di luar dependensi: fetch hanya mengikuti parameter kueri.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [username, serviceId, staffId, partySize, dateISO, attempt]);
+  }, [username, serviceId, staffId, partySize, durationMinutes, courtId, dateISO, attempt]);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
 

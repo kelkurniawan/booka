@@ -63,6 +63,7 @@ type BookingRow = Pick<
   | "customer_whatsapp"
   | "access_token"
   | "staff_name"
+  | "court_name"
   | "party_size"
   | "table_label"
   | "customer_note"
@@ -79,7 +80,7 @@ type MerchantRow = Pick<
 >;
 
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, customer_whatsapp, access_token, staff_name, party_size, table_label, customer_note, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, customer_whatsapp, access_token, staff_name, court_name, party_size, table_label, customer_note, status, expires_at, amount_due_now, amount_due_on_site, paid_on_site_at, cancel_reason, source";
 
 function emailConfig(): EmailConfig | null {
   const env = serverEnv();
@@ -165,6 +166,7 @@ function messageData(booking: BookingRow, merchant: MerchantRow): BookingMessage
     startDatetime: booking.start_datetime,
     endDatetime: booking.end_datetime,
     staffName: booking.staff_name,
+    courtName: booking.court_name,
     partySize: booking.party_size,
     tableLabel: booking.table_label,
     customerNote: booking.customer_note,

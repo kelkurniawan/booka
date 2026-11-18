@@ -79,6 +79,7 @@ export function BookingsTable({
                     </td>
                     <td className="px-4 py-3">
                       <p>{b.service_name}</p>
+                      {b.court_name ? <p className="text-muted-foreground">{b.court_name}</p> : null}
                       {b.staff_name ? <p className="text-muted-foreground">{b.staff_name}</p> : null}
                       {seatText(b) ? <p className="text-muted-foreground">{seatText(b)}</p> : null}
                       {b.source === "MANUAL" ? <p className="text-muted-foreground">Manual</p> : null}

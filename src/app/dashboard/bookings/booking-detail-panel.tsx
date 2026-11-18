@@ -162,6 +162,12 @@ export function BookingDetailPanel({
         <dd>{formatSchedule(booking.start_datetime, booking.end_datetime)}</dd>
         <dt className="text-muted-foreground">Layanan</dt>
         <dd>{booking.service_name}</dd>
+        {booking.court_name ? (
+          <>
+            <dt className="text-muted-foreground">Lapangan</dt>
+            <dd>{booking.court_name}</dd>
+          </>
+        ) : null}
         {booking.staff_name ? (
           <>
             <dt className="text-muted-foreground">Staf</dt>
@@ -415,6 +421,7 @@ export function BookingDetailPanel({
               serviceId={booking.service_id}
               staffId={booking.staff_id}
               partySize={booking.party_size}
+              durationMinutes={booking.court_id ? booking.duration_minutes : null}
               dateISO={dateISO}
               value={newStart}
               onChange={setNewStart}
@@ -473,7 +480,7 @@ export function BookingDetailPanel({
                 setReschedule({ step: "form" });
               }}
             >
-              Jadwal ulang
+              {booking.court_id ? "Pindah jam atau lapangan" : "Jadwal ulang"}
             </Button>
           ) : null}
           {live && canNoShow && !booking.no_show_at ? (

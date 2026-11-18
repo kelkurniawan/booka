@@ -36,6 +36,7 @@ export const ROUTES = {
   services: "/dashboard/services",
   availability: "/dashboard/availability",
   floorPlan: "/dashboard/denah",
+  courts: "/dashboard/lapangan",
   staff: "/dashboard/staf",
   staffClipApi: "/api/staff/clip",
   usernameCheck: "/api/username-check",

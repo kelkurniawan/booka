@@ -243,3 +243,31 @@ test("booking non-reservasi: pesan tidak memuat baris tamu atau meja", () => {
   assert.doesNotMatch(merchantPaidWhatsapp(base), /orang|Meja/);
   assert.doesNotMatch(customerConfirmedWhatsapp(base), /orang|Meja/);
 });
+
+const sewa: BookingMessageData = { ...base, courtName: "Lapangan 2" };
+
+test("pesan sewa lapangan memuat nama lapangan di semua jalur", () => {
+  for (const text of [
+    merchantPaidWhatsapp(sewa),
+    merchantConfirmedWhatsapp(sewa),
+    merchantRequestedWhatsapp(sewa),
+    customerPaidWhatsapp(sewa),
+    customerConfirmedWhatsapp(sewa),
+    customerApprovedWhatsapp(sewa),
+    customerReminderWhatsapp(sewa, "DAY_BEFORE"),
+    merchantPaidEmail(sewa).text,
+    merchantConfirmedEmail(sewa).text,
+    merchantRequestedEmail(sewa).text,
+    merchantPaidEmail(sewa).html,
+  ]) {
+    assert.match(text, /Lapangan 2/);
+    assert.match(text, /Lapangan/);
+  }
+  assert.match(merchantPaidWhatsapp(sewa), /Lapangan: Lapangan 2/);
+});
+
+test("pesan non-sewa tidak berubah: tanpa baris Lapangan", () => {
+  assert.doesNotMatch(merchantPaidWhatsapp(base), /Lapangan/);
+  assert.doesNotMatch(merchantPaidEmail(base).text, /Lapangan/);
+  assert.doesNotMatch(merchantPaidWhatsapp({ ...base, courtName: null }), /Lapangan/);
+});
