@@ -1455,6 +1455,7 @@ export type Database = {
           p_max: number | null;
           p_duration: number | null;
           p_court_ids: string[];
+          p_activate?: boolean;
           p_rules: {
             day_of_week: number;
             start_time: string;

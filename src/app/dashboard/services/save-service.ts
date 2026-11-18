@@ -14,6 +14,15 @@ const LIMIT_MESSAGE =
 const DEPOSIT_MESSAGE =
   "Besar DP tidak valid. Persen 1 sampai 90, atau nominal tetap yang lebih kecil dari harga.";
 
+const NEUTRAL_CHECK_MESSAGE = "Isian layanan tidak valid. Periksa harga, DP, dan pengaturan sewa.";
+
+/** 23514: PostgREST menyebut nama constraint di message; tanpa itu, layanan sewa memakai pesan netral. */
+function checkMessage(error: { message?: string }, rental: boolean): string {
+  if (/services_deposit/.test(error.message ?? "")) return DEPOSIT_MESSAGE;
+  if (/services_court/.test(error.message ?? "")) return mapCourtError("23514");
+  return rental ? NEUTRAL_CHECK_MESSAGE : DEPOSIT_MESSAGE;
+}
+
 const courtFail = (code: string | undefined): ServiceFormState => ({
   status: "error",
   message: mapCourtError(code),
@@ -37,7 +46,7 @@ function baseColumns(v: ServiceValues) {
 }
 
 /** Satu transaksi di database: kolom sewa, tautan lapangan, dan aturan jam ramai (atau pembersihannya). */
-function saveCourtService(supabase: Supabase, serviceId: string, court: CourtServiceValues | null) {
+function saveCourtService(supabase: Supabase, serviceId: string, court: CourtServiceValues | null, activate = false) {
   return supabase.rpc("save_court_service", {
     p_service_id: serviceId,
     p_rental: court !== null,
@@ -45,6 +54,7 @@ function saveCourtService(supabase: Supabase, serviceId: string, court: CourtSer
     p_max: court?.maxMinutes ?? null,
     p_duration: court?.minMinutes ?? null,
     p_court_ids: court?.courtIds ?? [],
+    p_activate: activate,
     p_rules: (court?.rules ?? []).flatMap((r) =>
       r.days.map((day) => ({ day_of_week: day, start_time: r.start, end_time: r.end, price_per_hour: r.pricePerHour })),
     ),
@@ -52,9 +62,10 @@ function saveCourtService(supabase: Supabase, serviceId: string, court: CourtSer
 }
 
 /**
- * Layanan dibuat dulu sebagai layanan biasa (selalu valid), lalu save_court_service
- * menjadikannya sewa dalam satu transaksi. Layanan sewa setengah jadi tidak pernah ada;
- * bila langkah sewa gagal, layanan baru dihapus lagi supaya mencoba ulang tidak menggandakan.
+ * Layanan sewa dibuat NONAKTIF sebagai layanan biasa (selalu valid), lalu save_court_service
+ * menjadikannya sewa dan mengaktifkannya dalam satu transaksi. Jadi tidak pernah tayang di
+ * halaman publik dengan harga per jam sebelum lengkap. Bila langkah sewa gagal, layanan baru
+ * dihapus lagi; kalau penghapusan pun gagal, ia tetap nonaktif.
  */
 export async function createServiceRecord(
   supabase: Supabase,
@@ -64,18 +75,23 @@ export async function createServiceRecord(
 ): Promise<ServiceFormState> {
   const { data, error } = await supabase
     .from("services")
-    .insert({ merchant_id: userId, ...baseColumns(v), duration_minutes: court?.minMinutes ?? v.duration_minutes })
+    .insert({
+      merchant_id: userId,
+      ...baseColumns(v),
+      duration_minutes: court?.minMinutes ?? v.duration_minutes,
+      ...(court ? { is_active: false } : {}),
+    })
     .select("id")
     .single();
 
   if (error) {
     if (error.code === "P0001") return { status: "error", message: LIMIT_MESSAGE, limitReached: true };
-    if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
+    if (error.code === "23514") return { status: "error", message: checkMessage(error, court !== null) };
     return { status: "error", message: "Gagal menyimpan layanan. Coba lagi." };
   }
 
   if (court && data) {
-    const { error: rentalError } = await saveCourtService(supabase, data.id, court);
+    const { error: rentalError } = await saveCourtService(supabase, data.id, court, true);
     if (rentalError) {
       const { error: rollbackError } = await supabase
         .from("services")
@@ -89,14 +105,13 @@ export async function createServiceRecord(
   return { status: "success", serviceId: data?.id };
 }
 
-/** `wasRental`: layanan ini sebelumnya sewa, jadi mematikan sewa harus membersihkan tautan dan aturannya. */
+/** Layanan biasa selalu memanggil RPC dengan p_rental=false: membersihkan tautan dan aturan sisa, idempoten, tak bergantung isian form. */
 export async function updateServiceRecord(
   supabase: Supabase,
   userId: string,
   id: string,
   v: ServiceValues,
   court: CourtServiceValues | null,
-  wasRental: boolean,
 ): Promise<ServiceFormState> {
   const { error } = await supabase
     .from("services")
@@ -112,15 +127,20 @@ export async function updateServiceRecord(
     .eq("merchant_id", userId);
 
   if (error) {
-    if (error.code === "23514") {
-      return court ? courtFail(error.code) : { status: "error", message: DEPOSIT_MESSAGE };
-    }
+    if (error.code === "23514") return { status: "error", message: checkMessage(error, court !== null) };
     return { status: "error", message: "Gagal menyimpan perubahan. Coba lagi." };
   }
 
-  if (court || wasRental) {
-    const { error: rentalError } = await saveCourtService(supabase, id, court);
-    if (rentalError) return courtFail(rentalError.code);
+  const { error: rentalError } = await saveCourtService(supabase, id, court);
+  if (rentalError) {
+    // Update dasar sudah tersimpan; katakan terus terang agar merchant tidak mengira semuanya gagal.
+    const reason = mapCourtError(rentalError.code);
+    return {
+      status: "error",
+      message: `Nama dan harga tersimpan, tapi pengaturan sewa gagal disimpan: ${reason}`,
+      courtError: reason,
+      fieldErrors: {},
+    };
   }
   return { status: "success" };
 }

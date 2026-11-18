@@ -99,7 +99,6 @@ export function CourtFields({
         </div>
         {/* Selalu terkirim: server membaca courtEnabled untuk memutuskan cabang sewa. */}
         <input type="hidden" name="courtEnabled" value={rental ? "1" : ""} />
-        <input type="hidden" name="courtWas" value={service?.court_unit_minutes != null ? "1" : ""} />
 
         {rental ? (
           <>

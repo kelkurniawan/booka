@@ -7341,6 +7341,25 @@ select pg_temp.is79('t81.6b hasil: 60:120:60, seat null', pg_temp.s81('81818181-
 select pg_temp.is79('t81.6c party dikosongkan',
   (select (party_min is null and party_max is null)::text from public.services where id = '81818181-5e00-0000-0000-000000000002'), 'true');
 
-select case when has_function_privilege('anon', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb)', 'EXECUTE')
-              or not has_function_privilege('authenticated', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb)', 'EXECUTE')
+select case when has_function_privilege('anon', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb, boolean)', 'EXECUTE')
+              or not has_function_privilege('authenticated', 'public.save_court_service(uuid, boolean, smallint, smallint, integer, uuid[], jsonb, boolean)', 'EXECUTE')
             then 'FAIL t81.7 hak eksekusi save_court_service salah' else 'OK   t81.7 save_court_service hanya authenticated' end as t81_7;
+
+-- 81.8 layanan sewa baru: nonaktif sampai RPC sukses, aktif atomik; gagal tetap nonaktif
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, is_active) values
+  ('81818181-5e00-0000-0000-000000000003', '81818181-0000-0000-0000-000000000001', 'Padel baru 81', 150000, 60, 'FULL', false),
+  ('81818181-5e00-0000-0000-000000000004', '81818181-0000-0000-0000-000000000001', 'Padel nonaktif 81', 150000, 60, 'FULL', false);
+select pg_temp.act34('t81.8a RPC gagal (aturan tumpang tindih): tetap nonaktif', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000003', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001']::uuid[],
+    '[{"day_of_week":6,"start_time":"17:00","end_time":"18:00","price_per_hour":250000},
+      {"day_of_week":6,"start_time":"17:30","end_time":"19:00","price_per_hour":200000}]'::jsonb, true)$q$, '23P01');
+select pg_temp.is79('t81.8b nonaktif dan bukan sewa', (select is_active::text || ':' || (court_unit_minutes is null)::text from public.services where id = '81818181-5e00-0000-0000-000000000003'), 'false:true');
+select pg_temp.act34('t81.8c RPC sukses dengan p_activate: aktif', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000003', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb, true)$q$);
+select pg_temp.is79('t81.8d aktif dan sewa', (select is_active::text || ':' || (court_unit_minutes is not null)::text from public.services where id = '81818181-5e00-0000-0000-000000000003'), 'true:true');
+select pg_temp.act34('t81.8e simpan ulang tanpa p_activate tidak menayangkan layanan yang sengaja nonaktif', '81818181-0000-0000-0000-000000000001',
+  $q$select public.save_court_service('81818181-5e00-0000-0000-000000000004', true, 30::smallint, 120::smallint, 60,
+    array['81818181-c000-0000-0000-000000000001']::uuid[], '[]'::jsonb)$q$);
+select pg_temp.is79('t81.8f tetap nonaktif', (select is_active::text from public.services where id = '81818181-5e00-0000-0000-000000000004'), 'false');

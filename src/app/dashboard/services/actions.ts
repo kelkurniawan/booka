@@ -132,7 +132,6 @@ export async function updateService(
     id,
     parsed.data,
     courtParsed?.data ?? null,
-    formData.get("courtWas") === "1",
   );
   if (result.status === "success") revalidatePath(ROUTES.services);
   return result;

@@ -5,7 +5,7 @@ import type { CourtServiceValues, ServiceValues } from "@/lib/validations/servic
 
 import { createServiceRecord, updateServiceRecord } from "./save-service";
 
-type Err = { code: string } | null;
+type Err = { code: string; message?: string } | null;
 type Call = { op: string; table?: string; payload?: unknown; name?: string };
 
 /** Klien palsu pencatat: hasil tiap operasi diatur lewat `results`, kunci "tabel.op" atau "rpc.nama". */
@@ -63,12 +63,30 @@ const COURT: CourtServiceValues = {
 
 const rpcCalls = (calls: Call[]) => calls.filter((c) => c.op === "rpc");
 
-test("create salon: insert saja, tanpa RPC sewa", async () => {
+test("create salon: insert aktif, tanpa RPC sewa", async () => {
   const { client, calls } = fake({ "services.insert": { data: { id: "s1" } } });
   const r = await createServiceRecord(client, "u1", SALON, null);
   assert.deepEqual(r, { status: "success", serviceId: "s1" });
   assert.equal(rpcCalls(calls).length, 0);
   assert.equal((calls[0].payload as { duration_minutes: number }).duration_minutes, 45);
+  assert.ok(!("is_active" in (calls[0].payload as object)));
+});
+
+test("create sewa: insert NONAKTIF, RPC mengaktifkan (p_activate=true)", async () => {
+  const { client, calls } = fake({ "services.insert": { data: { id: "s1" } } });
+  await createServiceRecord(client, "u1", SALON, COURT);
+  assert.equal((calls[0].payload as { is_active: boolean }).is_active, false);
+  assert.equal((rpcCalls(calls)[0].payload as { p_activate: boolean }).p_activate, true);
+});
+
+test("create sewa: rollback gagal tetap mengembalikan galat terpetakan (layanan tetap nonaktif)", async () => {
+  const { client } = fake({
+    "services.insert": { data: { id: "s1" } },
+    "rpc.save_court_service": { error: { code: "23P01" } },
+    "services.delete": { error: { code: "XX" } },
+  });
+  const r = await createServiceRecord(client, "u1", SALON, COURT);
+  assert.match(r.message ?? "", /tumpang tindih/);
 });
 
 test("create sewa: insert lalu satu RPC dengan baris aturan per hari", async () => {
@@ -118,11 +136,14 @@ test("create: P0001 batas layanan dan 23514 DP tetap pesan lama", async () => {
   assert.equal(c.message, "Gagal menyimpan layanan. Coba lagi.");
 });
 
-test("update salon: tanpa RPC, kolom sewa dikosongkan", async () => {
+test("update layanan biasa: selalu RPC p_rental=false (form palsu tak bisa meninggalkan sisa), kolom sewa dikosongkan", async () => {
   const { client, calls } = fake();
-  const r = await updateServiceRecord(client, "u1", "s1", SALON, null, false);
+  const r = await updateServiceRecord(client, "u1", "s1", SALON, null);
   assert.deepEqual(r, { status: "success" });
-  assert.equal(rpcCalls(calls).length, 0);
+  const rpc = rpcCalls(calls);
+  assert.equal(rpc.length, 1);
+  assert.equal((rpc[0].payload as { p_rental: boolean; p_court_ids: unknown[]; p_rules: unknown[] }).p_rental, false);
+  assert.deepEqual((rpc[0].payload as { p_court_ids: unknown[] }).p_court_ids, []);
   const p = calls[0].payload as Record<string, unknown>;
   assert.equal(p.court_unit_minutes, null);
   assert.equal(p.duration_minutes, 45);
@@ -130,7 +151,7 @@ test("update salon: tanpa RPC, kolom sewa dikosongkan", async () => {
 
 test("update sewa: durasi tidak ditulis di update biasa, RPC sewa menyala", async () => {
   const { client, calls } = fake();
-  const r = await updateServiceRecord(client, "u1", "s1", SALON, COURT, true);
+  const r = await updateServiceRecord(client, "u1", "s1", SALON, COURT);
   assert.equal(r.status, "success");
   assert.ok(!("duration_minutes" in (calls[0].payload as object)));
   assert.equal((rpcCalls(calls)[0].payload as { p_rental: boolean }).p_rental, true);
@@ -138,26 +159,35 @@ test("update sewa: durasi tidak ditulis di update biasa, RPC sewa menyala", asyn
 
 test("update mematikan sewa: RPC p_rental=false membersihkan tautan dan aturan", async () => {
   const { client, calls } = fake();
-  const r = await updateServiceRecord(client, "u1", "s1", SALON, null, true);
+  const r = await updateServiceRecord(client, "u1", "s1", SALON, null);
   assert.equal(r.status, "success");
   assert.equal((rpcCalls(calls)[0].payload as { p_rental: boolean }).p_rental, false);
 });
 
 for (const [code, pola] of rpcErrors) {
-  test(`update sewa: RPC ${code} dipetakan`, async () => {
+  test(`update sewa: RPC ${code} dipetakan dan menyebut bagian dasar sudah tersimpan`, async () => {
     const { client } = fake({ "rpc.save_court_service": { error: { code } } });
-    const r = await updateServiceRecord(client, "u1", "s1", SALON, COURT, false);
+    const r = await updateServiceRecord(client, "u1", "s1", SALON, COURT);
     assert.equal(r.status, "error");
+    assert.match(r.message ?? "", /^Nama dan harga tersimpan, tapi pengaturan sewa gagal disimpan: /);
     assert.match(r.message ?? "", pola);
   });
 }
 
-test("update: 23514 pada layanan sewa memakai pesan sewa, pada salon pesan DP", async () => {
-  const bad = { "services.update": { error: { code: "23514" } } };
-  const a = await updateServiceRecord(fake(bad).client, "u1", "s1", SALON, COURT, false);
-  assert.match(a.message ?? "", /Pengaturan sewa tidak valid/);
-  const b = await updateServiceRecord(fake(bad).client, "u1", "s1", SALON, null, false);
-  assert.match(b.message ?? "", /Besar DP/);
-  const c = await updateServiceRecord(fake({ "services.update": { error: { code: "XX" } } }).client, "u1", "s1", SALON, null, false);
-  assert.equal(c.message, "Gagal menyimpan perubahan. Coba lagi.");
+test("23514: constraint deposit memakai pesan DP, constraint sewa pesan sewa, tanpa nama pada sewa pesan netral", async () => {
+  const mk = (message: string) => ({ "services.update": { error: { code: "23514", message } } });
+  const dep = 'violates check constraint "services_deposit_range"';
+  const crt = 'violates check constraint "services_court_range"';
+  const a = await updateServiceRecord(fake(mk(dep)).client, "u1", "s1", SALON, COURT);
+  assert.match(a.message ?? "", /Besar DP/);
+  const b = await updateServiceRecord(fake(mk(crt)).client, "u1", "s1", SALON, COURT);
+  assert.match(b.message ?? "", /Pengaturan sewa tidak valid/);
+  const c = await updateServiceRecord(fake(mk("")).client, "u1", "s1", SALON, COURT);
+  assert.match(c.message ?? "", /Isian layanan tidak valid/);
+  const d = await updateServiceRecord(fake(mk("")).client, "u1", "s1", SALON, null);
+  assert.match(d.message ?? "", /Besar DP/);
+  const e = await updateServiceRecord(fake({ "services.update": { error: { code: "XX" } } }).client, "u1", "s1", SALON, null);
+  assert.equal(e.message, "Gagal menyimpan perubahan. Coba lagi.");
+  const f = await createServiceRecord(fake({ "services.insert": { error: { code: "23514", message: dep } } }).client, "u1", SALON, COURT);
+  assert.match(f.message ?? "", /Besar DP/);
 });
