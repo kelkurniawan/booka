@@ -29,6 +29,7 @@ export const ROUTES = {
   newBooking: "/dashboard/bookings/baru",
   analytics: "/dashboard/analitik",
   appearance: "/dashboard/halaman",
+  links: "/dashboard/tautan",
   promoBanners: "/dashboard/promosi",
   promoVouchers: "/dashboard/promosi/voucher",
   services: "/dashboard/services",

@@ -10,6 +10,7 @@ import {
   Globe,
   LayoutGrid,
   LayoutList,
+  Link2,
   Megaphone,
   Palette,
   Settings,
@@ -62,6 +63,7 @@ const NAV_GROUPS = [
     label: "Halaman booking",
     items: [
       { title: "Tampilan", href: ROUTES.appearance, icon: Palette },
+      { title: "Tautan dan sosmed", href: ROUTES.links, icon: Link2 },
       { title: "Promosi", href: ROUTES.promoBanners, icon: Megaphone },
       { title: "Domain", href: ROUTES.domain, icon: Globe },
     ],

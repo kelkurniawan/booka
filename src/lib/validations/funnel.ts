@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { LINK_PLACEMENTS } from "@/lib/funnel/link-placement";
 import { isSafeLinkUrl, isValidGa4Id, isValidMetaPixelId, isValidTiktokPixelId } from "@/lib/funnel/pixel-ids";
 
 export const AD_CHANNELS = ["IG_BIO", "META_ADS", "TIKTOK_ADS", "WA_STATUS", "OTHER"] as const;
@@ -24,6 +25,11 @@ export const merchantLinksSchema = z.object({
       }),
     )
     .max(8, "Maksimal 8 tautan"),
+});
+
+export const saveLinksInputSchema = merchantLinksSchema.extend({
+  showSocialIcons: z.boolean(),
+  placement: z.enum(LINK_PLACEMENTS),
 });
 
 const optionalId = (valid: (v: string) => boolean, msg: string) =>
