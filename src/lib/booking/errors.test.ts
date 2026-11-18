@@ -115,3 +115,9 @@ test("BK037 (di atas batas QRIS) -> 422, pesan batas Rp10.000.000", () => {
   assert.equal(result.status, 422);
   assert.match(result.message, /maksimal Rp10\.000\.000/);
 });
+
+test("BK070/BK071/BK072 -> pesan lapangan", () => {
+  assert.equal(mapBookingError("BK070").status, 409);
+  assert.equal(mapBookingError("BK071").status, 422);
+  assert.match(mapBookingError("BK072").message, /Semua lapangan penuh untuk .* di tanggal ini/);
+});

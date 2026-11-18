@@ -90,6 +90,9 @@ export const createBookingRequestSchema = z.object({
   partySize: z.number().int().min(1).max(200).nullable().default(null),
   areaId: z.uuid().nullable().default(null),
   tableId: z.uuid().nullable().default(null),
+  // Sewa lapangan: null courtId = "Mana saja"; durasi dalam menit (DB yang memvalidasi kelipatan).
+  courtId: z.uuid().nullable().default(null),
+  durationMinutes: z.number().int().min(30).max(480).nullable().default(null),
   customerNote: z
     .string()
     .trim()

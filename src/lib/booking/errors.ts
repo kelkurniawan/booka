@@ -158,6 +158,21 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 422,
     message: "Denah meja tidak valid. Periksa jumlah, nama, dan gabungan meja, lalu coba lagi.",
   },
+  // create_booking: lapangan pilihan tidak aktif atau bukan milik layanan ini.
+  BK070: {
+    status: 409,
+    message: "Lapangan yang dipilih tidak tersedia. Pilih lapangan lain atau Mana saja.",
+  },
+  // create_booking: lama main di luar batas, bukan kelipatan unit, atau layanan bukan sewa.
+  BK071: {
+    status: 422,
+    message: "Lama main tidak valid untuk layanan ini.",
+  },
+  // create_booking: semua lapangan sudah terisi untuk rentang itu.
+  BK072: {
+    status: 409,
+    message: "Semua lapangan penuh untuk lama main ini di tanggal ini. Coba lama main lebih singkat atau pilih tanggal lain.",
+  },
 };
 
 const DEFAULT_MAPPING: BookingErrorMapping = {
