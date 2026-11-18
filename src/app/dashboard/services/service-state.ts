@@ -15,8 +15,17 @@ export type ServiceFormState = {
   fieldErrors?: Partial<Record<FieldName, string>>;
   /** Error P0001 dari trigger enforce_service_limit — tampilkan ajakan upgrade. */
   limitReached?: boolean;
+  /** Galat bidang sewa lapangan (jam ramai, lapangan, lama main). */
+  courtError?: string;
   /** Id layanan yang baru dibuat. Dipakai klien untuk melampirkan media. */
   serviceId?: string;
 };
 
 export const INITIAL_SERVICE_FORM_STATE: ServiceFormState = { status: "idle" };
+
+/** Hasil aksi "Tambah lapangan" di form layanan. */
+export type AddCourtResult = {
+  status: "success" | "error";
+  message?: string;
+  court?: { id: string; name: string; note: string };
+};

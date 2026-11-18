@@ -5,7 +5,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { MAX_ONLINE_MESSAGE, ONLINE_PRICE_MESSAGE, serviceSchema } from "./service";
+import { courtServiceSchema, MAX_ONLINE_MESSAGE, ONLINE_PRICE_MESSAGE, serviceSchema } from "./service";
 
 const VALID = {
   name: "Riasan pengantin",
@@ -154,4 +154,85 @@ test("batas QRIS: DP 30% dari Rp40.000.000 ditolak, bayar di tempat Rp50.000.000
   assert.equal(dp.success, false);
   assert.ok(dp.error?.issues.some((i) => i.path[0] === "deposit_value" && i.message === MAX_ONLINE_MESSAGE));
   assert.equal(serviceSchema.safeParse({ ...VALID, price: "50000000", payment_mode: "ON_SITE" }).success, true);
+});
+
+const UUID = "3f2b8c1e-0000-4000-8000-000000000001";
+const COURT = {
+  unit: "30",
+  minMinutes: "60",
+  maxMinutes: "120",
+  courtIds: [UUID],
+  rules: [{ days: [1, 2], start: "17:00", end: "22:00", pricePerHour: 250000 }],
+};
+
+test("courtServiceSchema: input valid diterima dan dikoersi", () => {
+  const r = courtServiceSchema.parse(COURT);
+  assert.equal(r.unit, 30);
+  assert.equal(r.maxMinutes, 120);
+});
+
+test("courtServiceSchema: unit selain 30 atau 60 ditolak", () => {
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, unit: "45" }).success, false);
+});
+
+test("courtServiceSchema: minimum bukan kelipatan unit ditolak", () => {
+  const r = courtServiceSchema.safeParse({ ...COURT, unit: "60", minMinutes: "90", maxMinutes: "120" });
+  assert.equal(r.success, false);
+});
+
+test("courtServiceSchema: maksimum di atas 480 atau di bawah minimum ditolak", () => {
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, maxMinutes: "510" }).success, false);
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, minMinutes: "90", maxMinutes: "60" }).success, false);
+});
+
+test("courtServiceSchema: tanpa lapangan ditolak", () => {
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, courtIds: [] }).success, false);
+});
+
+test("courtServiceSchema: aturan start >= end ditolak", () => {
+  const r = courtServiceSchema.safeParse({ ...COURT, rules: [{ ...COURT.rules[0], start: "18:00", end: "18:00" }] });
+  assert.equal(r.success, false);
+});
+
+test("courtServiceSchema: harga aturan harus bilangan bulat positif", () => {
+  for (const pricePerHour of [0, -5, 100.5]) {
+    const r = courtServiceSchema.safeParse({ ...COURT, rules: [{ ...COURT.rules[0], pricePerHour }] });
+    assert.equal(r.success, false, String(pricePerHour));
+  }
+});
+
+test("courtServiceSchema: aturan tanpa hari ditolak", () => {
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, rules: [{ ...COURT.rules[0], days: [] }] }).success, false);
+});
+
+test("courtServiceSchema: tumpang tindih ditolak dengan pesan L5 pada path aturan", () => {
+  const r = courtServiceSchema.safeParse({
+    ...COURT,
+    rules: [
+      { days: [6, 7], start: "17:00", end: "18:00", pricePerHour: 250000 },
+      { days: [6, 7], start: "16:30", end: "17:30", pricePerHour: 200000 },
+    ],
+  });
+  assert.equal(r.success, false);
+  const issue = r.error!.issues[0];
+  assert.deepEqual(issue.path, ["rules", 1]);
+  assert.match(issue.message, /^Sabtu dan Minggu 17\.00 sampai 17\.30 sudah masuk aturan 1\./);
+});
+
+test("courtServiceSchema: aturan bersentuhan lolos; lebih dari 50 baris hari ditolak", () => {
+  const ok = courtServiceSchema.safeParse({
+    ...COURT,
+    rules: [
+      { days: [6], start: "17:00", end: "18:00", pricePerHour: 250000 },
+      { days: [6], start: "18:00", end: "19:00", pricePerHour: 200000 },
+    ],
+  });
+  assert.equal(ok.success, true);
+  const banyak = Array.from({ length: 8 }, (_, i) => ({
+    days: [1, 2, 3, 4, 5, 6, 7],
+    start: `${String(i).padStart(2, "0")}:00`,
+    end: `${String(i).padStart(2, "0")}:30`,
+    pricePerHour: 100000,
+  }));
+  assert.equal(courtServiceSchema.safeParse({ ...COURT, rules: banyak }).success, false);
 });

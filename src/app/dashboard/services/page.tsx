@@ -16,12 +16,55 @@ import { requireMerchant } from "@/lib/auth/session";
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { DEFAULT_MERCHANT_SETTINGS } from "@/lib/booking/payment-mode";
-import type { Service, ServiceMedia } from "@/types/database";
+import { groupRuleRows } from "@/lib/booking/court";
+import type { CourtEnvironment, Service, ServiceMedia } from "@/types/database";
 
 import { AddServiceButton } from "./add-service-button";
+import type { CourtFormData } from "./court-data";
 import { ServicesTable } from "./services-table";
 
 export const metadata: Metadata = { title: "Layanan" };
+
+const ENV_LABEL: Record<CourtEnvironment, string> = {
+  INDOOR: "Indoor",
+  OUTDOOR: "Outdoor",
+  OUTDOOR_BERATAP: "Outdoor beratap",
+};
+
+/** Lapangan, tautan ke layanan, dan aturan jam ramai untuk form sewa. */
+async function loadCourtData(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  merchantId: string,
+  rentals: Service[],
+): Promise<CourtFormData> {
+  const [courts, links, rules] = await Promise.all([
+    supabase.from("courts").select("id, name, environment").eq("merchant_id", merchantId).order("sort_order").order("name"),
+    supabase.from("service_courts").select("service_id, court_id").eq("merchant_id", merchantId),
+    supabase
+      .from("court_price_rules")
+      .select("service_id, day_of_week, start_time, end_time, price_per_hour")
+      .eq("merchant_id", merchantId)
+      .order("start_time"),
+  ]);
+  const linksByService: CourtFormData["linksByService"] = {};
+  const serviceNames = new Map(rentals.map((s) => [s.id, s.name]));
+  const usedBy = new Map<string, string[]>();
+  for (const l of links.data ?? []) {
+    (linksByService[l.service_id] ??= []).push(l.court_id);
+    usedBy.set(l.court_id, [...(usedBy.get(l.court_id) ?? []), serviceNames.get(l.service_id) ?? ""].filter(Boolean));
+  }
+  const grouped: Record<string, NonNullable<typeof rules.data>> = {};
+  for (const r of rules.data ?? []) (grouped[r.service_id] ??= []).push(r);
+  return {
+    courts: (courts.data ?? []).map((c) => ({
+      id: c.id,
+      name: c.name,
+      note: [ENV_LABEL[c.environment], usedBy.get(c.id)?.length ? `dipakai ${usedBy.get(c.id)!.join(", ")}` : ""].filter(Boolean).join(", "),
+    })),
+    linksByService,
+    rulesByService: Object.fromEntries(Object.entries(grouped).map(([id, rows]) => [id, groupRuleRows(rows)])),
+  };
+}
 
 export default async function ServicesPage() {
   // requireMerchant() dibungkus cache() -- dashboard/layout.tsx sudah
@@ -63,6 +106,8 @@ export default async function ServicesPage() {
   // Sama dengan batas yang diberlakukan trigger enforce_service_limit —
   // ditampilkan lebih awal di sini supaya merchant tidak perlu mencoba dulu
   // baru tahu kuotanya habis.
+  const rentals = services.filter((s) => s.court_unit_minutes != null);
+  const courtData = await loadCourtData(supabase, user.id, rentals);
   const limitReached = tier === "STARTER" && services.length >= 1;
 
   return (
@@ -70,7 +115,7 @@ export default async function ServicesPage() {
       <PageHeader
         title="Layanan"
         description="Daftar layanan yang bisa dipesan pelanggan beserta harga dan durasinya."
-        action={<AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} />}
+        action={<AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} courtData={courtData} />}
       />
 
       {limitReached ? (
@@ -98,7 +143,7 @@ export default async function ServicesPage() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} />
+            <AddServiceButton merchantId={user.id} tier={tier} settings={settings} tableMode={tableMode} courtData={courtData} />
           </EmptyContent>
         </Empty>
       ) : (
@@ -107,7 +152,9 @@ export default async function ServicesPage() {
           merchantId={user.id}
           tier={tier}
           mediaByService={mediaByService}
-          settings={settings} tableMode={tableMode}
+          settings={settings}
+          tableMode={tableMode}
+          courtData={courtData}
         />
       )}
     </>

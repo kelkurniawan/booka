@@ -30,6 +30,8 @@ import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types
 
 import { attachServiceMedia, createService, updateService } from "./actions";
 import { PaymentModeField, type ServicePaymentSettings } from "./payment-mode-field";
+import { CourtFields } from "./court-fields";
+import { EMPTY_COURT_DATA, type CourtFormData } from "./court-data";
 import { ReservationFields } from "./reservation-fields";
 import { ServiceMediaField, type DraftMedia } from "./service-media-field";
 import { INITIAL_SERVICE_FORM_STATE, type ServiceFormState } from "./service-state";
@@ -51,6 +53,7 @@ export function ServiceFormDialog({
   media = [],
   settings,
   tableMode,
+  courtData = EMPTY_COURT_DATA,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -60,6 +63,7 @@ export function ServiceFormDialog({
   media?: ServiceMedia[];
   settings: ServicePaymentSettings;
   tableMode: TableMode;
+  courtData?: CourtFormData;
 }) {
   // Dipegang di sini, bukan di ServiceForm, supaya dialog sendiri bisa
   // menolak ditutup selagi submit atau unggahan draft masih berjalan --
@@ -88,6 +92,7 @@ export function ServiceFormDialog({
       }}
     >
       <DialogContent
+        className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
         showCloseButton={!tutupDitahan}
         onEscapeKeyDown={(e) => {
           if (tutupDitahan) e.preventDefault();
@@ -103,6 +108,7 @@ export function ServiceFormDialog({
           media={media}
           settings={settings}
           tableMode={tableMode}
+          courtData={courtData}
           pending={pending}
           startTransition={startTransition}
           mediaSibuk={mediaSibuk}
@@ -192,6 +198,7 @@ function ServiceForm({
   media,
   settings,
   tableMode,
+  courtData,
   pending,
   startTransition,
   mediaSibuk,
@@ -204,6 +211,7 @@ function ServiceForm({
   media: ServiceMedia[];
   settings: ServicePaymentSettings;
   tableMode: TableMode;
+  courtData: CourtFormData;
   /** Dipegang oleh ServiceFormDialog supaya dialog bisa menolak ditutup selagi ini true. */
   pending: boolean;
   startTransition: TransitionStartFunction;
@@ -224,6 +232,8 @@ function ServiceForm({
   const [draft, setDraft] = useState<DraftMedia[]>([]);
   // Terkontrol hanya untuk pratinjau nominal DP di PaymentModeField.
   const [price, setPrice] = useState(service?.price?.toString() ?? "");
+  // Sewa lapangan mematikan durasi dan bidang restoran; sebaliknya reservasi meja mematikan sewa.
+  const [rental, setRental] = useState(service?.court_unit_minutes != null);
 
   // Ref pelacak draft terbaru untuk cleanup unmount di bawah. Ditulis di
   // dalam efek (bukan saat render) supaya lolos aturan lint "Cannot access
@@ -322,6 +332,18 @@ function ServiceForm({
           ) : null}
         </Field>
 
+        <CourtFields
+          service={service}
+          rental={rental}
+          onRentalChange={setRental}
+          price={price}
+          onPriceChange={setPrice}
+          data={courtData}
+          error={state.courtError}
+          priceError={state.fieldErrors?.price}
+        />
+
+        {rental ? null : (
         <div className="grid grid-cols-2 gap-4">
           <Field data-invalid={Boolean(state.fieldErrors?.price)}>
             <FieldLabel htmlFor="price">Harga (Rp)</FieldLabel>
@@ -367,6 +389,7 @@ function ServiceForm({
             )}
           </Field>
         </div>
+        )}
 
         <PaymentModeField
           price={Number(price) || 0}
@@ -375,7 +398,14 @@ function ServiceForm({
           depositError={state.fieldErrors?.deposit_value ?? state.fieldErrors?.deposit_type}
         />
 
-        <ReservationFields service={service} tableMode={tableMode} errors={state.fieldErrors} />
+        {rental ? null : (
+          <ReservationFields
+            service={service}
+            tableMode={tableMode}
+            errors={state.fieldErrors}
+            onReserveChange={(on) => on && setRental(false)}
+          />
+        )}
 
         {state.status === "error" && !state.fieldErrors ? (
           <Alert variant="destructive">

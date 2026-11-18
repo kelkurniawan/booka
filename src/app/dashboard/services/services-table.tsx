@@ -38,6 +38,7 @@ import type { Service, ServiceMedia, SubscriptionTier, TableMode } from "@/types
 import { deleteService, toggleServiceActive } from "./actions";
 import { paymentLabel } from "@/lib/booking/payment-mode";
 import type { ServicePaymentSettings } from "./payment-mode-field";
+import type { CourtFormData } from "./court-data";
 import { ServiceFormDialog } from "./service-form-dialog";
 
 export function ServicesTable({
@@ -47,6 +48,7 @@ export function ServicesTable({
   mediaByService,
   settings,
   tableMode,
+  courtData,
 }: {
   services: Service[];
   merchantId: string;
@@ -54,6 +56,7 @@ export function ServicesTable({
   mediaByService: Record<string, ServiceMedia[]>;
   settings: ServicePaymentSettings;
   tableMode: TableMode;
+  courtData: CourtFormData;
 }) {
   return (
     <div className="overflow-hidden rounded-xl border" data-tour="service-list">
@@ -77,6 +80,7 @@ export function ServicesTable({
               media={mediaByService[service.id] ?? []}
               settings={settings}
               tableMode={tableMode}
+              courtData={courtData}
             />
           ))}
         </TableBody>
@@ -92,6 +96,7 @@ function ServiceRow({
   media,
   settings,
   tableMode,
+  courtData,
 }: {
   service: Service;
   merchantId: string;
@@ -99,6 +104,7 @@ function ServiceRow({
   media: ServiceMedia[];
   settings: ServicePaymentSettings;
   tableMode: TableMode;
+  courtData: CourtFormData;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -150,6 +156,7 @@ function ServiceRow({
         </TableCell>
         <TableCell className="whitespace-nowrap">
           {formatRupiah(service.price)}
+          {service.court_unit_minutes != null ? "/jam" : ""}
           <div className="text-muted-foreground text-xs">{paymentLabel(service, settings)}</div>
         </TableCell>
         <TableCell className="whitespace-nowrap">
@@ -210,6 +217,7 @@ function ServiceRow({
         media={media}
         settings={settings}
         tableMode={tableMode}
+        courtData={courtData}
       />
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

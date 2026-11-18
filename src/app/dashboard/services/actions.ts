@@ -2,15 +2,16 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { z } from "zod";
+import { z, type ZodError } from "zod";
 
 import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
-import { serviceSchema } from "@/lib/validations/service";
+import { courtServiceSchema, serviceSchema, type CourtServiceValues } from "@/lib/validations/service";
 import { isScopedMediaPath, PESAN_PATH_TIDAK_VALID } from "@/lib/media/path";
 import { serviceMediaSchema } from "@/lib/validations/service-media";
 
-import type { ServiceFormState } from "./service-state";
+import { mapCourtError } from "./court-errors";
+import type { AddCourtResult, ServiceFormState } from "./service-state";
 
 /** Pesan ramah untuk error P0001 yang dilempar trigger enforce_service_limit. */
 const LIMIT_MESSAGE =
@@ -20,7 +21,7 @@ const LIMIT_MESSAGE =
 const DEPOSIT_MESSAGE =
   "Besar DP tidak valid. Persen 1 sampai 90, atau nominal tetap yang lebih kecil dari harga.";
 
-function toFieldErrors(error: z.ZodError): ServiceFormState {
+function toFieldErrors(error: ZodError): ServiceFormState {
   const fieldErrors: ServiceFormState["fieldErrors"] = {};
   for (const issue of error.issues) {
     const key = issue.path[0];
@@ -41,20 +42,100 @@ function toFieldErrors(error: z.ZodError): ServiceFormState {
   return { status: "error", message: "Periksa kembali isian Anda", fieldErrors };
 }
 
+/** Kotak "Sewa lapangan" menyala: durasi = lama main minimum, bidang restoran dikosongkan (CHECK services_court_xor_seat). */
+const isRental = (formData: FormData) => formData.get("courtEnabled") === "1";
+
+function parseCourtForm(formData: FormData) {
+  let courtIds: unknown;
+  let rules: unknown;
+  try {
+    courtIds = JSON.parse(String(formData.get("courtIds") ?? "[]"));
+    rules = JSON.parse(String(formData.get("courtRules") ?? "[]"));
+  } catch {
+    courtIds = null;
+  }
+  return courtServiceSchema.safeParse({
+    unit: formData.get("courtUnit"),
+    minMinutes: formData.get("courtMin"),
+    maxMinutes: formData.get("courtMax"),
+    courtIds,
+    rules,
+  });
+}
+
+const COURT_FORM_ERROR: ServiceFormState = {
+  status: "error",
+  message: "Periksa kembali isian Anda",
+  fieldErrors: {},
+};
+
 function parseServiceForm(formData: FormData) {
+  const rental = isRental(formData);
   return serviceSchema.safeParse({
     name: formData.get("name"),
     description: formData.get("description") ?? "",
     price: formData.get("price"),
-    duration_minutes: formData.get("duration_minutes"),
+    duration_minutes: rental ? formData.get("courtMin") : formData.get("duration_minutes"),
     payment_mode: formData.get("payment_mode") ?? undefined,
     deposit_type: formData.get("deposit_type") ?? "",
     deposit_value: formData.get("deposit_value") ?? "",
-    partyMin: formData.get("partyMin") ?? "",
-    partyMax: formData.get("partyMax") ?? "",
+    partyMin: rental ? "" : (formData.get("partyMin") ?? ""),
+    partyMax: rental ? "" : (formData.get("partyMax") ?? ""),
     // Kotak "Reservasi meja" mati: lama duduk tidak terkirim, jadi null.
-    seatDurationMinutes: formData.get("seatDurationMinutes") ?? "",
+    seatDurationMinutes: rental ? "" : (formData.get("seatDurationMinutes") ?? ""),
   });
+}
+
+/** Kolom sewa di tabel services; layanan biasa mengosongkannya kembali. */
+function courtColumns(court: CourtServiceValues | null) {
+  return {
+    court_unit_minutes: court?.unit ?? null,
+    court_max_minutes: court?.maxMinutes ?? null,
+  };
+}
+
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+/** Tautan service_courts lalu aturan jam ramai. Mengembalikan kode error Postgres pertama, atau null. */
+async function saveCourtParts(
+  supabase: Supabase,
+  merchantId: string,
+  serviceId: string,
+  court: CourtServiceValues,
+): Promise<{ code: string } | null> {
+  const { data: existing, error: readError } = await supabase
+    .from("service_courts")
+    .select("court_id")
+    .eq("service_id", serviceId)
+    .eq("merchant_id", merchantId);
+  if (readError) return { code: readError.code };
+
+  const have = new Set((existing ?? []).map((r) => r.court_id));
+  const stale = [...have].filter((id) => !court.courtIds.includes(id));
+  if (stale.length > 0) {
+    const { error } = await supabase
+      .from("service_courts")
+      .delete()
+      .eq("service_id", serviceId)
+      .eq("merchant_id", merchantId)
+      .in("court_id", stale);
+    if (error) return { code: error.code };
+  }
+  const fresh = court.courtIds.filter((id) => !have.has(id));
+  if (fresh.length > 0) {
+    const { error } = await supabase
+      .from("service_courts")
+      .insert(fresh.map((court_id) => ({ service_id: serviceId, court_id, merchant_id: merchantId })));
+    if (error) return { code: error.code };
+  }
+
+  const { error } = await supabase.rpc("save_court_pricing", {
+    p_service_id: serviceId,
+    p_rules: court.rules.flatMap((r) =>
+      r.days.map((day) => ({ day_of_week: day, start_time: r.start, end_time: r.end, price_per_hour: r.pricePerHour })),
+    ),
+  });
+  return error ? { code: error.code } : null;
 }
 
 export async function createService(
@@ -63,6 +144,11 @@ export async function createService(
 ): Promise<ServiceFormState> {
   const parsed = parseServiceForm(formData);
   if (!parsed.success) return toFieldErrors(parsed.error);
+  const courtParsed = isRental(formData) ? parseCourtForm(formData) : null;
+  if (courtParsed && !courtParsed.success) {
+    return { ...COURT_FORM_ERROR, courtError: courtParsed.error.issues[0].message };
+  }
+  const court = courtParsed?.data ?? null;
 
   const supabase = await createClient();
   const {
@@ -85,6 +171,7 @@ export async function createService(
       party_min: parsed.data.partyMin,
       party_max: parsed.data.partyMax,
       seat_duration_minutes: parsed.data.seatDurationMinutes,
+      ...courtColumns(court),
     })
     .select("id")
     .single();
@@ -96,6 +183,15 @@ export async function createService(
     }
     if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
     return { status: "error", message: "Gagal menyimpan layanan. Coba lagi." };
+  }
+
+  if (court && data) {
+    const failed = await saveCourtParts(supabase, user.id, data.id, court);
+    if (failed) {
+      // Jangan tinggalkan layanan sewa setengah jadi: mencoba lagi akan membuat duplikat.
+      await supabase.from("services").delete().eq("id", data.id).eq("merchant_id", user.id);
+      return { status: "error", message: mapCourtError(failed.code), courtError: mapCourtError(failed.code), fieldErrors: {} };
+    }
   }
 
   revalidatePath(ROUTES.services);
@@ -112,6 +208,11 @@ export async function updateService(
 
   const parsed = parseServiceForm(formData);
   if (!parsed.success) return toFieldErrors(parsed.error);
+  const courtParsed = isRental(formData) ? parseCourtForm(formData) : null;
+  if (courtParsed && !courtParsed.success) {
+    return { ...COURT_FORM_ERROR, courtError: courtParsed.error.issues[0].message };
+  }
+  const court = courtParsed?.data ?? null;
 
   const supabase = await createClient();
   const {
@@ -133,6 +234,7 @@ export async function updateService(
       party_min: parsed.data.partyMin,
       party_max: parsed.data.partyMax,
       seat_duration_minutes: parsed.data.seatDurationMinutes,
+      ...courtColumns(court),
     })
     .eq("id", id)
     // RLS sudah membatasi ke merchant pemilik, tapi filter eksplisit ini
@@ -143,6 +245,13 @@ export async function updateService(
   if (error) {
     if (error.code === "23514") return { status: "error", message: DEPOSIT_MESSAGE };
     return { status: "error", message: "Gagal menyimpan perubahan. Coba lagi." };
+  }
+
+  if (court) {
+    const failed = await saveCourtParts(supabase, user.id, id, court);
+    if (failed) {
+      return { status: "error", message: mapCourtError(failed.code), courtError: mapCourtError(failed.code), fieldErrors: {} };
+    }
   }
 
   revalidatePath(ROUTES.services);
@@ -329,4 +438,30 @@ export async function detachServiceMedia(
   revalidatePath(ROUTES.services);
   revalidatePath(ROUTES.appearance);
   return { status: "success", paths: terhapus };
+}
+
+const courtNameSchema = z.string().trim().min(1, "Nama lapangan wajib diisi").max(40, "Nama lapangan maksimal 40 karakter");
+
+/** "Tambah lapangan" inline di form layanan; manajer lengkap ada di Task 9. */
+export async function addCourt(name: string): Promise<AddCourtResult> {
+  const parsed = courtNameSchema.safeParse(name);
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirect(ROUTES.login);
+
+  const { data, error } = await supabase
+    .from("courts")
+    .insert({ merchant_id: user.id, name: parsed.data })
+    .select("id, name")
+    .single();
+
+  if (error || !data) return { status: "error", message: mapCourtError(error?.code) };
+
+  revalidatePath(ROUTES.services);
+  return { status: "success", court: { id: data.id, name: data.name, note: "Indoor" } };
 }
