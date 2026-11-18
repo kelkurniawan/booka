@@ -20,6 +20,7 @@ import { VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
 
 import { BookingPageView } from "./booking-page-view";
 import { resolveEntry } from "./entry";
+import { PixelScripts } from "@/components/booking-page/pixel-scripts";
 import { FunnelTracker } from "./funnel-tracker";
 import type { RestaurantInfo } from "./booking-flow";
 
@@ -311,9 +312,18 @@ export default async function MerchantPublicPage({
   if (VOUCHER_CODE_PATTERN.test(kode)) link = { serviceId: link?.serviceId ?? null, voucherCode: kode };
   const entry = resolveEntry(link, services, null);
 
+  // ID pixel aktif; gagal baca = tanpa pixel (halaman tetap jalan).
+  const { data: trackingRows } = await createPublicClient().rpc("get_public_tracking", {
+    p_merchant_id: merchant.id,
+  });
+  const tracking = trackingRows?.[0];
+
   return (
     <>
     <FunnelTracker merchantId={merchant.id} />
+    <PixelScripts
+      ids={{ meta: tracking?.meta_pixel_id, tiktok: tracking?.tiktok_pixel_id, ga4: tracking?.ga4_measurement_id }}
+    />
     <BookingPageView
       entry={entry}
       merchant={merchant}

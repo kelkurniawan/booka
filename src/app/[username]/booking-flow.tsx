@@ -35,6 +35,7 @@ import {
   type TimeSlotState,
 } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
+import { firePixel } from "@/components/booking-page/pixel-scripts";
 import { funnelContext, trackFunnel } from "./funnel-tracker";
 import { resolveEntry, voucherFailureMessage, type Entry, type EntryNotice } from "./entry";
 import { Button } from "@/components/ui/button";
@@ -186,6 +187,8 @@ type CheckoutResult = {
   payment_url: string;
   expires_at: string;
   bookingUrl: string;
+  pixelEventId: string;
+  value: number;
 };
 
 type CheckoutErrorBody = { error?: string; code?: string; issues?: unknown };
@@ -430,7 +433,13 @@ export function BookingFlow({
     if ((step !== 2 && step !== 4) || sentStepsRef.current.has(step)) return;
     sentStepsRef.current.add(step);
     trackFunnel(step === 2 ? "SERVICE" : "CHECKOUT", selectedServiceId ? { serviceId: selectedServiceId } : {});
-  }, [step, selectedServiceId]);
+    // Pixel iklan: event_id acak per kejadian (deduplikasi hanya untuk Lead/Purchase).
+    firePixel(step === 2 ? "SERVICE" : "CHECKOUT", {
+      eventId: crypto.randomUUID(),
+      value: selectedService ? Number(selectedService.price) : undefined,
+      contentName: selectedService?.name,
+    });
+  }, [step, selectedServiceId, selectedService]);
 
   // Masuk dari tautan dengan layanan: langkah Jadwal terbuka, dan Kembali ke Layanan.
   const enterAtScheduleRef = useRef(Boolean(entry.serviceId));
@@ -699,6 +708,11 @@ export function BookingFlow({
       // hasil akhir ditampilkan. Selalu ikuti bookingUrl: server yang
       // menentukan status (mis. ON_SITE bisa jadi FULL karena no-show). `submitting` sengaja tidak direset karena halaman segera
       // berpindah.
+      firePixel("BOOKED", {
+        eventId: checkout.pixelEventId,
+        value: checkout.value,
+        contentName: selectedService?.name,
+      });
       router.push(checkout.bookingUrl);
     } catch (error) {
       toast.error(

@@ -47,6 +47,7 @@ export const ROUTES = {
 
   merchantPage: (username: string) => `/${username}`,
   bookingStatus: (token: string) => `/pesanan/${token}`,
+  thankYou: (username: string, eventId: string) => `/${username}/terima-kasih?e=${eventId}`,
   bookingPay: (token: string) => `/api/pesanan/${token}/bayar`,
   bookingReschedule: (token: string) => `/pesanan/${token}/ubah-jadwal`,
   bookingReminders: (token: string) => `/pesanan/${token}/pengingat`,

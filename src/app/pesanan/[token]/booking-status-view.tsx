@@ -18,6 +18,7 @@ import { BookingLiveStatus } from "./booking-live-status";
 import { CancelBookingButton } from "./cancel-booking-button";
 import { ContactButton, type ContactData } from "./contact-sheet";
 import { PayNowButton } from "./pay-now-button";
+import { FinishButton } from "./finish-button";
 import { ReminderSummary } from "./reminder-summary";
 
 export type BookingPageRow = {
@@ -307,6 +308,9 @@ function Booked({
       </section>
 
       <div className="flex flex-col gap-3">
+        {booking.status === "PAID" && merchantUsername ? (
+          <FinishButton username={merchantUsername} eventId={booking.pixel_event_id} />
+        ) : null}
         {manage.cancel.allowed ? <CancelBookingButton token={token} policy={policy} /> : null}
         {merchantUsername ? (
           <Link

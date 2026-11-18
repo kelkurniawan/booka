@@ -35,3 +35,7 @@ test("isAppHost mengenali domain aplikasi, localhost, dan pratinjau Vercel", () 
   assert.equal(isAppHost("booka-git-x.vercel.app", "https://marky.id"), true);
   assert.equal(isAppHost("booking.salon.id", "https://marky.id"), false);
 });
+
+test("halaman terima kasih (subpath /{username}) hidup di domain sendiri", () => {
+  assert.deepEqual(routeCustomDomain("/salon/terima-kasih", "salon"), { type: "rewrite", pathname: "/salon/terima-kasih" });
+});

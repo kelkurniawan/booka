@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
     // CONFIRMED (bayar di tempat) atau REQUESTED: tidak ada charge.
     after(() => notifyBookingCreated(booking.id));
     return NextResponse.json(
-      { bookingId: booking.id, status: booking.status, bookingUrl },
+      { bookingId: booking.id, status: booking.status, bookingUrl, pixelEventId: booking.pixel_event_id, value: Number(booking.amount_due_now) },
       { status: 201 },
     );
   }
@@ -266,6 +266,8 @@ export async function POST(request: NextRequest) {
         expires_at: booking.expires_at,
         // Token mentahnya TIDAK dikirim, hanya path yang menyematkannya.
         bookingUrl,
+        pixelEventId: booking.pixel_event_id,
+        value: Number(booking.amount_due_now),
       },
       { status: 201 },
     );
