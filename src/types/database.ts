@@ -1659,7 +1659,8 @@ export type Database = {
       };
       /**
        * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
-       * BK003 staf nonaktif, BK001 di luar jam, P0006 lampau, 23P01 bentrok.
+       * BK003 staf nonaktif, BK001 di luar jam (sewa: juga lewat jam tutup atau di luar grid unit),
+       * P0006 lampau, 23P01 bentrok, BK072 tidak ada lapangan kosong. Harga sewa tidak dihitung ulang.
        */
       reschedule_booking_by_merchant: {
         Args: { p_booking_id: string; p_new_start: string };
@@ -1668,7 +1669,8 @@ export type Database = {
       /**
        * Ubah jadwal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
        * dikelola, BK041 tidak diizinkan, BK042 batas waktu lewat, BK043 kesempatan habis,
-       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01 seperti jadwal ulang merchant.
+       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01, BK072 seperti jadwal ulang merchant,
+       * BK073 harga sewa di jam baru lebih tinggi dari service_price (atau tidak bisa dihitung).
        */
       reschedule_booking: {
         Args: { p_token: string; p_new_start: string };

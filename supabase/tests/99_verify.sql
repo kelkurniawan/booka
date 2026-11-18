@@ -7021,11 +7021,11 @@ update public.bookings set status = 'CANCELLED', cancelled_at = now() where cust
 update public.bookings set expires_at = now() - interval '1 minute' where customer_whatsapp = '+6281790000009';
 begin;
 set local role anon;
-select case when (select array_agg(k order by k) from (
+select case when (select array_agg(distinct k order by k) from (
                     select jsonb_object_keys(to_jsonb(r)) k
                     from public.get_court_availability('79797979-0000-0000-0000-000000000001',
                       '79797979-5e00-0000-0000-000000000001',
-                      (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date) r limit 4) x)
+                      (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date) r) x)
                  = array['court_id', 'court_name', 'end_datetime', 'start_datetime']
             then 'OK   t79.12a kolom ketersediaan hanya lapangan dan rentang'
             else 'FAIL t79.12a kolom ketersediaan' end as t79_12a;
@@ -7202,3 +7202,75 @@ select case when count(*) = 0
             else 'FAIL t80.7b ' || count(*) end
   from public.get_court_price_rules('79797979-0000-0000-0000-000000000002', '79797979-5e00-0000-0000-000000000001');
 rollback;
+
+-- 80.6 jadwal ulang lapangan memakai jam kerja dan grid yang sama dengan create_booking
+create or replace function pg_temp.rsm80(p_phone text, p_new timestamptz) returns text language sql as $$
+  select format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = p_phone), p_new);
+$$;
+create or replace function pg_temp.rsc80(p_phone text, p_new timestamptz) returns text language sql as $$
+  select format('select * from public.reschedule_booking(%L, %L)',
+    (select access_token from public.bookings where customer_whatsapp = p_phone), p_new);
+$$;
+select pg_temp.act34('t80.6a Q Senin 10.00 120 menit', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 12, '10:00'), 120, null, '+6281800000010'));
+select pg_temp.act34('t80.6b merchant: 22.30 + 120 lewat tengah malam = BK001', '79797979-0000-0000-0000-000000000001',
+  pg_temp.rsm80('+6281800000010', pg_temp.jakarta_future(1, 12, '22:30')), 'BK001');
+select pg_temp.act34('t80.6c merchant: jam mulai 10.15 di luar grid = BK001', '79797979-0000-0000-0000-000000000001',
+  pg_temp.rsm80('+6281800000010', pg_temp.jakarta_future(1, 12, '10:15')), 'BK001');
+select pg_temp.expect_fail_code(pg_temp.rsc80('+6281800000010', pg_temp.jakarta_future(1, 12, '10:45')),
+  'BK001', 't80.6d pelanggan: jam mulai 10.45 di luar grid');
+select pg_temp.act34('t80.6e merchant: 11.00 valid', '79797979-0000-0000-0000-000000000001',
+  pg_temp.rsm80('+6281800000010', pg_temp.jakarta_future(1, 12, '11:00')));
+select pg_temp.is79('t80.6f Q di 11.00-13.00, lapangan dan harga tetap', pg_temp.c80('+6281800000010'), 'Lapangan 1:300000:120:11:00-13:00');
+
+-- 80.7 BK073: pelanggan tidak boleh pindah ke jam yang lebih mahal
+select pg_temp.act34('t80.7a R Senin 10.00 60 menit (150000)', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 13, '10:00'), 60, null, '+6281800000011'));
+select pg_temp.expect_fail_code(pg_temp.rsc80('+6281800000011', pg_temp.jakarta_future(1, 13, '17:00')),
+  'BK073', 't80.7b pelanggan: biasa ke jam ramai');
+select pg_temp.is79('t80.7c R tidak berubah', pg_temp.c80('+6281800000011'), 'Lapangan 1:150000:60:10:00-11:00');
+select pg_temp.expect_ok(pg_temp.rsc80('+6281800000011', pg_temp.jakarta_future(1, 13, '12:00')),
+  't80.7d pelanggan: ke jam berharga sama');
+select pg_temp.act34('t80.7e P Senin 18.00 60 menit (250000)', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 13, '18:00'), 60, null, '+6281800000012'));
+select pg_temp.expect_ok(pg_temp.rsc80('+6281800000012', pg_temp.jakarta_future(1, 13, '14:00')),
+  't80.7f pelanggan: ramai ke jam biasa');
+select pg_temp.is79('t80.7g P harga tetap 250000', pg_temp.c80('+6281800000012'), 'Lapangan 1:250000:60:14:00-15:00');
+select pg_temp.act34('t80.7h merchant: biasa ke jam ramai diterima', '79797979-0000-0000-0000-000000000001',
+  pg_temp.rsm80('+6281800000011', pg_temp.jakarta_future(1, 13, '17:00')));
+select pg_temp.is79('t80.7i R harga tetap 150000', pg_temp.c80('+6281800000011'), 'Lapangan 1:150000:60:17:00-18:00');
+
+-- 80.8 layanan sudah dihapus: lapangan sendiri tetap dipakai bila kosong
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode, court_unit_minutes, court_max_minutes)
+  values ('79797979-5e00-0000-0000-000000000008', '79797979-0000-0000-0000-000000000001', 'Padel hapus 80', 150000, 60, 'FULL', 30, 120);
+insert into public.service_courts (service_id, court_id, merchant_id)
+  values ('79797979-5e00-0000-0000-000000000008', '79797979-c000-0000-0000-000000000003', '79797979-0000-0000-0000-000000000001');
+select pg_temp.act34('t80.8a booking layanan yang nanti dihapus', '79797979-0000-0000-0000-000000000001',
+  format($f$select * from public.create_manual_booking('79797979-5e00-0000-0000-000000000008', %L,
+    'Manual 80', '+6281800000013', p_duration_minutes => 60)$f$, pg_temp.jakarta_future(1, 14, '10:00')));
+delete from public.services where id = '79797979-5e00-0000-0000-000000000008';
+select pg_temp.act34('t80.8b jadwal ulang tanpa layanan tetap di Lapangan 3', '79797979-0000-0000-0000-000000000001',
+  pg_temp.rsm80('+6281800000013', pg_temp.jakarta_future(1, 14, '12:00')));
+select pg_temp.is79('t80.8c Lapangan 3 12.00-13.00', pg_temp.c80('+6281800000013'), 'Lapangan 3:150000:60:12:00-13:00');
+select pg_temp.expect_fail_code(pg_temp.rsc80('+6281800000013', pg_temp.jakarta_future(1, 14, '14:00')),
+  'BK073', 't80.8d pelanggan: harga tidak bisa dihitung (layanan dihapus)');
+
+-- 80.9 get_court_availability kosong untuk layanan nonaktif atau bukan sewa
+create or replace function pg_temp.ga80(p_svc text, p_day timestamptz) returns integer language sql as $$
+  select count(*)::integer from public.get_court_availability('79797979-0000-0000-0000-000000000001', p_svc::uuid,
+    (p_day at time zone 'Asia/Jakarta')::date);
+$$;
+select pg_temp.is79('t80.9a Badminton aktif melihat Lapangan 1 terisi',
+  (pg_temp.ga80('79797979-5e00-0000-0000-000000000002', pg_temp.jakarta_future(1, 13, '00:00')) > 0)::text, 'true');
+update public.services set is_active = false where id = '79797979-5e00-0000-0000-000000000002';
+select pg_temp.is79('t80.9b layanan nonaktif = kosong',
+  pg_temp.ga80('79797979-5e00-0000-0000-000000000002', pg_temp.jakarta_future(1, 13, '00:00'))::text, '0');
+update public.services set is_active = true where id = '79797979-5e00-0000-0000-000000000002';
+update public.services set court_unit_minutes = null, court_max_minutes = null where id = '79797979-5e00-0000-0000-000000000003';
+select pg_temp.is79('t80.9c layanan bukan sewa (masih tertaut) = kosong',
+  pg_temp.ga80('79797979-5e00-0000-0000-000000000003', pg_temp.jakarta_future(6, 3, '00:00'))::text, '0');
+select case when (select count(*) from pg_proc where proname = 'court_slot_fits') = 1
+             and not has_function_privilege('anon', 'public.court_slot_fits(uuid, timestamptz, integer, integer)', 'EXECUTE')
+             and not has_function_privilege('authenticated', 'public.court_slot_fits(uuid, timestamptz, integer, integer)', 'EXECUTE')
+            then 'OK   t80.9d court_slot_fits tertutup' else 'FAIL t80.9d court_slot_fits terbuka' end as t80_9d;

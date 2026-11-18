@@ -173,6 +173,11 @@ const ERROR_MAP: Record<string, BookingErrorMapping> = {
     status: 409,
     message: "Semua lapangan penuh untuk lama main ini di tanggal ini. Coba lama main lebih singkat atau pilih tanggal lain.",
   },
+  // reschedule_booking (pelanggan): harga sewa di jam baru lebih tinggi dari harga yang disepakati.
+  BK073: {
+    status: 409,
+    message: "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini.",
+  },
   // create_booking / RPC lapangan: argumen tidak valid (RAISE ... USING ERRCODE
   // = '22023'), mis. payload ditolak validasi di dalam fungsi.
   "22023": {

@@ -127,6 +127,7 @@ test("route publik /api/bookings: setiap errcode lapangan dan RPC terpetakan (st
     ["BK070", 409, "Lapangan yang dipilih tidak tersedia. Pilih lapangan lain atau Mana saja."],
     ["BK071", 422, "Lama main tidak valid untuk layanan ini."],
     ["BK072", 409, "Semua lapangan penuh untuk lama main ini di tanggal ini. Coba lama main lebih singkat atau pilih tanggal lain."],
+    ["BK073", 409, "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini."],
     ["BK001", 409, "Slot yang dipilih di luar jam kerja merchant, silakan pilih jadwal lain."],
     ["BK054", 409, "Harga layanan belum memenuhi minimal transaksi voucher ini."],
     ["23P01", 409, "Jam tersebut baru saja dipesan orang lain, silakan pilih jadwal lain."],

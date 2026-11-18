@@ -45,6 +45,7 @@ test("rescheduleErrorMessage memetakan kode jadwal ulang", () => {
   assert.equal(rescheduleErrorMessage("BK034"), "Booking ini tidak bisa dijadwal ulang.");
   assert.equal(rescheduleErrorMessage("BK036"), "Booking ini sudah dijadwal ulang 3 kali.");
   assert.equal(rescheduleErrorMessage("BK001"), "Jam itu di luar jam buka. Pilih jam lain.");
+  assert.equal(rescheduleErrorMessage("BK072"), "Semua lapangan penuh di jam baru. Pilih jam lain.");
   assert.equal(rescheduleErrorMessage("BK003"), "Staf untuk booking ini sudah tidak aktif.");
   assert.equal(rescheduleErrorMessage("23P01"), "Jam itu sudah terisi. Pilih jam lain.");
   assert.equal(rescheduleErrorMessage("P0006"), "Jam itu sudah lewat. Pilih jam lain.");

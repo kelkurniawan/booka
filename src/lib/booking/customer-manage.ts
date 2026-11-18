@@ -117,6 +117,8 @@ const ERROR_MESSAGES = new Map<string, string>([
   ["P0006", "Jam itu sudah lewat. Pilih jam lain."],
   ["BK060", "Meja di jam itu sudah penuh. Pilih jam lain."],
   ["BK061", "Meja Anda sudah terisi di jam itu. Pilih jam lain."],
+  ["BK072", "Semua lapangan penuh di jam itu. Pilih jam lain."],
+  ["BK073", "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini."],
 ]);
 
 /** Pesan aman untuk pelanggan; error Postgres mentah tidak pernah diteruskan. */
