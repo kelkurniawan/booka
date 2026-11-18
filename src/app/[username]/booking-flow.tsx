@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { BookingSummary } from "@/components/booking-page/booking-summary";
@@ -278,7 +277,6 @@ export function BookingFlow({
   links,
   entry,
 }: BookingFlowProps) {
-  const router = useRouter();
 
   const [step, setStep] = useState<Step>(entry.serviceId ? 2 : 1);
   // null = "siapa saja" (atau merchant tanpa staf).
@@ -713,7 +711,8 @@ export function BookingFlow({
         value: checkout.value,
         contentName: selectedService?.name,
       });
-      router.push(checkout.bookingUrl);
+      // Dokumen penuh, bukan router.push: pixel di halaman ini tidak boleh ikut ke URL bertoken (SPA pushState).
+      window.location.assign(checkout.bookingUrl);
     } catch (error) {
       toast.error(
         error instanceof Error

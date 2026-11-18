@@ -313,12 +313,12 @@ function Booked({
         ) : null}
         {manage.cancel.allowed ? <CancelBookingButton token={token} policy={policy} /> : null}
         {merchantUsername ? (
-          <Link
+          <a
             href={ROUTES.merchantPage(merchantUsername)}
             className="text-muted-foreground hover:text-foreground text-center text-sm underline underline-offset-4"
           >
             Kembali ke halaman {merchantName}
-          </Link>
+          </a>
         ) : null}
       </div>
 
@@ -371,7 +371,7 @@ function ExpiredOrCancelled({
 
       {merchantUsername ? (
         <Button asChild variant="outline">
-          <Link href={ROUTES.merchantPage(merchantUsername)}>Pesan ulang di {merchantName}</Link>
+          <a href={ROUTES.merchantPage(merchantUsername)}>Pesan ulang di {merchantName}</a>
         </Button>
       ) : null}
     </div>

@@ -6,9 +6,6 @@ import { PixelScripts, firePixel, pixelReady } from "@/components/booking-page/p
 import type { PixelIds } from "@/components/booking-page/pixel-snippets";
 import { Button } from "@/components/ui/button";
 
-/** Disimpan tombol "Selesai" di /pesanan; hanya path, tidak pernah masuk DOM sebagai href. */
-const ORDER_KEY = "marky:pesanan-url";
-
 const read = (op: () => string | null) => {
   try {
     return op();
@@ -28,12 +25,11 @@ export function ThankYouClient({
   serviceName: string;
   ids: PixelIds;
 }) {
-  const [orderUrl, setOrderUrl] = useState<string | null>(null);
-
+  // Tidak ada tautan pesanan di sini (skrip pihak ketiga bisa membaca storage/DOM): hanya kembali di riwayat.
+  const [canGoBack, setCanGoBack] = useState(false);
   useEffect(() => {
-    const url = read(() => sessionStorage.getItem(ORDER_KEY));
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sessionStorage hanya ada di browser
-    if (url?.startsWith("/pesanan/")) setOrderUrl(url);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- history hanya ada di browser
+    setCanGoBack(window.history.length > 1);
   }, []);
 
   // Purchase sekali per event_id. Skrip afterInteractive datang setelah hydrate,
@@ -55,11 +51,13 @@ export function ThankYouClient({
   return (
     <>
       <PixelScripts ids={ids} />
-      {orderUrl ? (
-        <Button variant="outline" className="min-h-11" onClick={() => window.location.assign(orderUrl)}>
+      {canGoBack ? (
+        <Button variant="outline" className="min-h-11" onClick={() => window.history.back()}>
           Lihat pesanan saya
         </Button>
-      ) : null}
+      ) : (
+        <p className="text-muted-foreground text-sm">Buka lagi tautan pesanan dari WhatsApp Anda.</p>
+      )}
     </>
   );
 }

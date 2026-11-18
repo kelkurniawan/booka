@@ -18,3 +18,18 @@ test("tidak ada import pixel di src/app/pesanan dan src/app/dashboard", () => {
     .filter((f) => /pixel-(scripts|snippets)/.test(readFileSync(f, "utf8")));
   assert.deepEqual(bad, []);
 });
+
+// Navigasi klien ke/dari /pesanan membuat pixel melihat URL bertoken: harus dokumen penuh.
+test("pesanan tidak menaut ke halaman merchant lewat Link/router", () => {
+  const bad = sources(join(process.cwd(), "src/app/pesanan")).filter((f) => {
+    const src = readFileSync(f, "utf8");
+    return /<Link[^>]*merchantPage/.test(src) || /router\.push\([^)]*merchantPage/.test(src) || /<Link[^>]*thankYou/.test(src);
+  });
+  assert.deepEqual(bad, []);
+});
+
+test("booking-flow memakai location.assign untuk bookingUrl", () => {
+  const src = readFileSync(join(process.cwd(), "src/app/[username]/booking-flow.tsx"), "utf8");
+  assert.ok(src.includes("window.location.assign(checkout.bookingUrl)"));
+  assert.ok(!/router\.(push|replace)\(checkout\.bookingUrl/.test(src));
+});

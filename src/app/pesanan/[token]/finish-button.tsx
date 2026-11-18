@@ -3,20 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { ROUTES } from "@/lib/routes";
 
-/** Simpan tautan pesanan di sessionStorage (bukan di URL tujuan), lalu buka halaman terima kasih tanpa token. */
+/**
+ * Muat dokumen penuh (bukan router.push): navigasi klien membuat skrip pixel
+ * di halaman tujuan melihat URL bertoken ini lewat document.referrer atau
+ * pushState. Tidak ada yang disimpan di storage.
+ */
 export function FinishButton({ username, eventId }: { username: string; eventId: string }) {
   return (
-    <Button
-      className="min-h-11 w-full"
-      onClick={() => {
-        try {
-          sessionStorage.setItem("marky:pesanan-url", window.location.pathname);
-        } catch {
-          // tanpa tautan balik; halaman terima kasih tetap jalan
-        }
-        window.location.assign(ROUTES.thankYou(username, eventId));
-      }}
-    >
+    <Button className="min-h-11 w-full" onClick={() => window.location.assign(ROUTES.thankYou(username, eventId))}>
       Selesai
     </Button>
   );
