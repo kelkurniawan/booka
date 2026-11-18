@@ -58,7 +58,7 @@ export function CourtVenueMap({
                   key={item.id}
                   aria-hidden
                   className={cn(
-                    "text-muted-foreground absolute flex items-start p-1 text-[11px] font-medium",
+                    "text-muted-foreground absolute flex items-start p-1 text-xs font-medium",
                     item.kind === "area" ? "border-border border border-dashed" : "bg-muted items-center justify-center",
                   )}
                   style={{ ...pos, borderRadius: "var(--radius)" }}
@@ -119,7 +119,7 @@ export function CourtVenueMap({
                     width={p.width}
                     height={p.height}
                     loading="lazy"
-                    className="h-48 w-auto max-w-[80%] shrink-0 snap-start object-cover"
+                    className="h-48 w-auto max-w-4/5 shrink-0 snap-start object-cover"
                     style={radius}
                   />
                 ))}

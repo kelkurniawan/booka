@@ -158,7 +158,7 @@ export function CourtPicker({
                 disabled={row.full}
                 onClick={() => onSlot(slots[i])}
                 className={cn(
-                  "flex min-h-15 items-center gap-3.5 px-3.5 py-2 text-left focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+                  "flex min-h-14 items-center gap-3.5 px-3.5 py-2 text-left focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
                   row.full
                     ? "text-muted-foreground border-border cursor-not-allowed border border-dashed"
                     : row.checked
@@ -167,13 +167,13 @@ export function CourtPicker({
                 )}
                 style={radius}
               >
-                <span className={cn("w-[52px] text-base font-bold", row.full && "line-through")}>{row.label}</span>
+                <span className={cn("w-14 text-base font-bold", row.full && "line-through")}>{row.label}</span>
                 <span className="flex flex-1 flex-col gap-0.5">
-                  <span className="text-[15px] font-medium">{row.price}</span>
+                  <span className="text-base font-medium">{row.price}</span>
                   <span className="text-muted-foreground text-xs">{row.note}</span>
                 </span>
                 {row.checked ? <Check aria-hidden className="size-4" /> : null}
-                <span className="text-primary text-[13px] font-medium">{row.count}</span>
+                <span className="text-primary text-sm font-medium">{row.count}</span>
               </button>
             ))}
           </div>
@@ -228,9 +228,9 @@ export function CourtPicker({
                 </span>
               ) : null}
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-[15px] font-medium">{c.name}</span>
+                <span className="text-base font-medium">{c.name}</span>
                 {c.tags ? <span className="text-xs font-medium">{c.tags}</span> : null}
-                {c.description ? <span className="text-muted-foreground text-[13px] leading-snug">{c.description}</span> : null}
+                {c.description ? <span className="text-muted-foreground text-sm leading-snug">{c.description}</span> : null}
               </span>
             </button>
           ))}

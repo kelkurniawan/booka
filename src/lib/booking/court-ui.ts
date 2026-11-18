@@ -4,6 +4,7 @@
 import type { CourtEnvironment, CourtProfile, VenueAreaView } from "@/types/database";
 import { formatRupiah } from "@/lib/format";
 
+import { voucherIneligibleReason, type VoucherTerms } from "./voucher";
 import { courtPrice, type CourtPriceRule, type CourtPriceSegment } from "./court";
 
 /** Satu jam mulai dari GET /api/slots untuk layanan sewa. */
@@ -66,7 +67,7 @@ export function buildCourtSlotRows(params: {
       };
     }
     const { total, segments } = courtPrice({ basePerHour, rules, dateISO, startHHMM: s.time, durationMinutes, unitMinutes });
-    const price = rp(total);
+    const price = rp(effectiveCourtTotal(total, s.price));
     const firstPeak = segments.findIndex((g) => g.peak);
     const allPeak = segments.every((g) => g.peak);
     let note = "Harga biasa";
@@ -238,4 +239,72 @@ export function courtRateSummary(basePerHour: number, rules: CourtPriceRule[]): 
   const lo = Math.min(...prices);
   const hi = Math.max(...prices);
   return `${base}, jam ramai ${lo === hi ? rp(lo) : `${rp(lo)} sampai ${rp(hi)}`}`;
+}
+
+/**
+ * Jam kosong untuk pemilih jam dashboard dari respons /api/slots layanan sewa.
+ * `courtId` null = "Mana saja": cukup satu lapangan kosong. Jam penuh dibuang.
+ */
+export function courtSlotsToFree(
+  slots: CourtSlotDto[],
+  durationMinutes: number,
+  courtId: string | null,
+): { startUtc: string; endUtc: string; label: string }[] {
+  return slots
+    .filter((s) => !s.full && (courtId === null || s.courts.some((c) => c.id === courtId)))
+    .map((s) => ({
+      startUtc: s.start,
+      endUtc: new Date(Date.parse(s.start) + durationMinutes * 60_000).toISOString(),
+      label: s.time,
+    }));
+}
+
+/**
+ * Harga dari server (/api/slots) menang bila ada dan berbeda dari hitungan
+ * klien, supaya yang tampil selalu sama dengan yang ditagih. Server 0 atau
+ * bukan angka berarti tidak ada harga untuk dibandingkan.
+ */
+export function effectiveCourtTotal(clientTotal: number, serverPrice: number): number {
+  return Number.isFinite(serverPrice) && serverPrice > 0 ? serverPrice : clientTotal;
+}
+
+/** Dua baris bar bawah langkah Jadwal (papan L1). `courtName` null = "Mana saja". */
+export function courtSummaryLines(
+  sel: { dateLabel: string; time: string; durationLabel: string; total: number; courtName: string | null } | null,
+): { top: string; main: string } {
+  if (!sel) return { top: "Belum ada jam dipilih", main: "Pilih jam dulu" };
+  return {
+    top: `${sel.dateLabel}, ${dot(sel.time)} WIB, ${sel.durationLabel}`,
+    main: `${rp(sel.total)}, ${sel.courtName ?? "Mana saja"}`,
+  };
+}
+
+/** Voucher terpasang diperiksa ulang terhadap total sewa; alasan dipetakan ke pesan netral. */
+export function reconcileCourtVoucher(
+  voucher: VoucherTerms,
+  service: { id: string; price: number },
+  total: number,
+  serviceNames: Record<string, string>,
+): { keep: boolean; notice: string | null } {
+  const reason = voucherIneligibleReason(voucher, { id: service.id, price: total }, serviceNames);
+  return reason ? { keep: false, notice: `Voucher ${voucher.code} dilepas. ${reason}.` } : { keep: true, notice: null };
+}
+
+/** Lapangan lain yang masih kosong di jam yang sama setelah BK070; null bila tidak ada. */
+export function pickConflictAlt(
+  freshSlot: CourtSlotDto | undefined,
+  takenCourtId: string | null,
+): { id: string; name: string } | null {
+  return freshSlot?.courts.find((c) => c.id !== takenCourtId) ?? null;
+}
+
+/** Cabang UI setelah POST /api/bookings gagal untuk layanan sewa. */
+export function courtSubmitErrorAction(
+  code: string | undefined,
+  isCourt: boolean,
+): "conflict" | "reload-schedule" | "toast" {
+  if (!isCourt) return "toast";
+  if (code === "BK070") return "conflict";
+  if (code === "BK071" || code === "BK072") return "reload-schedule";
+  return "toast";
 }

@@ -7,6 +7,11 @@ import {
   buildCourtSlotRows,
   buildPriceRows,
   courtRangeLabel,
+  courtSubmitErrorAction,
+  courtSummaryLines,
+  effectiveCourtTotal,
+  pickConflictAlt,
+  reconcileCourtVoucher,
   courtRateSummary,
   courtShort,
   courtStatus,
@@ -171,4 +176,95 @@ test("courtRateSummary: tanpa aturan, satu harga ramai, dan rentang", () => {
     courtRateSummary(150000, [...rules, { dayOfWeek: 6, start: "08:00", end: "12:00", pricePerHour: 200000 }]),
     "Rp150.000 per jam, jam ramai Rp200.000 sampai Rp250.000",
   );
+});
+
+import { courtSlotsToFree } from "./court-ui";
+
+test("courtSlotsToFree: Mana saja memakai semua jam yang tidak penuh", () => {
+  const slots = [
+    { time: "10:00", start: "2026-11-21T03:00:00.000Z", full: false, freeCount: 2, price: 1, courts: [{ id: "a", name: "A" }, { id: "b", name: "B" }] },
+    { time: "10:30", start: "2026-11-21T03:30:00.000Z", full: true, freeCount: 0, price: 1, courts: [] },
+    { time: "11:00", start: "2026-11-21T04:00:00.000Z", full: false, freeCount: 1, price: 1, courts: [{ id: "b", name: "B" }] },
+  ];
+  assert.deepEqual(courtSlotsToFree(slots, 90, null).map((s) => s.label), ["10:00", "11:00"]);
+  assert.equal(courtSlotsToFree(slots, 90, null)[0].endUtc, "2026-11-21T04:30:00.000Z");
+});
+
+test("courtSlotsToFree: lapangan tertentu hanya jam yang lapangan itu kosong", () => {
+  const slots = [
+    { time: "10:00", start: "2026-11-21T03:00:00.000Z", full: false, freeCount: 1, price: 1, courts: [{ id: "a", name: "A" }] },
+    { time: "11:00", start: "2026-11-21T04:00:00.000Z", full: false, freeCount: 1, price: 1, courts: [{ id: "b", name: "B" }] },
+  ];
+  assert.deepEqual(courtSlotsToFree(slots, 60, "b").map((s) => s.label), ["11:00"]);
+  assert.deepEqual(courtSlotsToFree(slots, 60, "zzz"), []);
+});
+
+// --- ronde perbaikan 1 ---
+
+test("effectiveCourtTotal: server menang bila beda, klien dipakai bila sama atau tanpa harga server", () => {
+  assert.equal(effectiveCourtTotal(325000, 325000), 325000);
+  assert.equal(effectiveCourtTotal(325000, 330000), 330000);
+  assert.equal(effectiveCourtTotal(325000, 0), 325000);
+  assert.equal(effectiveCourtTotal(325000, Number.NaN), 325000);
+});
+
+test("buildCourtSlotRows: harga server dipakai saat beda dari courtPrice", () => {
+  const s = { ...slot("16:30", 3), price: 330000 };
+  assert.equal(rowsFor([s])[0].price, "Rp330.000");
+  assert.equal(rowsFor([s])[0].aria, "16.30, Rp330.000, 3 lapangan kosong");
+});
+
+test("courtSummaryLines: Mana saja tidak menebak nama lapangan", () => {
+  const sel = { dateLabel: "Sabtu 21 Nov", time: "16:30", durationLabel: "1,5 jam", total: 325000 };
+  assert.deepEqual(courtSummaryLines({ ...sel, courtName: null }), {
+    top: "Sabtu 21 Nov, 16.30 WIB, 1,5 jam",
+    main: "Rp325.000, Mana saja",
+  });
+  assert.equal(courtSummaryLines({ ...sel, courtName: "Lapangan 3" }).main, "Rp325.000, Lapangan 3");
+});
+
+test("courtSummaryLines: belum ada jam", () => {
+  assert.deepEqual(courtSummaryLines(null), { top: "Belum ada jam dipilih", main: "Pilih jam dulu" });
+});
+
+const terms = { kind: "FIXED" as const, value: 30000, max_discount: null, min_spend: 300000, service_ids: null, code: "MAINBARENG", source: "PUBLIC" as const };
+const svc = { id: "s1", price: 150000 };
+
+test("reconcileCourtVoucher: tetap bila total sewa memenuhi syarat", () => {
+  assert.deepEqual(reconcileCourtVoucher(terms, svc, 325000, {}), { keep: true, notice: null });
+});
+
+test("reconcileCourtVoucher: dilepas dengan alasan bila total sewa di bawah minimal", () => {
+  const r = reconcileCourtVoucher(terms, svc, 150000, {});
+  assert.equal(r.keep, false);
+  assert.equal(r.notice, "Voucher MAINBARENG dilepas. Belum bisa dipakai: minimal Rp300.000.");
+});
+
+test("reconcileCourtVoucher: dilepas bila bukan untuk layanan ini", () => {
+  const r = reconcileCourtVoucher({ ...terms, service_ids: ["lain"] }, svc, 325000, { lain: "Potong rambut" });
+  assert.equal(r.keep, false);
+  assert.equal(r.notice, "Voucher MAINBARENG dilepas. Hanya untuk Potong rambut.");
+});
+
+test("pickConflictAlt: lapangan lain yang kosong, bukan yang diambil", () => {
+  const s = slot("16:30", 3);
+  assert.deepEqual(pickConflictAlt(s, "c1"), { id: "c2", name: "Lapangan 2" });
+  assert.deepEqual(pickConflictAlt(s, "c2"), { id: "c1", name: "Lapangan 1" });
+});
+
+test("pickConflictAlt: tidak ada alternatif bila jam penuh, hilang, atau hanya yang diambil", () => {
+  assert.equal(pickConflictAlt(slot("16:30", 0), "c1"), null);
+  assert.equal(pickConflictAlt(undefined, "c1"), null);
+  assert.equal(pickConflictAlt(slot("16:30", 1), "c1"), null);
+});
+
+test("courtSubmitErrorAction: BK070 konflik, BK071 dan BK072 muat ulang jadwal, lainnya toast", () => {
+  assert.equal(courtSubmitErrorAction("BK070", true), "conflict");
+  assert.equal(courtSubmitErrorAction("BK071", true), "reload-schedule");
+  assert.equal(courtSubmitErrorAction("BK072", true), "reload-schedule");
+  for (const code of ["BK054", "23P01", "42501", undefined]) assert.equal(courtSubmitErrorAction(code, true), "toast", String(code));
+});
+
+test("courtSubmitErrorAction: layanan non-sewa selalu toast", () => {
+  for (const code of ["BK070", "BK071", "BK072"]) assert.equal(courtSubmitErrorAction(code, false), "toast");
 });
