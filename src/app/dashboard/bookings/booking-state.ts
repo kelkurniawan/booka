@@ -34,6 +34,9 @@ export type BookingListItem = Omit<
   | "utm_campaign"
   | "referrer_host"
   | "pixel_event_id"
+  // Lapangan belum di-SELECT daftar booking (menyusul bersama tampilan jadwal lapangan).
+  | "court_id"
+  | "court_name"
 >;
 
 /**

@@ -450,13 +450,13 @@ where id = '11111111-1111-1111-1111-111111111111';
 -- anon/authenticated TIDAK PERNAH -- pembuatan booking cuma lewat
 -- POST /api/bookings (service role), lihat docs/DECISIONS.md bagian 1.
 select
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)', 'EXECUTE')
        then 'FAIL anon bisa memanggil create_booking'
        else 'OK   anon TIDAK bisa memanggil create_booking' end as t11f_anon,
-  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
+  case when has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)', 'EXECUTE')
        then 'FAIL authenticated bisa memanggil create_booking'
        else 'OK   authenticated TIDAK bisa memanggil create_booking' end as t11f_auth,
-  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
+  case when has_function_privilege('service_role', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)', 'EXECUTE')
        then 'OK   service_role bisa memanggil create_booking'
        else 'FAIL service_role TIDAK bisa memanggil create_booking' end as t11f_service;
 
@@ -2757,12 +2757,12 @@ from public.bookings where customer_whatsapp = '+6281333000061';
 -- 33m. Hak EXECUTE signature baru; signature enam argumen sudah hilang.
 -- Sejak 20261125000300 signature terbarunya sembilan belas argumen (atribusi funnel).
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)') is null
        then 'FAIL t33m signature sembilan belas argumen (20261125000300) tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t33m anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t33m service_role tidak bisa EXECUTE create_booking'
        else 'OK   t33m create_booking hanya untuk service_role' end as t33m,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid)') is null
@@ -3316,15 +3316,15 @@ update public.staff set is_active = true where id = '36363636-57af-0000-0000-000
 
 -- 36l. Hak akses.
 select
-  case when has_function_privilege('anon', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text, uuid, integer)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE')
        then 'FAIL t36l anon bisa EXECUTE RPC merchant'
-       when not (has_function_privilege('authenticated', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)', 'EXECUTE')
+       when not (has_function_privilege('authenticated', 'public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text, uuid, integer)', 'EXECUTE')
          and has_function_privilege('authenticated', 'public.reschedule_booking_by_merchant(uuid, timestamptz)', 'EXECUTE'))
        then 'FAIL t36l authenticated tidak bisa EXECUTE RPC merchant'
        else 'OK   t36l RPC merchant hanya untuk authenticated' end as t36l1,
-  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
-         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)', 'EXECUTE')
+  case when has_function_privilege('anon', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)', 'EXECUTE')
+         or has_function_privilege('authenticated', 'public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)', 'EXECUTE')
          or has_function_privilege('anon', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
          or has_function_privilege('authenticated', 'public.reap_expired_bookings_for(uuid)', 'EXECUTE')
        then 'FAIL t36l anon/authenticated bisa EXECUTE create_booking/reap_expired_bookings_for'
@@ -4474,12 +4474,12 @@ from public.bookings where customer_whatsapp = '+6281347000071';
 
 -- 47k. Hak akses: signature terbaru (sejak 20261125000300 sembilan belas argumen) hanya untuk service_role.
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)') is null
        then 'FAIL t47k signature terbaru tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t47k anon/authenticated bisa EXECUTE create_booking'
-       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+       when not has_function_privilege('service_role', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t47k service_role tidak bisa EXECUTE create_booking'
        else 'OK   t47k create_booking terbaru hanya untuk service_role' end as t47k1,
   case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source)') is null
@@ -5293,18 +5293,18 @@ select case when (select count(*) from public.get_booked_ranges('resto-61', pg_t
 
 -- t61h hak akses.
 select
-  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)') is null
        then 'FAIL t61h signature sembilan belas argumen tidak ada'
-       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
-         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)'), 'EXECUTE')
+       when has_function_privilege('anon', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
+         or has_function_privilege('authenticated', to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t61h anon/authenticated bisa EXECUTE create_booking'
        when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text)') is not null
        then 'FAIL t61h signature sembilan argumen masih ada'
        else 'OK   t61h create_booking sembilan belas argumen tertutup, sembilan argumen hilang' end as t61h1,
-  case when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)') is null
+  case when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text, uuid, integer)') is null
        then 'FAIL t61h create_manual_booking baru tidak ada'
-       when not has_function_privilege('authenticated', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)'), 'EXECUTE')
-         or has_function_privilege('anon', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text)'), 'EXECUTE')
+       when not has_function_privilege('authenticated', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text, uuid, integer)'), 'EXECUTE')
+         or has_function_privilege('anon', to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid, integer, uuid, text, uuid, integer)'), 'EXECUTE')
        then 'FAIL t61h hak create_manual_booking salah'
        when to_regprocedure('public.create_manual_booking(uuid, timestamptz, text, text, uuid)') is not null
        then 'FAIL t61h create_manual_booking lima argumen masih ada'
@@ -6657,9 +6657,11 @@ select case when (select jsonb_array_length(courts -> 0 -> 'photos') from public
 select case when (select courts -> 0 -> 'service_ids' from public.get_court_profiles('78787878-0000-0000-0000-000000000001'))
                  = jsonb_build_array('78787878-5e00-0000-0000-000000000001')
             then 'OK   t78.11c service_ids lapangan' else 'FAIL t78.11c' end as t78_11c;
-select case when (select count(*) from public.get_court_profiles('78787878-0000-0000-0000-000000000001') p
-                  where p::text ~* 'booking|customer|phone') = 0
-            then 'OK   t78.11d profil tanpa data booking' else 'FAIL t78.11d' end as t78_11d;
+select case when (select array_agg(k order by k) from public.get_court_profiles('78787878-0000-0000-0000-000000000001') p,
+                    jsonb_object_keys(p.courts -> 0) k)
+                 = array['description', 'environment', 'features', 'id', 'name', 'photos', 'pos_x', 'pos_y',
+                         'rotation', 'service_ids', 'sort_order', 'sport', 'surface']
+            then 'OK   t78.11d kunci profil lapangan persis kolom tampilan' else 'FAIL t78.11d kunci profil lapangan' end as t78_11d;
 rollback;
 
 -- 78.12 save_court_pricing
@@ -6725,3 +6727,436 @@ select case when (select count(*) from public.venue_areas where merchant_id = '7
              and (select count(*) from public.courts where merchant_id = '78787878-0000-0000-0000-000000000001') = 2
             then 'OK   t78.13g area dan penanda terhapus, lapangan utuh' else 'FAIL t78.13g' end as t78_13g;
 rollback;
+
+-- 78.14 pengerasan Task 2 (20261126000350)
+-- authenticated merchant A: insert lapangan sendiri, bukan milik B
+select pg_temp.act34('t78.14a authenticated insert lapangan dengan ciri', '78787878-0000-0000-0000-000000000001',
+  $q$insert into public.courts (merchant_id, name, features) values
+     ('78787878-0000-0000-0000-000000000001', 'Lapangan 14', array['Kaca', 'Lampu LED'])$q$);
+select pg_temp.act34('t78.14b authenticated insert lapangan untuk merchant B ditolak', '78787878-0000-0000-0000-000000000001',
+  $q$insert into public.courts (merchant_id, name) values ('78787878-0000-0000-0000-000000000002', 'Susup 14')$q$, '42501');
+select pg_temp.act34('t78.14c authenticated service_courts ke lapangan B ditolak', '78787878-0000-0000-0000-000000000001',
+  $q$insert into public.service_courts (service_id, court_id, merchant_id) values
+     ('78787878-5e00-0000-0000-000000000001', '78787878-c000-0000-0000-000000000003', '78787878-0000-0000-0000-000000000001')$q$, '23503');
+select pg_temp.expect_fail_code(
+  $q$insert into public.courts (merchant_id, name) values ('78787878-0000-0000-0000-000000000001', 'Lapangan 1 ')$q$,
+  '23514', 't78.14d nama berspasi di ujung ditolak');
+select pg_temp.expect_fail_code(
+  $q$insert into public.courts (merchant_id, name, features) values
+     ('78787878-0000-0000-0000-000000000001', 'Lapangan 15', array['Kaca', null])$q$,
+  '23514', 't78.14e ciri null ditolak');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '78787878-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select public.save_venue_layout('[{"id":null,"pos_x":1,"pos_y":1,"rotation":0}]'::jsonb, '[]'::jsonb, '[]'::jsonb)$q$,
+  '22023', 't78.14f id lapangan null di denah = 22023');
+select pg_temp.expect_fail_code(
+  $q$select public.save_venue_layout('[{"id":"78787878-c000-0000-0000-000000000001","pos_x":5000,"pos_y":1,"rotation":0}]'::jsonb, '[]'::jsonb, '[]'::jsonb)$q$,
+  '22023', 't78.14g posisi lapangan di luar batas = 22023');
+select pg_temp.expect_fail_code(
+  $q$select public.save_venue_layout('[{"id":"78787878-c000-0000-0000-000000000001","pos_x":1,"pos_y":1,"rotation":45}]'::jsonb, '[]'::jsonb, '[]'::jsonb)$q$,
+  '22023', 't78.14h rotasi lapangan tidak valid = 22023');
+select pg_temp.expect_fail_code(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001',
+     '[{"day_of_week":3,"start_time":"12:00","end_time":"10:00","price_per_hour":200000}]'::jsonb)$q$,
+  '22023', 't78.14i aturan jam terbalik = 22023');
+select pg_temp.expect_fail_code(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001',
+     '[{"day_of_week":3,"start_time":"10:00","end_time":"12:00","price_per_hour":null}]'::jsonb)$q$,
+  '22023', 't78.14j harga null = 22023');
+select pg_temp.expect_fail_code(
+  format($q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000001', %L::jsonb)$q$,
+    (select jsonb_agg(jsonb_build_object('day_of_week', 1 + (g % 7), 'start_time', make_time(g / 7, 0, 0),
+       'end_time', make_time(g / 7, 30, 0), 'price_per_hour', 100000)) from generate_series(0, 50) g)),
+  '22023', 't78.14k lebih dari 50 aturan = 22023');
+rollback;
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode) values
+  ('78787878-5e00-0000-0000-000000000003', '78787878-0000-0000-0000-000000000001', 'Salon 78', 50000, 60, 'FULL');
+begin;
+set local role authenticated;
+set local request.jwt.claim.sub = '78787878-0000-0000-0000-000000000001';
+select pg_temp.expect_fail_code(
+  $q$select public.save_court_pricing('78787878-5e00-0000-0000-000000000003', '[]'::jsonb)$q$,
+  '22023', 't78.14l aturan harga untuk layanan bukan sewa = 22023');
+rollback;
+
+-- ===========================================================================
+-- 79. Mesin booking lapangan: pelanggan (20261126000400)
+-- ===========================================================================
+-- Merchant A (STUDIO bawaan sejak bagian 71, tanpa staf) dan B. Jam buka
+-- Senin dan Sabtu 08.00-23.00. Lapangan 1 (urut 1), Lapangan 2 (urut 2),
+-- Lapangan 3 (tidak terkait Padel), Lapangan 0 (urut 0, nonaktif, terkait).
+insert into auth.users (id, email, raw_user_meta_data) values
+  ('79797979-0000-0000-0000-000000000001', 'court79a@example.com', '{}'::jsonb),
+  ('79797979-0000-0000-0000-000000000002', 'court79b@example.com', '{}'::jsonb);
+update public.merchants set username = 'court79a' where id = '79797979-0000-0000-0000-000000000001';
+update public.merchants set username = 'court79b' where id = '79797979-0000-0000-0000-000000000002';
+insert into public.availability (merchant_id, day_of_week, start_time, end_time) values
+  ('79797979-0000-0000-0000-000000000001', 1, '08:00', '23:00'),
+  ('79797979-0000-0000-0000-000000000001', 6, '08:00', '23:00');
+insert into public.services (id, merchant_id, name, price, duration_minutes, payment_mode,
+  court_unit_minutes, court_max_minutes, deposit_type, deposit_value) values
+  ('79797979-5e00-0000-0000-000000000001', '79797979-0000-0000-0000-000000000001', 'Padel 79', 150000, 60, 'FULL', 30, 120, null, null),
+  ('79797979-5e00-0000-0000-000000000002', '79797979-0000-0000-0000-000000000001', 'Badminton 79', 150000, 60, 'FULL', 60, 120, null, null),
+  ('79797979-5e00-0000-0000-000000000003', '79797979-0000-0000-0000-000000000001', 'Padel DP 79', 10000, 60, 'DEPOSIT', 60, 120, 'PERCENT', 10),
+  ('79797979-5e00-0000-0000-000000000004', '79797979-0000-0000-0000-000000000001', 'Salon 79', 100000, 60, 'FULL', null, null, null, null),
+  ('79797979-5e00-0000-0000-000000000006', '79797979-0000-0000-0000-000000000001', 'Bulat 79a', 100000, 30, 'FULL', 30, 60, null, null),
+  ('79797979-5e00-0000-0000-000000000007', '79797979-0000-0000-0000-000000000001', 'Bulat 79b', 99999, 30, 'FULL', 30, 60, null, null),
+  ('79797979-5e00-0000-0000-000000000099', '79797979-0000-0000-0000-000000000002', 'Padel B 79', 150000, 60, 'FULL', 30, 120, null, null);
+insert into public.courts (id, merchant_id, name, sort_order, is_active) values
+  ('79797979-c000-0000-0000-000000000001', '79797979-0000-0000-0000-000000000001', 'Lapangan 1', 1, true),
+  ('79797979-c000-0000-0000-000000000002', '79797979-0000-0000-0000-000000000001', 'Lapangan 2', 2, true),
+  ('79797979-c000-0000-0000-000000000003', '79797979-0000-0000-0000-000000000001', 'Lapangan 3', 3, true),
+  ('79797979-c000-0000-0000-000000000009', '79797979-0000-0000-0000-000000000001', 'Lapangan 0', 0, false),
+  ('79797979-c000-0000-0000-000000000099', '79797979-0000-0000-0000-000000000002', 'Lapangan B', 1, true);
+insert into public.service_courts (service_id, court_id, merchant_id) values
+  ('79797979-5e00-0000-0000-000000000001', '79797979-c000-0000-0000-000000000001', '79797979-0000-0000-0000-000000000001'),
+  ('79797979-5e00-0000-0000-000000000001', '79797979-c000-0000-0000-000000000002', '79797979-0000-0000-0000-000000000001'),
+  ('79797979-5e00-0000-0000-000000000001', '79797979-c000-0000-0000-000000000009', '79797979-0000-0000-0000-000000000001'),
+  ('79797979-5e00-0000-0000-000000000002', '79797979-c000-0000-0000-000000000001', '79797979-0000-0000-0000-000000000001'),
+  ('79797979-5e00-0000-0000-000000000003', '79797979-c000-0000-0000-000000000001', '79797979-0000-0000-0000-000000000001'),
+  ('79797979-5e00-0000-0000-000000000099', '79797979-c000-0000-0000-000000000099', '79797979-0000-0000-0000-000000000002');
+-- Jam ramai Senin-Jumat 17.00-22.00 Rp250.000 untuk Padel dan Badminton.
+insert into public.court_price_rules (merchant_id, service_id, day_of_week, start_time, end_time, price_per_hour)
+select '79797979-0000-0000-0000-000000000001', s::uuid, d, '17:00', '22:00', 250000
+  from generate_series(1, 5) d,
+       unnest(array['79797979-5e00-0000-0000-000000000001', '79797979-5e00-0000-0000-000000000002']) s;
+
+-- Booking merchant A: hasil 'lapangan:service_price:amount_due_now', atau SQLSTATE.
+create or replace function pg_temp.cb79(p_svc integer, p_start timestamptz, p_dur integer,
+  p_court integer default null, p_phone text default '+6281790000000', p_voucher text default null)
+returns text language plpgsql as $$
+declare b public.bookings;
+begin
+  select * into b from public.create_booking(
+    '79797979-0000-0000-0000-000000000001', ('79797979-5e00-0000-0000-0000000000' || lpad(p_svc::text, 2, '0'))::uuid,
+    p_start, 'Pelanggan 79', p_phone,
+    p_voucher_code => p_voucher,
+    p_court_id => case when p_court is not null then ('79797979-c000-0000-0000-0000000000' || lpad(p_court::text, 2, '0'))::uuid end,
+    p_duration_minutes => p_dur);
+  return coalesce(b.court_name, '-') || ':' || trim_scale(b.service_price) || ':' || trim_scale(b.amount_due_now);
+exception when others then
+  return sqlstate;
+end $$;
+
+create or replace function pg_temp.is79(p_label text, p_got text, p_want text) returns text language sql as $$
+  select case when p_got is not distinct from p_want then 'OK   ' || p_label
+              else 'FAIL ' || p_label || ' (dapat ' || coalesce(p_got, 'NULL') || ', harap ' || p_want || ')' end;
+$$;
+
+create or replace function pg_temp.cp79(p_svc integer, p_start timestamptz, p_dur integer) returns text language sql as $$
+  select trim_scale(public.court_price(('79797979-5e00-0000-0000-0000000000' || lpad(p_svc::text, 2, '0'))::uuid, p_start, p_dur))::text;
+$$;
+
+-- 79.1 court_price: tabel kasus yang sama dengan src/lib/booking/court.test.ts
+select pg_temp.is79('t79.1a Senin 16.30 90 menit lintas jam ramai', pg_temp.cp79(1, pg_temp.jakarta_future(1, 1, '16:30'), 90), '325000');
+select pg_temp.is79('t79.1b Senin 16.00 60 menit harga dasar', pg_temp.cp79(1, pg_temp.jakarta_future(1, 1, '16:00'), 60), '150000');
+select pg_temp.is79('t79.1c Senin 17.00 60 menit jam ramai', pg_temp.cp79(1, pg_temp.jakarta_future(1, 1, '17:00'), 60), '250000');
+select pg_temp.is79('t79.1d Sabtu tanpa aturan 90 menit', pg_temp.cp79(1, pg_temp.jakarta_future(6, 1, '16:00'), 90), '225000');
+select pg_temp.is79('t79.1e unit 60 Senin 16.00 120 menit', pg_temp.cp79(2, pg_temp.jakarta_future(1, 1, '16:00'), 120), '400000');
+select pg_temp.is79('t79.1f dasar 100000 30 menit', pg_temp.cp79(6, pg_temp.jakarta_future(1, 1, '10:00'), 30), '50000');
+select pg_temp.is79('t79.1g dasar 99999 30 menit dibulatkan', pg_temp.cp79(7, pg_temp.jakarta_future(1, 1, '10:00'), 30), '50000');
+select pg_temp.is79('t79.1h Senin 21.30 60 menit keluar jam ramai', pg_temp.cp79(1, pg_temp.jakarta_future(1, 1, '21:30'), 60), '200000');
+select pg_temp.is79('t79.1i layanan bukan sewa = null', pg_temp.cp79(4, pg_temp.jakarta_future(1, 1, '10:00'), 60), null);
+
+-- 79.2 create_booking: harga dari court_price, "Mana saja" urut sort_order
+select pg_temp.is79('t79.2a Mana saja pertama = Lapangan 1, harga 325000',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '16:30'), 90, null, '+6281790000001'), 'Lapangan 1:325000:325000');
+select case when end_datetime - start_datetime = interval '90 minutes' and duration_minutes = 90
+             and staff_id is null and capacity_mode = 'NONE'
+             and court_id = '79797979-c000-0000-0000-000000000001'
+            then 'OK   t79.2b durasi 90, tanpa staf, court_id tersimpan'
+            else 'FAIL t79.2b ' || (end_datetime - start_datetime)::text end as t79_2b
+  from public.bookings where customer_whatsapp = '+6281790000001';
+select pg_temp.is79('t79.2c Mana saja kedua = Lapangan 2',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '16:30'), 90, null, '+6281790000002'), 'Lapangan 2:325000:325000');
+select pg_temp.is79('t79.2d semua terisi (Lapangan 0 nonaktif) = BK072',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '17:00'), 60, null, '+6281790000003'), 'BK072');
+select pg_temp.is79('t79.2e lapangan diminta terisi = BK070',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '17:00'), 60, 1, '+6281790000003'), 'BK070');
+select pg_temp.is79('t79.2f lapangan merchant lain = BK070',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '10:00'), 60, 99, '+6281790000003'), 'BK070');
+select pg_temp.is79('t79.2g lapangan tidak terkait layanan = BK070',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '10:00'), 60, 3, '+6281790000003'), 'BK070');
+select pg_temp.is79('t79.2h lapangan nonaktif = BK070',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 1, '10:00'), 60, 9, '+6281790000003'), 'BK070');
+
+-- 79.3 lama main tidak valid
+select pg_temp.is79('t79.3a 45 menit bukan kelipatan unit = BK071', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '10:00'), 45), 'BK071');
+select pg_temp.is79('t79.3b 30 menit di bawah minimum = BK071', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '10:00'), 30), 'BK071');
+select pg_temp.is79('t79.3c 150 menit di atas maksimum = BK071', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '10:00'), 150), 'BK071');
+select pg_temp.is79('t79.3d tanpa lama main = BK071', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '10:00'), null), 'BK071');
+
+-- 79.4 grid dan jam kerja
+select pg_temp.is79('t79.4a jam mulai 16.15 di luar grid = BK001', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '16:15'), 60), 'BK001');
+select pg_temp.is79('t79.4b 22.30 + 60 melewati jam tutup = BK001', pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '22:30'), 60), 'BK001');
+select pg_temp.is79('t79.4c 22.00 + 60 tepat jam tutup diterima',
+  pg_temp.cb79(1, pg_temp.jakarta_future(1, 2, '22:00'), 60, null, '+6281790000004'), 'Lapangan 1:150000:150000');
+select pg_temp.is79('t79.4d hari tutup = BK001', pg_temp.cb79(1, pg_temp.jakarta_future(2, 2, '10:00'), 60), 'BK001');
+
+-- 79.5 constraint bookings_court_no_overlap pada INSERT langsung
+create or replace function pg_temp.err79(p_sql text) returns text language plpgsql as $$
+declare v text;
+begin
+  execute p_sql;
+  return 'tanpa error';
+exception when others then
+  get stacked diagnostics v = constraint_name;
+  return sqlstate || ':' || coalesce(v, '');
+end $$;
+create or replace function pg_temp.ins79sql(p_court text, p_start timestamptz, p_phone text) returns text language sql as $$
+  select format($f$insert into public.bookings (merchant_id, service_id, service_name, service_price, duration_minutes,
+      start_datetime, end_datetime, customer_name, customer_whatsapp, status, amount_due_now, amount_due_on_site,
+      payment_mode, court_id, court_name)
+    values ('79797979-0000-0000-0000-000000000001', '79797979-5e00-0000-0000-000000000001', 'Padel 79', 150000, 60,
+      %L, %L, 'Langsung 79', %L, 'CONFIRMED', 0, 150000, 'ON_SITE', %L, 'X')$f$,
+    p_start, p_start + interval '60 minutes', p_phone, p_court);
+$$;
+select pg_temp.is79('t79.5a INSERT beririsan di lapangan sama ditolak bookings_court_no_overlap',
+  pg_temp.err79(pg_temp.ins79sql('79797979-c000-0000-0000-000000000001', pg_temp.jakarta_future(1, 1, '17:00'), '+6281790000005')),
+  '23P01:bookings_court_no_overlap');
+select pg_temp.is79('t79.5b INSERT dengan lapangan merchant lain ditolak FK',
+  left(pg_temp.err79(pg_temp.ins79sql('79797979-c000-0000-0000-000000000099', pg_temp.jakarta_future(1, 1, '08:00'), '+6281790000005')), 5),
+  '23503');
+select case when pg_get_constraintdef(oid) like '%court_id IS NULL%'
+            then 'OK   t79.5c bookings_no_overlap hanya untuk booking tanpa lapangan'
+            else 'FAIL t79.5c ' || pg_get_constraintdef(oid) end as t79_5c
+  from pg_constraint where conname = 'bookings_no_overlap';
+
+-- 79.6 salon tanpa staf tidak bentrok dengan lapangan; salon dengan salon tetap bentrok
+select pg_temp.is79('t79.6a salon di jam yang sama dengan booking lapangan diterima',
+  pg_temp.cb79(4, pg_temp.jakarta_future(1, 1, '16:30'), null, null, '+6281790000006'), '-:100000:100000');
+select pg_temp.is79('t79.6b salon beririsan dengan salon tetap 23P01',
+  pg_temp.cb79(4, pg_temp.jakarta_future(1, 1, '17:00'), null, null, '+6281790000007'), '23P01');
+
+-- 79.7 lapangan serbaguna (Lapangan 1 dipakai Padel dan Badminton)
+select pg_temp.is79('t79.7a Badminton Mana saja saat Lapangan 1 terisi Padel = BK072',
+  pg_temp.cb79(2, pg_temp.jakarta_future(1, 1, '17:00'), 60, null, '+6281790000008'), 'BK072');
+select pg_temp.is79('t79.7b Badminton minta Lapangan 1 = BK070',
+  pg_temp.cb79(2, pg_temp.jakarta_future(1, 1, '17:00'), 60, 1, '+6281790000008'), 'BK070');
+select pg_temp.is79('t79.7c Badminton 19.00 di Lapangan 1, jam ramai',
+  pg_temp.cb79(2, pg_temp.jakarta_future(1, 1, '19:00'), 60, null, '+6281790000009'), 'Lapangan 1:250000:250000');
+
+-- 79.8 DP persen dan minimum Rp1.500 dari total court_price
+select pg_temp.is79('t79.8a DP 10% dari total 20000 = 2000 (bukan dari harga per jam)',
+  pg_temp.cb79(3, pg_temp.jakarta_future(6, 3, '10:00'), 120, null, '+6281790000010'), 'Lapangan 1:20000:2000');
+select pg_temp.is79('t79.8b DP 10% dari 10000 dinaikkan ke minimum 1500',
+  pg_temp.cb79(3, pg_temp.jakarta_future(6, 3, '13:00'), 60, null, '+6281790000011'), 'Lapangan 1:10000:1500');
+select case when amount_due_on_site = 18000 and payment_mode = 'DEPOSIT'
+            then 'OK   t79.8c sisa di tempat dari total' else 'FAIL t79.8c ' || amount_due_on_site end as t79_8c
+  from public.bookings where customer_whatsapp = '+6281790000010';
+
+-- 79.9 voucher: minimal transaksi dan diskon dari total
+select pg_temp.v45('LAP79', 'PERCENT', 10, '{"min_spend": 200000}', '79797979-0000-0000-0000-000000000001');
+select pg_temp.is79('t79.9a total 300000 memenuhi minimal 200000 walau harga per jam 150000',
+  pg_temp.cb79(1, pg_temp.jakarta_future(6, 4, '10:00'), 120, null, '+6281790000012', 'LAP79'), 'Lapangan 1:300000:270000');
+select case when discount_amount = 30000 and voucher_code = 'LAP79' and amount_due_on_site = 0
+            then 'OK   t79.9b diskon 10% dari total' else 'FAIL t79.9b ' || discount_amount end as t79_9b
+  from public.bookings where customer_whatsapp = '+6281790000012';
+select pg_temp.is79('t79.9c total 150000 di bawah minimal = BK054',
+  pg_temp.cb79(1, pg_temp.jakarta_future(6, 4, '14:00'), 60, null, '+6281790000013', 'LAP79'), 'BK054');
+
+-- 79.10 layanan bukan sewa mengabaikan p_court_id dan p_duration_minutes
+select pg_temp.is79('t79.10a salon dengan p_court_id dan lama main 999 = perilaku lama',
+  pg_temp.cb79(4, pg_temp.jakarta_future(6, 5, '10:00'), 999, 1, '+6281790000014'), '-:100000:100000');
+select case when court_id is null and duration_minutes = 60 and end_datetime - start_datetime = interval '60 minutes'
+            then 'OK   t79.10b salon tanpa lapangan, durasi layanan' else 'FAIL t79.10b' end as t79_10b
+  from public.bookings where customer_whatsapp = '+6281790000014';
+
+-- 79.11 dua sesi berebut slot terakhir lewat dblink. Sesi 1 memegang kunci
+-- merchant dalam transaksi terbuka, sesi 2 terbukti menunggu kunci itu, lalu
+-- sesi 1 commit: sesi 2 harus melihat lapangan terakhir sudah terisi.
+select pg_temp.is79('t79.11a Lapangan 1 diisi lebih dulu',
+  pg_temp.cb79(1, pg_temp.jakarta_future(6, 6, '10:00'), 60, 1, '+6281790000015'), 'Lapangan 1:150000:150000');
+create schema t79;
+create extension dblink schema t79;
+create function t79.race(p_start timestamptz, p_phone text) returns text language plpgsql as $$
+declare b public.bookings;
+begin
+  select * into b from public.create_booking('79797979-0000-0000-0000-000000000001',
+    '79797979-5e00-0000-0000-000000000001', p_start, 'Balapan 79', p_phone, p_duration_minutes => 60);
+  return 'OK:' || b.court_name;
+exception when others then
+  return sqlstate;
+end $$;
+create or replace function pg_temp.wait79(p_pid integer) returns boolean language plpgsql as $$
+begin
+  for i in 1..100 loop
+    if exists (select 1 from pg_stat_activity where pid = p_pid and wait_event_type = 'Lock' and wait_event = 'advisory') then
+      return true;
+    end if;
+    perform pg_sleep(0.05);
+  end loop;
+  return false;
+end $$;
+select t79.dblink_connect('s1', 'dbname=' || current_database() || ' user=' || current_user || ' password=postgres');
+select t79.dblink_connect('s2', 'dbname=' || current_database() || ' user=' || current_user || ' password=postgres');
+select pid as race_pid2 from t79.dblink('s2', 'select pg_backend_pid()') as t(pid integer) \gset
+select t79.dblink_exec('s1', 'begin');
+select pg_temp.is79('t79.11b sesi 1 mendapat Lapangan 2 (belum commit)',
+  (select r from t79.dblink('s1', format('select t79.race(%L, %L)', pg_temp.jakarta_future(6, 6, '10:00'), '+6281790000016')) as t(r text)),
+  'OK:Lapangan 2');
+select t79.dblink_send_query('s2', format('select t79.race(%L, %L)', pg_temp.jakarta_future(6, 6, '10:00'), '+6281790000017'));
+select case when pg_temp.wait79(:race_pid2)
+            then 'OK   t79.11c sesi 2 menunggu kunci merchant sesi 1'
+            else 'FAIL t79.11c sesi 2 tidak menunggu kunci' end as t79_11c;
+select t79.dblink_exec('s1', 'commit');
+select pg_temp.is79('t79.11d sesi 2 sesudah commit = BK072',
+  (select r from t79.dblink_get_result('s2') as t(r text)), 'BK072');
+select count(*) from t79.dblink_get_result('s2') as t(r text);
+select t79.dblink_disconnect('s1');
+select t79.dblink_disconnect('s2');
+select case when (select count(*) from public.bookings
+                  where merchant_id = '79797979-0000-0000-0000-000000000001'
+                    and start_datetime = pg_temp.jakarta_future(6, 6, '10:00')
+                    and service_id = '79797979-5e00-0000-0000-000000000001') = 2
+             and not exists (select 1 from public.bookings where customer_whatsapp = '+6281790000017')
+            then 'OK   t79.11e tepat dua lapangan terisi, pemenang tunggal'
+            else 'FAIL t79.11e hasil balapan salah' end as t79_11e;
+drop schema t79 cascade;
+
+-- 79.12 get_court_availability: anon, tanpa kolom pelanggan, hanya booking aktif
+update public.bookings set status = 'CANCELLED', cancelled_at = now() where customer_whatsapp = '+6281790000002';
+update public.bookings set expires_at = now() - interval '1 minute' where customer_whatsapp = '+6281790000009';
+begin;
+set local role anon;
+select case when (select array_agg(k order by k) from (
+                    select jsonb_object_keys(to_jsonb(r)) k
+                    from public.get_court_availability('79797979-0000-0000-0000-000000000001',
+                      '79797979-5e00-0000-0000-000000000001',
+                      (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date) r limit 4) x)
+                 = array['court_id', 'court_name', 'end_datetime', 'start_datetime']
+            then 'OK   t79.12a kolom ketersediaan hanya lapangan dan rentang'
+            else 'FAIL t79.12a kolom ketersediaan' end as t79_12a;
+select case when (select string_agg(court_name || '@' || to_char(start_datetime at time zone 'Asia/Jakarta', 'HH24:MI'), ',' order by start_datetime, court_name)
+                  from public.get_court_availability('79797979-0000-0000-0000-000000000001',
+                    '79797979-5e00-0000-0000-000000000001',
+                    (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date))
+                 = 'Lapangan 1@16:30'
+            then 'OK   t79.12b CANCELLED dan PENDING kedaluwarsa tidak tampil'
+            else 'FAIL t79.12b ' || coalesce((select string_agg(court_name || '@' || to_char(start_datetime at time zone 'Asia/Jakarta', 'HH24:MI'), ',')
+                  from public.get_court_availability('79797979-0000-0000-0000-000000000001',
+                    '79797979-5e00-0000-0000-000000000001',
+                    (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date)), 'kosong') end as t79_12b;
+select case when (select count(*) from public.get_court_availability('79797979-0000-0000-0000-000000000001',
+                    '79797979-5e00-0000-0000-000000000099',
+                    (pg_temp.jakarta_future(1, 1, '00:00') at time zone 'Asia/Jakarta')::date)) = 0
+            then 'OK   t79.12c layanan merchant lain kosong' else 'FAIL t79.12c' end as t79_12c;
+select pg_temp.expect_fail_code(
+  $q$select public.court_price('79797979-5e00-0000-0000-000000000001', now(), 60)$q$, '42501', 't79.12d anon tidak bisa court_price');
+rollback;
+
+-- 79.13 hak akses dan signature
+select
+  case when to_regprocedure('public.create_booking(uuid, uuid, timestamptz, text, text, uuid, boolean, public.booking_source, text, integer, uuid, uuid, text, uuid, uuid, text, text, text, text)') is null
+       then 'OK   t79.13a signature 19 argumen sudah dihapus' else 'FAIL t79.13a overload lama masih ada' end as t79_13a,
+  case when (select count(*) from pg_proc where pronamespace = 'public'::regnamespace and proname = 'create_booking') = 1
+       then 'OK   t79.13b satu create_booking' else 'FAIL t79.13b overload create_booking' end as t79_13b,
+  case when exists (select 1 from unnest(array['anon', 'authenticated']) r,
+                      unnest(array['public.court_price(uuid, timestamptz, integer)',
+                                   'public.pick_court(uuid, uuid, timestamptz, timestamptz, uuid, uuid)',
+                                   'public.evaluate_voucher(uuid, text, uuid, text, numeric)']) f
+                    where has_function_privilege(r, f, 'EXECUTE'))
+       then 'FAIL t79.13c helper lapangan terbuka' else 'OK   t79.13c court_price, pick_court, evaluate_voucher harga tertutup' end as t79_13c,
+  case when has_function_privilege('anon', 'public.get_court_availability(uuid, uuid, date)', 'EXECUTE')
+        and has_function_privilege('authenticated', 'public.get_court_availability(uuid, uuid, date)', 'EXECUTE')
+       then 'OK   t79.13d get_court_availability untuk anon' else 'FAIL t79.13d' end as t79_13d;
+
+-- 79.14 layanan sewa melewati staf walau merchant STUDIO punya staf aktif
+insert into public.staff (merchant_id, name) values ('79797979-0000-0000-0000-000000000001', 'Staf 79');
+select pg_temp.is79('t79.14a sewa dengan staf aktif tetap tanpa staf',
+  pg_temp.cb79(1, pg_temp.jakarta_future(6, 7, '10:00'), 60, null, '+6281790000018'), 'Lapangan 1:150000:150000');
+select case when staff_id is null and staff_name is null
+            then 'OK   t79.14b staff_id null' else 'FAIL t79.14b staf terisi' end as t79_14b
+  from public.bookings where customer_whatsapp = '+6281790000018';
+delete from public.staff where merchant_id = '79797979-0000-0000-0000-000000000001';
+
+-- ===========================================================================
+-- 80. Mesin booking lapangan: merchant (20261126000400)
+-- ===========================================================================
+create or replace function pg_temp.mb80sql(p_start timestamptz, p_dur integer, p_court text, p_phone text) returns text language sql as $$
+  select format($f$select * from public.create_manual_booking('79797979-5e00-0000-0000-000000000001', %L,
+    'Manual 80', %L, p_court_id => %L::uuid, p_duration_minutes => %s)$f$, p_start, p_phone, p_court, p_dur);
+$$;
+create or replace function pg_temp.c80(p_phone text) returns text language sql as $$
+  select coalesce(court_name, '-') || ':' || trim_scale(service_price) || ':' || duration_minutes || ':'
+         || to_char(start_datetime at time zone 'Asia/Jakarta', 'HH24:MI') || '-' || to_char(end_datetime at time zone 'Asia/Jakarta', 'HH24:MI')
+  from public.bookings where customer_whatsapp = p_phone;
+$$;
+
+-- 80.1 create_manual_booking: lapangan dan lama main, harga otomatis
+select pg_temp.act34('t80.1a manual Sabtu 10.00 90 menit Mana saja', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '10:00'), 90, null, '+6281800000001'));
+select pg_temp.is79('t80.1b manual Lapangan 1, harga 225000', pg_temp.c80('+6281800000001'), 'Lapangan 1:225000:90:10:00-11:30');
+select case when status = 'CONFIRMED' and source = 'MANUAL' and staff_id is null
+            then 'OK   t80.1c manual CONFIRMED tanpa staf' else 'FAIL t80.1c' end as t80_1c
+  from public.bookings where customer_whatsapp = '+6281800000001';
+select pg_temp.act34('t80.1d manual minta Lapangan 1 yang terisi = BK070', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '10:30'), 60, '79797979-c000-0000-0000-000000000001', '+6281800000002'), 'BK070');
+select pg_temp.act34('t80.1e manual lama main 45 = BK071', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '14:00'), 45, null, '+6281800000002'), 'BK071');
+-- 80.2 merchant A tidak bisa memakai lapangan merchant B
+select pg_temp.act34('t80.2 manual dengan lapangan merchant B = BK070', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '14:00'), 60, '79797979-c000-0000-0000-000000000099', '+6281800000002'), 'BK070');
+
+-- 80.3 jadwal ulang merchant: lapangan dan durasi dipertahankan, pindah bila bentrok, harga tetap
+select pg_temp.act34('t80.3a X Senin 10.00 90 menit', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 9, '10:00'), 90, '79797979-c000-0000-0000-000000000001', '+6281800000003'));
+select pg_temp.act34('t80.3b Z Senin 17.00 di Lapangan 1', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 9, '17:00'), 60, '79797979-c000-0000-0000-000000000001', '+6281800000004'));
+select pg_temp.act34('t80.3c X dijadwal ulang ke 17.00 (Lapangan 1 terisi)', '79797979-0000-0000-0000-000000000001',
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = '+6281800000003'), pg_temp.jakarta_future(1, 9, '17:00')));
+select pg_temp.is79('t80.3d X pindah ke Lapangan 2, durasi 90, harga lama 225000 (bukan jam ramai)',
+  pg_temp.c80('+6281800000003'), 'Lapangan 2:225000:90:17:00-18:30');
+select pg_temp.act34('t80.3e W Senin 19.00', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 9, '19:00'), 60, null, '+6281800000005'));
+select pg_temp.act34('t80.3f V Senin 19.00', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(1, 9, '19:00'), 60, null, '+6281800000006'));
+select pg_temp.act34('t80.3g Z ke 19.00 tanpa lapangan kosong = BK072', '79797979-0000-0000-0000-000000000001',
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = '+6281800000004'), pg_temp.jakarta_future(1, 9, '19:00')), 'BK072');
+select pg_temp.is79('t80.3h Z tetap di tempat lama', pg_temp.c80('+6281800000004'), 'Lapangan 1:250000:60:17:00-18:00');
+select pg_temp.act34('t80.3i X ke 17.30 tetap di Lapangan 2 (lapangan sendiri kosong)', '79797979-0000-0000-0000-000000000001',
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = '+6281800000003'), pg_temp.jakarta_future(1, 9, '17:30')));
+select pg_temp.is79('t80.3j X di Lapangan 2 17.30-19.00', pg_temp.c80('+6281800000003'), 'Lapangan 2:225000:90:17:30-19:00');
+
+-- 80.4 ubah jadwal oleh pelanggan mempertahankan lapangan dan durasi
+insert into public.merchant_settings (merchant_id, allow_customer_reschedule, reschedule_min_hours, max_reschedules)
+  values ('79797979-0000-0000-0000-000000000001', true, 0, 5)
+  on conflict (merchant_id) do update set allow_customer_reschedule = true, reschedule_min_hours = 0, max_reschedules = 5;
+select pg_temp.expect_ok(
+  format('select * from public.reschedule_booking(%L, %L)',
+    (select access_token from public.bookings where customer_whatsapp = '+6281800000003'), pg_temp.jakarta_future(1, 10, '10:00')),
+  't80.4a reschedule_booking pelanggan');
+select pg_temp.is79('t80.4b pelanggan: lapangan, durasi, dan harga tetap', pg_temp.c80('+6281800000003'), 'Lapangan 2:225000:90:10:00-11:30');
+
+-- 80.4c ubah jadwal pelanggan tanpa lapangan kosong = BK072
+select pg_temp.expect_fail_code(
+  format('select * from public.reschedule_booking(%L, %L)',
+    (select access_token from public.bookings where customer_whatsapp = '+6281800000004'), pg_temp.jakarta_future(1, 9, '19:00')),
+  'BK072', 't80.4c pelanggan ke jam tanpa lapangan kosong');
+select pg_temp.is79('t80.4d Z tidak berubah', pg_temp.c80('+6281800000004'), 'Lapangan 1:250000:60:17:00-18:00');
+-- 80.4e jadwal ulang merchant melewati jam tutup = BK001
+select pg_temp.act34('t80.4e X ke 22.00 + 90 melewati jam tutup = BK001', '79797979-0000-0000-0000-000000000001',
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = '+6281800000003'), pg_temp.jakarta_future(1, 9, '22:00')), 'BK001');
+-- 80.4f tanpa login = 42501
+select pg_temp.expect_fail_code(
+  format('select public.reschedule_booking_by_merchant(%L, %L)',
+    (select id from public.bookings where customer_whatsapp = '+6281800000003'), pg_temp.jakarta_future(1, 9, '12:00')),
+  '42501', 't80.4f reschedule_booking_by_merchant tanpa login');
+select pg_temp.expect_fail_code(pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '16:00'), 60, null, '+6281800000009'),
+  '42501', 't80.4g create_manual_booking tanpa login');
+-- 80.4h manual Mana saja: Lapangan 2 lalu BK072
+select pg_temp.act34('t80.4h manual Sabtu 10.00 Mana saja kedua', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '10:00'), 60, null, '+6281800000007'));
+select pg_temp.is79('t80.4i manual kedua di Lapangan 2', pg_temp.c80('+6281800000007'), 'Lapangan 2:150000:60:10:00-11:00');
+select pg_temp.act34('t80.4j manual ketiga tanpa lapangan kosong = BK072', '79797979-0000-0000-0000-000000000001',
+  pg_temp.mb80sql(pg_temp.jakarta_future(6, 8, '10:00'), 60, null, '+6281800000008'), 'BK072');
+
+-- 80.5 lapangan yang punya booking tidak bisa dihapus (FK NO ACTION)
+select pg_temp.expect_fail_code(
+  $q$delete from public.courts where id = '79797979-c000-0000-0000-000000000002'$q$, '23503', 't80.5 hapus lapangan berbooking ditolak');

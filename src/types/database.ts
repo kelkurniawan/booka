@@ -437,6 +437,10 @@ export type Booking = {
   customer_note: string | null;
   /** Cara booking ini memakai tempat; menentukan eksklusi yang berlaku. */
   capacity_mode: TableMode;
+  /** Lapangan sewa; null untuk layanan bukan sewa. Dijaga bookings_court_no_overlap. */
+  court_id: string | null;
+  /** Snapshot nama lapangan; ikut berubah bila jadwal ulang pindah lapangan. */
+  court_name: string | null;
   /** Atribusi funnel; hanya booking ONLINE. Tanpa session_id booking tidak masuk funnel. */
   session_id: string | null;
   /** null juga bila ad_link yang dikirim milik merchant lain. */
@@ -965,6 +969,8 @@ export type Database = {
           | "table_label"
           | "customer_note"
           | "capacity_mode"
+          | "court_id"
+          | "court_name"
           | "session_id"
           | "ad_link_id"
           | "utm_source"
@@ -991,6 +997,8 @@ export type Database = {
               | "table_label"
               | "customer_note"
               | "capacity_mode"
+              | "court_id"
+              | "court_name"
               | "source"
               | "merchant_reschedule_count"
               | "voucher_id"
@@ -1419,6 +1427,11 @@ export type Database = {
         Args: { p_username: string; p_service_id: string; p_start: string; p_party_size: number };
         Returns: { table_id: string; status: "FREE" | "TAKEN" | "TOO_SMALL" | "TOO_LARGE" }[];
       };
+      /** Rentang terpakai per lapangan aktif terkait layanan pada tanggal Jakarta itu; tanpa data pelanggan. */
+      get_court_availability: {
+        Args: { p_merchant_id: string; p_service_id: string; p_date: string };
+        Returns: { court_id: string; court_name: string; start_datetime: string; end_datetime: string }[];
+      };
       get_court_profiles: {
         Args: { p_merchant_id: string };
         Returns: { courts: CourtProfile[]; areas: VenueAreaView[]; markers: VenueAreaView[] }[];
@@ -1572,6 +1585,10 @@ export type Database = {
           p_utm_campaign?: string | null;
           /** Disaring jadi host saja, maksimal 100. */
           p_referrer_host?: string | null;
+          /** Hanya layanan sewa. Null = "Mana saja". BK070 lapangan pilihan tidak tersedia, BK072 semua penuh. */
+          p_court_id?: string | null;
+          /** Wajib untuk layanan sewa: kelipatan unit, antara minimum dan maksimum (BK071). */
+          p_duration_minutes?: number | null;
         };
         Returns: Booking[];
       };
@@ -1623,6 +1640,9 @@ export type Database = {
           /** Booking manual boleh memakai meja yang tidak bookable_online. */
           p_table_id?: string | null;
           p_customer_note?: string | null;
+          /** Sama dengan create_booking; harga sewa dihitung otomatis. */
+          p_court_id?: string | null;
+          p_duration_minutes?: number | null;
         };
         Returns: { id: string }[];
       };
