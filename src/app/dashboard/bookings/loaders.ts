@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { BOOKING_LIST_COLUMNS, type BookingListItem } from "./booking-state";
 import type { TimelineNotification } from "./booking-timeline";
+import { courtsFromLinks } from "./reschedule-op";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -66,4 +67,20 @@ export async function loadNotifications(bookingId: string, merchantId: string): 
     return null;
   }
   return data;
+}
+
+/** Lapangan aktif yang terkait layanan (untuk memilih lapangan tujuan saat memindah); kosong bila gagal. */
+export async function loadServiceCourts(serviceId: string | null, merchantId: string): Promise<{ id: string; name: string }[]> {
+  if (!serviceId) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("service_courts")
+    .select("courts(id, name, is_active, sort_order)")
+    .eq("service_id", serviceId)
+    .eq("merchant_id", merchantId);
+  if (error) {
+    console.error("[dashboard/bookings] gagal memuat lapangan layanan", { merchantId, serviceId, error });
+    return [];
+  }
+  return courtsFromLinks(data ?? []);
 }

@@ -43,6 +43,7 @@ const RESCHEDULE_ERRORS: Record<string, string> = {
   BK060: "Kursi atau meja di jam itu sudah penuh. Pilih jam lain.",
   BK061: "Meja itu sudah terisi di jam baru. Pilih jam lain.",
   BK072: "Semua lapangan penuh di jam baru. Pilih jam lain.",
+  BK070: "Lapangan yang dipilih tidak tersedia di jam baru. Pilih lapangan atau jam lain.",
   BK063: "Jumlah tamu di luar batas layanan ini.",
 };
 

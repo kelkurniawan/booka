@@ -175,7 +175,7 @@ test("excludeBookingId salon: satu rentang sama persis dilepas; tanpa resolver t
 
 function sessionClient(user: { id: string } | null, row: unknown, spy: string[] = []) {
   const chain: Record<string, unknown> = {};
-  for (const m of ["select", "eq", "in"]) chain[m] = (...a: unknown[]) => (spy.push(`${m}:${a[0]}=${a[1]}`), chain);
+  for (const m of ["select", "eq", "in"]) chain[m] = (...a: unknown[]) => (spy.push(`${m}:${a[0]}=${JSON.stringify(a[1])}`), chain);
   chain.maybeSingle = () => Promise.resolve({ data: row, error: null });
   return async () => ({ auth: { getUser: async () => ({ data: { user } }) }, from: () => chain }) as never;
 }
@@ -184,7 +184,9 @@ const rowOk = { court_id: "c1", start_datetime: OWN.start, end_datetime: OWN.end
 test("ownBookingRange: merchant pemilik sesi -> rentang; kueri difilter merchant, layanan, dan id", async () => {
   const spy: string[] = [];
   assert.deepEqual(await ownBookingRange(BOOKING, MERCHANT, SERVICE, sessionClient({ id: MERCHANT }, rowOk, spy)), OWN);
-  for (const f of [`eq:id=${BOOKING}`, `eq:merchant_id=${MERCHANT}`, `eq:service_id=${SERVICE}`]) assert.ok(spy.includes(f), f);
+  for (const f of [`eq:id=${JSON.stringify(BOOKING)}`, `eq:merchant_id=${JSON.stringify(MERCHANT)}`, `eq:service_id=${JSON.stringify(SERVICE)}`]) assert.ok(spy.includes(f), f);
+  // Hanya booking yang masih memegang jam; CANCELLED tidak bisa dijadikan "rentang sendiri".
+  assert.ok(spy.includes(`in:status=${JSON.stringify(["PENDING", "PAID", "CONFIRMED", "REQUESTED"])}`), spy.join(" | "));
 });
 
 test("ownBookingRange: anon, merchant lain, booking tak ketemu, dan galat -> null", async () => {

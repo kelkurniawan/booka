@@ -103,7 +103,7 @@ export function MobileNav({ actionCount, showCourts = false }: { actionCount: nu
           label="Lapangan"
           icon={CalendarRange}
           active={pathname === ROUTES.courts || pathname.startsWith(`${ROUTES.courts}/`)}
-          tour="nav-courts"
+          tour="nav-courts-mobile"
         />
       ) : (
         <NavLink href={ROUTES.appearance} label="Halaman" icon={Palette} active={onAppearance} />

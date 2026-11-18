@@ -31,7 +31,7 @@ export type BookingDetailActions = {
   decide: (id: string, approve: boolean) => Promise<ActionResult>;
   markPaid: (id: string, method: OnSitePaymentMethod) => Promise<ActionResult>;
   attend: (id: string, attended: boolean) => Promise<ActionResult>;
-  reschedule: (id: string, startISO: string) => Promise<ActionResult>;
+  reschedule: (id: string, startISO: string, courtId?: string | null) => Promise<ActionResult>;
 };
 
 const MAX_RESCHEDULES = 3;
@@ -55,6 +55,7 @@ export function BookingDetailPanel({
   origin = null,
   actions,
   labels,
+  courts = [],
 }: {
   booking: BookingListItem;
   /** Instant "sekarang" dari server (lihat getDisplayStatus). */
@@ -67,6 +68,8 @@ export function BookingDetailPanel({
   actions: BookingDetailActions;
   /** Teks tombol khusus (papan L3 lapangan); kosong = teks bawaan. */
   labels?: { markPaid?: string; whatsapp?: string };
+  /** Sewa: lapangan aktif yang terkait layanan booking, untuk memilih lapangan tujuan. */
+  courts?: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -81,6 +84,7 @@ export function BookingDetailPanel({
     jakartaDateISO(new Date(booking.start_datetime)),
   );
   const [newStart, setNewStart] = useState<string | null>(null);
+  const [targetCourt, setTargetCourt] = useState("");
   const titleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
@@ -125,7 +129,7 @@ export function BookingDetailPanel({
     if (!newStart) return;
     const picked = newStart;
     run(
-      () => actions.reschedule(booking.id, picked),
+      () => actions.reschedule(booking.id, picked, booking.court_id && targetCourt ? targetCourt : null),
       () => setReschedule({ step: "done", startISO: picked }),
     );
   }
@@ -417,6 +421,27 @@ export function BookingDetailPanel({
               }}
             />
           </div>
+          {booking.court_id && courts.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="reschedule-court">Lapangan</Label>
+              <select
+                id="reschedule-court"
+                className="border-input bg-background focus-visible:ring-ring/50 min-h-11 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-3"
+                value={targetCourt}
+                onChange={(e) => {
+                  setTargetCourt(e.target.value);
+                  setNewStart(null);
+                }}
+              >
+                <option value="">Mana saja</option>
+                {courts.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-2">
             <Label id="reschedule-slot-label">Jam baru</Label>
             <SlotField
@@ -425,6 +450,7 @@ export function BookingDetailPanel({
               staffId={booking.staff_id}
               partySize={booking.party_size}
               durationMinutes={booking.court_id ? booking.duration_minutes : null}
+              courtId={booking.court_id && targetCourt ? targetCourt : null}
               excludeBookingId={booking.id}
               dateISO={dateISO}
               value={newStart}
@@ -481,6 +507,7 @@ export function BookingDetailPanel({
                 setError(null);
                 setDateISO(jakartaDateISO(new Date(booking.start_datetime)));
                 setNewStart(null);
+                setTargetCourt("");
                 setReschedule({ step: "form" });
               }}
             >

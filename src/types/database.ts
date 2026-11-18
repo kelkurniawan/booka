@@ -1679,9 +1679,10 @@ export type Database = {
        * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
        * BK003 staf nonaktif, BK001 di luar jam (sewa: juga lewat jam tutup atau di luar grid unit),
        * P0006 lampau, 23P01 bentrok, BK072 tidak ada lapangan kosong. Harga sewa tidak dihitung ulang.
+       * p_court_id (opsional, sewa): lapangan tujuan; BK070 bila tidak aktif, bukan milik merchant, tidak terkait layanan, atau terisi.
        */
       reschedule_booking_by_merchant: {
-        Args: { p_booking_id: string; p_new_start: string };
+        Args: { p_booking_id: string; p_new_start: string; p_court_id?: string | null };
         Returns: undefined;
       };
       /**

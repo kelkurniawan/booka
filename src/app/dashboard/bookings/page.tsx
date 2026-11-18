@@ -18,7 +18,7 @@ import {
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
 } from "./booking-state";
-import { loadNotifications, loadOrigin, loadSelectedBooking } from "./loaders";
+import { loadNotifications, loadOrigin, loadSelectedBooking, loadServiceCourts } from "./loaders";
 import { BookingTabs } from "./booking-tabs";
 import { BookingsFilters } from "./bookings-filters";
 import { BookingsList } from "./bookings-list";
@@ -80,9 +80,13 @@ export default async function BookingsPage({
     : DEFAULT_PAGE_SIZE;
 
   const [counts, selected] = await Promise.all([getTabCounts(), loadSelectedBooking(rawParams.b, user.id)]);
-  const [notifications, origin] = selected
-    ? await Promise.all([loadNotifications(selected.id, user.id), loadOrigin(selected.id, user.id)])
-    : [null, null];
+  const [notifications, origin, serviceCourts] = selected
+    ? await Promise.all([
+        loadNotifications(selected.id, user.id),
+        loadOrigin(selected.id, user.id),
+        selected.court_id ? loadServiceCourts(selected.service_id, user.id) : Promise.resolve([]),
+      ])
+    : [null, null, []];
   const nowMs = new Date().getTime();
   const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
 
@@ -134,6 +138,7 @@ export default async function BookingsPage({
               username={merchant.username}
               notifications={notifications}
               origin={origin}
+              courts={serviceCourts}
               actions={{
                 cancel: cancelBooking,
                 decide: decideRequest,

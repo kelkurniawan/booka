@@ -14,8 +14,8 @@ import type { OnSitePaymentMethod } from "@/types/database";
 import { cancelBookingSchema } from "@/lib/validations/booking";
 
 import { createManualBookingOp } from "./manual-booking-op";
+import { rescheduleBookingOp } from "./reschedule-op";
 import {
-  rescheduleErrorMessage,
   type ManualBookingInput,
   type ManualBookingResult,
 } from "./manual-booking";
@@ -175,21 +175,12 @@ export async function markAttendance(id: string, attended: boolean): Promise<Can
   return { ok: true };
 }
 
-/** Jadwal ulang oleh merchant; batas 3 kali dan bentrok ditegakkan RPC. */
-export async function rescheduleBooking(id: string, newStartISO: string): Promise<CancelBookingResult> {
-  const parsed = cancelBookingSchema.safeParse({ id });
-  const start = z.iso.datetime({ offset: true }).safeParse(newStartISO);
-  if (!parsed.success || !start.success) return { ok: false, message: "Jadwal tidak valid." };
-
+/** Jadwal ulang oleh merchant; batas 3 kali dan bentrok ditegakkan RPC. courtId: lapangan tujuan (sewa), null = tetap atau otomatis. */
+export async function rescheduleBooking(id: string, newStartISO: string, courtId: string | null = null): Promise<CancelBookingResult> {
   const { supabase } = await requireUser();
-  const { error } = await supabase.rpc("reschedule_booking_by_merchant", {
-    p_booking_id: parsed.data.id,
-    p_new_start: start.data,
-  });
-  if (error) return { ok: false, message: rescheduleErrorMessage(error.code) };
-
-  revalidatePath(ROUTES.dashboard, "layout");
-  return { ok: true };
+  const result = await rescheduleBookingOp(supabase, id, newStartISO, courtId);
+  if (result.ok) revalidatePath(ROUTES.dashboard, "layout");
+  return result;
 }
 
 /** Catat booking dari telepon/walk-in: langsung CONFIRMED, bayar di tempat. */

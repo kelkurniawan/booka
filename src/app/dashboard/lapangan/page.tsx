@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { cancelBooking, decideRequest, markAttendance, markPaidOnSite, rescheduleBooking } from "../bookings/actions";
 import { BookingDetailPanel } from "../bookings/booking-detail-panel";
 import { BookingDetailShell } from "../bookings/booking-detail-shell";
-import { loadNotifications, loadOrigin, loadSelectedBooking } from "../bookings/loaders";
+import { loadNotifications, loadOrigin, loadSelectedBooking, loadServiceCourts } from "../bookings/loaders";
 import {
   buildScheduleGrid,
   countsText,
@@ -223,9 +223,13 @@ export default async function CourtsPage({
   });
 
   const selected = await loadSelectedBooking(raw.b, user.id);
-  const [notifications, origin] = selected
-    ? await Promise.all([loadNotifications(selected.id, user.id), loadOrigin(selected.id, user.id)])
-    : [null, null];
+  const [notifications, origin, serviceCourts] = selected
+    ? await Promise.all([
+        loadNotifications(selected.id, user.id),
+        loadOrigin(selected.id, user.id),
+        selected.court_id ? loadServiceCourts(selected.service_id, user.id) : Promise.resolve([]),
+      ])
+    : [null, null, []];
 
   const navBtn = "inline-flex size-11 items-center justify-center rounded-lg border";
   return (
@@ -263,6 +267,7 @@ export default async function CourtsPage({
               username={merchant.username}
               notifications={notifications}
               origin={origin}
+              courts={serviceCourts}
               labels={{ markPaid: "Tandai sisa sudah dibayar", whatsapp: "Kirim WhatsApp" }}
               actions={{
                 cancel: cancelBooking,
