@@ -16,7 +16,11 @@ import type {
   ServiceMedia,
 } from "@/types/database";
 
+import { VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
+
 import { BookingPageView } from "./booking-page-view";
+import { resolveEntry } from "./entry";
+import { FunnelTracker } from "./funnel-tracker";
 import type { RestaurantInfo } from "./booking-flow";
 
 type MerchantPageParams = { username: string };
@@ -261,10 +265,13 @@ export async function generateMetadata({
 
 export default async function MerchantPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<MerchantPageParams>;
+  searchParams: Promise<{ t?: string | string[]; kode?: string | string[] }>;
 }) {
   const { username } = await params;
+  const query = await searchParams;
   const data = await getMerchantPageData(username);
 
   if (!data) {
@@ -274,8 +281,26 @@ export default async function MerchantPublicPage({
   const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers } =
     data;
 
+  // Tautan iklan (?t=) dan kode manual (?kode=); kode di URL menang atas voucher tautan.
+  const slug = typeof query.t === "string" ? query.t.trim().toLowerCase() : "";
+  let link: { serviceId: string | null; voucherCode: string | null } | null = null;
+  if (/^[a-z0-9-]{3,40}$/.test(slug)) {
+    const { data: rows } = await createPublicClient().rpc("resolve_ad_link", {
+      p_username: username,
+      p_slug: slug,
+    });
+    const row = rows?.[0];
+    if (row) link = { serviceId: row.service_id, voucherCode: row.voucher_code };
+  }
+  const kode = typeof query.kode === "string" ? query.kode.trim().toUpperCase() : "";
+  if (VOUCHER_CODE_PATTERN.test(kode)) link = { serviceId: link?.serviceId ?? null, voucherCode: kode };
+  const entry = resolveEntry(link, services, null);
+
   return (
+    <>
+    <FunnelTracker merchantId={merchant.id} />
     <BookingPageView
+      entry={entry}
       merchant={merchant}
       theme={theme}
       services={services}
@@ -288,5 +313,6 @@ export default async function MerchantPublicPage({
       banners={banners}
       vouchers={vouchers}
     />
+    </>
   );
 }

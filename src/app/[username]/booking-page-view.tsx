@@ -30,6 +30,7 @@ import type {
 } from "@/types/database";
 
 import { BookingFlow, type RestaurantInfo } from "./booking-flow";
+import { NO_ENTRY, type Entry } from "./entry";
 
 export type BookingPageViewProps = {
   merchant: Pick<
@@ -46,6 +47,8 @@ export type BookingPageViewProps = {
   restaurant: RestaurantInfo;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
+  /** Masuk dari tautan iklan atau ?kode=; kosong di Storybook. */
+  entry?: Entry;
 };
 
 /**
@@ -64,6 +67,7 @@ export function BookingPageView({
   restaurant,
   banners,
   vouchers,
+  entry = NO_ENTRY,
 }: BookingPageViewProps) {
   const name = merchant.full_name ?? merchant.username;
   // Staf dengan jam sendiri membuat halaman bisa menerima pesanan walau jam
@@ -93,6 +97,7 @@ export function BookingPageView({
             restaurant={restaurant}
             banners={banners}
             vouchers={vouchers}
+            entry={entry}
             sections={theme.sections}
             faq={<BookingFaqSection faqs={faqs} />}
             staff={staff.map((member) => ({

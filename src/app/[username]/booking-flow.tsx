@@ -35,6 +35,8 @@ import {
   type TimeSlotState,
 } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
+import { funnelContext, trackFunnel } from "./funnel-tracker";
+import { resolveEntry, type Entry, type EntryNotice } from "./entry";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -106,6 +108,8 @@ export type BookingFlowProps = {
   sections: PageSection[];
   /** Slot FAQ; null bila merchant belum mengisi. */
   faq: ReactNode;
+  /** Masuk dari tautan iklan atau ?kode=. */
+  entry: Entry;
 };
 
 /** 1 layanan, 2 jadwal, 3 meja (hanya reservasi mode TABLE), 4 data diri. */
@@ -157,6 +161,8 @@ type CheckoutSubmitPayload = {
   customer_name: string;
   customer_whatsapp: string;
   voucherCode: string | null;
+  sessionId?: string;
+  attribution?: unknown;
   partySize: number | null;
   areaId: string | null;
   tableId: string | null;
@@ -265,21 +271,25 @@ export function BookingFlow({
   vouchers,
   sections,
   faq,
+  entry,
 }: BookingFlowProps) {
   const router = useRouter();
 
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(entry.serviceId ? 2 : 1);
   // null = "siapa saja" (atau merchant tanpa staf).
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
-    services.length === 1 ? services[0].id : null,
+    entry.serviceId ?? (services.length === 1 ? services[0].id : null),
   );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<PickerSlot | null>(null);
   const [slotState, setSlotState] = useState<TimeSlotState>({ kind: "idle" });
 
   // Reservasi restoran: jumlah tamu, area, meja, dan catatan.
-  const [partySize, setPartySize] = useState<number | null>(null);
+  const [partySize, setPartySize] = useState<number | null>(() => {
+    const s = services.find((item) => item.id === entry.serviceId);
+    return s?.party_max != null ? (s.party_min ?? 1) : null;
+  });
   const [areaId, setAreaId] = useState<string | null>(null);
   const [tableMode, setTableMode] = useState<TablePickerMode>("auto");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -299,6 +309,10 @@ export function BookingFlow({
   // Pesan netral saat voucher dilepas atau tidak jadi dipasang karena layanan tidak cocok.
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
   const serviceListRef = useRef<HTMLDivElement>(null);
+  const [entryNotice, setEntryNotice] = useState<EntryNotice | null>(entry.notice);
+  const [entryDiscount, setEntryDiscount] = useState(0);
+  const pendingCodeRef = useRef(entry.voucherCode);
+  const sentStepsRef = useRef(new Set<number>());
 
   const [todayISO] = useState(() => jakartaDateISO(new Date()));
 
@@ -377,12 +391,55 @@ export function BookingFlow({
     };
   }, [selectedServiceId, selectedSlot]);
 
+  // Kode dari tautan/?kode= dicek lewat rute yang sama dengan kolom kode,
+  // begitu ada layanan terpilih; server tetap menilai ulang saat booking.
+  useEffect(() => {
+    const code = pendingCodeRef.current;
+    if (!code || !selectedService) return;
+    pendingCodeRef.current = null;
+    const service = selectedService;
+    void checkVoucherCode(username, service.id, code)
+      .then((result) => {
+        const voucher: AppliedVoucher = {
+          code: result.code,
+          kind: result.kind,
+          value: result.value,
+          max_discount: result.max_discount,
+          min_spend: result.min_spend,
+          service_ids: result.service_ids,
+          source: vouchers.some((item) => item.code === result.code) ? "PUBLIC" : "PRIVATE",
+        };
+        if (voucherIneligibleReason(voucher, service, serviceNames)) throw new Error("tidak cocok");
+        setAppliedVoucher(voucher);
+        setEntryDiscount(result.discount);
+        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "VALID").notice);
+      })
+      .catch(() =>
+        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "EXPIRED").notice),
+      );
+  }, [selectedService, username, vouchers, serviceNames, services]);
+
+  // Kejadian funnel: sekali per langkah per kunjungan. Tanpa efek kalau
+  // tracker tidak terpasang (preview dashboard).
+  useEffect(() => {
+    if ((step !== 2 && step !== 4) || sentStepsRef.current.has(step)) return;
+    sentStepsRef.current.add(step);
+    trackFunnel(step === 2 ? "SERVICE" : "CHECKOUT", selectedServiceId ? { serviceId: selectedServiceId } : {});
+  }, [step, selectedServiceId]);
+
+  // Masuk dari tautan dengan layanan: langkah Jadwal terbuka, dan Kembali ke Layanan.
+  const enterAtScheduleRef = useRef(Boolean(entry.serviceId));
   // Riwayat browser: maju langkah = pushState, tombol Kembali = popstate.
   // Ini sinkronisasi ke sistem eksternal (history), jadi memang layak di effect.
   useEffect(() => {
     // Saat dimuat selalu mulai di langkah 1, jadi parameter lama dibuang.
     if (new URLSearchParams(window.location.search).has("langkah")) {
       window.history.replaceState(null, "", urlForStep(1));
+    }
+    if (enterAtScheduleRef.current) {
+      enterAtScheduleRef.current = false;
+      window.history.replaceState(null, "", urlForStep(1));
+      window.history.pushState(null, "", urlForStep(2));
     }
 
     function onPopState() {
@@ -627,6 +684,7 @@ export function BookingFlow({
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
         voucherCode: appliedVoucher?.code ?? null,
+        ...funnelContext(),
         partySize: result.data.partySize,
         areaId: result.data.areaId,
         tableId: result.data.tableId,
@@ -742,6 +800,35 @@ export function BookingFlow({
           ? "Pilih jumlah tamu, tanggal, dan jam"
           : STEP_TITLE[step]}
       </h2>
+      {entryNotice && step <= 2 ? (
+        <div role="status" className="bg-muted flex flex-col gap-1 p-3 text-sm" style={{ borderRadius: "var(--radius)" }}>
+          {entryNotice === "VOUCHER_APPLIED" && appliedVoucher ? (
+            <>
+              <p className="font-medium">Kode {appliedVoucher.code} sudah terpasang.</p>
+              {selectedService && entryDiscount > 0 ? (
+                <p className="text-muted-foreground">
+                  Hemat {formatRupiah(entryDiscount)} untuk {selectedService.name}.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+          {entryNotice === "VOUCHER_EXPIRED" ? (
+            <>
+              <p className="font-medium">Kode {entry.voucherCode} sudah tidak berlaku.</p>
+              <p className="text-muted-foreground">Booking tetap bisa dilanjutkan dengan harga normal.</p>
+            </>
+          ) : null}
+          {entryNotice === "SERVICE_GONE" ? (
+            <>
+              <p className="font-medium">Layanan dari tautan ini sudah tidak tersedia</p>
+              <p className="text-muted-foreground">{merchantName} masih menerima booking untuk layanan lain.</p>
+              <Button type="button" variant="outline" className="min-h-11 self-start" onClick={scrollToServices}>
+                Lihat semua layanan
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 
