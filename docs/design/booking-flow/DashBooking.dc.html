@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Dashboard, daftar booking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}a:hover{color:#3f3f46}
+button,a,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.nav a{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5;color:#0a0a0a}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 240px; max-width: 260px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">TD</span>
+      <span style="display: flex; flex-direction: column"><span style="font-weight: 600">Teras Dago</span><span style="font-size: 12px; color: #71717a">Paket Pro</span></span>
+    </div>
+    <a href="DashHariIni.dc.html">Hari ini</a>
+    <a href="DashBooking.dc.html" aria-current="page"><span style="flex: 1">Booking</span><span aria-label="3 perlu tindakan" style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #0a0a0a; color: #ffffff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="DenahMeja.dc.html">Denah meja</a>
+    <a href="#">Staf</a>
+    <a href="CaraBayar.dc.html">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="TemaEditor.dc.html">Tampilan</a>
+    <a href="#">Domain</a>
+    <div style="flex: 1"></div>
+    <a href="#">Langganan</a>
+    <a href="#">Pengaturan</a>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-wrap: wrap; align-items: stretch">
+    <div style="flex: 999 1 480px; min-width: 0; box-sizing: border-box; padding: 24px 24px 40px; display: flex; flex-direction: column; gap: 16px">
+      <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+        <h1 style="flex: 1; margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Booking</h1>
+        <button type="button" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">+ Booking manual</button>
+      </header>
+
+      <div role="tablist" aria-label="Kelompok booking" style="display: flex; gap: 4px; border-bottom: 1px solid #e4e4e7; overflow-x: auto">
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+          <button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}} <span style="color: #71717a; font-weight: 500">{{t.count}}</span></button>
+        </sc-for>
+      </div>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center">
+        <label style="flex: 1 1 220px; display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#71717a" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4-4"></path></svg>
+          <input placeholder="Cari nama, WhatsApp, atau kode" aria-label="Cari booking" style="flex: 1; min-width: 0; border: 0; outline: none; font-size: 14px">
+        </label>
+        <button type="button" style="height: 36px; padding: 0 12px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Layanan</button>
+        <button type="button" style="height: 36px; padding: 0 12px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Pembayaran</button>
+        <div role="radiogroup" aria-label="Tampilan" style="display: flex; padding: 3px; gap: 3px; border-radius: 8px; background: #f4f4f5">
+          <button type="button" role="radio" aria-checked="true" style="height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: #0a0a0a; font-weight: 500; cursor: pointer">Daftar</button>
+          <button type="button" role="radio" aria-checked="false" style="height: 30px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: #52525b; font-weight: 500; cursor: pointer">Kalender</button>
+        </div>
+      </div>
+
+      <div style="border: 1px solid #e4e4e7; border-radius: 12px; overflow-x: auto">
+        <table style="width: 100%; min-width: 640px; border-collapse: collapse">
+          <thead>
+            <tr style="text-align: left; font-size: 12px; color: #71717a">
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Waktu</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Pelanggan</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Layanan</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Pembayaran</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><th colspan="5" scope="colgroup" style="padding: 10px 14px; text-align: left; font-size: 12px; font-weight: 600; background: #fafafa; border-bottom: 1px solid #e4e4e7">Hari ini · Sabtu, 14 Nov</th></tr>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+              <tr aria-selected="{{r.on}}" style="{{r.style}}">
+                <td style="padding: 12px 14px; font-weight: 600; font-variant-numeric: tabular-nums; border-bottom: 1px solid #f4f4f5">{{r.time}}</td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5"><button type="button" onClick="{{r.pick}}" style="padding: 0; border: 0; background: transparent; color: #0a0a0a; font: inherit; font-weight: 600; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: #d4d4d8; text-underline-offset: 3px">{{r.name}}</button><div style="font-size: 12px; color: #71717a">{{r.sub}}</div></td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5">{{r.service}}<div style="font-size: 12px; color: #71717a">{{r.place}}</div></td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5">{{r.pay}}<div style="font-size: 12px; color: #71717a">{{r.payNote}}</div></td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5"><span style="{{r.badge}}">{{r.status}}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <aside aria-labelledby="det-h" style="flex: 1 1 320px; box-sizing: border-box; padding: 24px; border-left: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 18px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <span style="font-size: 12px; color: #71717a">Kode {{sel.code}}</span>
+          <h2 id="det-h" style="margin: 0; font-size: 18px; font-weight: 600">{{sel.name}}</h2>
+          <span style="font-size: 13px; color: #71717a">{{sel.phone}}</span>
+        </div>
+        <a href="https://wa.me/" style="display: flex; align-items: center; height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 500">Chat WA</a>
+      </div>
+      <dl style="margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 13px">
+        <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #71717a">Jadwal</dt><dd style="margin: 0; font-weight: 500">Sab, 14 Nov · {{sel.time}}</dd></div>
+        <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #71717a">Layanan</dt><dd style="margin: 0; font-weight: 500; text-align: right">{{sel.service}}</dd></div>
+        <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #71717a">Tempat</dt><dd style="margin: 0; font-weight: 500; text-align: right">{{sel.place}}</dd></div>
+        <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #71717a">Catatan</dt><dd style="margin: 0; font-weight: 500; text-align: right">{{sel.note}}</dd></div>
+      </dl>
+
+      <section aria-labelledby="bayar-h" style="border: 1px solid #e4e4e7; border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline">
+          <h3 id="bayar-h" style="margin: 0; font-size: 13px; font-weight: 600">Pembayaran</h3>
+          <span style="font-size: 13px; color: #71717a">{{sel.pay}}</span>
+        </div>
+        <span style="font-size: 20px; font-weight: 600">{{sel.amount}}</span>
+        <sc-if value="{{sel.canMark}}" hint-placeholder-val="{{true}}">
+          <div role="radiogroup" aria-label="Metode pembayaran di tempat" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+            <sc-for list="{{methods}}" as="m" hint-placeholder-count="3">
+              <button type="button" role="radio" aria-checked="{{m.on}}" onClick="{{m.pick}}" style="{{m.style}}">{{m.label}}</button>
+            </sc-for>
+          </div>
+          <button type="button" onClick="{{markPaid}}" style="height: 36px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Tandai lunas</button>
+        </sc-if>
+        <sc-if value="{{sel.paid}}" hint-placeholder-val="{{false}}">
+          <p role="status" style="margin: 0; font-size: 13px">✓ Lunas · {{sel.paidVia}}</p>
+        </sc-if>
+      </section>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button type="button" style="height: 36px; border: 1px solid #0a0a0a; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Tandai hadir</button>
+        <button type="button" style="height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Jadwal ulang</button>
+        <button type="button" style="height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Tidak datang</button>
+        <button type="button" style="height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #b91c1c; font-weight: 500; cursor: pointer">Batalkan</button>
+      </div>
+
+      <section aria-labelledby="log-h" style="display: flex; flex-direction: column; gap: 8px">
+        <h3 id="log-h" style="margin: 0; font-size: 13px; font-weight: 600">Riwayat</h3>
+        <ol style="margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: #52525b; border-left: 1px solid #e4e4e7; list-style: none">
+          <li>Dibuat lewat halaman booking · 12 Nov, 20.14</li>
+          <li>Pengingat H-1 terkirim via WhatsApp · 13 Nov, 19.00</li>
+          <li>Pengingat 2 jam terkirim · 14 Nov, 15.00</li>
+        </ol>
+      </section>
+    </aside>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tab: 'up', sel: 'b3', method: 'QRIS', paid: {} }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var data = [
+      { id: 'b1', time: '11.00', name: 'Hendra', sub: '2 orang', service: 'Reservasi meja', place: 'Meja D1', pay: 'Di tempat', amount: 'Rp180.000', note: '-', code: 'BK-11A0', phone: '0813-1111-2020', status: 'Selesai', paidVia: 'Tunai' },
+      { id: 'b2', time: '12.30', name: 'Keluarga Sutanto', sub: '6 orang', service: 'Reservasi meja', place: 'Meja D8', pay: 'Di tempat', amount: 'Rp270.000', note: 'Kursi bayi', code: 'BK-12C4', phone: '0812-2222-3030', status: 'Selesai', paidVia: 'QRIS' },
+      { id: 'b3', time: '17.00', name: 'Ayu Lestari', sub: '4 orang', service: 'Reservasi meja', place: 'Meja D5, tengah ruangan', pay: 'Di tempat', amount: 'Rp450.000', note: 'Ulang tahun', code: 'BK-17D5', phone: '0812-3456-7890', status: 'Hadir' },
+      { id: 'b4', time: '19.00', name: 'Bima & tim', sub: '8 orang', service: 'Reservasi meja', place: 'Teras T4', pay: 'Di tempat', amount: 'Perkiraan Rp900.000', note: '-', code: 'BK-19T4', phone: '0811-4444-5050', status: 'Terkonfirmasi' },
+      { id: 'b5', time: '19.30', name: 'Rina Wulandari', sub: '20 orang', service: 'Paket Ulang Tahun', place: 'Rooftop', pay: 'DP lunas', amount: 'Sisa Rp1.050.000', note: 'Kue dari tamu', code: 'BK-19R1', phone: '0857-5555-6060', status: 'Terkonfirmasi' },
+      { id: 'b6', time: '20.30', name: 'Nadia', sub: '2 orang', service: 'Reservasi meja', place: 'Dipilihkan restoran', pay: 'Di tempat', amount: '-', note: '-', code: 'BK-20N2', phone: '0878-6666-7070', status: 'Terkonfirmasi' }
+    ];
+    var isPaid = function (b) { return !!st.paid[b.id] || b.status === 'Selesai'; };
+    var tabs = [['act', 'Perlu tindakan', '3'], ['up', 'Akan datang', '24'], ['past', 'Riwayat', ''], ['cancel', 'Dibatalkan', '']].map(function (t) {
+      var on = st.tab === t[0];
+      return { label: t[1], count: t[2], on: on, pick: function () { self.setState({ tab: t[0] }); },
+        style: 'height: 40px; padding: 0 12px; border: 0; border-bottom: 2px solid ' + (on ? '#0a0a0a' : 'transparent') + '; margin-bottom: -1px; background: transparent; color: ' + (on ? '#0a0a0a' : '#52525b') + '; font: inherit; font-weight: ' + (on ? 600 : 500) + '; cursor: pointer; white-space: nowrap' };
+    });
+    var rows = data.map(function (b) {
+      var on = st.sel === b.id, paid = isPaid(b);
+      var filled = b.status === 'Hadir' || b.status === 'Selesai';
+      return Object.assign({}, b, { on: on, pick: function () { self.setState({ sel: b.id }); },
+        pay: b.pay === 'Di tempat' ? (paid ? 'Lunas di tempat' : 'Bayar di tempat') : 'DP Rp450.000 lunas',
+        payNote: b.pay === 'Di tempat' ? (paid ? (st.paid[b.id] || b.paidVia) : b.amount) : 'Sisa Rp1.050.000',
+        badge: 'display: inline-flex; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; ' + (filled ? 'background: #0a0a0a; color: #ffffff' : 'border: 1px solid #d4d4d8; color: #0a0a0a'),
+        style: on ? 'background: #f4f4f5' : '' });
+    });
+    var s = data.filter(function (b) { return b.id === st.sel; })[0];
+    var sp = isPaid(s);
+    var methods = ['Tunai', 'QRIS', 'Transfer'].map(function (m) {
+      var on = st.method === m;
+      return { label: m, on: on, pick: function () { self.setState({ method: m }); },
+        style: 'height: 32px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; ' + (on ? 'border: 1px solid #0a0a0a; background: #0a0a0a; color: #ffffff' : 'border: 1px solid #e4e4e7; background: #ffffff; color: #0a0a0a') };
+    });
+    return {
+      tabs: tabs, rows: rows, methods: methods,
+      sel: Object.assign({}, s, { paid: sp, canMark: !sp && s.pay === 'Di tempat', paidVia: st.paid[s.id] || s.paidVia, pay: s.pay === 'Di tempat' ? 'Bayar di tempat' : 'DP sudah masuk' }),
+      markPaid: function () { var n = Object.assign({}, st.paid); n[st.sel] = st.method; self.setState({ paid: n }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

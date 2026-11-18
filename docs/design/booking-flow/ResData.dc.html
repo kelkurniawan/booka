@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Data diri dan kirim reservasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Playfair+Display:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1f5c45}a:hover{color:#123a2b}
+button,a,input,textarea{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1f5c45;outline-offset:2px}
+input:focus,textarea:focus{outline:none;border-color:#1f5c45 !important;box-shadow:0 0 0 3px #e3eee7}
+input::placeholder,textarea::placeholder{color:#8a948d}
+</style>
+</helmet>
+<div style="width: 390px; height: 1080px; position: relative; overflow: hidden; background: #f7f5ef; color: #1f2a24; font-family: 'Inter', system-ui, sans-serif">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; border-bottom: 1px solid #dfe3da">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="ResJadwal.dc.html" aria-label="Kembali ke pilih jadwal" style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center; color: #1f2a24">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #5b675f">Teras Dago</span>
+        <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px">Data diri</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah reservasi" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #5b675f"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>1. Jadwal</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #5b675f"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>2. Meja</li>
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>3. Data diri</li>
+    </ol>
+  </header>
+
+  <form novalidate="" style="display: flex; flex-direction: column; gap: 22px; padding: 20px 16px 0">
+    <section aria-label="Ringkasan reservasi" style="display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #dfe3da">
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+        <span style="font-size: 16px; font-weight: 600">Sab, 14 Nov · 19.00 WIB</span>
+        <span style="font-size: 14px; color: #5b675f">4 orang · Meja D5, tengah ruangan</span>
+      </div>
+      <a href="ResJadwal.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 6px; font-size: 14px; font-weight: 600">Ubah</a>
+    </section>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="nama" style="font-size: 15px; font-weight: 600">Nama pemesan</label>
+      <input id="nama" autocomplete="name" placeholder="Nama untuk meja" style="height: 52px; padding: 0 14px; border-radius: 12px; border: 1px solid #c9d1c5; background: #ffffff; color: #1f2a24; font-size: 16px; box-sizing: border-box">
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="wa" style="font-size: 15px; font-weight: 600">Nomor WhatsApp</label>
+      <div style="display: flex">
+        <span aria-hidden="true" style="display: flex; align-items: center; padding: 0 12px; border: 1px solid #c9d1c5; border-right: 0; border-radius: 12px 0 0 12px; background: #eef1ea; color: #5b675f; font-size: 16px">+62</span>
+        <input id="wa" type="tel" inputmode="tel" autocomplete="tel-national" placeholder="812 3456 7890" aria-describedby="wa-help" style="flex: 1; min-width: 0; height: 52px; padding: 0 14px; border-radius: 0 12px 12px 0; border: 1px solid #c9d1c5; background: #ffffff; color: #1f2a24; font-size: 16px; box-sizing: border-box">
+      </div>
+      <p id="wa-help" style="margin: 0; font-size: 13px; color: #5b675f">Konfirmasi dan pengingat 2 jam sebelumnya dikirim ke sini.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="catatan" style="font-size: 15px; font-weight: 600">Catatan <span style="font-weight: 400; color: #5b675f">(opsional)</span></label>
+      <textarea id="catatan" rows="3" placeholder="Contoh: ulang tahun, perlu kursi bayi" style="padding: 12px 14px; border-radius: 12px; border: 1px solid #c9d1c5; background: #ffffff; color: #1f2a24; font-size: 16px; resize: vertical"></textarea>
+    </div>
+
+    <div style="display: flex; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #e3eee7; font-size: 13px; line-height: 1.5; color: #123a2b">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 1px"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4M12 8h.01"></path></svg>
+      <span><strong>Tidak perlu bayar sekarang.</strong> Bayar di restoran setelah makan. Meja ditahan 15 menit dari jam datang. Berhalangan? Batalkan lewat tautan di WhatsApp.</span>
+    </div>
+  </form>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 16px; background: #ffffff; border-top: 1px solid #dfe3da; display: flex; flex-direction: column; gap: 10px">
+    <a href="ResSelesai.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #1f5c45; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Kirim reservasi</a>
+    <p style="margin: 0; text-align: center; font-size: 12px; color: #5b675f">Data Anda diproses sesuai <a href="https://marky.id/privasi" style="color: #5b675f">Kebijakan Privasi</a> Marky.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1080}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

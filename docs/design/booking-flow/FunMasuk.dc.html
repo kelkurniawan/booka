@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Datang dari tautan iklan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}a:hover{color:#7d3c20}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1100px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif; box-sizing: border-box">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; border-bottom: 1px solid #e8dcc9">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="FunProfil.dc.html" aria-label="Kembali ke profil dan semua layanan" style="width: 44px; height: 44px; margin-left: -10px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #453425">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #75624d">Rias by Sekar</span>
+        <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; line-height: 1.2">Pilih jadwal</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah booking" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #75624d"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #a8532e"></span>1. Layanan</li>
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #a8532e"></span>2. Jadwal</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #75624d"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #e8dcc9"></span>3. Data diri</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 22px; padding: 20px 16px 0">
+
+    <sc-if value="{{isOk}}" hint-placeholder-val="{{true}}">
+      <div role="status" style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 16px; background: #f3e3d6; color: #6e3519">
+        <span style="flex: 1; font-size: 14px; line-height: 1.45"><strong>Kode HEMAT20 sudah terpasang.</strong> Hemat Rp70.000 untuk Makeup Wisuda.</span>
+        <button type="button" onClick="{{drop}}" style="min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: #6e3519; font: inherit; font-size: 14px; font-weight: 600; text-decoration: underline; cursor: pointer">Lepas</button>
+      </div>
+    </sc-if>
+    <sc-if value="{{isExpired}}" hint-placeholder-val="{{false}}">
+      <div role="status" style="padding: 12px 14px; border-radius: 16px; border: 1px dashed #c9b8a2; font-size: 14px; line-height: 1.45"><strong>Kode HEMAT20 sudah tidak berlaku.</strong> Booking tetap bisa dilanjutkan dengan harga normal.</div>
+    </sc-if>
+    <sc-if value="{{isMissing}}" hint-placeholder-val="{{false}}">
+      <div role="alert" style="display: flex; flex-direction: column; gap: 8px; padding: 14px 16px; border-radius: 16px; background: #fff4e0; color: #6b4300"><strong>Layanan dari tautan ini sudah tidak tersedia</strong><span style="font-size: 14px">Rias by Sekar masih menerima booking untuk layanan lain.</span><a href="FunProfil.dc.html" style="align-self: flex-start; display: flex; align-items: center; min-height: 44px; color: #6b4300; font-weight: 600">Lihat semua layanan</a></div>
+    </sc-if>
+
+    <sc-if value="{{hasService}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 22px">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #ffffff; border: 1px solid #e8dcc9; border-radius: 16px">
+          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+            <span style="font-size: 15px; font-weight: 600">Makeup Wisuda</span>
+            <span style="font-size: 13px; color: #75624d">90 menit, bayar saat booking</span>
+          </div>
+          <a href="FunProfil.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 8px; font-size: 14px; font-weight: 600">Ganti</a>
+        </div>
+
+        <section aria-labelledby="tgl-h" style="display: flex; flex-direction: column; gap: 10px">
+          <h2 id="tgl-h" style="margin: 0; font-size: 15px; font-weight: 600">Tanggal</h2>
+          <div role="radiogroup" aria-labelledby="tgl-h" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px">
+            <sc-for list="{{dates}}" as="d" hint-placeholder-count="6">
+              <button type="button" role="radio" aria-checked="{{d.on}}" aria-label="{{d.aria}}" onClick="{{d.pick}}" style="{{d.style}}"><span style="font-size: 12px">{{d.dow}}</span><span style="font-size: 20px; font-weight: 600; line-height: 1">{{d.day}}</span></button>
+            </sc-for>
+          </div>
+        </section>
+
+        <section aria-labelledby="jam-h" style="display: flex; flex-direction: column; gap: 10px">
+          <h2 id="jam-h" style="margin: 0; font-size: 15px; font-weight: 600">Jam mulai</h2>
+          <div role="radiogroup" aria-labelledby="jam-h" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{slots}}" as="t" hint-placeholder-count="8">
+              <button type="button" role="radio" aria-checked="{{t.on}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{hasService}}" hint-placeholder-val="{{true}}">
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e8dcc9; box-shadow: 0 -8px 24px rgba(69,52,37,0.06); display: flex; align-items: center; gap: 12px">
+      <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+        <span style="font-size: 13px; color: #75624d">{{when}}</span>
+        <span style="display: flex; align-items: baseline; gap: 8px"><span style="font-size: 18px; font-weight: 600">{{price}}</span><sc-if value="{{discounted}}" hint-placeholder-val="{{true}}"><s style="font-size: 13px; color: #75624d">Rp350.000</s></sc-if></span>
+      </div>
+      <a href="#" style="display: flex; align-items: center; justify-content: center; height: 52px; padding: 0 22px; border-radius: 14px; background: #a8532e; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Lanjut</a>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"arrival":{"editor":"enum","options":["Voucher berlaku","Voucher kedaluwarsa","Layanan sudah dihapus"],"default":"Voucher berlaku","section":"Status"},"$preview":{"width":390,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { date: '21', slot: '10.00', dropped: false }; }
+  renderVals() {
+    var self = this, st = this.state, mode = this.props.arrival ?? 'Voucher berlaku';
+    var raw = [['Sab', '14'], ['Sen', '16'], ['Sel', '17'], ['Rab', '18'], ['Sab', '21'], ['Sen', '23']];
+    var dates = raw.map(function (r) { var on = st.date === r[1];
+      return { dow: r[0], day: r[1], on: on, aria: r[0] + ' ' + r[1] + ' November', pick: function () { self.setState({ date: r[1] }); },
+        style: 'width: 60px; height: 68px; flex-shrink: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; cursor: pointer; ' + (on ? 'background: #a8532e; color: #ffffff; border: 1px solid #a8532e' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9') }; });
+    var slots = ['08.00', '08.30', '09.00', '10.00', '12.00', '13.30', '15.00', '16.30'].map(function (t) { var on = st.slot === t;
+      return { label: t, on: on, pick: function () { self.setState({ slot: t }); },
+        style: 'height: 48px; border-radius: 12px; font: inherit; font-size: 15px; cursor: pointer; ' + (on ? 'background: #a8532e; color: #ffffff; border: 1px solid #a8532e' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9') }; });
+    var ok = mode === 'Voucher berlaku' && !st.dropped;
+    var d = raw.filter(function (r) { return r[1] === st.date; })[0];
+    return { isOk: ok, isExpired: mode === 'Voucher kedaluwarsa', isMissing: mode === 'Layanan sudah dihapus', hasService: mode !== 'Layanan sudah dihapus',
+      dates: dates, slots: slots, discounted: ok, price: ok ? 'Rp280.000' : 'Rp350.000',
+      when: d[0] + ' ' + d[1] + ' Nov, ' + st.slot + ' WIB',
+      drop: function () { self.setState({ dropped: true }); } };
+  }
+}
+</script>
+</body>
+</html>

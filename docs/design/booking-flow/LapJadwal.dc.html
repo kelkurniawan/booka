@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pilih lama main, jam, dan lapangan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1d5e4d}a:hover{color:#164a3c}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1d5e4d;outline-offset:2px}
+button:disabled{cursor:not-allowed}
+</style>
+</helmet>
+<div style="width: 390px; height: 1640px; position: relative; overflow: hidden; background: #e9f6f1; color: #254a41; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; background: #e9f6f1; border-bottom: 1px solid #cfe7de">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="#" aria-label="Kembali ke pilihan layanan" style="width: 44px; height: 44px; margin-left: -10px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #254a41">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #4d7266">Contoh: Rally Padel Bandung</span>
+        <h1 style="margin: 0; font-weight: 700; font-size: 22px; line-height: 1.2">Pilih jadwal main</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah booking" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #4d7266"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1d5e4d"></span>1. Layanan</li>
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #254a41"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1d5e4d"></span>2. Jadwal</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #4d7266"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #cfe7de"></span>3. Data diri</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 26px; padding: 20px 16px 0">
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #ffffff; border: 1px solid #cfe7de; border-radius: 16px">
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+        <span style="font-size: 15px; font-weight: 600">Sewa lapangan padel</span>
+        <span style="font-size: 13px; color: #4d7266">Rp150.000 per jam, jam ramai 17.00 sampai 22.00 Rp250.000</span>
+      </div>
+      <a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 8px; font-size: 14px; font-weight: 600">Ganti</a>
+    </div>
+
+    <section aria-labelledby="tgl-h" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="tgl-h" style="margin: 0; font-size: 15px; font-weight: 600">Tanggal</h2>
+        <span style="font-size: 13px; color: #4d7266">November 2026</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="tgl-h" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px">
+        <sc-for list="{{dates}}" as="d" hint-placeholder-count="7">
+          <button type="button" role="radio" aria-checked="{{d.checked}}" aria-label="{{d.aria}}" onClick="{{d.pick}}" style="{{d.style}}">
+            <span style="font-size: 12px; font-weight: 500">{{d.dow}}</span>
+            <span style="font-size: 20px; font-weight: 700; line-height: 1">{{d.day}}</span>
+            <span style="font-size: 11px">{{d.note}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="lama-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="lama-h" style="margin: 0; font-size: 15px; font-weight: 600">Lama main</h2>
+      <div role="radiogroup" aria-labelledby="lama-h" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{lengths}}" as="l" hint-placeholder-count="3">
+          <button type="button" role="radio" aria-checked="{{l.checked}}" onClick="{{l.pick}}" style="{{l.style}}">{{l.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="jam-h" style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="jam-h" style="margin: 0; font-size: 15px; font-weight: 600">Jam mulai</h2>
+        <span style="font-size: 13px; color: #4d7266">Waktu Indonesia Barat</span>
+      </div>
+      <sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}"><p role="status" style="margin: 0; display: flex; align-items: center; gap: 8px; color: #4d7266"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 999px; border: 2px solid #cfe7de; border-top-color: #1d5e4d"></span>Memuat lapangan kosong...</p></sc-if>
+      <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}"><div style="padding: 16px; border-radius: 16px; border: 1px dashed #a9cfc2; display: flex; flex-direction: column; gap: 8px"><strong>Semua lapangan penuh untuk 1,5 jam di tanggal ini</strong><span style="font-size: 14px; color: #4d7266">Coba main 1 jam, atau pilih Senin 23 Nov yang masih banyak kosong.</span><button type="button" style="align-self: flex-start; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #1d5e4d; background: #ffffff; color: #1d5e4d; font: inherit; font-weight: 600; cursor: pointer">Lihat Senin 23 Nov</button></div></sc-if>
+      <sc-if value="{{isError}}" hint-placeholder-val="{{false}}"><div role="alert" style="padding: 16px; border-radius: 16px; background: #fdecea; color: #8a1c13; display: flex; flex-direction: column; gap: 8px"><strong>Jadwal lapangan gagal dimuat</strong><span style="font-size: 14px">Periksa koneksi, lalu coba lagi.</span><button type="button" style="align-self: flex-start; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #8a1c13; background: #ffffff; color: #8a1c13; font: inherit; font-weight: 600; cursor: pointer">Coba lagi</button></div></sc-if>
+      <sc-if value="{{isOk}}" hint-placeholder-val="{{true}}">
+        <div role="radiogroup" aria-labelledby="jam-h" style="display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{slots}}" as="t" hint-placeholder-count="6">
+            <button type="button" role="radio" aria-checked="{{t.checked}}" aria-label="{{t.aria}}" disabled="{{t.full}}" onClick="{{t.pick}}" style="{{t.style}}">
+              <span style="{{t.timeStyle}}">{{t.label}}</span>
+              <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; text-align: left">
+                <span style="{{t.priceStyle}}">{{t.price}}</span>
+                <span style="{{t.noteStyle}}">{{t.note}}</span>
+              </span>
+              <span style="{{t.countStyle}}">{{t.count}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-if>
+    </section>
+
+    <section aria-labelledby="lap-h" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="lap-h" style="margin: 0; font-size: 15px; font-weight: 600">Lapangan</h2>
+        <span style="font-size: 13px; color: #4d7266">{{courtHint}}</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="lap-h" style="display: flex; flex-direction: column; gap: 8px">
+        <sc-for list="{{courts}}" as="c" hint-placeholder-count="4">
+          <button type="button" role="radio" aria-checked="{{c.checked}}" aria-label="{{c.aria}}" disabled="{{c.busy}}" onClick="{{c.pick}}" style="{{c.style}}">
+            <sc-if value="{{c.hasPhoto}}" hint-placeholder-val="{{true}}">
+              <svg width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="{{c.photoAlt}}" style="{{c.svgStyle}}">
+                <rect width="64" height="64" fill="{{c.wall}}"></rect>
+                <path d="M10 54 L22 16 L42 16 L54 54 Z" fill="{{c.turf}}"></path>
+                <path d="M10 54 L22 16 L42 16 L54 54 Z M16 35 L48 35 M32 16 L32 54" fill="none" stroke="#ffffff" stroke-width="1.2"></path>
+                <path d="M15 31 L49 31" stroke="#1b2a26" stroke-width="2"></path>
+              </svg>
+            </sc-if>
+            <sc-if value="{{c.isAny}}" hint-placeholder-val="{{false}}">
+              <span aria-hidden="true" style="width: 64px; height: 64px; flex-shrink: 0; border-radius: 10px; border: 1px dashed #a9cfc2; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #4d7266">Acak</span>
+            </sc-if>
+            <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; text-align: left">
+              <span style="font-size: 15px; font-weight: 600">{{c.name}}</span>
+              <span style="font-size: 12px; font-weight: 600">{{c.tags}}</span>
+              <span style="font-size: 13px; line-height: 1.4">{{c.note}}</span>
+            </span>
+          </button>
+        </sc-for>
+      </div>
+      <a href="LapDenah.dc.html" style="align-self: flex-start; display: flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600">Lihat denah dan foto lapangan</a>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #cfe7de; box-shadow: 0 -8px 24px rgba(37,74,65,0.06); display: flex; align-items: center; gap: 12px">
+    <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+      <span style="font-size: 13px; color: #4d7266">{{summaryTop}}</span>
+      <span style="font-size: 16px; font-weight: 700">{{summary}}</span>
+    </div>
+    <a href="LapData.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; padding: 0 22px; border-radius: 14px; background: #1d5e4d; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Lanjut</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"slotState":{"editor":"enum","options":["Normal","Memuat","Kosong","Gagal"],"default":"Normal","section":"Status"},"$preview":{"width":390,"height":1640}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { date: '21', len: 90, slot: '16.30', court: 'any' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var rp = function (n) { return 'Rp' + n.toLocaleString('id-ID'); };
+    var raw = [['Sab', '14', 'Hari ini'], ['Min', '15', ''], ['Sen', '16', ''], ['Sel', '17', ''], ['Rab', '18', ''], ['Kam', '19', ''], ['Jum', '20', ''], ['Sab', '21', ''], ['Min', '22', ''], ['Sen', '23', '']];
+    var dates = raw.map(function (r) {
+      var on = st.date === r[1];
+      return { dow: r[0], day: r[1], note: r[2], checked: on, aria: r[0] + ' ' + r[1] + ' November',
+        pick: function () { self.setState({ date: r[1], slot: null }); },
+        style: 'width: 60px; height: 76px; flex-shrink: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; cursor: pointer; ' + (on ? 'background: #1d5e4d; color: #ffffff; border: 1px solid #1d5e4d' : 'background: #ffffff; color: #254a41; border: 1px solid #cfe7de') };
+    });
+    var lengths = [[60, '1 jam'], [90, '1,5 jam'], [120, '2 jam']].map(function (l) {
+      var on = st.len === l[0];
+      return { label: l[1], checked: on, pick: function () { self.setState({ len: l[0], slot: null }); },
+        style: 'height: 48px; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; ' + (on ? 'background: #254a41; color: #ffffff; border: 1px solid #254a41' : 'background: #ffffff; color: #254a41; border: 1px solid #cfe7de') };
+    });
+    // Harga per 30 menit: jam ramai (Sabtu) mulai 17.00.
+    var unitPrice = function (min) { return min >= 17 * 60 ? 125000 : 75000; };
+    var total = function (startMin) { var s = 0; for (var m = startMin; m < startMin + st.len; m += 30) s += unitPrice(m); return s; };
+    var free = { '15.00': 3, '15.30': 3, '16.00': 2, '16.30': 2, '17.00': 1, '17.30': 0, '18.00': 0, '19.00': 2 };
+    var slots = Object.keys(free).map(function (k) {
+      var parts = k.split('.'), startMin = Number(parts[0]) * 60 + Number(parts[1]);
+      var n = free[k], full = n === 0, on = st.slot === k && !full, price = total(startMin);
+      var mixed = startMin < 17 * 60 && startMin + st.len > 17 * 60;
+      var note = full ? 'Semua lapangan terisi' : mixed ? 'Sebagian masuk jam ramai mulai 17.00' : startMin >= 17 * 60 ? 'Jam ramai' : 'Harga biasa';
+      return { label: k, price: full ? 'Penuh' : rp(price), note: note, count: full ? '' : n + ' kosong', full: full, checked: on,
+        aria: k + ', ' + (full ? 'penuh' : rp(price) + ', ' + n + ' lapangan kosong'),
+        pick: function () { self.setState({ slot: k, court: 'any' }); },
+        style: 'display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 14px; border-radius: 14px; font: inherit; cursor: pointer; ' + (full ? 'background: transparent; color: #4d7266; border: 1px dashed #a9cfc2' : on ? 'background: #ffffff; color: #254a41; border: 2px solid #1d5e4d; padding: 7px 13px' : 'background: #ffffff; color: #254a41; border: 1px solid #cfe7de'),
+        timeStyle: 'width: 52px; font-size: 16px; font-weight: 700; text-align: left; ' + (full ? 'text-decoration: line-through' : ''),
+        priceStyle: 'font-size: 15px; font-weight: 600',
+        noteStyle: 'font-size: 12px; color: ' + (full ? '#4d7266' : '#4d7266'),
+        countStyle: 'font-size: 13px; font-weight: 600; color: #1d5e4d' };
+    });
+    var C = [
+      ['any', 'Mana saja', 'Kami pilihkan lapangan yang kosong.', ''],
+      ['l1', 'Lapangan 1', 'Lapangan utama berdinding kaca penuh, enak ditonton dari tribun.', 'Indoor, kaca panoramik'],
+      ['l2', 'Lapangan 2', 'Paling dekat ruang ganti dan kantin.', 'Indoor, rumput sintetis'],
+      ['l3', 'Lapangan 3', 'Beratap, lampu LED untuk main malam. Lebih sejuk di sore hari.', 'Outdoor beratap']
+    ];
+    var look = { l1: ['#cfe0ea', '#2b5f8a'], l2: ['#d8e4dc', '#2f7d5b'], l3: ['#e6e1d3', '#3d7f6a'] };
+    var busy = { l1: true };
+    var courts = C.map(function (c) {
+      var isBusy = !!busy[c[0]] && !!st.slot, on = st.court === c[0], any = c[0] === 'any';
+      return { name: c[1], tags: isBusy ? 'Terisi di jam ini' : c[3], note: c[2], busy: isBusy, checked: on, isAny: any, hasPhoto: !any,
+        photoAlt: any ? '' : 'Foto contoh ' + c[1], wall: any ? '' : look[c[0]][0], turf: any ? '' : look[c[0]][1], svgStyle: 'flex-shrink: 0; border-radius: 10px; opacity: ' + (isBusy ? '0.5' : '1'),
+        aria: c[1] + ', ' + (isBusy ? 'terisi di jam ini, ' : (c[3] ? c[3] + ', ' : '')) + c[2],
+        pick: function () { self.setState({ court: c[0] }); },
+        style: 'width: 100%; min-height: 80px; padding: 8px 12px 8px 8px; border-radius: 16px; display: flex; align-items: center; gap: 12px; font: inherit; cursor: pointer; ' + (isBusy ? 'background: transparent; color: #4d7266; border: 1px dashed #a9cfc2' : on ? 'background: #ffffff; color: #254a41; border: 2px solid #1d5e4d; padding: 7px 11px 7px 7px' : 'background: #ffffff; color: #254a41; border: 1px solid #cfe7de') };
+    });
+    var d = raw.filter(function (r) { return r[1] === st.date; })[0];
+    var lenLabel = st.len === 60 ? '1 jam' : st.len === 90 ? '1,5 jam' : '2 jam';
+    var sel = slots.filter(function (s) { return s.checked; })[0];
+    var courtName = C.filter(function (c) { return c[0] === st.court; })[0][1];
+    var ss = this.props.slotState ?? 'Normal';
+    return { isOk: ss === 'Normal', isLoading: ss === 'Memuat', isEmpty: ss === 'Kosong', isError: ss === 'Gagal',
+      dates: dates, lengths: lengths, slots: slots, courts: courts,
+      courtHint: st.slot ? 'Untuk ' + st.slot + ', ' + lenLabel : 'Pilih jam dulu',
+      summaryTop: st.slot ? d[0] + ' ' + d[1] + ' Nov, ' + st.slot + ' WIB, ' + lenLabel : 'Belum ada jam dipilih',
+      summary: sel ? sel.price + ', ' + courtName : 'Pilih jam dulu' };
+  }
+}
+</script>
+</body>
+</html>

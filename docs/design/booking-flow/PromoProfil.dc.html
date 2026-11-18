@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Banner promo di halaman booking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1240px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: center; gap: 12px; padding: 20px 16px 16px">
+    <div aria-hidden="true" style="width: 56px; height: 56px; border-radius: 999px; background: #f3e3d6; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: #a8532e">S</div>
+    <div style="display: flex; flex-direction: column">
+      <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px">Rias by Sekar</h1>
+      <span style="font-size: 14px; color: #75624d">Makeup wisuda &amp; pengantin · Bandung</span>
+    </div>
+  </header>
+
+  <section aria-roledescription="carousel" aria-label="Promo" style="padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+    <div aria-live="{{live}}" style="position: relative; height: 176px; border-radius: 20px; overflow: hidden">
+      <div role="group" aria-roledescription="slide" aria-label="{{slide.label}}" style="{{slide.bg}}">
+        <span style="{{slide.tag}}">{{slide.tagText}}</span>
+        <h2 style="margin: 0; max-width: 230px; font-family: 'Fraunces', serif; font-size: 24px; line-height: 1.1; font-weight: 600">{{slide.title}}</h2>
+        <span style="font-size: 13px; opacity: 0.9">{{slide.sub}}</span>
+        <a href="{{slide.href}}" style="{{slide.btn}}">{{slide.cta}}</a>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 4px">
+      <button type="button" aria-label="{{pauseLabel}}" onClick="{{togglePlay}}" style="width: 44px; height: 44px; border: 0; border-radius: 999px; background: transparent; color: #453425; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <sc-if value="{{playing}}" hint-placeholder-val="{{true}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"></rect><rect x="14" y="5" width="4" height="14" rx="1"></rect></svg></sc-if>
+        <sc-if value="{{paused}}" hint-placeholder-val="{{false}}"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 5l12 7-12 7z"></path></svg></sc-if>
+      </button>
+      <div style="flex: 1; display: flex; justify-content: center; gap: 2px">
+        <sc-for list="{{dots}}" as="d" hint-placeholder-count="3">
+          <button type="button" aria-label="{{d.label}}" aria-current="{{d.current}}" onClick="{{d.pick}}" style="width: 32px; height: 44px; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer"><span style="{{d.style}}"></span></button>
+        </sc-for>
+      </div>
+      <span style="width: 44px; text-align: center; font-size: 12px; color: #75624d">{{counter}}</span>
+    </div>
+  </section>
+
+  <section aria-labelledby="kode-h" style="margin: 8px 16px 0; padding: 14px; border-radius: 16px; border: 1.5px dashed #c9a58a; background: #fffaf4; display: flex; align-items: center; gap: 12px">
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+      <h2 id="kode-h" style="margin: 0; font-size: 13px; font-weight: 500; color: #75624d">Kode promo</h2>
+      <span style="font-size: 18px; font-weight: 700; letter-spacing: 0.06em">WISUDA20</span>
+      <span style="font-size: 13px; color: #75624d">Diskon 20% Makeup Wisuda · s/d 31 Des</span>
+    </div>
+    <button type="button" onClick="{{copy}}" style="min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #a8532e; background: #ffffff; color: #a8532e; font-weight: 600; cursor: pointer">{{copyLabel}}</button>
+  </section>
+
+  <section aria-labelledby="layanan-h" style="display: flex; flex-direction: column; gap: 12px; padding: 24px 16px 0">
+    <h2 id="layanan-h" style="margin: 0 4px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px">Pilih layanan</h2>
+    <button type="button" aria-pressed="true" style="display: flex; gap: 14px; padding: 13px; border-radius: 20px; background: #ffffff; border: 2px solid #a8532e; box-shadow: 0 0 0 4px #f3e3d6; color: inherit; font: inherit; text-align: left; cursor: pointer">
+      <div aria-hidden="true" style="width: 84px; height: 84px; flex-shrink: 0; border-radius: 14px; background: repeating-linear-gradient(135deg, #f3e3d6 0 8px, #efdccb 8px 16px)"></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+        <span style="font-size: 16px; font-weight: 600">Makeup Wisuda</span>
+        <span style="font-size: 13px; color: #75624d">90 menit</span>
+        <span style="display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; margin-top: 4px">
+          <span style="font-size: 17px; font-weight: 700">Rp280.000</span>
+          <span style="font-size: 13px; color: #75624d; text-decoration: line-through"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">harga normal </span>Rp350.000</span>
+        </span>
+        <span style="align-self: flex-start; padding: 2px 8px; border-radius: 999px; background: #a8532e; color: #ffffff; font-size: 12px; font-weight: 600">Promo · hemat Rp70.000</span>
+      </div>
+    </button>
+    <button type="button" aria-pressed="false" style="display: flex; gap: 14px; padding: 14px; border-radius: 20px; background: #ffffff; border: 1px solid #e8dcc9; color: inherit; font: inherit; text-align: left; cursor: pointer">
+      <div aria-hidden="true" style="width: 84px; height: 84px; flex-shrink: 0; border-radius: 14px; background: repeating-linear-gradient(135deg, #f3e3d6 0 8px, #efdccb 8px 16px)"></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+        <span style="font-size: 16px; font-weight: 600">Makeup Pesta</span>
+        <span style="font-size: 13px; color: #75624d">2 jam · bayar di tempat</span>
+        <span style="font-size: 17px; font-weight: 700; margin-top: 4px">Rp450.000</span>
+      </div>
+    </button>
+  </section>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e8dcc9; display: flex; align-items: center; gap: 12px">
+    <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 13px; color: #75624d">Makeup Wisuda · promo terpasang</span><span style="font-size: 18px; font-weight: 600">Rp280.000</span></div>
+    <a href="PromoCheckout.dc.html" style="display: flex; align-items: center; height: 52px; padding: 0 22px; border-radius: 14px; background: #a8532e; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Pilih jadwal</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { i: 0, playing: true, copied: false }; }
+  componentDidMount() {
+    var self = this;
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) this.setState({ playing: false });
+    this.t = setInterval(function () { if (self.state.playing) self.setState({ i: (self.state.i + 1) % 3 }); }, 4500);
+  }
+  componentWillUnmount() { clearInterval(this.t); }
+  renderVals() {
+    var self = this, st = this.state;
+    var S = [
+      { label: '1 dari 3: Diskon wisuda', tagText: 'Promo Desember', title: 'Diskon 20% makeup wisuda', sub: 'Pakai kode WISUDA20 · sampai 31 Des', cta: 'Pakai promo', href: 'PromoCheckout.dc.html', bg: '#a8532e', fg: '#ffffff', btnBg: '#ffffff', btnFg: '#7d3c20' },
+      { label: '2 dari 3: Paket pengantin', tagText: 'Baru', title: 'Paket akad + resepsi', sub: 'Termasuk trial makeup gratis', cta: 'Lihat paket', href: '#', bg: '#453425', fg: '#faf4ea', btnBg: '#faf4ea', btnFg: '#453425' },
+      { label: '3 dari 3: Slot Sabtu', tagText: 'Terbatas', title: 'Slot Sabtu pagi masih ada', sub: 'Booking minggu ini sebelum penuh', cta: 'Cek jadwal', href: '#', bg: '#f3e3d6', fg: '#453425', btnBg: '#a8532e', btnFg: '#ffffff' }
+    ];
+    var s = S[st.i];
+    return {
+      slide: Object.assign({}, s, {
+        bg: 'position: absolute; inset: 0; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; background: ' + s.bg + '; color: ' + s.fg + '; background-image: radial-gradient(circle at 92% 20%, rgba(255,255,255,0.18) 0 60px, transparent 61px), radial-gradient(circle at 80% 110%, rgba(255,255,255,0.12) 0 80px, transparent 81px)',
+        tag: 'padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(255,255,255,0.22)',
+        btn: 'margin-top: auto; display: flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 700; background: ' + s.btnBg + '; color: ' + s.btnFg
+      }),
+      dots: S.map(function (x, n) { var on = n === st.i; return { label: 'Promo ' + (n + 1), current: on ? 'true' : 'false', pick: function () { self.setState({ i: n, playing: false }); }, style: 'height: 8px; border-radius: 999px; transition: width .2s; background: ' + (on ? '#a8532e' : '#d9c9b3') + '; width: ' + (on ? '22px' : '8px') }; }),
+      counter: (st.i + 1) + '/3', playing: st.playing, paused: !st.playing, live: st.playing ? 'off' : 'polite',
+      pauseLabel: st.playing ? 'Jeda promo berputar' : 'Putar promo',
+      togglePlay: function () { self.setState({ playing: !st.playing }); },
+      copy: function () { self.setState({ copied: true }); }, copyLabel: st.copied ? 'Tersalin' : 'Salin'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Atur denah dan profil lapangan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select,textarea{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0}
+.f{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;font-size:14px;width:100%}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+.tool{height:32px;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;cursor:pointer}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RP</span>
+      <span style="font-weight: 600">Contoh: Rally Padel</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="LapDenahEditor.dc.html" aria-current="page">Jadwal lapangan</a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="LapLayanan.dc.html">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="#">Promosi</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 16px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Jadwal lapangan</h1>
+        <p style="margin: 0; color: #71717a">Denah dan profil tampil di halaman booking, supaya pelanggan tahu lapangan mana yang mereka pesan.</p>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+    </header>
+
+    <div role="tablist" aria-label="Tampilan lapangan" style="display: flex; gap: 4px; border-bottom: 1px solid #e4e4e7">
+      <a href="LapDashboard.dc.html" role="tab" aria-selected="false" style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 2px solid transparent; color: #71717a; text-decoration: none">Jadwal</a>
+      <button type="button" role="tab" aria-selected="true" style="height: 36px; padding: 0 12px; border: 0; border-bottom: 2px solid #0a0a0a; background: transparent; color: #0a0a0a; font-weight: 600; cursor: pointer">Lapangan dan denah</button>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+      <section aria-labelledby="map-h" style="flex: 999 1 460px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e4e4e7">
+          <h2 id="map-h" style="margin: 0 8px 0 0; font-size: 15px; font-weight: 600">Denah tempat</h2>
+          <button type="button" class="tool" onClick="{{addCourt}}">Tambah lapangan</button>
+          <button type="button" class="tool">Tambah area</button>
+          <button type="button" class="tool">Tambah penanda</button>
+          <span style="flex: 1"></span>
+          <button type="button" class="tool" onClick="{{rotate}}" aria-label="{{rotateAria}}">Putar</button>
+        </div>
+        <div role="group" aria-label="Denah, pilih lapangan untuk mengubah profilnya" style="position: relative; height: 470px; background: #fafafa">
+          <div aria-hidden="true" style="position: absolute; left: 24px; top: 24px; width: 360px; height: 330px; border: 1px solid #d4d4d8; border-radius: 10px; background: #ffffff"><span style="position: absolute; left: 10px; top: 8px; font-size: 12px; color: #71717a">Gedung utama</span></div>
+          <div aria-hidden="true" style="position: absolute; left: 404px; top: 24px; width: 180px; height: 330px; border: 1px dashed #a1a1aa; border-radius: 10px"><span style="position: absolute; left: 10px; top: 8px; font-size: 12px; color: #71717a">Area outdoor</span></div>
+          <span aria-hidden="true" style="position: absolute; left: 24px; top: 376px; width: 170px; height: 56px; border-radius: 8px; border: 1px solid #d4d4d8; background: #ffffff; font-size: 12px; color: #52525b; display: flex; align-items: center; justify-content: center">Ruang ganti</span>
+          <span aria-hidden="true" style="position: absolute; left: 210px; top: 376px; width: 174px; height: 56px; border-radius: 8px; border: 1px solid #d4d4d8; background: #ffffff; font-size: 12px; color: #52525b; display: flex; align-items: center; justify-content: center">Kantin</span>
+          <span aria-hidden="true" style="position: absolute; left: 434px; top: 440px; width: 120px; height: 30px; border: 1px solid #a1a1aa; border-bottom: 0; border-radius: 6px 6px 0 0; font-size: 12px; color: #52525b; display: flex; align-items: center; justify-content: center; background: #ffffff">Pintu masuk</span>
+          <sc-for list="{{courts}}" as="c" hint-placeholder-count="3">
+            <button type="button" aria-pressed="{{c.on}}" aria-label="{{c.aria}}" onClick="{{c.pick}}" style="{{c.style}}">
+              <svg width="100%" height="100%" viewBox="0 0 80 160" preserveAspectRatio="none" aria-hidden="true" style="{{c.svgStyle}}">
+                <rect x="6" y="6" width="68" height="148" fill="none" stroke="{{c.line}}" stroke-width="1.5"></rect>
+                <path d="M6 80 L74 80" stroke="{{c.line}}" stroke-width="3"></path>
+                <path d="M6 46 L74 46 M6 114 L74 114 M40 46 L40 114" stroke="{{c.line}}" stroke-width="1"></path>
+              </svg>
+              <span style="{{c.labelStyle}}">{{c.name}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <p style="margin: 0; padding: 10px 12px; border-top: 1px solid #e4e4e7; font-size: 13px; color: #52525b">Seret lapangan untuk memindahkan, atau pilih lalu geser dengan tombol panah. Ukuran mengikuti jenis olahraga: padel 10 x 20 meter.</p>
+      </section>
+
+      <aside aria-labelledby="prof-h" style="flex: 1 1 300px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="prof-h" style="margin: 0; font-size: 15px; font-weight: 600">Profil {{sel.name}}</h2>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="nm" style="font-weight: 500">Nama</label>
+          <input id="nm" class="f" value="{{sel.name}}">
+        </div>
+        <div style="display: flex; gap: 10px">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <label for="jenis" style="font-weight: 500">Olahraga</label>
+            <select id="jenis" class="f"><option>Padel</option><option>Futsal</option><option>Mini soccer</option><option>Badminton</option><option>Tenis</option></select>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <label for="tempat" style="font-weight: 500">Tempat</label>
+            <select id="tempat" class="f"><option selected="{{sel.indoor}}">Indoor</option><option>Outdoor</option><option selected="{{sel.roofed}}">Outdoor beratap</option></select>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="perm" style="font-weight: 500">Permukaan</label>
+          <input id="perm" class="f" value="{{sel.surface}}">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="desk" style="font-weight: 500">Deskripsi</label>
+          <textarea id="desk" maxlength="280" style="min-height: 84px; box-sizing: border-box; padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px; line-height: 1.45; resize: vertical">{{sel.desc}}</textarea>
+          <span style="align-self: flex-end; font-size: 12px; color: #71717a">{{sel.count}} / 280</span>
+        </div>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="padding: 0; margin-bottom: 8px; font-weight: 500">Foto, maksimal 5</legend>
+          <sc-if value="{{uploadError}}" hint-placeholder-val="{{false}}"><p role="alert" style="margin: 0; padding: 8px 10px; border-radius: 8px; background: #fef2f2; color: #991b1b; font-size: 13px">Foto terlalu besar. Pakai JPG, PNG, atau WebP maksimal 5 MB.</p></sc-if>
+          <sc-for list="{{photos}}" as="p" hint-placeholder-count="2">
+            <div style="display: flex; gap: 10px; align-items: flex-start">
+              <svg width="72" height="54" viewBox="0 0 72 54" role="img" aria-label="{{p.thumbAlt}}" style="flex-shrink: 0; border-radius: 6px">
+                <rect width="72" height="54" fill="{{p.wall}}"></rect>
+                <path d="M6 54 L24 20 L48 20 L66 54 Z" fill="{{p.turf}}"></path>
+                <path d="M12 38 L60 38" stroke="#1b2a26" stroke-width="2"></path>
+              </svg>
+              <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+                <label style="font-size: 12px; color: #52525b" for="{{p.id}}">{{p.label}}</label>
+                <input id="{{p.id}}" class="f" value="{{p.alt}}" placeholder="Jelaskan isi foto untuk pembaca layar" style="{{p.inputStyle}}">
+                <sc-if value="{{p.missing}}" hint-placeholder-val="{{false}}"><span style="font-size: 12px; color: #b91c1c">Teks alternatif wajib diisi sebelum foto tampil.</span></sc-if>
+              </div>
+              <button type="button" aria-label="{{p.delAria}}" style="height: 32px; padding: 0 8px; border: 0; background: transparent; color: #b91c1c; cursor: pointer">Hapus</button>
+            </div>
+          </sc-for>
+          <button type="button" style="align-self: flex-start; height: 36px; padding: 0 12px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Unggah foto</button>
+          <span style="font-size: 12px; color: #71717a">Foto pertama jadi sampul di halaman booking.</span>
+        </fieldset>
+        <label style="display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer"><input type="checkbox" checked="">Bisa dipesan online</label>
+        <button type="button" style="align-self: flex-start; height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #b91c1c; font-weight: 500; cursor: pointer">Nonaktifkan lapangan</button>
+        <span style="font-size: 12px; color: #71717a">Lapangan yang punya riwayat booking dinonaktifkan, bukan dihapus.</span>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"photoState":{"editor":"enum","options":["Normal","Unggah gagal","Teks alternatif kosong"],"default":"Normal","section":"Status"},"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'l2', rot: { l1: 0, l2: 0, l3: 0 }, extra: 0 }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var C = [
+      { id: 'l1', name: 'Lapangan 1', x: 48, y: 52, place: 'Indoor', surface: 'Rumput sintetis biru', desc: 'Lapangan utama dengan dinding kaca penuh. Ada tribun kecil untuk teman yang menonton.', wall: '#cfe0ea', turf: '#2b5f8a' },
+      { id: 'l2', name: 'Lapangan 2', x: 210, y: 52, place: 'Indoor', surface: 'Rumput sintetis hijau', desc: 'Paling dekat ruang ganti dan kantin. Cocok untuk main santai sebelum atau sesudah makan.', wall: '#d8e4dc', turf: '#2f7d5b' },
+      { id: 'l3', name: 'Lapangan 3', x: 444, y: 52, place: 'Outdoor beratap', surface: 'Rumput sintetis hijau', desc: 'Beratap penuh, jadi tetap bisa dipakai saat hujan ringan. Lampu LED terang untuk main malam.', wall: '#e6e1d3', turf: '#3d7f6a' }
+    ];
+    for (var i = 0; i < st.extra; i++) C.push({ id: 'n' + i, name: 'Lapangan ' + (4 + i), x: 210, y: 300, place: 'Indoor', surface: '', desc: '', wall: '#e4e4e7', turf: '#a1a1aa' });
+    var courts = C.map(function (c) {
+      var on = st.sel === c.id, r = st.rot[c.id] || 0;
+      var w = r ? 280 : 140, h = r ? 140 : 280;
+      return { name: c.name, on: on, line: on ? '#ffffff' : '#0a0a0a',
+        aria: c.name + ', ' + c.place + (r ? ', diputar' : ''),
+        pick: function () { self.setState({ sel: c.id }); },
+        style: 'position: absolute; left: ' + c.x + 'px; top: ' + c.y + 'px; width: ' + w + 'px; height: ' + h + 'px; padding: 0; overflow: hidden; border-radius: 4px; font: inherit; cursor: grab; display: flex; align-items: center; justify-content: center; ' + (on ? 'background: #0a0a0a; color: #ffffff; border: 2px solid #0a0a0a; box-shadow: 0 0 0 4px #e4e4e7' : 'background: #ffffff; color: #0a0a0a; border: 2px solid #0a0a0a'),
+        svgStyle: 'position: absolute; inset: 0; ' + (r ? 'transform: rotate(90deg) scale(0.5, 2)' : ''),
+        labelStyle: 'position: relative; padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 600; ' + (on ? 'background: #0a0a0a' : 'background: #ffffff') };
+    });
+    var s = C.filter(function (c) { return c.id === st.sel; })[0] || C[0];
+    var ps = this.props.photoState ?? 'Normal';
+    var alts = ['Lapangan dilihat dari sisi tribun', ps === 'Teks alternatif kosong' ? '' : 'Lapangan saat malam dengan lampu menyala'];
+    var photos = s.surface ? alts.map(function (a, i) {
+      var missing = a === '';
+      return { id: 'alt' + i, label: 'Teks alternatif foto ' + (i + 1) + (i === 0 ? ', sampul' : ''), alt: a, missing: missing, thumbAlt: 'Foto contoh ' + (i + 1) + ' ' + s.name,
+        wall: i === 1 ? '#2c3a36' : s.wall, turf: s.turf, delAria: 'Hapus foto ' + (i + 1),
+        inputStyle: missing ? 'border-color: #b91c1c' : '' };
+    }) : [];
+    return { courts: courts, photos: photos, uploadError: ps === 'Unggah gagal',
+      sel: { name: s.name, surface: s.surface, desc: s.desc, count: s.desc.length, indoor: s.place === 'Indoor', roofed: s.place === 'Outdoor beratap' },
+      rotateAria: 'Putar ' + s.name + ' 90 derajat',
+      rotate: function () { var n = Object.assign({}, st.rot); n[s.id] = n[s.id] ? 0 : 90; self.setState({ rot: n }); },
+      addCourt: function () { self.setState({ extra: st.extra + 1, sel: 'n' + st.extra }); } };
+  }
+}
+</script>
+</body>
+</html>

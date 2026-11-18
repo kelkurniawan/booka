@@ -1,0 +1,49 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "HeroMotion.dc.html": {
+      "h": 760,
+      "is_interactive": true,
+      "title": "Latar hero bergerak (explainer-engaging)",
+      "w": 1440,
+      "x": 2000,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 6470,
+      "is_interactive": true,
+      "title": "Desktop",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Mobile.dc.html": {
+      "h": 8000,
+      "is_interactive": true,
+      "radius": 32,
+      "title": "HP (390)",
+      "w": 390,
+      "x": 1520,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-14T10:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "file": "Main.dc.html",
+    "view": "focused"
+  },
+  "notes": {},
+  "order": [
+    "Main.dc.html",
+    "Mobile.dc.html",
+    "HeroMotion.dc.html"
+  ],
+  "pages": [],
+  "title": "Marky Landing Page"
+}

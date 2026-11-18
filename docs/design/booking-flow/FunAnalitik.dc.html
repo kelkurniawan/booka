@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Funnel per kanal di Analitik</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+th{font-weight:500;color:#71717a;text-align:left;padding:10px 12px;border-bottom:1px solid #e4e4e7;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f4f4f5;white-space:nowrap}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RS</span>
+      <span style="font-weight: 600">Rias by Sekar</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="FunAnalitik.dc.html" aria-current="page">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="FunLinkEditor.dc.html">Tautan dan sosmed</a>
+    <a href="#">Promosi</a>
+    <a href="FunTautan.dc.html">Iklan</a>
+    <a href="#">Domain</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Analitik</h1>
+        <p style="margin: 0; color: #71717a">Dari kunjungan sampai bayar: di langkah mana pengunjung berhenti, dan kanal mana yang menghasilkan.</p>
+      </div>
+      <div role="radiogroup" aria-label="Rentang waktu" style="display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: #f4f4f5">
+        <sc-for list="{{ranges}}" as="r" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{r.on}}" onClick="{{r.pick}}" style="{{r.style}}">{{r.label}}</button></sc-for>
+      </div>
+    </header>
+
+    <sc-if value="{{empty}}" hint-placeholder-val="{{false}}">
+      <div style="padding: 32px; border: 1px dashed #d4d4d8; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start">
+        <strong style="font-size: 15px">Belum ada kunjungan tercatat</strong>
+        <span style="color: #52525b">Kunjungan mulai dihitung setelah halaman booking Anda dibuka orang. Pasang tautannya di bio Instagram atau buat tautan iklan pertama.</span>
+        <a href="FunTautan.dc.html" style="display: flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; background: #0a0a0a; color: #ffffff; text-decoration: none; font-weight: 500">Buat tautan iklan</a>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{hasData}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 18px">
+        <section aria-labelledby="fun-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+            <h2 id="fun-h" style="flex: 1; margin: 0; font-size: 15px; font-weight: 600">{{funTitle}}</h2>
+            <label style="display: flex; align-items: center; gap: 8px; color: #52525b">Kanal
+              <select onChange="{{setCh}}" style="height: 32px; padding: 0 8px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font: inherit"><option value="all">Semua kanal</option><option value="ig">Bio Instagram</option><option value="tt">Iklan TikTok</option><option value="wa">Status WhatsApp</option><option value="lain">Langsung atau lainnya</option></select>
+            </label>
+          </div>
+          <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+            <sc-for list="{{steps}}" as="s" hint-placeholder-count="5">
+              <li style="display: grid; grid-template-columns: 180px 1fr 150px; align-items: center; gap: 12px">
+                <span style="font-weight: 500">{{s.label}}</span>
+                <span aria-hidden="true" style="height: 28px; border-radius: 6px; background: #f4f4f5; overflow: hidden"><span style="{{s.bar}}"></span></span>
+                <span style="display: flex; flex-direction: column; text-align: right; font-variant-numeric: tabular-nums"><strong>{{s.count}}</strong><span style="font-size: 12px; color: #71717a">{{s.rate}}</span></span>
+              </li>
+            </sc-for>
+          </ol>
+          <p style="margin: 0; padding: 10px 12px; border-radius: 8px; background: #fafafa; color: #3f3f46">{{insight}}</p>
+        </section>
+
+        <section aria-labelledby="kanal-h" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+          <h2 id="kanal-h" style="margin: 0; padding: 12px 14px; font-size: 15px; font-weight: 600; border-bottom: 1px solid #e4e4e7">Per kanal</h2>
+          <div style="overflow-x: auto">
+            <table style="width: 100%; border-collapse: collapse; min-width: 680px">
+              <thead><tr><th scope="col">Kanal</th><th scope="col" class="num">Kunjungan</th><th scope="col" class="num">Booking</th><th scope="col" class="num">Dibayar</th><th scope="col" class="num">Kunjungan jadi bayar</th><th scope="col" class="num">Omzet dibayar</th></tr></thead>
+              <tbody>
+                <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+                  <tr><th scope="row" style="color: #0a0a0a; border-bottom: 1px solid #f4f4f5; font-weight: 500">{{r.name}}</th><td class="num">{{r.v}}</td><td class="num">{{r.b}}</td><td class="num">{{r.p}}</td><td class="num">{{r.cr}}</td><td class="num">{{r.rev}}</td></tr>
+                </sc-for>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <p style="margin: 0; font-size: 13px; color: #71717a">Kunjungan dihitung per sesi browser tanpa cookie pelacak, jadi orang yang sama di hari lain dihitung lagi. Dibayar hanya menghitung pembayaran QRIS; booking bayar di tempat masuk ke Booking.</p>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dataState":{"editor":"enum","options":["Ada data","Belum ada kunjungan"],"default":"Ada data","section":"Status"},"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { range: 30, ch: 'all' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var fmt = function (n) { return n.toLocaleString('id-ID'); };
+    var D = {
+      ig: { name: 'Bio Instagram', s: [520, 270, 130, 26, 18], rev: 6300000 },
+      tt: { name: 'Iklan TikTok', s: [410, 190, 95, 21, 12], rev: 3360000 },
+      wa: { name: 'Status WhatsApp', s: [180, 100, 50, 12, 8], rev: 2800000 },
+      lain: { name: 'Langsung atau lainnya', s: [130, 50, 27, 5, 3], rev: 1050000 }
+    };
+    var keys = Object.keys(D);
+    var total = [0, 0, 0, 0, 0];
+    keys.forEach(function (k) { D[k].s.forEach(function (v, i) { total[i] += v; }); });
+    var cur = st.ch === 'all' ? total : D[st.ch].s;
+    var L = ['Kunjungan', 'Memilih layanan', 'Lanjut ke data diri', 'Booking dibuat', 'Dibayar'];
+    var steps = L.map(function (l, i) {
+      var pct = Math.round(cur[i] / cur[0] * 100);
+      return { label: l, count: fmt(cur[i]), rate: i === 0 ? '100%' : Math.round(cur[i] / cur[i - 1] * 100) + '% dari langkah sebelumnya',
+        bar: 'display: block; height: 100%; width: ' + Math.max(pct, 2) + '%; background: #0a0a0a' };
+    });
+    var drops = [1, 2, 3, 4].map(function (i) { return { i: i, keep: cur[i] / cur[i - 1] }; }).sort(function (a, b) { return a.keep - b.keep; });
+    var worst = drops[0];
+    var rows = keys.map(function (k) { var d = D[k];
+      return { name: d.name, v: fmt(d.s[0]), b: fmt(d.s[3]), p: fmt(d.s[4]), cr: (d.s[4] / d.s[0] * 100).toFixed(1).replace('.', ',') + '%', rev: 'Rp' + fmt(d.rev) }; });
+    var ranges = [[7, '7 hari'], [30, '30 hari'], [90, '90 hari']].map(function (r) { var on = st.range === r[0];
+      return { label: r[1], on: on, pick: function () { self.setState({ range: r[0] }); },
+        style: 'height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; cursor: pointer; ' + (on ? 'background: #ffffff; color: #0a0a0a; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.08)' : 'background: transparent; color: #52525b') }; });
+    var has = (this.props.dataState ?? 'Ada data') === 'Ada data';
+    return { hasData: has, empty: !has, steps: steps, rows: rows, ranges: ranges,
+      funTitle: (st.ch === 'all' ? 'Semua kanal' : D[st.ch].name) + ', ' + st.range + ' hari terakhir',
+      insight: 'Paling banyak berhenti di antara "' + L[worst.i - 1] + '" dan "' + L[worst.i] + '": hanya ' + Math.round(worst.keep * 100) + '% yang lanjut.',
+      setCh: function (e) { self.setState({ ch: e.target.value }); } };
+  }
+}
+</script>
+</body>
+</html>

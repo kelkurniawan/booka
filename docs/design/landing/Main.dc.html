@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Marky: booking, DP, dan pengingat lewat satu tautan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+/* Hallmark v2.0.0 · theme: coral, dealt 1/3 (seed marky-link-in-bio-booking-deposit-2b39·4a060c2c·2026-11-14·r0) · draw: 8313fb · shape: narrative-workflow · hero: corridor, leads with before and after · nav: masthead · footer: mast · genre: modern-minimal · job: sign up · signature: a WhatsApp chat turning into a booking slip pressed Lunas · motion: the job plays on the desk once (~6s), still after · imagery: built stationery, no photographs */
+/* critique: the stationery is CSS standing in for real product captures; replace stage objects with screenshots of the live booking page once it ships */
+/* waive motion (by request): the hero background loops, built with the explainer-engaging skill (Barty-Bart/motion-graphics); a pause control, prefers-reduced-motion and save-data stop it, and it renders a settled frame (the slip pressed Lunas) when still */
+/* waive 1 font: General Sans is not on Google Fonts, the only font host the canvas allows; Plus Jakarta Sans stands in, self-host General Sans in the Next build · waive texture: cotton.svg and felt.svg not generated on the canvas, a lit gradient stands in · waive pricing period switch: no yearly price exists in plans.ts, inventing one breaks 46a */
+:root{
+  --color-paper:oklch(97% 0.006 55);--color-paper-2:oklch(94.5% 0.007 55);--color-paper-3:oklch(91.5% 0.009 55);
+  --color-ink:oklch(21% 0.012 38);--color-ink-2:oklch(29% 0.013 40);--color-muted:oklch(47% 0.013 45);
+  --color-rule:oklch(87% 0.009 55);--color-rule-2:oklch(81% 0.011 55);
+  --color-accent:oklch(74% 0.125 30);--color-accent-ink:oklch(21% 0.012 38);--color-accent-2:oklch(54% 0.165 29);--color-focus:oklch(54% 0.17 30);
+  --color-cotton:oklch(98.8% 0.0045 80);--color-cotton-2:oklch(97% 0.006 70);--color-desk:oklch(94.3% 0.008 64);--color-print:oklch(23% 0.012 38);
+  --color-board:oklch(22% 0.011 40);--color-board-type:oklch(96.5% 0.006 70);--color-board-muted:oklch(76% 0.01 60);--color-board-rule:oklch(34% 0.012 40);--color-paid:oklch(55.5% 0.15 33);
+  --color-chat:oklch(95.5% 0.03 150);
+  --shade:32% 0.03 50;--lit:100% 0.005 80;--deep:7% 0.01 40;
+  --font-display:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;--font-body:var(--font-display);--font-outlier:"Geist Mono",ui-monospace,monospace;
+  --radius-card:8px;--radius-input:6px;--radius-stock:8px;
+  --edge-stock:inset 0 1px 0 oklch(var(--lit) / 0.9),inset 0 -1px 0 oklch(var(--shade) / 0.07),0 0 0 0.5px oklch(var(--shade) / 0.22),0 1px 0 oklch(var(--shade) / 0.12);
+  --cast-stock:6px 5px 10px -6px oklch(var(--shade) / 0.3);--cast-stock-lift:12px 10px 18px -8px oklch(var(--shade) / 0.3);
+  --cast-deep:10px 12px 24px -10px oklch(var(--deep) / 0.6);
+  --press-groove:inset 1px 1.5px 2px oklch(var(--shade) / 0.16),inset -1px -1px 0 oklch(var(--lit) / 0.9),0 0 0 0.5px oklch(var(--shade) / 0.2);
+  --tracking-display:-0.03em;--display-weight:600;
+  --space-xs:4px;--space-sm:8px;--space-md:16px;--space-lg:24px;--space-xl:40px;--space-2xl:64px;--space-3xl:96px;--space-4xl:144px;
+  --text-small:15px;--text-body:17px;--text-lead:21px;--text-title:24px;--text-section:clamp(36px,4.4vw,56px);--text-display:clamp(48px,7vw,96px);
+  --ease-out:cubic-bezier(.2,.7,.2,1);--dur-micro:120ms;--dur-short:220ms;--dur-long:420ms;
+}
+html,body{margin:0;overflow-x:clip;background:var(--color-paper);scrollbar-color:var(--color-rule-2) var(--color-paper);caret-color:var(--color-focus)}
+::selection{background:var(--color-accent);color:var(--color-accent-ink)}
+.btn:disabled,.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed;transform:none}
+a{color:var(--color-ink);text-decoration-color:var(--color-rule-2);text-underline-offset:3px}
+a:hover{text-decoration-color:var(--color-accent-2)}
+button,a,input{font-family:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:3px}
+h1,h2,h3{font-weight:var(--display-weight);letter-spacing:var(--tracking-display);overflow-wrap:break-word;min-width:0;margin:0;text-wrap:balance}
+.wrap{max-width:1240px;margin:0 auto;padding-inline:clamp(20px,4vw,48px)}
+.fig{font-family:var(--font-outlier);font-variant-numeric:tabular-nums}
+.desk{background-color:var(--color-desk);background-image:radial-gradient(90% 120% at 0% 30%,var(--color-cotton),transparent 62%)}
+.stock{background-color:var(--color-cotton);background-image:linear-gradient(100deg,var(--color-cotton),var(--color-cotton-2) 45%,var(--color-cotton));color:var(--color-print);box-shadow:var(--edge-stock),var(--cast-stock);border-radius:var(--radius-stock)}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:0 var(--space-lg);border:0;border-radius:var(--radius-stock);font-size:16px;font-weight:500;text-decoration:none;cursor:pointer;transition:transform var(--dur-short) var(--ease-out),box-shadow var(--dur-short) var(--ease-out)}
+.btn--card{background:var(--color-cotton);color:var(--color-print);text-shadow:0.5px 0.75px 0 var(--color-cotton);box-shadow:var(--edge-stock),var(--cast-stock)}
+.btn--ink{background:var(--color-board);color:var(--color-board-type);text-shadow:0 -0.75px 0 var(--color-ink);box-shadow:var(--cast-stock)}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--edge-stock),var(--cast-stock-lift)}
+.btn:active{transform:translateY(1px)}
+.groove{display:inline-flex;gap:var(--space-xs);padding:var(--space-xs);border-radius:12px;background:var(--color-paper-2);box-shadow:var(--press-groove)}
+.groove button{min-height:40px;padding:0 var(--space-md);border:0;border-radius:9px;background:transparent;color:var(--color-muted);font-size:var(--text-small);font-weight:500;cursor:pointer;transition:transform var(--dur-micro) var(--ease-out),color var(--dur-micro)}
+.groove button[aria-checked=true],.groove button[aria-selected=true]{background:var(--color-cotton);color:var(--color-print);box-shadow:var(--edge-stock),var(--cast-stock)}
+.paid{font-weight:700;color:var(--color-paid);filter:url(#press);display:inline-block}
+.masthead-links{display:flex;gap:var(--space-lg)}
+.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr)}
+.masthead-login{display:inline}
+.menu-btn,.menu-panel,.cta-short{display:none}
+@media (max-width:720px){.masthead-links,.masthead-login,.cta-long{display:none}.menu-btn{display:inline-flex}.cta-short{display:inline}.menu-panel[data-open=true]{display:flex}}
+@media (max-width:720px){:root{--space-2xl:40px;--space-3xl:56px;--space-4xl:72px}}
+.price-mobile{display:none}
+@media (max-width:720px){.price-table,.price-foot{display:none}.price-mobile{display:flex}}
+.groove--board{background:var(--color-ink-2);box-shadow:none}.groove--board button{color:var(--color-board-muted)}.groove--board button[aria-checked=true]{background:var(--color-board-type);color:var(--color-print);box-shadow:none}
+.hero-motion-band{display:none}
+@media (max-width:720px){.hero-motion-bg{display:none}.hero-motion-band{display:block;width:100%;overflow:hidden;padding:8px 0;border-radius:16px;background:var(--color-desk)}.agenda-stack{height:auto!important;display:flex;flex-direction:column;gap:var(--space-sm)}.agenda-stack>div{position:static!important}.price-foot{display:none!important}.slip{padding-bottom:64px!important}.slip .stamp{bottom:12px!important}}
+summary{list-style:none;cursor:pointer}summary::-webkit-details-marker{display:none}
+details[open] .q-mark{transform:rotate(45deg)}
+.q-mark{transition:transform var(--dur-short) var(--ease-out)}
+/* the job plays on the desk once */
+.chat{transform:rotate(-4deg)}
+.slip{transform:rotate(2.5deg)}
+.stamp{transform:rotate(-8deg)}
+@media (prefers-reduced-motion:no-preference){
+  .chat{animation:chatIn 700ms var(--ease-out) 200ms both}
+  .bubble{animation:fadeUp 380ms var(--ease-out) both;animation-delay:calc(700ms + var(--i) * 520ms)}
+  .slip{animation:slipIn 900ms var(--ease-out) 2500ms both}
+  .stamp{animation:press 420ms cubic-bezier(.3,.0,.2,1) 4300ms both}
+  @keyframes chatIn{from{opacity:0;transform:translate(-24px,16px) rotate(-7deg)}to{opacity:1;transform:rotate(-4deg)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  @keyframes slipIn{from{opacity:0;transform:translate(60px,30px) rotate(9deg)}to{opacity:1;transform:rotate(2.5deg)}}
+  @keyframes press{0%{opacity:0;transform:scale(1.6) rotate(-14deg)}70%{opacity:1;transform:scale(.96) rotate(-8deg)}100%{opacity:1;transform:scale(1) rotate(-8deg)}}
+}
+</style>
+</helmet>
+<div style="background: var(--color-paper); color: var(--color-ink); font-family: var(--font-body); font-size: var(--text-body); line-height: 1.55">
+  <svg width="0" height="0" aria-hidden="true" style="position: absolute"><filter id="press"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="n"></feTurbulence><feColorMatrix in="n" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.25" result="m"></feColorMatrix><feComposite in="SourceGraphic" in2="m" operator="in" result="ink"></feComposite><feOffset in="ink" dx="0.6" dy="0.8" result="o"></feOffset><feMerge><feMergeNode in="o"></feMergeNode><feMergeNode in="ink"></feMergeNode></feMerge></filter></svg>
+
+  <header class="wrap" style="padding-top: var(--space-lg)">
+    <div class="masthead" style="align-items: center; gap: var(--space-md); padding-bottom: var(--space-md); border-bottom: 1px solid var(--color-rule)">
+      <div style="display: flex; align-items: center">
+      <button type="button" class="menu-btn" aria-expanded="{{menuOpen}}" aria-controls="menu-hp" aria-label="Menu" onClick="{{toggleMenu}}" style="width: 44px; height: 44px; margin-left: -10px; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-card); background: transparent; color: var(--color-ink); cursor: pointer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+      <nav aria-label="Utama" class="masthead-links" style="font-size: var(--text-small)">
+        <a href="#alur" style="text-decoration: none">Cara kerja</a>
+        <a href="#harga" style="text-decoration: none">Harga</a>
+        <a href="#tanya" style="text-decoration: none">Tanya jawab</a>
+      </nav>
+      </div>
+      <a href="#" class="wordmark" aria-label="Marky, beranda" style="justify-self: center; text-decoration: none; font-size: clamp(30px, 3.4vw, 44px); font-weight: 700; letter-spacing: -0.05em; line-height: 1">marky</a>
+      <div style="justify-self: end; display: flex; align-items: center; gap: var(--space-md)">
+        <a href="/masuk" class="masthead-login" style="font-size: var(--text-small); text-decoration: none">Masuk</a>
+        <a href="#klaim" class="btn btn--ink" style="min-height: 44px; padding: 0 var(--space-md); font-size: var(--text-small)"><span class="cta-long">Mulai gratis</span><span class="cta-short">Mulai</span></a>
+      </div>
+    </div>
+    <nav id="menu-hp" class="menu-panel" data-open="{{menuOpen}}" aria-label="Menu HP" style="flex-direction: column; padding: var(--space-sm) 0; border-bottom: 1px solid var(--color-rule)">
+      <a href="#alur" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 48px; text-decoration: none; font-size: 17px">Cara kerja</a>
+      <a href="#harga" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 48px; text-decoration: none; font-size: 17px">Harga</a>
+      <a href="#tanya" onClick="{{closeMenu}}" style="display: flex; align-items: center; min-height: 48px; text-decoration: none; font-size: 17px">Tanya jawab</a>
+      <a href="/masuk" style="display: flex; align-items: center; min-height: 48px; text-decoration: none; font-size: 17px">Masuk</a>
+    </nav>
+  </header>
+
+  <main style="position: relative; isolation: isolate">
+    <div class="hero-motion-bg" style="position: absolute; left: 0; right: 0; top: 0; height: 760px; z-index: -1; pointer-events: none">
+      <dc-import name="HeroMotion" paused="{{bgPaused}}" hint-size="100%,760px"></dc-import>
+    </div>
+    <section aria-labelledby="hero-h" class="wrap" style="padding-top: var(--space-2xl); padding-bottom: var(--space-3xl); display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-lg)">
+      <h1 id="hero-h" style="max-width: 13ch; font-size: var(--text-display); line-height: 1.02">Booking masuk sendiri. Anda tinggal melayani.</h1>
+      <p style="margin: 0; max-width: 34ch; font-size: var(--text-lead); color: var(--color-ink-2)">Satu tautan di bio untuk jadwal, DP, dan pengingat.</p>
+      <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-sm)">
+        <a href="#klaim" class="btn btn--ink">Klaim marky.id/nama-anda</a>
+        <a href="#alur" style="display: inline-flex; align-items: center; min-height: 48px; padding: 0 var(--space-md); font-size: 16px; font-weight: 500">Lihat cara kerjanya</a>
+      </div>
+      <p style="margin: 0; font-size: var(--text-small); color: var(--color-muted)">Gratis untuk 10 transaksi per bulan, tanpa kartu kredit.</p>
+      <button type="button" aria-pressed="{{bgPaused}}" onClick="{{togglePause}}" style="min-height: 44px; padding: 0 var(--space-sm); border: 0; background: transparent; color: var(--color-muted); font-size: var(--text-small); text-decoration: underline; text-underline-offset: 3px; cursor: pointer">{{pauseText}}</button>
+      <div class="hero-motion-band" aria-hidden="true"><dc-import name="HeroMotion" paused="{{bgPaused}}" compact="{{yes}}" hint-size="100%,260px"></dc-import></div>
+
+      <figure aria-label="Sebelum dan sesudah: obrolan WhatsApp menjadi slip booking yang sudah lunas" class="desk" style="margin: var(--space-xl) 0 0; width: 100%; max-width: 980px; border-radius: 16px; padding: clamp(28px, 5vw, 56px) clamp(16px, 4vw, 56px); box-sizing: border-box; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: clamp(24px, 4vw, 56px); text-align: left">
+        <div class="stock chat" style="flex: 0 1 330px; padding: var(--space-md); display: flex; flex-direction: column; gap: var(--space-sm)">
+          <span style="font-size: 13px; color: var(--color-muted)">Sebelum, lewat DM</span>
+          <p class="bubble" style="--i: 0; margin: 0; align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 4px 12px 12px 12px; background: var(--color-paper-2); font-size: 14px">Kak, Sabtu jam 10 masih kosong?</p>
+          <p class="bubble" style="--i: 1; margin: 0; align-self: flex-end; max-width: 85%; padding: 8px 12px; border-radius: 12px 4px 12px 12px; background: var(--color-chat); font-size: 14px">Sebentar ya kak, saya cek dulu</p>
+          <p class="bubble" style="--i: 2; margin: 0; align-self: flex-start; max-width: 85%; padding: 8px 12px; border-radius: 4px 12px 12px 12px; background: var(--color-paper-2); font-size: 14px">Kak? Jadi bisa nggak?</p>
+          <span class="fig bubble" style="--i: 3; align-self: flex-end; font-size: 12px; color: var(--color-muted)">dibalas 3 jam kemudian</span>
+        </div>
+
+        <div class="stock slip" style="position: relative; flex: 0 1 340px; padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md)">
+          <div style="display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-md)">
+            <span style="font-weight: 600">Rias by Sekar</span>
+            <span class="fig" style="font-size: 13px; color: var(--color-muted)">BK-7F3A</span>
+          </div>
+          <span style="font-size: 13px; color: var(--color-muted)">Sesudah, lewat Marky</span>
+          <dl style="margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px var(--space-md); font-size: 15px">
+            <dt style="color: var(--color-muted)">Layanan</dt><dd style="margin: 0">Makeup Wisuda</dd>
+            <dt style="color: var(--color-muted)">Jadwal</dt><dd style="margin: 0">Sabtu 21 Nov, <span class="fig">10.00</span></dd>
+            <dt style="color: var(--color-muted)">Pelanggan</dt><dd style="margin: 0">Ayu Lestari</dd>
+          </dl>
+          <div style="display: flex; justify-content: space-between; align-items: baseline; padding-top: var(--space-sm); border-top: 1px solid var(--color-print)">
+            <span style="font-weight: 600">DP lewat QRIS</span><span class="fig" style="font-weight: 500">Rp350.000</span>
+          </div>
+          <span class="stamp" aria-hidden="true" style="position: absolute; right: 18px; bottom: 54px"><span class="paid" style="font-size: 34px; letter-spacing: -0.02em">Lunas</span></span>
+          <span style="font-size: 12px; color: var(--color-muted)">Contoh slip booking.</span>
+        </div>
+      </figure>
+    </section>
+
+    <section id="alur" aria-labelledby="alur-h" class="wrap" style="padding-top: var(--space-4xl); padding-bottom: var(--space-3xl)">
+      <h2 id="alur-h" style="font-size: var(--text-section); line-height: 1.04; max-width: 18ch">Satu booking, dari tautan sampai kursi terisi.</h2>
+      <ol style="list-style: none; margin: var(--space-2xl) 0 0; padding: 0; display: flex; flex-direction: column">
+
+        <li style="display: flex; flex-wrap: wrap; gap: var(--space-xl) var(--space-2xl); align-items: center; padding: var(--space-2xl) 0; border-top: 1px solid var(--color-rule-2)">
+          <div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: var(--space-md)">
+            <h3 style="font-size: var(--text-title)">1. Pelanggan membuka tautan di bio</h3>
+            <p style="margin: 0; max-width: 44ch; color: var(--color-ink-2)">Mereka melihat layanan, harga, dan jam yang masih kosong, dengan warna dan logo usaha Anda.</p>
+            <div role="radiogroup" aria-label="Contoh usaha" class="groove" style="align-self: flex-start; flex-wrap: wrap">
+              <sc-for list="{{bizTabs}}" as="b" hint-placeholder-count="4">
+                <button type="button" role="radio" aria-checked="{{b.on}}" onClick="{{b.pick}}">{{b.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div class="desk" style="flex: 1 1 420px; min-width: 0; border-radius: 16px; padding: var(--space-xl); display: flex; justify-content: center">
+            <div class="stock" style="width: 100%; max-width: 360px; padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-md)">
+              <div style="display: flex; flex-direction: column; gap: 2px">
+                <span class="fig" style="font-size: 13px; color: var(--color-muted)">marky.id/{{biz.slug}}</span>
+                <span style="font-size: 22px; font-weight: 600; letter-spacing: -0.02em">{{biz.name}}</span>
+                <span style="font-size: 14px; color: var(--color-muted)">{{biz.bio}}</span>
+              </div>
+              <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+                <sc-for list="{{biz.items}}" as="it" hint-placeholder-count="3">
+                  <li style="display: flex; justify-content: space-between; gap: var(--space-md); padding: 10px 0; border-top: 1px solid var(--color-rule); font-size: 15px">
+                    <span>{{it.name}}</span><span class="fig" style="color: var(--color-ink-2)">{{it.price}}</span>
+                  </li>
+                </sc-for>
+              </ul>
+              <span class="btn btn--ink" aria-hidden="true" style="pointer-events: none">{{biz.cta}}</span>
+            </div>
+          </div>
+        </li>
+
+        <li style="display: flex; flex-wrap: wrap-reverse; gap: var(--space-xl) var(--space-2xl); align-items: center; padding: var(--space-2xl) 0; border-top: 1px solid var(--color-rule-2)">
+          <div class="desk" style="flex: 1 1 420px; min-width: 0; border-radius: 16px; padding: var(--space-xl); display: flex; justify-content: center">
+            <div class="stock" style="width: 100%; max-width: 380px; padding: var(--space-lg); display: flex; flex-direction: column; gap: 6px">
+              <span style="font-weight: 600">Mutasi QRIS, Sabtu</span>
+              <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+                <caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Contoh pembayaran DP yang masuk</caption>
+                <thead><tr style="text-align: left; color: var(--color-muted); font-size: 13px"><th scope="col" style="padding: 8px 0; font-weight: 500">Pelanggan</th><th scope="col" style="padding: 8px 0; font-weight: 500; text-align: right">Masuk</th></tr></thead>
+                <tbody>
+                  <tr style="border-top: 1px solid var(--color-rule)"><td style="padding: 8px 0">Ayu, Makeup Wisuda</td><td class="fig" style="padding: 8px 0; text-align: right">350.000</td></tr>
+                  <tr style="border-top: 1px solid var(--color-rule)"><td style="padding: 8px 0">Rina, Paket Ulang Tahun</td><td class="fig" style="padding: 8px 0; text-align: right">450.000</td></tr>
+                  <tr style="border-top: 1px solid var(--color-rule)"><td style="padding: 8px 0">Dimas, Sesi Keluarga</td><td class="fig" style="padding: 8px 0; text-align: right">375.000</td></tr>
+                </tbody>
+              </table>
+              <span style="font-size: 12px; color: var(--color-muted)">Langsung ke akun Midtrans atau Xendit milik Anda.</span>
+            </div>
+          </div>
+          <div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: var(--space-md)">
+            <h3 style="font-size: var(--text-title)">2. DP masuk ke rekening Anda</h3>
+            <p style="margin: 0; max-width: 44ch; color: var(--color-ink-2)">Lewat QRIS, tanpa menunggu bukti transfer. Untuk restoran atau barbershop, pilih bayar di tempat saja.</p>
+          </div>
+        </li>
+
+        <li style="display: flex; flex-wrap: wrap; gap: var(--space-xl) var(--space-2xl); align-items: center; padding: var(--space-2xl) 0; border-top: 1px solid var(--color-rule-2)">
+          <div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: var(--space-md)">
+            <h3 style="font-size: var(--text-title)">3. Pengingat terkirim sendiri</h3>
+            <p style="margin: 0; max-width: 44ch; color: var(--color-ink-2)">H-1 dan dua jam sebelumnya, lewat WhatsApp, email, atau notifikasi HP. Pelanggan bisa pindah jadwal tanpa menghubungi Anda.</p>
+          </div>
+          <div class="desk" style="flex: 1 1 420px; min-width: 0; border-radius: 16px; padding: var(--space-xl); display: flex; flex-direction: column; align-items: center; gap: var(--space-md)">
+            <div class="stock" style="width: 100%; max-width: 360px; padding: var(--space-md) var(--space-lg); transform: rotate(-1.5deg)">
+              <span class="fig" style="font-size: 12px; color: var(--color-muted)">Jumat, 10.00</span>
+              <p style="margin: 6px 0 0; font-size: 15px">Halo Ayu, besok pukul 10.00 jadwal Makeup Wisuda di Rias by Sekar. Perlu pindah jadwal? Buka tautan di bawah.</p>
+            </div>
+            <div class="stock" style="align-self: flex-end; max-width: 200px; padding: var(--space-sm) var(--space-md); transform: rotate(2deg); font-size: 15px">Siap, sampai besok</div>
+          </div>
+        </li>
+
+        <li style="display: flex; flex-wrap: wrap-reverse; gap: var(--space-xl) var(--space-2xl); align-items: center; padding: var(--space-2xl) 0; border-top: 1px solid var(--color-rule-2)">
+          <div class="desk" style="flex: 1 1 420px; min-width: 0; border-radius: 16px; padding: var(--space-xl) var(--space-xl) var(--space-2xl); display: flex; justify-content: center">
+            <div class="agenda-stack" style="position: relative; width: 100%; max-width: 380px; height: 236px">
+              <div class="stock" style="position: absolute; left: 0; right: 24px; top: 0; padding: 12px var(--space-md); display: flex; justify-content: space-between"><span><span class="fig">09.00</span> Hendra, 2 orang</span><span style="color: var(--color-muted)">Hadir</span></div>
+              <div class="stock" style="position: absolute; left: 12px; right: 12px; top: 60px; padding: 12px var(--space-md); display: flex; justify-content: space-between"><span><span class="fig">10.00</span> Ayu, Makeup Wisuda</span><span style="color: var(--color-muted)">Lunas</span></div>
+              <div class="stock" style="position: absolute; left: 24px; right: 0; top: 120px; padding: 12px var(--space-md); display: flex; justify-content: space-between"><span><span class="fig">13.30</span> Keluarga Sutanto</span><span style="color: var(--color-muted)">Di tempat</span></div>
+              <div class="stock" style="position: absolute; left: 36px; right: -12px; top: 180px; padding: 12px var(--space-md); display: flex; justify-content: space-between"><span><span class="fig">15.00</span> Rina, 20 orang</span><span style="color: var(--color-muted)">DP masuk</span></div>
+            </div>
+          </div>
+          <div style="flex: 1 1 340px; display: flex; flex-direction: column; gap: var(--space-md)">
+            <h3 style="font-size: var(--text-title)">4. Hari H, semua sudah tertata</h3>
+            <p style="margin: 0; max-width: 44ch; color: var(--color-ink-2)">Buka dashboard di HP: siapa datang, siapa sudah bayar, siapa ditagih di tempat.</p>
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <section id="harga" aria-labelledby="harga-h" style="background: var(--color-board); color: var(--color-board-type)">
+      <div class="wrap" style="padding-top: var(--space-4xl); padding-bottom: var(--space-4xl); display: flex; flex-direction: column; gap: var(--space-2xl)">
+        <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-xl)">
+          <h2 id="harga-h" style="font-size: var(--text-section); line-height: 1.04; max-width: 14ch">Mulai gratis, naik saat ramai.</h2>
+          <p style="margin: 0; display: flex; align-items: baseline; gap: var(--space-sm)"><span style="font-size: clamp(72px, 11vw, 168px); font-weight: 600; letter-spacing: -0.05em; line-height: 0.85">Rp0</span><span style="font-size: var(--text-title); font-weight: 500; color: var(--color-board-muted)">untuk mulai</span></p>
+        </div>
+        <div class="price-mobile" style="flex-direction: column; gap: var(--space-lg)">
+          <div role="radiogroup" aria-label="Pilih paket" class="groove groove--board" style="align-self: stretch; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr))">
+            <sc-for list="{{planTabs}}" as="p" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}" style="min-height: 44px">{{p.name}}</button></sc-for>
+          </div>
+          <article aria-live="polite" aria-labelledby="plan-h" style="display: flex; flex-direction: column; gap: var(--space-md); padding: var(--space-lg); border-radius: 12px; border: 1px solid var(--color-board-rule)">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <h3 id="plan-h" style="font-size: var(--text-title)">{{plan.name}}</h3>
+              <span style="color: var(--color-board-muted)">{{plan.audience}}</span>
+            </div>
+            <p style="margin: 0; display: flex; align-items: baseline; gap: var(--space-sm); flex-wrap: wrap"><span style="font-size: 44px; font-weight: 600; letter-spacing: -0.04em; line-height: 1">{{plan.price}}</span><span style="color: var(--color-board-muted)">{{plan.period}}</span></p>
+            <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column">
+              <sc-for list="{{plan.rows}}" as="r" hint-placeholder-count="8">
+                <li style="{{r.style}}"><span>{{r.label}}</span><span style="font-weight: 600; text-align: right">{{r.value}}</span></li>
+              </sc-for>
+            </ul>
+            <a href="#klaim" class="btn btn--card" style="width: 100%; box-sizing: border-box">Mulai dengan {{plan.name}}</a>
+          </article>
+          <span style="font-size: var(--text-small); color: var(--color-board-muted)">Tanpa kartu kredit. Bisa ganti paket kapan saja.</span>
+        </div>
+        <div class="price-table" style="overflow-x: auto">
+          <table style="width: 100%; min-width: 640px; border-collapse: collapse; font-size: 16px">
+            <caption style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Perbandingan paket Marky</caption>
+            <thead>
+              <tr style="text-align: left">
+                <th scope="col" style="padding: 0 0 var(--space-md); width: 34%; font-weight: 500; color: var(--color-board-muted)">Paket</th>
+                <th scope="col" style="padding: 0 var(--space-md) var(--space-md) 0; vertical-align: bottom"><span style="display: block; font-size: var(--text-title); font-weight: 600">Starter</span><span class="fig" style="font-weight: 400; color: var(--color-board-muted)">Gratis</span></th>
+                <th scope="col" style="padding: 0 var(--space-md) var(--space-md) 0; vertical-align: bottom"><span style="display: block; font-size: var(--text-title); font-weight: 600">Pro</span><span class="fig" style="font-weight: 400; color: var(--color-board-muted)">Rp79.000 / bulan</span></th>
+                <th scope="col" style="padding: 0 0 var(--space-md); vertical-align: bottom"><span style="display: block; font-size: var(--text-title); font-weight: 600">Studio</span><span class="fig" style="font-weight: 400; color: var(--color-board-muted)">Rp199.000 / bulan</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <sc-for list="{{priceRows}}" as="r" hint-placeholder-count="8">
+                <tr style="border-top: 1px solid var(--color-board-rule)">
+                  <th scope="row" style="padding: 14px var(--space-md) 14px 0; text-align: left; font-weight: 400; color: var(--color-board-muted)">{{r.label}}</th>
+                  <td style="padding: 14px var(--space-md) 14px 0">{{r.a}}</td>
+                  <td style="padding: 14px var(--space-md) 14px 0">{{r.b}}</td>
+                  <td style="padding: 14px 0">{{r.c}}</td>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <div class="price-foot" style="display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md)">
+          <a href="#klaim" class="btn btn--card">Mulai dengan Starter</a>
+          <span style="font-size: var(--text-small); color: var(--color-board-muted)">Tanpa kartu kredit.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="tanya" aria-labelledby="tanya-h" class="wrap" style="padding-top: var(--space-4xl); padding-bottom: var(--space-3xl); display: flex; flex-wrap: wrap; gap: var(--space-xl) var(--space-3xl)">
+      <h2 id="tanya-h" style="flex: 1 1 280px; font-size: var(--text-section); line-height: 1.04">Tanya jawab</h2>
+      <div style="flex: 2 1 520px; min-width: 0; border-top: 1px solid var(--color-rule-2)">
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Apakah uang pelanggan ditahan Marky?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Tidak. Pembayaran masuk ke akun Midtrans atau Xendit milik Anda. Marky hanya menarik biaya langganan.</p>
+        </details>
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Bisa booking tanpa bayar dulu?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Bisa. Nyalakan bayar di tempat di pengaturan dan pilih layanan yang memakainya.</p>
+        </details>
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Pelanggan perlu unduh aplikasi?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Tidak. Semua berjalan di browser HP, termasuk notifikasi pengingat.</p>
+        </details>
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Bisa pakai voucher dan banner promo?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Bisa. Pasang banner di halaman dan buat kode diskon dengan kuota serta masa berlaku.</p>
+        </details>
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Ada potongan per transaksi dari Marky?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Tidak. Biaya QRIS ditagih langsung oleh Midtrans atau Xendit sesuai tarif mereka. Marky hanya menarik biaya langganan.</p>
+        </details>
+        <details style="border-bottom: 1px solid var(--color-rule-2)">
+          <summary style="display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); min-height: 68px; font-size: 19px; font-weight: 500">Bagaimana kalau saya ingin berhenti?<span class="q-mark" aria-hidden="true" style="font-size: 26px; font-weight: 400">+</span></summary>
+          <p style="margin: 0 0 var(--space-lg); max-width: 60ch; color: var(--color-ink-2)">Unduh salinan data Anda lalu hapus akun dari menu Pengaturan. Tautan booking langsung berhenti berfungsi.</p>
+        </details>
+      </div>
+    </section>
+
+    <section id="kebijakan" aria-labelledby="kebijakan-h" class="wrap" style="padding-top: var(--space-xl); padding-bottom: var(--space-3xl); display: flex; flex-direction: column; gap: var(--space-xl)">
+      <h2 id="kebijakan-h" style="font-size: var(--text-section); line-height: 1.04; max-width: 16ch">Kebijakan singkat</h2>
+      <ul style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: var(--space-md)">
+          <li class="stock" style="padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-sm)"><h3 style="font-size: 19px; letter-spacing: -0.01em">Uang pelanggan</h3><p style="margin: 0; color: var(--color-ink-2)">DP masuk ke akun Midtrans atau Xendit milik Anda. Marky tidak pernah menahan dana.</p></li>
+          <li class="stock" style="padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-sm)"><h3 style="font-size: 19px; letter-spacing: -0.01em">Data pribadi</h3><p style="margin: 0; color: var(--color-ink-2)">Tidak dijual dan tidak dipakai untuk iklan pihak ketiga. Disimpan di server Singapura.</p></li>
+          <li class="stock" style="padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-sm)"><h3 style="font-size: 19px; letter-spacing: -0.01em">Hak Anda</h3><p style="margin: 0; color: var(--color-ink-2)">Unduh salinan data, perbaiki, atau hapus akun kapan saja dari Pengaturan.</p></li>
+          <li class="stock" style="padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-sm)"><h3 style="font-size: 19px; letter-spacing: -0.01em">Yang dilarang</h3><p style="margin: 0; color: var(--color-ink-2)">Menerima DP untuk layanan yang tidak diberikan, atau menjual barang dan jasa yang melanggar hukum.</p></li>
+      </ul>
+      <p style="margin: 0; display: flex; flex-wrap: wrap; gap: var(--space-sm) var(--space-lg)"><a href="/syarat">Baca syarat lengkap</a><a href="/privasi">Baca kebijakan privasi</a></p>
+    </section>
+
+    <section id="klaim" aria-labelledby="klaim-h" class="wrap" style="padding-top: var(--space-3xl); padding-bottom: var(--space-4xl)">
+      <div class="desk" style="border-radius: 20px; padding: clamp(28px, 5vw, 72px); display: flex; flex-wrap: wrap; gap: var(--space-2xl); align-items: center">
+        <div style="flex: 1 1 380px; display: flex; flex-direction: column; gap: var(--space-lg)">
+          <h2 id="klaim-h" style="font-size: var(--text-section); line-height: 1.04; max-width: 14ch">Yang diterima pelanggan Anda.</h2>
+          <div role="radiogroup" aria-label="Jenis pesan" class="groove" style="align-self: flex-start; flex-wrap: wrap">
+            <sc-for list="{{msgTabs}}" as="m" hint-placeholder-count="3">
+              <button type="button" role="radio" aria-checked="{{m.on}}" onClick="{{m.pick}}">{{m.label}}</button>
+            </sc-for>
+          </div>
+          <form action="/daftar" method="get" aria-label="Klaim tautan Marky" style="display: flex; flex-wrap: wrap; gap: var(--space-sm); max-width: 520px; margin-top: var(--space-md)">
+            <label for="slug" style="flex: 1 1 240px; display: flex; align-items: center; min-height: 48px; padding: 0 var(--space-md); border: 1px solid var(--color-muted); border-radius: var(--radius-input); background: var(--color-cotton); font-size: 16px">
+              <span aria-hidden="true" style="color: var(--color-muted)">marky.id/</span>
+              <input id="slug" name="username" value="{{slug}}" onInput="{{setSlug}}" autocomplete="off" spellcheck="false" aria-label="Nama tautan setelah marky.id/" style="flex: 1; min-width: 0; height: 46px; border: 0; outline: none; background: transparent; color: var(--color-print); font-size: 16px; font-weight: 600">
+            </label>
+            <button type="submit" class="btn btn--ink">Klaim tautan</button>
+          </form>
+        </div>
+        <div class="stock" aria-live="polite" style="flex: 1 1 360px; max-width: 440px; padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-sm); transform: rotate(1.5deg)">
+          <span style="font-size: 13px; color: var(--color-muted)">WhatsApp ke Ayu Lestari, {{msg.when}}</span>
+          <p style="margin: 0; font-size: 16px; white-space: pre-line">{{msg.text}}</p>
+          <span class="fig" style="font-size: 13px; color: var(--color-ink-2)">{{msg.link}}</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap" style="padding-bottom: var(--space-xl)">
+    <p aria-hidden="true" style="margin: 0; font-size: clamp(96px, 22vw, 320px); font-weight: 700; letter-spacing: -0.06em; line-height: 0.8; color: var(--color-ink)">marky</p>
+    <div style="display: flex; flex-wrap: wrap; gap: var(--space-md) var(--space-xl); align-items: center; padding-top: var(--space-lg); margin-top: var(--space-lg); border-top: 1px solid var(--color-rule-2); font-size: var(--text-small); color: var(--color-muted)">
+      <span style="flex: 1 1 280px">Untuk usaha jasa kecil di Indonesia.</span>
+      <nav aria-label="Kaki halaman" style="display: flex; flex-wrap: wrap; gap: var(--space-sm) var(--space-lg)">
+        <a href="#harga">Harga</a><a href="/masuk">Masuk</a><a href="/syarat">Syarat</a><a href="/privasi">Privasi</a>
+      </nav>
+      <ul aria-label="Media sosial dan kontak" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-sm)">
+        <li><a href="https://wa.me/" aria-label="WhatsApp Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z"></path></svg></span></a></li>
+        <li><a href="mailto:halo@marky.id" aria-label="Email Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span></a></li>
+        <li><a href="https://instagram.com/marky.id" aria-label="Instagram Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><path d="M17.5 6.5h.01"></path></svg></span></a></li>
+        <li><a href="https://threads.net/@marky.id" aria-label="Threads Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><span style="font-weight: 700; font-size: 18px">@</span></span></a></li>
+        <li><a href="https://x.com/marky_id" aria-label="X Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><span style="font-weight: 700; font-size: 17px">X</span></span></a></li>
+        <li><a href="https://tiktok.com/@marky.id" aria-label="TikTok Marky" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid var(--color-rule-2); color: var(--color-ink); display: flex; align-items: center; justify-content: center; text-decoration: none"><span aria-hidden="true" style="display: flex"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V3c.5 2.5 2.5 4.5 5 5"></path></svg></span></a></li>
+      </ul>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":6470}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { biz: 0, msg: 0, slug: 'riasbysekar', bgPaused: false, menu: false, plan: 1 }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var B = [
+      { label: 'Salon', slug: 'riasbysekar', name: 'Rias by Sekar', bio: 'Makeup wisuda dan pengantin, Bandung', cta: 'Pilih jadwal', items: [['Makeup Wisuda', '350.000'], ['Makeup Pesta', '450.000'], ['Pengantin, akad', '1.500.000']] },
+      { label: 'Restoran', slug: 'terasdago', name: 'Teras Dago', bio: 'Masakan Sunda, buka sampai 22.00', cta: 'Reservasi meja', items: [['Reservasi meja', 'gratis'], ['Paket ulang tahun', '1.500.000'], ['Rooftop privat', 'ajukan']] },
+      { label: 'Fotografer', slug: 'lensarumah', name: 'Lensa Rumah', bio: 'Foto keluarga dan produk, Jakarta', cta: 'Pilih jadwal', items: [['Sesi keluarga', '750.000'], ['Foto produk', '600.000'], ['Prewedding', 'ajukan']] },
+      { label: 'Kelas', slug: 'studionapas', name: 'Studio Napas', bio: 'Yoga dan pilates, Yogyakarta', cta: 'Pilih kelas', items: [['Yoga pagi', '85.000'], ['Pilates mat', '95.000'], ['Paket 8 kali', '600.000']] }
+    ];
+    var M = [
+      { label: 'Konfirmasi', when: 'Senin 22.05', text: 'Booking Anda terkonfirmasi.\nMakeup Wisuda, Sabtu 21 Nov pukul 10.00.\nDP Rp350.000 sudah diterima Rias by Sekar.', link: 'marky.id/b/7f3a' },
+      { label: 'Pengingat H-1', when: 'Jumat 10.00', text: 'Besok pukul 10.00, Makeup Wisuda di Rias by Sekar.\nPerlu pindah jadwal? Buka tautan di bawah.', link: 'marky.id/b/7f3a' },
+      { label: 'Pindah jadwal', when: 'Jumat 10.12', text: 'Jadwal Anda sudah dipindah ke Senin 23 Nov pukul 13.00.\nDP tetap berlaku.', link: 'marky.id/b/7f3a' }
+    ];
+    var b = B[st.biz];
+    var rows = [['Transaksi per bulan', '10', 'Tanpa batas', 'Tanpa batas'], ['Jenis layanan', '1', 'Tanpa batas', 'Tanpa batas'], ['Halaman booking dan QRIS', 'Ya', 'Ya', 'Ya'], ['Notifikasi email dan WhatsApp', 'Ya', 'Ya', 'Ya'], ['Reminder WhatsApp H-1', '', 'Ya', 'Ya'], ['Tema, warna, dan font sendiri', '3 tema', 'Semua', 'Semua'], ['Staf dengan jadwal sendiri', '', '', 'Ya'], ['Domain sendiri', '', '', 'Ya']];
+    return {
+      yes: true,
+      menuOpen: st.menu ? 'true' : 'false', toggleMenu: function () { self.setState({ menu: !st.menu }); }, closeMenu: function () { self.setState({ menu: false }); },
+      bgPaused: st.bgPaused, pauseText: st.bgPaused ? 'Putar animasi' : 'Jeda animasi', togglePause: function () { self.setState({ bgPaused: !st.bgPaused }); },
+      slug: st.slug, setSlug: function (e) { self.setState({ slug: e.target.value }); },
+      bizTabs: B.map(function (x, i) { return { label: x.label, on: st.biz === i, pick: function () { self.setState({ biz: i }); } }; }),
+      biz: { slug: b.slug, name: b.name, bio: b.bio, cta: b.cta, items: b.items.map(function (i) { return { name: i[0], price: i[1] }; }) },
+      msgTabs: M.map(function (x, i) { return { label: x.label, on: st.msg === i, pick: function () { self.setState({ msg: i }); } }; }),
+      msg: M[st.msg],
+      planTabs: ['Starter', 'Pro', 'Studio'].map(function (n, i) { return { name: n, on: st.plan === i, pick: function () { self.setState({ plan: i }); } }; }),
+      plan: (function () {
+        var P = [['Starter', 'Baru mulai, ingin coba dulu', 'Gratis', 'selamanya'], ['Pro', 'Sudah rutin menerima pesanan', 'Rp79.000', 'per bulan'], ['Studio', 'Punya tim dan beberapa staf', 'Rp199.000', 'per bulan']][st.plan];
+        return { name: P[0], audience: P[1], price: P[2], period: P[3], rows: rows.map(function (r) { var v = r[st.plan + 1]; return { label: r[0], value: v || 'Tidak termasuk', style: 'display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--color-board-rule); ' + (v ? '' : 'color: var(--color-board-muted)') }; }) };
+      })(),
+      priceRows: rows.map(function (r) { return { label: r[0], a: r[1] || '–', b: r[2] || '–', c: r[3] || '–' }; })
+    };
+  }
+}
+</script>
+</body>
+</html>

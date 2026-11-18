@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pengaturan latar bergerak</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.45}
+@keyframes mA{0%,100%{transform:translate(0,0);border-radius:999px}50%{transform:translate(46px,18px);border-radius:10px}}
+@keyframes mB{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes mC{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,12px) scale(1.2)}}
+@keyframes mD{from{transform:translateY(30px);opacity:0}30%{opacity:1}to{transform:translateY(-60px);opacity:0}}
+@media (prefers-reduced-motion:no-preference){.ma{animation:mA 6s cubic-bezier(.65,0,.35,1) infinite}.mb{animation:mB 6s linear infinite}.mc{animation:mC 7s ease-in-out infinite}.md{animation:mD 4s linear infinite}}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 24px 28px 40px">
+  <header style="max-width: 1180px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+    <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #71717a">Tampilan</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Latar bergerak</h1>
+      <p style="margin: 0; color: #71717a">Gerakan halus di belakang profil Anda. Teks dan tombol tetap di atas kartu solid agar mudah dibaca.</p>
+    </div>
+    <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+  </header>
+
+  <div style="max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+    <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+      <section aria-labelledby="h-on" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; gap: 16px; align-items: flex-start">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-on" style="margin: 0; font-size: 16px; font-weight: 600">Nyalakan latar bergerak</h2>
+          <p style="margin: 0; color: #71717a">Mati: latar diam memakai warna atau gambar dari tema.</p>
+        </div>
+        <button type="button" role="switch" aria-checked="{{on}}" aria-labelledby="h-on" onClick="{{toggle}}" style="{{track}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+      </section>
+
+      <section aria-labelledby="h-pola" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="h-pola" style="margin: 0; font-size: 16px; font-weight: 600">Pola</h2>
+        <div role="radiogroup" aria-labelledby="h-pola" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="4">
+            <button type="button" role="radio" aria-checked="{{p.on}}" disabled="{{off}}" onClick="{{p.pick}}" style="{{p.box}}">
+              <span aria-hidden="true" style="position: relative; display: block; height: 76px; border-radius: 8px; overflow: hidden; background: #f3e3d6">
+                <sc-if value="{{p.isA}}" hint-placeholder-val="{{false}}"><span class="ma" style="position: absolute; left: 14px; top: 10px; width: 46px; height: 46px; border-radius: 999px; background: rgba(168,83,46,.4)"></span><span class="ma" style="position: absolute; left: 70px; top: 30px; width: 34px; height: 34px; border-radius: 10px; background: rgba(69,52,37,.2); animation-delay: -3s"></span></sc-if>
+                <sc-if value="{{p.isB}}" hint-placeholder-val="{{false}}"><svg class="mb" viewBox="0 0 400 80" preserveAspectRatio="none" style="position: absolute; left: 0; bottom: 0; width: 200%; height: 60px"><path d="M0 40 Q 50 10 100 40 T 200 40 T 300 40 T 400 40 V80 H0Z" fill="rgba(168,83,46,.3)"></path></svg></sc-if>
+                <sc-if value="{{p.isC}}" hint-placeholder-val="{{false}}"><span class="mc" style="position: absolute; left: -10px; top: -10px; width: 90px; height: 90px; border-radius: 999px; background: radial-gradient(circle, rgba(168,83,46,.5), transparent 65%)"></span><span class="mc" style="position: absolute; right: -10px; top: 10px; width: 80px; height: 80px; border-radius: 999px; background: radial-gradient(circle, rgba(69,52,37,.3), transparent 65%); animation-delay: -3s"></span></sc-if>
+                <sc-if value="{{p.isD}}" hint-placeholder-val="{{false}}"><span class="md" style="position: absolute; left: 20px; bottom: 0; width: 8px; height: 8px; border-radius: 999px; background: rgba(168,83,46,.5)"></span><span class="md" style="position: absolute; left: 60px; bottom: 0; width: 10px; height: 10px; border-radius: 999px; background: #ffffff; animation-delay: -1.5s"></span><span class="md" style="position: absolute; left: 100px; bottom: 0; width: 6px; height: 6px; border-radius: 999px; background: rgba(168,83,46,.5); animation-delay: -3s"></span></sc-if>
+              </span>
+              <span style="font-weight: 600">{{p.label}}</span>
+              <span style="font-size: 12px; color: #71717a">{{p.hint}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-opsi" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-wrap: wrap; gap: 20px 32px">
+        <h2 id="h-opsi" style="flex-basis: 100%; margin: 0; font-size: 16px; font-weight: 600">Penyesuaian</h2>
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span id="{{g.id}}" style="font-weight: 500">{{g.label}}</span>
+            <div role="radiogroup" aria-labelledby="{{g.id}}" style="display: flex; padding: 3px; gap: 3px; border-radius: 8px; background: #f4f4f5">
+              <sc-for list="{{g.opts}}" as="o" hint-placeholder-count="2">
+                <button type="button" role="radio" aria-checked="{{o.on}}" disabled="{{off}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+      </section>
+
+      <section aria-labelledby="h-aman" style="padding: 14px 18px; border-radius: 12px; background: #fafafa; display: flex; flex-direction: column; gap: 6px; line-height: 1.5">
+        <h2 id="h-aman" style="margin: 0; font-size: 14px; font-weight: 600">Otomatis berhenti bergerak saat</h2>
+        <ul style="margin: 0; padding-left: 18px; color: #3f3f46">
+          <li>pelanggan menyalakan "kurangi gerakan" di HP-nya</li>
+          <li>mode hemat data aktif atau baterai lemah</li>
+          <li>tab tidak sedang dilihat</li>
+        </ul>
+      </section>
+    </div>
+
+    <aside aria-label="Pratinjau di HP" style="flex: 1 1 300px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <span style="font-size: 12px; color: #71717a">Pratinjau langsung</span>
+      <div style="width: 260px; height: 560px; overflow: hidden; border-radius: 32px; border: 8px solid #0a0a0a; background: #faf4ea">
+        <div style="width: 390px; height: 840px; transform: scale(0.6667); transform-origin: 0 0">
+          <dc-import name="LatarGerak" preset="{{previewPreset}}" hint-size="390px,900px"></dc-import>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { on: true, preset: 'Bentuk', area: 'atas', speed: 'pelan', color: 'tema' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var seg = function (on) { return 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; font: inherit; font-weight: 500; cursor: pointer; ' + (on ? 'background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: #0a0a0a' : 'background: transparent; color: #52525b'); };
+    var P = [['Bentuk', 'Bentuk berganti rupa, loop 12 detik', 'isA'], ['Gelombang', 'Ombak pelan di bagian atas', 'isB'], ['Aurora', 'Cahaya lembut bergeser', 'isC'], ['Partikel', 'Titik kecil melayang naik', 'isD']];
+    var presets = P.map(function (p) {
+      var on = st.preset === p[0];
+      var o = { label: p[0], hint: p[1], on: on, isA: false, isB: false, isC: false, isD: false, pick: function () { self.setState({ preset: p[0] }); },
+        box: 'display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: #ffffff; color: #0a0a0a; font: inherit; text-align: left; cursor: pointer; border: ' + (on ? '2px solid #0a0a0a; padding: 7px' : '1px solid #e4e4e7') };
+      o[p[2]] = true; return o;
+    });
+    var group = function (id, label, key, opts) { return { id: id, label: label, opts: opts.map(function (x) { var on = st[key] === x[0]; return { label: x[1], on: on, style: seg(on), pick: function () { var n = {}; n[key] = x[0]; self.setState(n); } }; }) }; };
+    return {
+      on: st.on, off: !st.on, toggle: function () { self.setState({ on: !st.on }); },
+      track: 'flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (st.on ? 'background: #0a0a0a; justify-content: flex-end' : 'background: #d4d4d8; justify-content: flex-start'),
+      presets: presets,
+      groups: [group('g-area', 'Area', 'area', [['atas', 'Bagian atas'], ['penuh', 'Seluruh halaman']]), group('g-speed', 'Kecepatan', 'speed', [['pelan', 'Pelan'], ['normal', 'Normal']]), group('g-color', 'Warna', 'color', [['tema', 'Ikuti tema'], ['merek', 'Warna merek']])],
+      previewPreset: st.on ? st.preset : 'Mati'
+    };
+  }
+}
+</script>
+</body>
+</html>

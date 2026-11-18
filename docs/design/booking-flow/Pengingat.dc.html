@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Atur pengingat booking</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}
+button,a,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1060px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif">
+
+  <header style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #e8dcc9">
+    <a href="Pesanan.dc.html" aria-label="Kembali ke booking Anda" style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center; color: #453425">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column">
+      <span style="font-size: 13px; color: #75624d">Makeup Wisuda · Sab, 21 Nov 10.00</span>
+      <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px">Pengingat</h1>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 22px; padding: 20px 16px 0">
+    <section aria-labelledby="kanal-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="kanal-h" style="margin: 0; font-size: 15px; font-weight: 600">Kirim lewat</h2>
+      <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border: 1px solid #e8dcc9; border-radius: 16px; background: #ffffff; overflow: hidden">
+        <sc-for list="{{channels}}" as="c" hint-placeholder-count="3">
+          <li style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-bottom: 1px solid #f3e3d6">
+            <div style="display: flex; align-items: center; gap: 12px">
+              <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span id="{{c.id}}" style="font-weight: 600">{{c.label}}</span><span style="font-size: 13px; color: #75624d">{{c.hint}}</span></span>
+              <button type="button" role="switch" aria-checked="{{c.on}}" aria-labelledby="{{c.id}}" onClick="{{c.toggle}}" style="{{c.track}}"><span aria-hidden="true" style="width: 24px; height: 24px; border-radius: 999px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.2)"></span></button>
+            </div>
+            <sc-if value="{{c.showEmail}}" hint-placeholder-val="{{false}}">
+              <label style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500">Alamat email
+                <input type="email" autocomplete="email" placeholder="nama@email.com" style="height: 48px; padding: 0 12px; border: 1px solid #d9c9b3; border-radius: 12px; font-size: 16px; color: #453425">
+              </label>
+            </sc-if>
+            <sc-if value="{{c.showIos}}" hint-placeholder-val="{{false}}">
+              <p style="margin: 0; display: flex; gap: 8px; padding: 10px 12px; border-radius: 10px; background: #fbf1e8; font-size: 13px; line-height: 1.45">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7d3c20" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M12 3v12M7 8l5-5 5 5M5 21h14"></path></svg>
+                <span>Pakai iPhone? Ketuk Bagikan lalu "Tambah ke Layar Utama", buka dari ikon itu, lalu aktifkan lagi.</span>
+              </p>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ul>
+    </section>
+
+    <section aria-labelledby="kapan-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="kapan-h" style="margin: 0; font-size: 15px; font-weight: 600">Kapan</h2>
+      <div role="group" aria-labelledby="kapan-h" style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{times}}" as="t" hint-placeholder-count="4">
+          <button type="button" aria-pressed="{{t.on}}" onClick="{{t.toggle}}" style="{{t.style}}">{{t.label}}</button>
+        </sc-for>
+      </div>
+      <p aria-live="polite" style="margin: 0; font-size: 13px; color: #75624d">{{summary}}</p>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e8dcc9; display: flex; flex-direction: column; gap: 8px">
+    <a href="Pesanan.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #a8532e; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Simpan pengingat</a>
+    <p style="margin: 0; text-align: center; font-size: 12px; color: #75624d">Bisa dimatikan kapan saja dari halaman ini atau tautan di setiap pesan.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { ch: { push: true, wa: true, email: false }, t: { d1: true, h3: false, h1: false, m30: false, h2: true } }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var meta = [['push', 'Notifikasi di HP ini', 'Muncul di layar kunci. Tanpa aplikasi.'], ['wa', 'WhatsApp', '0812-3456-7890'], ['email', 'Email', 'Termasuk file kalender (.ics)']];
+    var channels = meta.map(function (m) {
+      var on = !!st.ch[m[0]];
+      return { id: 'ch-' + m[0], label: m[1], hint: m[2], on: on, showEmail: on && m[0] === 'email', showIos: on && m[0] === 'push',
+        toggle: function () { var n = Object.assign({}, st.ch); n[m[0]] = !on; self.setState({ ch: n }); },
+        track: 'flex-shrink: 0; width: 52px; height: 32px; padding: 4px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (on ? 'background: #a8532e; justify-content: flex-end' : 'background: #c9b8a2; justify-content: flex-start') };
+    });
+    var opts = [['d1', 'H-1 (Jum 10.00)'], ['h3', '3 jam sebelum'], ['h2', '2 jam sebelum'], ['h1', '1 jam sebelum'], ['m30', '30 menit sebelum']];
+    var times = opts.map(function (o) {
+      var on = !!st.t[o[0]];
+      return { label: o[1], on: on, toggle: function () { var n = Object.assign({}, st.t); n[o[0]] = !on; self.setState({ t: n }); },
+        style: 'min-height: 44px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; ' + (on ? 'background: #453425; color: #ffffff; border: 1px solid #453425' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9') };
+    });
+    var nCh = meta.filter(function (m) { return st.ch[m[0]]; }).length, nT = opts.filter(function (o) { return st.t[o[0]]; }).length;
+    return { channels: channels, times: times, summary: nCh && nT ? nT + ' pengingat lewat ' + nCh + ' kanal.' : 'Tidak ada pengingat yang akan dikirim.' };
+  }
+}
+</script>
+</body>
+</html>

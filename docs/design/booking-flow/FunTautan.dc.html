@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Buat tautan iklan dan QR</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.f{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;font-size:14px;width:100%}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+.btn{height:36px;padding:0 12px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;cursor:pointer}
+th{font-weight:500;color:#71717a;text-align:left;padding:10px 12px;border-bottom:1px solid #e4e4e7;white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid #f4f4f5;white-space:nowrap}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="min-height: 1100px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RS</span>
+      <span style="font-weight: 600">Rias by Sekar</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="FunAnalitik.dc.html">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="FunLinkEditor.dc.html">Tautan dan sosmed</a>
+    <a href="#">Promosi</a>
+    <a href="FunTautan.dc.html" aria-current="page">Iklan</a>
+    <a href="#">Domain</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Iklan</h1>
+      <p style="margin: 0; color: #71717a">Satu tautan per iklan atau kanal, supaya Anda tahu mana yang menghasilkan booking.</p>
+    </header>
+    <div role="tablist" aria-label="Iklan" style="display: flex; gap: 4px; border-bottom: 1px solid #e4e4e7">
+      <button type="button" role="tab" aria-selected="true" style="height: 36px; padding: 0 12px; border: 0; border-bottom: 2px solid #0a0a0a; background: transparent; color: #0a0a0a; font-weight: 600; cursor: pointer">Tautan iklan</button>
+      <a href="FunPixel.dc.html" role="tab" aria-selected="false" style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 2px solid transparent; color: #71717a; text-decoration: none">Pixel</a>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+      <section aria-labelledby="buat-h" style="flex: 999 1 420px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+        <h2 id="buat-h" style="margin: 0; font-size: 15px; font-weight: 600">Buat tautan</h2>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <label for="nama" style="font-weight: 500">Nama tautan <span style="font-weight: 400; color: #71717a">(hanya terlihat oleh Anda)</span></label>
+          <input id="nama" class="f" value="Iklan TikTok wisuda Desember">
+        </div>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="padding: 0; margin-bottom: 8px; font-weight: 500">Dipasang di</legend>
+          <div role="radiogroup" style="display: flex; flex-wrap: wrap; gap: 6px">
+            <sc-for list="{{channels}}" as="c" hint-placeholder-count="5">
+              <button type="button" role="radio" aria-checked="{{c.on}}" onClick="{{c.pick}}" style="{{c.style}}">{{c.label}}</button>
+            </sc-for>
+          </div>
+        </fieldset>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px">
+          <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 6px">
+            <label for="tujuan" style="font-weight: 500">Pengunjung langsung ke</label>
+            <select id="tujuan" class="f" onChange="{{setDest}}"><option value="wisuda">Layanan: Makeup Wisuda</option><option value="home">Halaman utama</option><option value="pesta">Layanan: Makeup Pesta</option></select>
+          </div>
+          <div style="flex: 1 1 200px; display: flex; flex-direction: column; gap: 6px">
+            <label for="vc" style="font-weight: 500">Voucher terpasang <span style="font-weight: 400; color: #71717a">(opsional)</span></label>
+            <select id="vc" class="f" onChange="{{setVoucher}}"><option value="HEMAT20">HEMAT20, diskon 20%</option><option value="">Tanpa voucher</option></select>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <span id="url-l" style="font-weight: 500">Tautan untuk dipasang</span>
+          <div style="display: flex; gap: 8px">
+            <output aria-labelledby="url-l" style="flex: 1; min-width: 0; display: flex; align-items: center; height: 36px; padding: 0 10px; border-radius: 8px; background: #fafafa; border: 1px solid #e4e4e7; font-family: 'Geist Mono', monospace; font-size: 13px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis">{{shortUrl}}</output>
+            <button type="button" class="btn" onClick="{{copy}}" style="background: #0a0a0a; color: #ffffff; border-color: #0a0a0a">{{copyLabel}}</button>
+          </div>
+          <details>
+            <summary style="cursor: pointer; min-height: 32px; display: flex; align-items: center; color: #52525b">Tautan lengkap dengan UTM, untuk Ads Manager</summary>
+            <p style="margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; background: #fafafa; font-family: 'Geist Mono', monospace; font-size: 12px; word-break: break-all">{{longUrl}}</p>
+          </details>
+        </div>
+        <div style="display: flex; justify-content: flex-end; gap: 8px">
+          <button type="button" class="btn">Batal</button>
+          <button type="button" class="btn" style="background: #0a0a0a; color: #ffffff; border-color: #0a0a0a">Simpan tautan</button>
+        </div>
+      </section>
+
+      <aside aria-labelledby="qr-h" style="flex: 1 1 240px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center">
+        <h2 id="qr-h" style="align-self: flex-start; margin: 0; font-size: 15px; font-weight: 600">QR untuk dicetak</h2>
+        <svg width="184" height="184" viewBox="0 0 25 25" role="img" aria-label="QR contoh untuk tautan ini" shape-rendering="crispEdges" style="background: #ffffff">
+          <sc-for list="{{qr}}" as="m" hint-placeholder-count="40"><rect x="{{m.x}}" y="{{m.y}}" width="1" height="1" fill="#0a0a0a"></rect></sc-for>
+        </svg>
+        <span style="font-size: 13px; color: #52525b">Pindai untuk langsung ke Makeup Wisuda dengan voucher terpasang.</span>
+        <div style="display: flex; gap: 8px">
+          <button type="button" class="btn">Unduh PNG</button>
+          <button type="button" class="btn">Unduh SVG</button>
+        </div>
+      </aside>
+    </div>
+
+    <section aria-labelledby="daftar-h" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid #e4e4e7">
+        <h2 id="daftar-h" style="flex: 1; margin: 0; font-size: 15px; font-weight: 600">Tautan tersimpan</h2>
+        <span style="color: #71717a">30 hari terakhir</span>
+      </div>
+      <sc-if value="{{empty}}" hint-placeholder-val="{{false}}"><p style="margin: 0; padding: 28px; text-align: center; color: #52525b">Belum ada tautan. Buat satu untuk bio Instagram Anda dulu, lalu satu lagi untuk setiap iklan.</p></sc-if>
+      <sc-if value="{{hasRows}}" hint-placeholder-val="{{true}}">
+        <div style="overflow-x: auto">
+          <table style="width: 100%; border-collapse: collapse; min-width: 720px">
+            <thead><tr><th scope="col">Nama</th><th scope="col">Dipasang di</th><th scope="col" class="num">Kunjungan</th><th scope="col" class="num">Booking</th><th scope="col" class="num">Dibayar</th><th scope="col" class="num">Omzet dibayar</th><th scope="col"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Aksi</span></th></tr></thead>
+            <tbody>
+              <sc-for list="{{rows}}" as="r" hint-placeholder-count="3">
+                <tr><td style="font-weight: 500">{{r.name}}</td><td>{{r.ch}}</td><td class="num">{{r.v}}</td><td class="num">{{r.b}}</td><td class="num">{{r.p}}</td><td class="num">{{r.rev}}</td>
+                  <td style="text-align: right"><button type="button" class="btn" aria-label="{{r.copyAria}}" style="height: 32px">Salin</button> <button type="button" class="btn" aria-label="{{r.qrAria}}" style="height: 32px">QR</button></td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-if>
+    </section>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"listState":{"editor":"enum","options":["Ada tautan","Belum ada tautan"],"default":"Ada tautan","section":"Status"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { ch: 'tiktok', dest: 'wisuda', voucher: 'HEMAT20', copied: false }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var CH = [['ig-bio', 'Bio Instagram', 'instagram', 'bio'], ['meta', 'Iklan Instagram atau Facebook', 'meta', 'paid'], ['tiktok', 'Iklan TikTok', 'tiktok', 'paid'], ['wa', 'Status WhatsApp', 'whatsapp', 'status'], ['lain', 'Lainnya', 'lainnya', 'link']];
+    var channels = CH.map(function (c) { var on = st.ch === c[0];
+      return { label: c[1], on: on, pick: function () { self.setState({ ch: c[0], copied: false }); },
+        style: 'height: 32px; padding: 0 12px; border-radius: 8px; font: inherit; cursor: pointer; ' + (on ? 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a' : 'background: #ffffff; color: #3f3f46; border: 1px solid #e4e4e7') }; });
+    var cur = CH.filter(function (c) { return c[0] === st.ch; })[0];
+    var slug = (st.dest === 'home' ? 'umum' : st.dest) + '-' + cur[0];
+    var shortUrl = 'marky.id/riasbysekar?t=' + slug;
+    var q = [];
+    if (st.dest !== 'home') q.push('layanan=makeup-' + st.dest);
+    if (st.voucher) q.push('kode=' + st.voucher);
+    q.push('utm_source=' + cur[2], 'utm_medium=' + cur[3], 'utm_campaign=' + slug);
+    var longUrl = 'https://marky.id/riasbysekar?' + q.join('&');
+    // Pola QR contoh: tiga penanda sudut plus modul semu dari slug.
+    var qr = [], seed = 0;
+    for (var i = 0; i < slug.length; i++) seed = (seed * 31 + slug.charCodeAt(i)) % 9973;
+    var finder = function (ox, oy) { for (var y = 0; y < 7; y++) for (var x = 0; x < 7; x++) { var edge = x === 0 || y === 0 || x === 6 || y === 6, core = x > 1 && x < 5 && y > 1 && y < 5; if (edge || core) qr.push({ x: ox + x, y: oy + y }); } };
+    finder(0, 0); finder(18, 0); finder(0, 18);
+    for (var y = 0; y < 25; y++) for (var x = 0; x < 25; x++) {
+      var inF = (x < 8 && y < 8) || (x > 16 && y < 8) || (x < 8 && y > 16);
+      if (!inF) { seed = (seed * 1103 + 12345) % 65536; if (seed % 3 === 0) qr.push({ x: x, y: y }); }
+    }
+    var rows = [
+      { name: 'Bio Instagram', ch: 'Bio Instagram', v: '520', b: '26', p: '18', rev: 'Rp6.300.000' },
+      { name: 'Iklan TikTok wisuda Desember', ch: 'Iklan TikTok', v: '410', b: '21', p: '12', rev: 'Rp3.360.000' },
+      { name: 'Promo status WA', ch: 'Status WhatsApp', v: '180', b: '12', p: '8', rev: 'Rp2.800.000' }
+    ].map(function (r) { return Object.assign(r, { copyAria: 'Salin tautan ' + r.name, qrAria: 'Lihat QR ' + r.name }); });
+    var has = (this.props.listState ?? 'Ada tautan') === 'Ada tautan';
+    return { channels: channels, shortUrl: shortUrl, longUrl: longUrl, qr: qr, rows: rows, hasRows: has, empty: !has,
+      copyLabel: st.copied ? 'Tersalin' : 'Salin',
+      copy: function () { self.setState({ copied: true }); },
+      setDest: function (e) { self.setState({ dest: e.target.value, copied: false }); },
+      setVoucher: function (e) { self.setState({ voucher: e.target.value, copied: false }); } };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pixel iklan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.f{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;font-size:14px;width:100%;font-family:'Geist Mono',monospace}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+th{font-weight:500;color:#71717a;text-align:left;padding:10px 12px;border-bottom:1px solid #e4e4e7}
+td{padding:10px 12px;border-bottom:1px solid #f4f4f5;vertical-align:top}
+code{font-family:'Geist Mono',monospace;font-size:13px}
+</style>
+</helmet>
+<div style="min-height: 1100px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RS</span>
+      <span style="font-weight: 600">Rias by Sekar</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="FunAnalitik.dc.html">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="FunLinkEditor.dc.html">Tautan dan sosmed</a>
+    <a href="#">Promosi</a>
+    <a href="FunTautan.dc.html" aria-current="page">Iklan</a>
+    <a href="#">Domain</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Iklan</h1>
+        <p style="margin: 0; color: #71717a">Pasang pixel supaya Meta, TikTok, dan Google tahu iklan mana yang menghasilkan booking.</p>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+    </header>
+    <div role="tablist" aria-label="Iklan" style="display: flex; gap: 4px; border-bottom: 1px solid #e4e4e7">
+      <a href="FunTautan.dc.html" role="tab" aria-selected="false" style="display: flex; align-items: center; height: 36px; padding: 0 12px; border-bottom: 2px solid transparent; color: #71717a; text-decoration: none">Tautan iklan</a>
+      <button type="button" role="tab" aria-selected="true" style="height: 36px; padding: 0 12px; border: 0; border-bottom: 2px solid #0a0a0a; background: transparent; color: #0a0a0a; font-weight: 600; cursor: pointer">Pixel</button>
+    </div>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 12px">
+      <sc-for list="{{pixels}}" as="p" hint-placeholder-count="3">
+        <section aria-label="{{p.title}}" style="flex: 1 1 260px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <h2 style="flex: 1; margin: 0; font-size: 15px; font-weight: 600">{{p.title}}</h2>
+            <button type="button" role="switch" aria-checked="{{p.on}}" aria-label="{{p.switchAria}}" onClick="{{p.toggle}}" style="{{p.switchStyle}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+          </div>
+          <label for="{{p.id}}" style="font-weight: 500">{{p.label}}</label>
+          <input id="{{p.id}}" class="f" value="{{p.value}}" placeholder="{{p.placeholder}}" aria-invalid="{{p.invalid}}" style="{{p.inputStyle}}">
+          <sc-if value="{{p.invalid}}" hint-placeholder-val="{{false}}"><span role="alert" style="font-size: 13px; color: #b91c1c">{{p.error}}</span></sc-if>
+          <span style="font-size: 12px; color: #71717a">{{p.where}}</span>
+        </section>
+      </sc-for>
+    </div>
+
+    <section aria-labelledby="ev-h" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+      <div style="padding: 14px; border-bottom: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+        <h2 id="ev-h" style="margin: 0; font-size: 15px; font-weight: 600">Kejadian yang dikirim</h2>
+        <p style="margin: 0; color: #71717a; font-size: 13px">Marky mengirim nama kejadian standar, jadi Anda bisa langsung memakainya sebagai tujuan konversi iklan.</p>
+      </div>
+      <div style="overflow-x: auto">
+        <table style="width: 100%; border-collapse: collapse; min-width: 700px">
+          <thead><tr><th scope="col">Di halaman booking</th><th scope="col">Meta</th><th scope="col">TikTok</th><th scope="col">Google Analytics 4</th></tr></thead>
+          <tbody>
+            <sc-for list="{{events}}" as="e" hint-placeholder-count="5">
+              <tr><td><span style="font-weight: 500">{{e.what}}</span><br><span style="font-size: 12px; color: #71717a">{{e.note}}</span></td><td><code>{{e.meta}}</code></td><td><code>{{e.tt}}</code></td><td><code>{{e.ga}}</code></td></tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 12px">
+      <section aria-labelledby="priv-h" style="flex: 1 1 320px; padding: 14px 16px; border-radius: 12px; background: #fafafa; display: flex; flex-direction: column; gap: 6px">
+        <h2 id="priv-h" style="margin: 0; font-size: 14px; font-weight: 600">Yang dikirim ke platform iklan</h2>
+        <p style="margin: 0; color: #3f3f46; line-height: 1.5">Pixel dimuat di halaman booking dan halaman pembayaran Anda, tidak di dashboard. Marky hanya mengirim jenis kejadian, nama layanan, dan nilai booking. Nama, nomor WhatsApp, dan catatan pelanggan tidak dikirim Marky. Matikan Automatic advanced matching di Events Manager bila tidak ingin platform mengambil data dari form.</p>
+      </section>
+      <section aria-labelledby="tes-h" style="flex: 1 1 320px; padding: 14px 16px; border-radius: 12px; border: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 6px">
+        <h2 id="tes-h" style="margin: 0; font-size: 14px; font-weight: 600">Cek pixel sudah jalan</h2>
+        <p style="margin: 0; color: #3f3f46; line-height: 1.5">Buka halaman booking Anda, lalu lihat menu Test events di Meta Events Manager atau TikTok Events Manager. Kejadian muncul dalam beberapa detik.</p>
+        <a href="#" style="align-self: flex-start; display: flex; align-items: center; min-height: 32px; font-weight: 600">Buka halaman booking saya</a>
+      </section>
+    </div>
+
+    <p style="margin: 0; display: flex; align-items: center; gap: 8px; color: #52525b"><span style="padding: 2px 8px; border-radius: 999px; border: 1px solid #d4d4d8; font-size: 12px; font-weight: 600">Segera hadir</span>Kirim kejadian dari server (Conversions API) agar tetap tercatat walau pengunjung memakai pemblokir iklan.</p>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"metaState":{"editor":"enum","options":["Benar","Format salah"],"default":"Benar","section":"Status"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { meta: true, tiktok: true, ga: false }; }
+  renderVals() {
+    var self = this, st = this.state, bad = (this.props.metaState ?? 'Benar') === 'Format salah';
+    var sw = function (on) { return 'flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (on ? 'background: #0a0a0a; justify-content: flex-end' : 'background: #d4d4d8; justify-content: flex-start'); };
+    var P = [
+      { k: 'meta', title: 'Meta (Instagram dan Facebook)', label: 'Pixel ID', value: bad ? '12345-678' : '1234567890123456', placeholder: '15 atau 16 angka', where: 'Ada di Events Manager, bagian Data sources.', error: 'Pixel ID Meta berisi 15 atau 16 angka, tanpa tanda baca.' },
+      { k: 'tiktok', title: 'TikTok', label: 'Pixel ID', value: 'C0NT0HP1XELT1KT0K000', placeholder: '20 huruf dan angka', where: 'Ada di TikTok Events Manager, bagian Web events.', error: '' },
+      { k: 'ga', title: 'Google Analytics 4', label: 'Measurement ID', value: '', placeholder: 'G-XXXXXXXXXX', where: 'Ada di Admin, Data streams, lalu pilih stream web.', error: '' }
+    ];
+    var pixels = P.map(function (p) {
+      var on = st[p.k], invalid = p.k === 'meta' && bad;
+      return { id: 'px-' + p.k, title: p.title, label: p.label, value: p.value, placeholder: p.placeholder, where: p.where, error: p.error, on: on, invalid: invalid,
+        switchAria: 'Aktifkan pixel ' + p.title, switchStyle: sw(on), inputStyle: invalid ? 'border-color: #b91c1c' : '',
+        toggle: function () { var n = {}; n[p.k] = !on; self.setState(n); } };
+    });
+    var events = [
+      { what: 'Membuka halaman', note: 'Setiap kunjungan', meta: 'PageView', tt: 'Pageview', ga: 'page_view' },
+      { what: 'Memilih layanan', note: 'Membawa nama dan harga layanan', meta: 'ViewContent', tt: 'ViewContent', ga: 'view_item' },
+      { what: 'Lanjut ke data diri', note: 'Jadwal sudah dipilih', meta: 'InitiateCheckout', tt: 'InitiateCheckout', ga: 'begin_checkout' },
+      { what: 'Booking dibuat', note: 'Termasuk booking bayar di tempat', meta: 'Lead', tt: 'SubmitForm', ga: 'generate_lead' },
+      { what: 'Pembayaran QRIS berhasil', note: 'Membawa nilai dalam rupiah', meta: 'Purchase', tt: 'CompletePayment', ga: 'purchase' }
+    ];
+    return { pixels: pixels, events: events };
+  }
+}
+</script>
+</body>
+</html>

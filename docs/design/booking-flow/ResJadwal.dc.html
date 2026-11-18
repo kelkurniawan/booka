@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pilih jumlah tamu, tanggal, dan jam</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Playfair+Display:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1f5c45}a:hover{color:#123a2b}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1f5c45;outline-offset:2px}
+button:disabled{cursor:not-allowed;opacity:.4}
+</style>
+</helmet>
+<div style="width: 390px; height: 1120px; position: relative; overflow: hidden; background: #f7f5ef; color: #1f2a24; font-family: 'Inter', system-ui, sans-serif">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; border-bottom: 1px solid #dfe3da">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="Resto.dc.html" aria-label="Kembali ke halaman Teras Dago" style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center; color: #1f2a24">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #5b675f">Teras Dago</span>
+        <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px">Reservasi meja</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah reservasi" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px">
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>1. Jadwal</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #5b675f"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #dfe3da"></span>2. Data diri</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 28px; padding: 20px 16px 0">
+
+    <section aria-labelledby="tamu-h" style="display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-radius: 16px; background: #ffffff; border: 1px solid #dfe3da">
+      <div style="display: flex; flex-direction: column; gap: 2px">
+        <h2 id="tamu-h" style="margin: 0; font-size: 15px; font-weight: 600">Jumlah tamu</h2>
+        <span style="font-size: 13px; color: #5b675f">Lebih dari 12? Lihat Paket acara.</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 4px">
+        <button type="button" aria-label="Kurangi tamu" disabled="{{minDisabled}}" onClick="{{dec}}" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #c9d1c5; background: #ffffff; color: #1f2a24; font-size: 22px; cursor: pointer">−</button>
+        <output aria-live="polite" style="min-width: 56px; text-align: center; font-size: 20px; font-weight: 600">{{guests}}</output>
+        <button type="button" aria-label="Tambah tamu" disabled="{{maxDisabled}}" onClick="{{inc}}" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #c9d1c5; background: #ffffff; color: #1f2a24; font-size: 22px; cursor: pointer">+</button>
+      </div>
+    </section>
+
+    <section aria-labelledby="tgl-h" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="tgl-h" style="margin: 0; font-size: 15px; font-weight: 600">Tanggal</h2>
+        <span style="font-size: 13px; color: #5b675f">November 2026</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="tgl-h" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px">
+        <sc-for list="{{dates}}" as="d" hint-placeholder-count="7">
+          <button type="button" role="radio" aria-checked="{{d.checked}}" aria-label="{{d.aria}}" onClick="{{d.pick}}" style="{{d.style}}">
+            <span style="font-size: 12px; font-weight: 500">{{d.dow}}</span>
+            <span style="font-size: 20px; font-weight: 600; line-height: 1">{{d.day}}</span>
+            <span style="font-size: 11px">{{d.note}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="jam-h" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="jam-h" style="margin: 0; font-size: 15px; font-weight: 600">Jam datang</h2>
+        <span style="font-size: 13px; color: #5b675f">Makan malam · WIB</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="jam-h" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <sc-for list="{{slots}}" as="t" hint-placeholder-count="6">
+          <button type="button" role="radio" aria-checked="{{t.checked}}" aria-label="{{t.aria}}" disabled="{{t.full}}" onClick="{{t.pick}}" style="{{t.style}}">
+            <span style="font-size: 15px; font-weight: 600">{{t.label}}</span>
+            <span style="font-size: 11px">{{t.note}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="area-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="area-h" style="margin: 0; font-size: 15px; font-weight: 600">Area <span style="font-weight: 400; color: #5b675f">(opsional)</span></h2>
+      <div role="radiogroup" aria-labelledby="area-h" style="display: flex; flex-wrap: wrap; gap: 8px">
+        <sc-for list="{{areas}}" as="a" hint-placeholder-count="3">
+          <button type="button" role="radio" aria-checked="{{a.checked}}" onClick="{{a.pick}}" style="{{a.style}}">{{a.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #dfe3da; display: flex; align-items: center; gap: 12px">
+    <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+      <span style="font-size: 13px; color: #5b675f">{{guests}} orang</span>
+      <span style="font-size: 16px; font-weight: 600">{{summary}}</span>
+    </div>
+    <a href="ResMeja.dc.html" style="display: flex; align-items: center; height: 52px; padding: 0 24px; border-radius: 14px; background: #1f5c45; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Lanjut</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1120}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { g: 4, date: '14', slot: '19.00', area: 'any' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var on = 'background: #1f5c45; color: #ffffff; border: 1px solid #1f5c45';
+    var off = 'background: #ffffff; color: #1f2a24; border: 1px solid #dfe3da';
+    var dates = [['Sab', '14', 'Hari ini'], ['Min', '15', ''], ['Sen', '16', ''], ['Sel', '17', ''], ['Rab', '18', ''], ['Kam', '19', ''], ['Jum', '20', '']].map(function (r) {
+      var c = st.date === r[1];
+      return { dow: r[0], day: r[1], note: r[2], checked: c, aria: r[0] + ' ' + r[1] + ' November', pick: function () { self.setState({ date: r[1] }); },
+        style: 'width: 60px; height: 76px; flex-shrink: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; cursor: pointer; ' + (c ? on : off) };
+    });
+    var slots = [['17.00', 'Banyak'], ['17.30', 'Banyak'], ['18.00', 'Sisa 2 meja'], ['18.30', 'Penuh'], ['19.00', 'Sisa 3 meja'], ['19.30', 'Banyak'], ['20.00', 'Banyak'], ['20.30', 'Banyak'], ['21.00', 'Banyak']].map(function (r) {
+      var full = r[1] === 'Penuh', c = st.slot === r[0];
+      return { label: r[0], note: r[1] === 'Banyak' ? 'Tersedia' : r[1], full: full, checked: c, aria: r[0] + ', ' + (full ? 'penuh' : r[1].toLowerCase()), pick: function () { self.setState({ slot: r[0] }); },
+        style: 'height: 56px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; cursor: pointer; ' + (full ? 'background: transparent; color: #8a948d; border: 1px dashed #c9d1c5; text-decoration: line-through' : c ? on : off) };
+    });
+    var areas = [['any', 'Bebas'], ['in', 'Dalam ruangan'], ['out', 'Teras (bebas rokok)']].map(function (r) {
+      var c = st.area === r[0];
+      return { label: r[1], checked: c, pick: function () { self.setState({ area: r[0] }); }, style: 'min-height: 44px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; ' + (c ? on : off) };
+    });
+    var d = dates.filter(function (x) { return x.checked; })[0];
+    return {
+      guests: st.g, minDisabled: st.g <= 1, maxDisabled: st.g >= 12,
+      dec: function () { self.setState({ g: Math.max(1, st.g - 1) }); },
+      inc: function () { self.setState({ g: Math.min(12, st.g + 1) }); },
+      dates: dates, slots: slots, areas: areas,
+      summary: d.dow + ', ' + d.day + ' Nov · ' + st.slot + ' WIB'
+    };
+  }
+}
+</script>
+</body>
+</html>

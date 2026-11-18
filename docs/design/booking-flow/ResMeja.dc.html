@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pilih meja</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Playfair+Display:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1f5c45}a:hover{color:#123a2b}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1f5c45;outline-offset:2px}
+button:disabled{cursor:not-allowed}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; position: relative; overflow: hidden; background: #f7f5ef; color: #1f2a24; font-family: 'Inter', system-ui, sans-serif">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; border-bottom: 1px solid #dfe3da">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="ResJadwal.dc.html" aria-label="Kembali ke pilih jadwal" style="width: 44px; height: 44px; margin-left: -10px; display: flex; align-items: center; justify-content: center; color: #1f2a24">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #5b675f">Teras Dago · 4 orang · Sab 14 Nov, 19.00</span>
+        <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 22px">Pilih meja</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah reservasi" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #5b675f"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>1. Jadwal</li>
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #1f5c45"></span>2. Meja</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #5b675f"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #dfe3da"></span>3. Data diri</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 18px; padding: 20px 16px 0">
+
+    <div role="radiogroup" aria-label="Cara memilih meja" style="display: flex; flex-direction: column; gap: 8px">
+      <button type="button" role="radio" aria-checked="{{autoOn}}" onClick="{{setAuto}}" style="{{autoStyle}}">
+        <span aria-hidden="true" style="{{autoDot}}"></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; text-align: left"><span style="font-size: 15px; font-weight: 600">Pilihkan untuk saya</span><span style="font-size: 13px; color: #5b675f">Restoran memberi meja terbaik untuk 4 orang.</span></span>
+      </button>
+      <button type="button" role="radio" aria-checked="{{pickOn}}" onClick="{{setPick}}" style="{{pickStyle}}">
+        <span aria-hidden="true" style="{{pickDot}}"></span>
+        <span style="display: flex; flex-direction: column; gap: 2px; text-align: left"><span style="font-size: 15px; font-weight: 600">Pilih meja sendiri</span><span style="font-size: 13px; color: #5b675f">Lihat denah dan pilih posisi favorit.</span></span>
+      </button>
+    </div>
+
+    <sc-if value="{{pickOn}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px">
+          <div role="tablist" aria-label="Area" style="display: flex; padding: 3px; gap: 3px; border-radius: 12px; background: #e9ece4">
+            <sc-for list="{{areas}}" as="a" hint-placeholder-count="2">
+              <button type="button" role="tab" aria-selected="{{a.on}}" onClick="{{a.pick}}" style="{{a.style}}">{{a.label}}</button>
+            </sc-for>
+          </div>
+          <button type="button" aria-pressed="{{listOn}}" onClick="{{toggleList}}" style="display: flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 8px; border: 0; background: transparent; color: #1f5c45; font-size: 14px; font-weight: 600; cursor: pointer">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"></path></svg>{{listLabel}}
+          </button>
+        </div>
+
+        <sc-if value="{{mapOn}}" hint-placeholder-val="{{true}}">
+          <div style="position: relative; height: 380px; border-radius: 16px; background: #ffffff; border: 1px solid #dfe3da; overflow: hidden">
+            <span aria-hidden="true" style="position: absolute; left: 0; right: 0; top: 0; height: 6px; background: repeating-linear-gradient(90deg, #b9d3c6 0 20px, transparent 20px 28px)"></span>
+            <span aria-hidden="true" style="position: absolute; top: 12px; left: 12px; font-size: 11px; color: #5b675f">Jendela</span>
+            <span aria-hidden="true" style="position: absolute; bottom: 0; left: 140px; width: 76px; height: 24px; border: 1px solid #c9d1c5; border-bottom: 0; border-radius: 8px 8px 0 0; font-size: 11px; color: #5b675f; display: flex; align-items: center; justify-content: center">Pintu</span>
+            <span aria-hidden="true" style="position: absolute; right: 0; bottom: 60px; width: 52px; height: 110px; background: #eef1ea; border: 1px solid #dfe3da; border-right: 0; border-radius: 8px 0 0 8px; font-size: 11px; color: #5b675f; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl">Kasir</span>
+            <sc-for list="{{tables}}" as="t" hint-placeholder-count="8">
+              <button type="button" aria-pressed="{{t.on}}" aria-label="{{t.aria}}" disabled="{{t.off}}" onClick="{{t.pick}}" style="{{t.style}}">
+                <span style="font-size: 13px; font-weight: 700">{{t.name}}</span>
+                <span style="font-size: 11px">{{t.seat}}</span>
+              </button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{listOn}}" hint-placeholder-val="{{false}}">
+          <ul style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+            <sc-for list="{{tables}}" as="t" hint-placeholder-count="8">
+              <li>
+                <button type="button" aria-pressed="{{t.on}}" disabled="{{t.off}}" onClick="{{t.pick}}" style="{{t.rowStyle}}">
+                  <span style="font-weight: 600">{{t.name}}</span>
+                  <span style="flex: 1; color: #5b675f; font-size: 13px">{{t.seat}} · {{t.note}}</span>
+                  <span style="font-size: 13px; font-weight: 600">{{t.state}}</span>
+                </button>
+              </li>
+            </sc-for>
+          </ul>
+        </sc-if>
+
+        <ul aria-label="Keterangan" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; color: #5b675f">
+          <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 2px solid #1f2a24; background: #ffffff"></span>Tersedia</li>
+          <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: #1f5c45"></span>Dipilih</li>
+          <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: repeating-linear-gradient(135deg, #d5dad2 0 3px, #eef1ea 3px 6px)"></span>Terisi</li>
+          <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; border: 2px dashed #9aa39c"></span>Kurang kursi</li>
+        </ul>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #dfe3da; display: flex; align-items: center; gap: 12px">
+    <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+      <span style="font-size: 13px; color: #5b675f">Meja</span>
+      <span style="font-size: 16px; font-weight: 600">{{summary}}</span>
+    </div>
+    <a href="ResData.dc.html" style="display: flex; align-items: center; height: 52px; padding: 0 24px; border-radius: 14px; background: #1f5c45; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Lanjut</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { mode: 'pick', area: 'in', table: 'D5', list: false }; }
+  renderVals() {
+    var self = this, st = this.state, guests = 4;
+    var radio = function (on) { return 'display: flex; align-items: flex-start; gap: 12px; width: 100%; padding: 14px; border-radius: 16px; background: #ffffff; color: inherit; font: inherit; cursor: pointer; border: ' + (on ? '2px solid #1f5c45; padding: 13px' : '1px solid #dfe3da'); };
+    var dot = function (on) { return 'width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px; box-sizing: border-box; border-radius: 999px; ' + (on ? 'border: 6px solid #1f5c45; background: #ffffff' : 'border: 2px solid #9aa39c'); };
+    var data = {
+      in: [['D1', 18, 30, 64, 64, 2, 2, 'free', 'dekat jendela', 999], ['D2', 100, 30, 64, 64, 2, 2, 'taken', 'dekat jendela', 999], ['D3', 182, 30, 64, 64, 4, 4, 'free', 'dekat jendela', 999], ['D4', 264, 30, 64, 64, 4, 4, 'taken', 'dekat jendela', 999],
+        ['D5', 30, 140, 120, 72, 4, 6, 'free', 'tengah ruangan', 12], ['D6', 180, 140, 120, 72, 4, 6, 'free', 'tengah ruangan', 12], ['D7', 30, 250, 72, 72, 2, 4, 'free', 'dekat pintu', 999], ['D8', 150, 250, 140, 72, 6, 8, 'taken', 'meja panjang', 12]],
+      out: [['T1', 24, 40, 72, 72, 2, 4, 'free', 'teras, bebas rokok', 999], ['T2', 130, 40, 72, 72, 2, 4, 'taken', 'teras, bebas rokok', 999], ['T3', 236, 40, 72, 72, 4, 4, 'free', 'teras, bebas rokok', 999], ['T4', 60, 190, 220, 80, 6, 10, 'free', 'teras, meja panjang', 12]]
+    };
+    var tables = data[st.area].map(function (r) {
+      var small = r[6] < guests, taken = r[7] === 'taken', off = small || taken, on = st.table === r[0] && !off;
+      var state = taken ? 'Terisi' : small ? 'Kurang kursi' : on ? 'Dipilih' : 'Tersedia';
+      var look = on ? 'background: #1f5c45; color: #ffffff; border: 2px solid #1f5c45' : taken ? 'background: repeating-linear-gradient(135deg, #d5dad2 0 4px, #eef1ea 4px 8px); color: #4f5a53; border: 2px solid transparent' : small ? 'background: #ffffff; color: #4f5a53; border: 2px dashed #9aa39c' : 'background: #ffffff; color: #1f2a24; border: 2px solid #1f2a24';
+      return { name: r[0], seat: r[5] === r[6] ? r[6] + ' kursi' : r[5] + '–' + r[6] + ' kursi', note: r[8], state: state, on: on, off: off,
+        aria: 'Meja ' + r[0] + ', ' + r[5] + ' sampai ' + r[6] + ' kursi, ' + r[8] + ', ' + state.toLowerCase(),
+        pick: function () { self.setState({ table: r[0] }); },
+        style: 'position: absolute; left: ' + r[1] + 'px; top: ' + r[2] + 'px; width: ' + r[3] + 'px; height: ' + r[4] + 'px; border-radius: ' + r[9] + 'px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; cursor: pointer; box-sizing: border-box; ' + look,
+        rowStyle: 'display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 14px; border-radius: 12px; font: inherit; font-size: 14px; text-align: left; cursor: pointer; ' + (on ? 'background: #e3eee7; color: #1f2a24; border: 2px solid #1f5c45' : off ? 'background: #eef1ea; color: #4f5a53; border: 1px solid #dfe3da' : 'background: #ffffff; color: #1f2a24; border: 1px solid #dfe3da') };
+    });
+    var picked = st.mode === 'pick' ? tables.filter(function (t) { return t.on; })[0] : null;
+    var tab = function (on) { return 'min-height: 40px; padding: 0 16px; border-radius: 9px; border: 0; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; ' + (on ? 'background: #ffffff; color: #1f2a24; box-shadow: 0 1px 2px rgba(0,0,0,0.12)' : 'background: transparent; color: #4f5a53'); };
+    return {
+      autoOn: st.mode === 'auto', pickOn: st.mode === 'pick',
+      setAuto: function () { self.setState({ mode: 'auto' }); }, setPick: function () { self.setState({ mode: 'pick' }); },
+      autoStyle: radio(st.mode === 'auto'), pickStyle: radio(st.mode === 'pick'), autoDot: dot(st.mode === 'auto'), pickDot: dot(st.mode === 'pick'),
+      areas: [['in', 'Dalam'], ['out', 'Teras']].map(function (a) { return { label: a[1], on: st.area === a[0], style: tab(st.area === a[0]), pick: function () { self.setState({ area: a[0], table: null }); } }; }),
+      listOn: st.list, mapOn: !st.list, listLabel: st.list ? 'Lihat denah' : 'Lihat daftar',
+      toggleList: function () { self.setState({ list: !st.list }); },
+      tables: tables,
+      summary: st.mode === 'auto' ? 'Dipilihkan restoran' : picked ? picked.name + ' · ' + picked.seat : 'Pilih satu meja'
+    };
+  }
+}
+</script>
+</body>
+</html>

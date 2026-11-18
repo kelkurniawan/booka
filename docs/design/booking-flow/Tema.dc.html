@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Tata letak yang sama di tema lain</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 900px; height: 860px; box-sizing: border-box; padding: 40px; background: #efe9df; display: flex; gap: 40px; font-family: 'DM Sans', system-ui, sans-serif">
+  <sc-for list="{{themes}}" as="t" hint-placeholder-count="2">
+    <figure style="margin: 0; display: flex; flex-direction: column; gap: 12px">
+      <figcaption style="font-size: 14px; font-weight: 600; color: #453425">{{t.label}}</figcaption>
+      <div style="{{t.page}}">
+        <header style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 40px 24px 24px; text-align: center">
+          <div aria-hidden="true" style="{{t.avatar}}">S</div>
+          <h2 style="{{t.h1}}">Rias by Sekar</h2>
+          <p style="{{t.muted}}">Makeup wisuda, lamaran, dan pengantin di Bandung.</p>
+        </header>
+        <div style="display: flex; flex-direction: column; gap: 12px; padding: 0 16px">
+          <h3 style="{{t.h2}}">Pilih layanan</h3>
+          <div style="{{t.cardOn}}">
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+              <span style="font-size: 16px; font-weight: 600">Makeup Wisuda</span>
+              <span style="{{t.muted}}">90 menit</span>
+              <span style="font-size: 16px; font-weight: 600; margin-top: 4px">Rp350.000</span>
+            </div>
+            <span aria-hidden="true" style="{{t.dotOn}}"></span>
+          </div>
+          <div style="{{t.card}}">
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+              <span style="font-size: 16px; font-weight: 600">Makeup Pesta</span>
+              <span style="{{t.muted}}">2 jam</span>
+              <span style="font-size: 16px; font-weight: 600; margin-top: 4px">Rp450.000</span>
+            </div>
+            <span aria-hidden="true" style="{{t.dot}}"></span>
+          </div>
+        </div>
+        <div style="{{t.bar}}">
+          <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+            <span style="{{t.muted}}">Makeup Wisuda · 90 menit</span>
+            <span style="font-size: 18px; font-weight: 600">Rp350.000</span>
+          </div>
+          <span style="{{t.btn}}">Pilih jadwal</span>
+        </div>
+      </div>
+    </figure>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":900,"height":860}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var mk = function (o) {
+      var r = o.radius, sr = o.radius ? (o.radius + 'px') : '0';
+      return {
+        label: o.label,
+        page: 'width: 390px; height: 760px; position: relative; overflow: hidden; border-radius: 28px; background: ' + o.bg + '; color: ' + o.fg + '; font-family: ' + o.body,
+        avatar: 'width: 80px; height: 80px; border-radius: ' + (r ? '999px' : '0') + '; background: ' + o.soft + '; color: ' + o.fg + '; display: flex; align-items: center; justify-content: center; font-family: ' + o.head + '; font-size: 32px; font-weight: 600; border: ' + o.bw + ' solid ' + o.border,
+        h1: 'margin: 0; font-family: ' + o.head + '; font-size: 28px; font-weight: 600; letter-spacing: -0.01em',
+        h2: 'margin: 0 4px; font-family: ' + o.head + '; font-size: 20px; font-weight: 600',
+        muted: 'margin: 0; font-size: 14px; line-height: 1.45; color: ' + o.muted,
+        card: 'display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: ' + sr + '; background: ' + o.card + '; border: ' + o.bw + ' solid ' + o.border,
+        cardOn: 'display: flex; align-items: flex-start; gap: 12px; padding: 14px; border-radius: ' + sr + '; background: ' + o.card + '; border: 2px solid ' + o.accent + '; box-shadow: 0 0 0 4px ' + o.soft,
+        dot: 'width: 24px; height: 24px; flex-shrink: 0; box-sizing: border-box; border-radius: ' + (r ? '999px' : '0') + '; border: 2px solid ' + o.muted,
+        dotOn: 'width: 24px; height: 24px; flex-shrink: 0; border-radius: ' + (r ? '999px' : '0') + '; background: ' + o.accent,
+        bar: 'position: absolute; left: 0; right: 0; bottom: 0; display: flex; align-items: center; gap: 12px; padding: 12px 16px 20px; background: ' + o.card + '; border-top: ' + o.bw + ' solid ' + o.border,
+        btn: 'display: flex; align-items: center; height: 52px; padding: 0 22px; border-radius: ' + (r ? '14px' : '0') + '; background: ' + o.accent + '; color: ' + o.onAccent + '; font-size: 16px; font-weight: 600'
+      };
+    };
+    return {
+      themes: [
+        mk({ label: 'Malam: gelap, sudut tajam', bg: '#1a1a1c', fg: '#f5f5f5', card: '#232326', muted: '#a8a8ad', border: '#3a3a3d', accent: '#f5f5f5', onAccent: '#1a1a1c', soft: '#2e2e32', radius: 0, bw: '1px', head: "'Space Grotesk', sans-serif", body: "'DM Sans', sans-serif" }),
+        mk({ label: 'Berani: garis tebal, aksen oranye', bg: '#fdfbf3', fg: '#141414', card: '#fdfbf3', muted: '#5c5c57', border: '#141414', accent: '#e35d24', onAccent: '#141414', soft: '#fbe0d2', radius: 0, bw: '2px', head: "'Space Grotesk', sans-serif", body: "'Space Grotesk', sans-serif" })
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

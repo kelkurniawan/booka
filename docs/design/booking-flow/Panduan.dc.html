@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Panduan memulai Marky dan tur dashboard</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+@media (prefers-reduced-motion:no-preference){.spot{transition:left .35s cubic-bezier(.65,0,.35,1),top .35s cubic-bezier(.65,0,.35,1),width .35s,height .35s}.tip{transition:left .35s cubic-bezier(.65,0,.35,1),top .35s cubic-bezier(.65,0,.35,1)}}
+</style>
+</helmet>
+<div style="width: 1280px; height: 1000px; position: relative; overflow: hidden; display: flex; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="width: 240px; flex-shrink: 0; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px"><span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">S</span><span style="font-weight: 600">Rias by Sekar</span></div>
+    <div style="display: flex; align-items: center; gap: 6px; margin: 0 4px 8px; padding: 6px 6px 6px 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; height: 28px"><span style="flex: 1; font-size: 13px; color: #3f3f46">marky.id/riasbysekar</span><button type="button" aria-label="Salin tautan" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: #f4f4f5; cursor: pointer">⧉</button></div>
+    <a href="#" aria-current="page" style="background: #f4f4f5; color: #0a0a0a; font-weight: 600">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a><a href="#">Jam buka</a><a href="#">Staf</a><a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a><a href="#">Promosi</a>
+  </nav>
+
+  <main style="flex: 1; min-width: 0; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; align-items: flex-end; gap: 12px">
+      <div style="flex: 1"><span style="font-size: 13px; color: #71717a">Selamat datang, Sekar</span><h1 style="margin: 0; font-size: 24px; font-weight: 600">Hari ini</h1></div>
+      <button type="button" onClick="{{toggleHelp}}" aria-expanded="{{helpOpen}}" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer"><span aria-hidden="true" style="width: 18px; height: 18px; border-radius: 999px; border: 1.5px solid currentColor; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700">?</span>Panduan halaman ini</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">+ Booking manual</button>
+    </header>
+
+    <section aria-labelledby="h-mulai" style="border: 1px solid #0a0a0a; border-radius: 12px; overflow: hidden">
+      <div style="display: flex; align-items: center; gap: 16px; padding: 16px 18px">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-mulai" style="margin: 0; font-size: 17px; font-weight: 600">Panduan memulai Marky</h2>
+          <span style="color: #71717a">{{doneCount}} dari 6 selesai. Sekitar 15 menit, bisa dicicil.</span>
+        </div>
+        <button type="button" onClick="{{startTour}}" style="height: 36px; padding: 0 14px; border: 1px solid #0a0a0a; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Tur dashboard 1 menit</button>
+      </div>
+      <div role="progressbar" aria-label="Kemajuan panduan" aria-valuemin="0" aria-valuemax="6" aria-valuenow="{{doneCount}}" style="height: 4px; background: #f4f4f5"><div style="{{bar}}"></div></div>
+      <ol style="list-style: none; margin: 0; padding: 0">
+        <sc-for list="{{steps}}" as="s" hint-placeholder-count="6">
+          <li style="border-top: 1px solid #f4f4f5">
+            <button type="button" aria-expanded="{{s.open}}" onClick="{{s.toggle}}" style="display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; padding: 0 18px; border: 0; background: transparent; color: #0a0a0a; font: inherit; text-align: left; cursor: pointer">
+              <span aria-hidden="true" style="{{s.check}}">{{s.mark}}</span>
+              <span style="{{s.titleStyle}}">{{s.title}}</span>
+              <span style="font-size: 12px; color: #71717a">{{s.time}}</span>
+            </button>
+            <sc-if value="{{s.open}}" hint-placeholder-val="{{false}}">
+              <div style="display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; padding: 0 18px 16px 54px">
+                <p style="flex: 1 1 360px; margin: 0; line-height: 1.55; color: #3f3f46">{{s.body}}</p>
+                <div style="display: flex; gap: 8px">
+                  <a href="#" style="display: flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; background: #0a0a0a; color: #ffffff; text-decoration: none; font-weight: 500">{{s.cta}}</a>
+                  <button type="button" onClick="{{s.done}}" style="height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Tandai selesai</button>
+                </div>
+              </div>
+            </sc-if>
+          </li>
+        </sc-for>
+      </ol>
+    </section>
+
+    <section aria-labelledby="h-aksi" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px">
+      <h2 id="h-aksi" style="margin: 0; font-size: 16px; font-weight: 600">Perlu tindakan</h2>
+      <p style="margin: 0; color: #71717a">Belum ada booking. Setelah tautan dipasang, permintaan dan pembayaran yang perlu Anda cek muncul di sini.</p>
+    </section>
+  </main>
+
+  <sc-if value="{{helpOpen}}" hint-placeholder-val="{{false}}">
+    <aside role="dialog" aria-labelledby="h-help" style="position: absolute; right: 0; top: 0; bottom: 0; width: 380px; box-sizing: border-box; padding: 24px; background: #ffffff; border-left: 1px solid #e4e4e7; box-shadow: -16px 0 40px rgba(0,0,0,0.08); display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: center; gap: 8px"><h2 id="h-help" style="flex: 1; margin: 0; font-size: 18px; font-weight: 600">Panduan: Hari ini</h2><button type="button" onClick="{{toggleHelp}}" aria-label="Tutup panduan" style="width: 36px; height: 36px; border: 0; border-radius: 8px; background: #f4f4f5; cursor: pointer">✕</button></div>
+      <div role="img" aria-label="Video panduan 1 menit" style="height: 180px; border-radius: 10px; background: #f4f4f5; display: flex; align-items: center; justify-content: center; color: #52525b">Video 1 menit</div>
+      <ol style="margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 10px; line-height: 1.5; color: #3f3f46">
+        <li><strong style="color: #0a0a0a">Perlu tindakan</strong> berisi hal yang menunggu Anda: permintaan untuk disetujui, DP yang belum dibayar.</li>
+        <li><strong style="color: #0a0a0a">Agenda</strong> menampilkan siapa datang hari ini. Ketuk Hadir saat pelanggan tiba.</li>
+        <li><strong style="color: #0a0a0a">Booking manual</strong> untuk pesanan lewat telepon atau datang langsung.</li>
+      </ol>
+      <button type="button" onClick="{{startTour}}" style="height: 40px; border: 1px solid #0a0a0a; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Mulai tur halaman ini</button>
+      <a href="#" style="color: #0a0a0a">Buka pusat bantuan</a>
+    </aside>
+  </sc-if>
+
+  <sc-if value="{{touring}}" hint-placeholder-val="{{true}}">
+    <div class="spot" aria-hidden="true" style="{{spot}}"></div>
+    <div class="tip" role="dialog" aria-modal="true" aria-labelledby="tour-h" aria-describedby="tour-b" style="{{tip}}">
+      <span style="font-size: 12px; color: #71717a">Langkah {{n}} dari {{total}}</span>
+      <h2 id="tour-h" style="margin: 0; font-size: 17px; font-weight: 600">{{tour.title}}</h2>
+      <p id="tour-b" style="margin: 0; line-height: 1.55; color: #3f3f46">{{tour.body}}</p>
+      <div style="display: flex; align-items: center; gap: 8px; margin-top: 6px">
+        <button type="button" onClick="{{endTour}}" style="height: 36px; padding: 0 4px; border: 0; background: transparent; color: #52525b; text-decoration: underline; cursor: pointer">Lewati tur</button>
+        <span style="flex: 1"></span>
+        <button type="button" onClick="{{prev}}" disabled="{{isFirst}}" style="height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Kembali</button>
+        <button type="button" onClick="{{next}}" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">{{nextLabel}}</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { tour: 0, touring: true, help: false, open: 1, done: { 0: true } }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var T = [
+      { title: 'Tautan Anda ada di sini', body: 'Salin lalu pasang di bio Instagram, TikTok, atau status WhatsApp. Pelanggan booking dari sini.', box: [16, 66, 208, 40], tip: [244, 40] },
+      { title: 'Hari ini', body: 'Halaman pertama setiap pagi: siapa datang dan apa yang perlu Anda cek.', box: [12, 112, 216, 40], tip: [244, 90] },
+      { title: 'Booking', body: 'Semua booking, cari pelanggan, tandai lunas di tempat, ubah jadwal, atau batalkan.', box: [12, 152, 216, 40], tip: [244, 130] },
+      { title: 'Booking manual', body: 'Pesanan lewat telepon atau datang langsung? Catat di sini supaya jadwal tidak bentrok.', box: [1126, 26, 134, 44], tip: [806, 92] },
+      { title: 'Butuh bantuan?', body: 'Setiap halaman punya panduan singkat dan video 1 menit. Tur ini bisa diulang kapan saja.', box: [886, 26, 232, 44], tip: [566, 92] }
+    ];
+    var S = [
+      ['Buat akun', '1 menit', 'Selesai. Selamat datang di Marky.', 'Lihat profil'],
+      ['Lengkapi profil dan logo', '3 menit', 'Nama usaha, foto profil, warna merek, dan latar halaman. Pelanggan menilai dari kesan pertama.', 'Buka Tampilan'],
+      ['Tambah layanan pertama', '3 menit', 'Nama, durasi, harga, dan cara bayar: lunas, DP, bayar di tempat, atau ajukan dulu.', 'Tambah layanan'],
+      ['Atur jam buka', '2 menit', 'Hari dan jam Anda menerima pelanggan. Jam yang sudah terisi otomatis tidak bisa dipesan lagi.', 'Atur jam buka'],
+      ['Pilih cara menerima uang', '4 menit', 'Hubungkan Midtrans atau Xendit untuk DP lewat QRIS, atau nyalakan bayar di tempat bila belum siap.', 'Buka Pembayaran'],
+      ['Coba booking sebagai pelanggan', '2 menit', 'Buka halaman Anda, pesan satu jadwal, lalu lihat booking itu muncul di Hari ini. Batalkan setelahnya.', 'Buka halaman saya']
+    ];
+    var doneCount = S.filter(function (x, i) { return st.done[i]; }).length;
+    var steps = S.map(function (s, i) {
+      var d = !!st.done[i], open = st.open === i;
+      return { title: s[0], time: d ? 'Selesai' : s[1], body: s[2], cta: s[3], open: open, mark: d ? '✓' : String(i + 1),
+        toggle: function () { self.setState({ open: open ? -1 : i }); },
+        done: function () { var n = Object.assign({}, st.done); n[i] = true; self.setState({ done: n, open: i + 1 }); },
+        check: 'width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; ' + (d ? 'background: #0a0a0a; color: #ffffff' : 'border: 1.5px solid #a1a1aa; color: #52525b'),
+        titleStyle: 'flex: 1; font-weight: 500; ' + (d ? 'color: #71717a; text-decoration: line-through' : '') };
+    });
+    var t = T[st.tour], b = t.box;
+    return {
+      steps: steps, doneCount: doneCount,
+      bar: 'height: 4px; background: #0a0a0a; width: ' + Math.round(doneCount / 6 * 100) + '%',
+      helpOpen: st.help, toggleHelp: function () { self.setState({ help: !st.help }); },
+      touring: st.touring, startTour: function () { self.setState({ touring: true, tour: 0, help: false }); },
+      endTour: function () { self.setState({ touring: false }); },
+      tour: t, n: st.tour + 1, total: T.length, isFirst: st.tour === 0,
+      nextLabel: st.tour === T.length - 1 ? 'Selesai' : 'Lanjut',
+      next: function () { if (st.tour === T.length - 1) self.setState({ touring: false }); else self.setState({ tour: st.tour + 1 }); },
+      prev: function () { self.setState({ tour: Math.max(0, st.tour - 1) }); },
+      spot: 'position: absolute; left: ' + b[0] + 'px; top: ' + b[1] + 'px; width: ' + b[2] + 'px; height: ' + b[3] + 'px; border-radius: 10px; box-shadow: 0 0 0 3px #ffffff, 0 0 0 9999px rgba(10,10,10,0.55); pointer-events: none',
+      tip: 'position: absolute; left: ' + t.tip[0] + 'px; top: ' + t.tip[1] + 'px; width: 300px; padding: 18px; border-radius: 12px; background: #ffffff; box-shadow: 0 20px 48px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 8px'
+    };
+  }
+}
+</script>
+</body>
+</html>

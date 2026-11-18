@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Editor tampilan dan merek</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Geist:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@500;700&amp;family=Playfair+Display:wght@700&amp;family=Space+Grotesk:wght@500;700&amp;family=Fraunces:opsz,wght@9..144,600&amp;family=DM+Sans:wght@400;500;600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}a:hover{color:#3f3f46}
+button,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:20px;height:20px;accent-color:#0a0a0a;margin:0}
+@keyframes bgShapeA{0%,100%{transform:translate(0,0) rotate(0deg) scale(1);border-radius:999px}25%{transform:translate(150px,-20px) rotate(90deg) scale(1.15);border-radius:24px}50%{transform:translate(80px,80px) rotate(180deg) scale(1.25);border-radius:999px}75%{transform:translate(-10px,40px) rotate(270deg) scale(1.1);border-radius:24px}}
+@keyframes bgShapeB{0%,100%{transform:translate(0,0) rotate(0deg);border-radius:24px}33%{transform:translate(-120px,40px) rotate(-120deg);border-radius:999px}66%{transform:translate(-40px,-30px) rotate(-240deg);border-radius:24px}}
+@keyframes bgWave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+@keyframes bgDrift{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(50px,30px) scale(1.2)}}
+@keyframes bgRise{from{transform:translateY(0);opacity:0}20%{opacity:.9}to{transform:translateY(-300px);opacity:0}}
+.bgA{animation:bgShapeA 12s cubic-bezier(.65,0,.35,1) infinite}.bgB{animation:bgShapeB 12s cubic-bezier(.65,0,.35,1) infinite}.bgW{animation:bgWave 18s linear infinite}.bgD{animation:bgDrift 16s cubic-bezier(.65,0,.35,1) infinite}.bgR{animation:bgRise 9s linear infinite}
+.is-paused *{animation-play-state:paused !important}
+@media (prefers-reduced-motion:reduce){.bgA,.bgB,.bgW,.bgD,.bgR{animation:none}}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #f4f4f6; color: #18181b; font-family: 'Geist', system-ui, sans-serif">
+
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 24px; background: #ffffff; border-bottom: 1px solid #e4e4e9">
+    <div style="display: flex; flex-direction: column; flex: 1 1 240px">
+      <h1 style="margin: 0; font-size: 20px; font-weight: 700">Tampilan halaman</h1>
+      <span style="font-size: 13px; color: #5f5f6b">marky.id/terasdago · perubahan belum disimpan</span>
+    </div>
+    <a href="#" style="display: flex; align-items: center; min-height: 44px; padding: 0 14px; font-size: 14px; font-weight: 600">Lihat halaman</a>
+    <button type="button" style="height: 44px; padding: 0 20px; border-radius: 10px; border: 0; background: #18181b; color: #ffffff; font-size: 14px; font-weight: 600; cursor: pointer">Simpan</button>
+  </header>
+
+  <div style="display: flex; flex-wrap: wrap; gap: 24px; padding: 24px; max-width: 1280px; margin: 0 auto; box-sizing: border-box">
+
+    <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+
+      <section aria-labelledby="preset-h" style="background: #ffffff; border: 1px solid #e4e4e9; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h2 id="preset-h" style="margin: 0; font-size: 16px; font-weight: 600">1. Mulai dari tema</h2>
+          <p style="margin: 0; font-size: 13px; color: #5f5f6b">Tema mengatur warna, huruf, dan sudut sekaligus. Setel detailnya di bawah.</p>
+        </div>
+        <div role="radiogroup" aria-labelledby="preset-h" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px">
+          <sc-for list="{{presets}}" as="p" hint-placeholder-count="6">
+            <button type="button" role="radio" aria-checked="{{p.checked}}" onClick="{{p.pick}}" style="{{p.box}}">
+              <span aria-hidden="true" style="{{p.swatch}}">
+                <span style="{{p.chip}}"></span>
+                <span style="{{p.line}}"></span>
+              </span>
+              <span style="font-size: 13px; font-weight: 600">{{p.label}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <section aria-labelledby="merek-h" style="background: #ffffff; border: 1px solid #e4e4e9; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="merek-h" style="margin: 0; font-size: 16px; font-weight: 600">2. Merek Anda</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+          <button type="button" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px dashed #c4c4cc; background: #fafafb; color: #18181b; font-size: 14px; text-align: left; cursor: pointer">
+            <span aria-hidden="true" style="width: 44px; height: 44px; border-radius: 999px; background: #1f5c45; color: #f7f5ef; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px">TD</span>
+            <span style="display: flex; flex-direction: column"><span style="font-weight: 600">Logo</span><span style="font-size: 12px; color: #5f5f6b">Ganti · PNG/JPG, persegi</span></span>
+          </button>
+          <button type="button" style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; border: 1px dashed #c4c4cc; background: #fafafb; color: #18181b; font-size: 14px; text-align: left; cursor: pointer">
+            <span aria-hidden="true" style="width: 64px; height: 44px; border-radius: 8px; background: repeating-linear-gradient(135deg, #2b6b52 0 8px, #286349 8px 16px)"></span>
+            <span style="display: flex; flex-direction: column"><span style="font-weight: 600">Foto sampul</span><span style="font-size: 12px; color: #5f5f6b">Ganti · rasio 3:1</span></span>
+          </button>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap">
+            <span id="warna-l" style="font-size: 14px; font-weight: 600">Warna utama</span>
+            <button type="button" style="display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 8px; border: 1px solid #d4d4dc; background: #ffffff; color: #18181b; font-size: 13px; font-weight: 500; cursor: pointer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 22l1-1h3l9-9M3 21v-3l9-9"></path><path d="M15 6l3-3 3 3-3 3"></path></svg>
+              Ambil dari logo
+            </button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+            <div role="radiogroup" aria-labelledby="warna-l" style="display: flex; flex-wrap: wrap; gap: 8px">
+              <sc-for list="{{accents}}" as="c" hint-placeholder-count="8">
+                <button type="button" role="radio" aria-checked="{{c.checked}}" aria-label="{{c.name}}" onClick="{{c.pick}}" style="{{c.style}}"></button>
+              </sc-for>
+            </div>
+            <label style="display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 10px; border: 1px solid #d4d4dc; border-radius: 10px; font-size: 14px">
+              <span aria-hidden="true" style="{{hexDot}}"></span>
+              <span style="color: #5f5f6b">Hex</span>
+              <input value="{{accent}}" onChange="{{setHex}}" aria-label="Kode warna hex" style="width: 80px; border: 0; font-size: 14px; font-family: ui-monospace, monospace">
+            </label>
+          </div>
+          <p role="status" style="{{contrastStyle}}">{{contrastText}}</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="gaya-h" style="background: #ffffff; border: 1px solid #e4e4e9; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="gaya-h" style="margin: 0; font-size: 16px; font-weight: 600">3. Huruf, sudut, tombol</h2>
+        <div role="radiogroup" aria-label="Pasangan huruf" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px">
+          <sc-for list="{{fonts}}" as="f" hint-placeholder-count="6">
+            <button type="button" role="radio" aria-checked="{{f.checked}}" onClick="{{f.pick}}" style="{{f.box}}">
+              <span style="{{f.sample}}">Aa</span>
+              <span style="font-size: 12px; color: #5f5f6b">{{f.label}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 24px">
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span id="sudut-l" style="font-size: 14px; font-weight: 600">Sudut</span>
+            <div role="radiogroup" aria-labelledby="sudut-l" style="display: flex; padding: 3px; gap: 3px; background: #f4f4f6; border-radius: 10px">
+              <sc-for list="{{corners}}" as="o" hint-placeholder-count="3">
+                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <span id="tombol-l" style="font-size: 14px; font-weight: 600">Gaya tombol</span>
+            <div role="radiogroup" aria-labelledby="tombol-l" style="display: flex; padding: 3px; gap: 3px; background: #f4f4f6; border-radius: 10px">
+              <sc-for list="{{buttons}}" as="o" hint-placeholder-count="3">
+                <button type="button" role="radio" aria-checked="{{o.checked}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="latar-h" style="background: #ffffff; border: 1px solid #e4e4e9; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h2 id="latar-h" style="margin: 0; font-size: 16px; font-weight: 600">4. Latar halaman</h2>
+          <p style="margin: 0; font-size: 13px; color: #5f5f6b">Di belakang profil dan layanan. Kartu layanan tetap solid agar mudah dibaca.</p>
+        </div>
+        <div role="radiogroup" aria-labelledby="latar-h" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px">
+          <sc-for list="{{bgTypes}}" as="b" hint-placeholder-count="4">
+            <button type="button" role="radio" aria-checked="{{b.on}}" onClick="{{b.pick}}" style="{{b.box}}">
+              <span aria-hidden="true" style="{{b.thumb}}"></span>
+              <span style="font-size: 13px; font-weight: 600">{{b.label}}</span>
+              <span style="font-size: 12px; color: #5f5f6b">{{b.hint}}</span>
+            </button>
+          </sc-for>
+        </div>
+        <sc-if value="{{bgIsSolid}}" hint-placeholder-val="{{false}}">
+          <div role="radiogroup" aria-label="Warna latar" style="display: flex; flex-wrap: wrap; gap: 8px">
+            <sc-for list="{{solids}}" as="c" hint-placeholder-count="5"><button type="button" role="radio" aria-checked="{{c.on}}" aria-label="{{c.name}}" onClick="{{c.pick}}" style="{{c.style}}"></button></sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{bgIsImg}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+            <button type="button" style="min-height: 40px; padding: 0 14px; border: 1px dashed #a1a1aa; border-radius: 10px; background: #fafafb; color: #18181b; font-weight: 500; cursor: pointer">Unggah foto (JPG, PNG, WebP, maks 3 MB)</button>
+            <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500">Lapisan terang <input type="range" min="0" max="80" step="5" value="{{overlay}}" onInput="{{setOverlay}}" aria-valuetext="{{overlayText}}" style="width: 140px; accent-color: #0a0a0a"> <span style="width: 36px">{{overlayText}}</span></label>
+          </div>
+        </sc-if>
+        <sc-if value="{{bgIsMotion}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <div role="radiogroup" aria-label="Pola gerak" style="display: flex; flex-wrap: wrap; gap: 8px">
+              <sc-for list="{{motions}}" as="m" hint-placeholder-count="4"><button type="button" role="radio" aria-checked="{{m.on}}" onClick="{{m.pick}}" style="{{m.style}}">{{m.label}}</button></sc-for>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+              <span id="spd-l" style="font-size: 13px; font-weight: 500">Kecepatan</span>
+              <div role="radiogroup" aria-labelledby="spd-l" style="display: flex; padding: 3px; gap: 3px; background: #f4f4f6; border-radius: 10px">
+                <sc-for list="{{speeds}}" as="o" hint-placeholder-count="2"><button type="button" role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="{{o.style}}">{{o.label}}</button></sc-for>
+              </div>
+              <button type="button" aria-pressed="{{bgPaused}}" onClick="{{togglePause}}" style="min-height: 36px; padding: 0 12px; border: 1px solid #d4d4dc; border-radius: 8px; background: #ffffff; color: #18181b; font-weight: 500; cursor: pointer">{{pauseText}}</button>
+            </div>
+            <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #5f5f6b">Pelanggan melihat tombol jeda di pojok halaman. Gerakan berhenti sendiri saat "kurangi gerakan" atau hemat data aktif, dan saat tab tidak dilihat.</p>
+          </div>
+        </sc-if>
+      </section>
+
+      <section aria-labelledby="susun-h" style="background: #ffffff; border: 1px solid #e4e4e9; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 2px">
+          <h2 id="susun-h" style="margin: 0; font-size: 16px; font-weight: 600">5. Susunan halaman</h2>
+          <p style="margin: 0; font-size: 13px; color: #5f5f6b">Seret, atau pakai tombol panah. Tombol pesan selalu tampil di bawah layar.</p>
+        </div>
+        <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{blocks}}" as="b" hint-placeholder-count="5">
+            <li style="display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border: 1px solid #e4e4e9; border-radius: 10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="#a1a1aa" aria-hidden="true"><circle cx="9" cy="6" r="1.6"></circle><circle cx="15" cy="6" r="1.6"></circle><circle cx="9" cy="12" r="1.6"></circle><circle cx="15" cy="12" r="1.6"></circle><circle cx="9" cy="18" r="1.6"></circle><circle cx="15" cy="18" r="1.6"></circle></svg>
+              <span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 14px; font-weight: 600">{{b.label}}</span><span style="font-size: 12px; color: #5f5f6b">{{b.hint}}</span></span>
+              <button type="button" aria-label="{{b.upLabel}}" disabled="{{b.first}}" onClick="{{b.up}}" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e4e4e9; background: #ffffff; color: #18181b; cursor: pointer">↑</button>
+              <button type="button" aria-label="{{b.downLabel}}" disabled="{{b.last}}" onClick="{{b.down}}" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid #e4e4e9; background: #ffffff; color: #18181b; cursor: pointer">↓</button>
+              <label style="display: flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 6px; font-size: 13px; cursor: pointer"><input type="checkbox" role="switch" checked="{{b.on}}" onChange="{{b.toggle}}">Tampil</label>
+            </li>
+          </sc-for>
+        </ol>
+      </section>
+    </div>
+
+    <aside aria-label="Pratinjau halaman" style="flex: 1 1 360px; display: flex; flex-direction: column; align-items: center; gap: 10px">
+      <span style="font-size: 13px; color: #5f5f6b">Pratinjau langsung</span>
+      <div style="{{pv.page}}">
+        <div aria-hidden="true" class="{{bg.cls}}" style="{{bg.layer}}">
+          <sc-if value="{{bg.isShapes}}" hint-placeholder-val="{{false}}"><span class="bgA" style="{{bg.s1}}"></span><span class="bgB" style="{{bg.s2}}"></span><span class="bgA" style="{{bg.s3}}"></span></sc-if>
+          <sc-if value="{{bg.isWave}}" hint-placeholder-val="{{false}}"><svg class="bgW" viewBox="0 0 1560 200" preserveAspectRatio="none" style="{{bg.w1}}"><path d="M0 100 Q 195 20 390 100 T 780 100 T 1170 100 T 1560 100 V200 H0Z" style="{{bg.wf1}}"></path></svg><svg class="bgW" viewBox="0 0 1560 200" preserveAspectRatio="none" style="{{bg.w2}}"><path d="M0 110 Q 195 40 390 110 T 780 110 T 1170 110 T 1560 110 V200 H0Z" style="{{bg.wf2}}"></path></svg></sc-if>
+          <sc-if value="{{bg.isAurora}}" hint-placeholder-val="{{false}}"><span class="bgD" style="{{bg.a1}}"></span><span class="bgD" style="{{bg.a2}}"></span></sc-if>
+          <sc-if value="{{bg.isDots}}" hint-placeholder-val="{{false}}"><sc-for list="{{bg.dots}}" as="d" hint-placeholder-count="10"><span class="bgR" style="{{d}}"></span></sc-for></sc-if>
+        </div>
+        <div aria-hidden="true" style="height: 110px; background: repeating-linear-gradient(135deg, #2b6b52 0 12px, #286349 12px 24px)"></div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: -36px; padding: 0 20px 16px; text-align: center">
+          <span aria-hidden="true" style="{{pv.logo}}">TD</span>
+          <span style="{{pv.h}}">Teras Dago</span>
+          <span style="{{pv.muted}}">Masakan Sunda · Dago, Bandung</span>
+        </div>
+        <sc-for list="{{pvBlocks}}" as="k" hint-placeholder-count="3">
+          <sc-if value="{{k.isLinks}}" hint-placeholder-val="{{false}}">
+            <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 0 14px 12px">
+              <span style="{{pv.tile}}">Menu</span><span style="{{pv.tile}}">Arah</span><span style="{{pv.tile}}">Instagram</span>
+            </div>
+          </sc-if>
+          <sc-if value="{{k.isServices}}" hint-placeholder-val="{{true}}">
+            <div style="padding: 0 14px 12px; display: flex; flex-direction: column; gap: 8px">
+              <span style="{{pv.h2}}">Layanan</span>
+              <div style="{{pv.card}}"><span style="font-weight: 600">Reservasi meja</span><span style="{{pv.muted}}">1–12 orang · bayar di tempat</span></div>
+              <div style="{{pv.card}}"><span style="font-weight: 600">Paket Ulang Tahun</span><span style="{{pv.muted}}">Rp1.500.000 · DP 30%</span></div>
+            </div>
+          </sc-if>
+          <sc-if value="{{k.isOther}}" hint-placeholder-val="{{false}}">
+            <div style="padding: 0 14px 12px"><div style="{{pv.card}}"><span style="font-weight: 600">{{k.label}}</span></div></div>
+          </sc-if>
+        </sc-for>
+        <div style="{{pv.bar}}"><span style="{{pv.btn}}">Reservasi meja</span></div>
+      </div>
+    </aside>
+  </div>
+<p style="margin: 0">https://github.com/Barty-Bart/motion-graphics</p></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+function buildBg(type, motion, speed, accent, base, overlay, solid, paused) {
+  var h = accent.replace('#', ''), rgb = [0, 2, 4].map(function (i) { return parseInt(h.substr(i, 2), 16); });
+  var A = function (a) { return 'rgba(' + rgb.join(',') + ',' + a + ')'; };
+  var dur = speed === 'pelan' ? 1.5 : 1;
+  var top = 'position: absolute; left: 0; right: 0; top: 0; z-index: -1; overflow: hidden; pointer-events: none; ';
+  var o = { cls: paused ? 'is-paused' : '', isShapes: false, isWave: false, isAurora: false, isDots: false, dots: [] };
+  if (type === 'solid') o.layer = top + 'bottom: 0; background: ' + solid;
+  else if (type === 'gradasi') o.layer = top + 'bottom: 0; background: linear-gradient(180deg, ' + A(0.22) + ' 0%, ' + base + ' 55%)';
+  else if (type === 'gambar') o.layer = top + 'height: 380px; background: linear-gradient(rgba(255,255,255,' + (overlay / 100) + '), rgba(255,255,255,' + (overlay / 100) + ')), repeating-linear-gradient(135deg, #c9b8a2 0 14px, #b9a58c 14px 28px); -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent)';
+  else {
+    o.layer = top + 'height: 380px; background: ' + A(0.1) + '; -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent)';
+    var d = function (s) { return '; animation-duration: ' + (s * dur) + 's'; };
+    if (motion === 'Bentuk') { o.isShapes = true;
+      o.s1 = 'position: absolute; left: 10px; top: 30px; width: 130px; height: 130px; background: ' + A(0.32) + d(12);
+      o.s2 = 'position: absolute; left: 200px; top: 120px; width: 100px; height: 100px; background: ' + A(0.18) + d(12);
+      o.s3 = 'position: absolute; left: 120px; top: 200px; width: 70px; height: 70px; background: rgba(255,255,255,0.8); animation-delay: -6s' + d(12); }
+    if (motion === 'Gelombang') { o.isWave = true;
+      o.w1 = 'position: absolute; left: 0; bottom: 70px; width: 200%; height: 170px' + d(18); o.wf1 = 'fill: ' + A(0.25);
+      o.w2 = 'position: absolute; left: -50%; bottom: 40px; width: 200%; height: 150px; animation-direction: reverse' + d(26); o.wf2 = 'fill: ' + A(0.15); }
+    if (motion === 'Aurora') { o.isAurora = true;
+      o.a1 = 'position: absolute; left: -60px; top: -40px; width: 300px; height: 300px; border-radius: 999px; background: radial-gradient(circle, ' + A(0.5) + ', transparent 65%)' + d(16);
+      o.a2 = 'position: absolute; right: -80px; top: 40px; width: 300px; height: 300px; border-radius: 999px; background: radial-gradient(circle, ' + A(0.3) + ', transparent 65%); animation-direction: reverse' + d(20); }
+    if (motion === 'Partikel') { o.isDots = true;
+      for (var i = 0; i < 10; i++) { var z = 6 + (i * 7) % 10; o.dots.push('position: absolute; bottom: 0; left: ' + ((i * 47) % 340) + 'px; width: ' + z + 'px; height: ' + z + 'px; border-radius: 999px; background: ' + (i % 3 ? A(0.4) : 'rgba(255,255,255,0.9)') + '; animation-delay: -' + (i * 0.9).toFixed(1) + 's' + d(9)); } }
+  }
+  return o;
+}
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { bgType: 'gerak', bgMotion: 'Bentuk', bgSpeed: 'pelan', bgSolid: 0, bgOverlay: 40, bgPaused: false, preset: 'custom', accent: '#1f5c45', font: 'KLASIK', corner: 'LEMBUT', btn: 'PENUH',
+      blocks: [{ id: 'links', label: 'Tautan', hint: 'Menu, arah, Instagram', on: true }, { id: 'services', label: 'Layanan', hint: '3 layanan aktif', on: true }, { id: 'gallery', label: 'Galeri', hint: '6 foto', on: true }, { id: 'faq', label: 'Pertanyaan umum', hint: '4 pertanyaan', on: true }, { id: 'map', label: 'Lokasi & jam buka', hint: 'Dari Pengaturan', on: false }] };
+  }
+  lum(hex) {
+    var h = hex.replace('#', ''); if (h.length !== 6) return 0;
+    var ch = [0, 2, 4].map(function (i) { var v = parseInt(h.substr(i, 2), 16) / 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+    return 0.2126 * ch[0] + 0.7152 * ch[1] + 0.0722 * ch[2];
+  }
+  ratio(a, b) { var x = this.lum(a), y = this.lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); }
+  renderVals() {
+    var self = this, st = this.state;
+    var P = {
+      custom: { label: 'Merek saya', bg: '#f7f5ef', fg: '#1f2a24', card: '#ffffff', muted: '#5b675f', border: '#dfe3da' },
+      BERSIH: { label: 'Bersih', bg: '#ffffff', fg: '#252525', card: '#ffffff', muted: '#6b6b6b', border: '#e4e4e4', accent: '#252525', font: 'NETRAL', corner: 'LEMBUT' },
+      HANGAT: { label: 'Hangat', bg: '#faf4ea', fg: '#453425', card: '#ffffff', muted: '#75624d', border: '#e8dcc9', accent: '#a8532e', font: 'HANGAT', corner: 'BULAT' },
+      MALAM: { label: 'Malam', bg: '#1a1a1c', fg: '#f5f5f5', card: '#232326', muted: '#a8a8ad', border: '#3a3a3d', accent: '#f5f5f5', font: 'MODERN', corner: 'TAJAM' },
+      PASTEL: { label: 'Pastel', bg: '#e9f6f1', fg: '#254a41', card: '#ffffff', muted: '#4f7368', border: '#cfe7de', accent: '#256f5c', font: 'RAPI', corner: 'BULAT' },
+      ELEGAN: { label: 'Elegan', bg: '#191510', fg: '#f0e6d2', card: '#211c15', muted: '#a5977e', border: '#4a3f2e', accent: '#c9a961', font: 'KLASIK', corner: 'TAJAM' }
+    };
+    var F = { NETRAL: ["'Plus Jakarta Sans'", "'Plus Jakarta Sans'", 'Netral'], KLASIK: ["'Playfair Display'", "'Inter'", 'Klasik'], MODERN: ["'Space Grotesk'", "'DM Sans'", 'Modern'], HANGAT: ["'Fraunces'", "'DM Sans'", 'Hangat'], TEGAS: ["'Space Grotesk'", "'Space Grotesk'", 'Tegas'], RAPI: ["'Inter'", "'Inter'", 'Rapi'] };
+    var R = { TAJAM: [0, 0], LEMBUT: [12, 10], BULAT: [20, 999] };
+    var t = P[st.preset], acc = st.accent, f = F[st.font], r = R[st.corner];
+    var onAcc = this.ratio(acc, '#ffffff') >= this.ratio(acc, '#111111') ? '#ffffff' : '#111111';
+    var cr = this.ratio(acc, onAcc), br = this.ratio(acc, t.bg);
+    var presets = Object.keys(P).map(function (k) {
+      var p = P[k], on = st.preset === k, a = p.accent || '#1f5c45';
+      return { label: p.label, checked: on,
+        pick: function () { self.setState(k === 'custom' ? { preset: k } : { preset: k, accent: p.accent, font: p.font, corner: p.corner }); },
+        box: 'display: flex; flex-direction: column; gap: 8px; padding: 8px; border-radius: 12px; background: #ffffff; color: #18181b; font: inherit; text-align: left; cursor: pointer; border: ' + (on ? '2px solid #0a0a0a; padding: 7px' : '1px solid #e4e4e9'),
+        swatch: 'height: 56px; border-radius: 8px; background: ' + p.bg + '; border: 1px solid ' + p.border + '; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; padding: 8px; box-sizing: border-box',
+        chip: 'width: 28px; height: 8px; border-radius: 4px; background: ' + a,
+        line: 'width: 60%; height: 4px; border-radius: 4px; background: ' + p.fg };
+    });
+    var accents = [['#1f5c45', 'Hijau hutan'], ['#a8532e', 'Terakota'], ['#3b4cca', 'Biru indigo'], ['#b42363', 'Magenta'], ['#7a4fd6', 'Ungu'], ['#e35d24', 'Oranye'], ['#c9a961', 'Emas'], ['#252525', 'Hitam']].map(function (c) {
+      var on = acc.toLowerCase() === c[0];
+      return { name: c[1], checked: on, pick: function () { self.setState({ accent: c[0] }); },
+        style: 'width: 36px; height: 36px; border-radius: 999px; cursor: pointer; background: ' + c[0] + '; border: 2px solid #ffffff; box-shadow: 0 0 0 ' + (on ? '2px #18181b' : '1px #d4d4dc') };
+    });
+    var seg = function (on) { return 'min-height: 36px; padding: 0 14px; border-radius: 8px; border: 0; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; ' + (on ? 'background: #ffffff; color: #18181b; box-shadow: 0 1px 2px rgba(0,0,0,0.12)' : 'background: transparent; color: #5f5f6b'); };
+    var corners = [['TAJAM', 'Tajam'], ['LEMBUT', 'Lembut'], ['BULAT', 'Bulat']].map(function (c) { return { label: c[1], checked: st.corner === c[0], style: seg(st.corner === c[0]), pick: function () { self.setState({ corner: c[0] }); } }; });
+    var buttons = [['PENUH', 'Penuh'], ['GARIS', 'Garis'], ['LEMBUT', 'Lembut']].map(function (c) { return { label: c[1], checked: st.btn === c[0], style: seg(st.btn === c[0]), pick: function () { self.setState({ btn: c[0] }); } }; });
+    var fonts = Object.keys(F).map(function (k) {
+      var on = st.font === k;
+      return { label: F[k][2], checked: on, pick: function () { self.setState({ font: k }); },
+        box: 'display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 10px; background: #ffffff; color: #18181b; cursor: pointer; text-align: left; border: ' + (on ? '2px solid #0a0a0a; padding: 7px 11px' : '1px solid #e4e4e9'),
+        sample: 'font-family: ' + F[k][0] + ', serif; font-size: 22px; font-weight: 700' };
+    });
+    var bl = st.blocks;
+    var move = function (i, d) { var b = bl.slice(); var x = b[i]; b[i] = b[i + d]; b[i + d] = x; self.setState({ blocks: b }); };
+    var blocks = bl.map(function (b, i) {
+      return Object.assign({}, b, { first: i === 0, last: i === bl.length - 1, upLabel: 'Naikkan ' + b.label, downLabel: 'Turunkan ' + b.label,
+        up: function () { move(i, -1); }, down: function () { move(i, 1); },
+        toggle: function () { self.setState({ blocks: bl.map(function (y) { return y.id === b.id ? Object.assign({}, y, { on: !y.on }) : y; }) }); } });
+    });
+    var pvBlocks = bl.filter(function (b) { return b.on; }).map(function (b) { return { label: b.label, isLinks: b.id === 'links', isServices: b.id === 'services', isOther: b.id !== 'links' && b.id !== 'services' }; });
+    var btnLook = st.btn === 'PENUH' ? 'background: ' + acc + '; color: ' + onAcc + '; border: 2px solid ' + acc : st.btn === 'GARIS' ? 'background: transparent; color: ' + (br >= 4.5 ? acc : t.fg) + '; border: 2px solid ' + acc : 'background: ' + acc + '22; color: ' + (br >= 4.5 ? acc : t.fg) + '; border: 2px solid transparent';
+    var ok = cr >= 4.5;
+    var SOL = [[t.bg, 'Warna tema'], ['#f3efe8', 'Krem'], ['#eef3ef', 'Hijau pucat'], ['#f1f1f4', 'Abu terang'], ['#f6eee4', 'Pasir']];
+    var segB = function (on) { return 'min-height: 32px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; ' + (on ? 'background: #ffffff; color: #18181b; box-shadow: 0 1px 2px rgba(0,0,0,0.12)' : 'background: transparent; color: #5f5f6b'); };
+    var bgTypes = [['solid', 'Warna polos', 'Paling ringan', 'background: ' + t.bg], ['gradasi', 'Gradasi', 'Dari warna merek', 'background: linear-gradient(180deg, ' + acc + '55 0%, ' + t.bg + ' 80%)'], ['gambar', 'Foto', 'Unggah sendiri', 'background: repeating-linear-gradient(135deg, #c9b8a2 0 8px, #b9a58c 8px 16px)'], ['gerak', 'Bergerak', '4 pola animasi', 'background: radial-gradient(circle at 30% 40%, ' + acc + '66 0 18px, transparent 19px), radial-gradient(circle at 70% 60%, ' + acc + '33 0 14px, ' + t.bg + ' 15px)']].map(function (b) {
+      var on = st.bgType === b[0];
+      return { label: b[1], hint: b[2], on: on, pick: function () { self.setState({ bgType: b[0] }); },
+        box: 'display: flex; flex-direction: column; gap: 6px; padding: 8px; border-radius: 12px; background: #ffffff; color: #18181b; font: inherit; text-align: left; cursor: pointer; border: ' + (on ? '2px solid #0a0a0a; padding: 7px' : '1px solid #e4e4e9'),
+        thumb: 'display: block; height: 52px; border-radius: 8px; border: 1px solid #e4e4e9; ' + b[3] };
+    });
+    var solids = SOL.map(function (c, i) { var on = st.bgSolid === i; return { name: c[1], on: on, pick: function () { self.setState({ bgSolid: i }); }, style: 'width: 36px; height: 36px; border-radius: 999px; cursor: pointer; background: ' + c[0] + '; border: 2px solid #ffffff; box-shadow: 0 0 0 ' + (on ? '2px #0a0a0a' : '1px #d4d4dc') }; });
+    var motions = ['Bentuk', 'Gelombang', 'Aurora', 'Partikel'].map(function (m) { var on = st.bgMotion === m; return { label: m, on: on, pick: function () { self.setState({ bgMotion: m }); }, style: 'min-height: 40px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; ' + (on ? 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a' : 'background: #ffffff; color: #18181b; border: 1px solid #d4d4dc') }; });
+    var speeds = [['pelan', 'Pelan'], ['normal', 'Normal']].map(function (o) { var on = st.bgSpeed === o[0]; return { label: o[1], on: on, style: segB(on), pick: function () { self.setState({ bgSpeed: o[0] }); } }; });
+    return {
+      bgTypes: bgTypes, solids: solids, motions: motions, speeds: speeds,
+      bgIsSolid: st.bgType === 'solid', bgIsImg: st.bgType === 'gambar', bgIsMotion: st.bgType === 'gerak',
+      overlay: st.bgOverlay, overlayText: st.bgOverlay + '%', setOverlay: function (e) { self.setState({ bgOverlay: +e.target.value }); },
+      bgPaused: st.bgPaused, pauseText: st.bgPaused ? 'Putar pratinjau' : 'Jeda pratinjau', togglePause: function () { self.setState({ bgPaused: !st.bgPaused }); },
+      bg: buildBg(st.bgType, st.bgMotion, st.bgSpeed, acc, t.bg, st.bgOverlay, SOL[st.bgSolid][0], st.bgPaused),
+      presets: presets, accents: accents, corners: corners, buttons: buttons, fonts: fonts, blocks: blocks, pvBlocks: pvBlocks, accent: acc,
+      hexDot: 'width: 16px; height: 16px; border-radius: 4px; background: ' + acc,
+      setHex: function (e) { var v = e.target.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) self.setState({ accent: v, preset: st.preset }); },
+      contrastText: (ok ? 'Teks tombol terbaca jelas (kontras ' : 'Kontras rendah (') + cr.toFixed(1).replace('.', ',') + ':1). ' + (ok ? 'Lolos standar WCAG AA.' : 'Marky otomatis memakai warna teks yang lebih gelap.'),
+      contrastStyle: 'margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 13px; ' + (ok ? 'background: #e1f1e8; color: #17603d' : 'background: #fdf0d5; color: #6b4a00'),
+      pv: {
+        page: 'width: 360px; height: 720px; position: relative; isolation: isolate; overflow: hidden; border-radius: 32px; border: 8px solid #18181b; background: ' + t.bg + '; color: ' + t.fg + '; font-family: ' + f[1] + ', sans-serif; font-size: 13px',
+        logo: 'width: 64px; height: 64px; border-radius: 999px; background: ' + acc + '; color: ' + onAcc + '; border: 3px solid ' + t.bg + '; display: flex; align-items: center; justify-content: center; font-weight: 700; font-family: ' + f[0] + ', serif',
+        h: 'font-family: ' + f[0] + ', serif; font-size: 22px; font-weight: 700',
+        h2: 'font-family: ' + f[0] + ', serif; font-size: 16px; font-weight: 700',
+        muted: 'color: ' + t.muted + '; font-size: 12px',
+        tile: 'display: flex; align-items: center; justify-content: center; height: 40px; border-radius: ' + r[0] + 'px; background: ' + t.card + '; border: 1px solid ' + t.border + '; font-size: 12px; font-weight: 500',
+        card: 'display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: ' + r[0] + 'px; background: ' + t.card + '; border: 1px solid ' + t.border,
+        bar: 'position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px 16px; background: ' + t.card + '; border-top: 1px solid ' + t.border,
+        btn: 'display: flex; align-items: center; justify-content: center; height: 46px; border-radius: ' + Math.min(r[1], 14) + 'px; font-weight: 600; font-size: 14px; ' + btnLook
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

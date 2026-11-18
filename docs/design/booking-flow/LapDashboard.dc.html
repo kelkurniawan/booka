@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Jadwal lapangan hari ini</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+.cell:hover{background:#fafafa}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RP</span>
+      <span style="font-weight: 600">Contoh: Rally Padel</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="LapDashboard.dc.html" aria-current="page">Jadwal lapangan</a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="LapLayanan.dc.html">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="#">Promosi</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 16px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 280px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Jadwal lapangan</h1>
+        <p style="margin: 0; color: #71717a">{{counts}}</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 6px">
+        <button type="button" aria-label="Hari sebelumnya" style="width: 36px; height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+        <span style="min-width: 150px; text-align: center; font-weight: 600">Sabtu, 21 November</span>
+        <button type="button" aria-label="Hari berikutnya" style="width: 36px; height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+        <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Hari ini</button>
+      </div>
+      <a href="#" style="display: flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; text-decoration: none">Booking manual</a>
+    </header>
+
+    <div role="tablist" aria-label="Tampilan lapangan" style="display: flex; gap: 4px; border-bottom: 1px solid #e4e4e7">
+      <button type="button" role="tab" aria-selected="true" style="height: 36px; padding: 0 12px; border: 0; border-bottom: 2px solid #0a0a0a; background: transparent; color: #0a0a0a; font-weight: 600; cursor: pointer">Jadwal</button>
+      <button type="button" role="tab" aria-selected="false" style="height: 36px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #71717a; cursor: pointer">Daftar lapangan</button>
+    </div>
+
+    <ul aria-label="Arti tanda" style="list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #52525b">
+      <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: #0a0a0a"></span>Lunas atau terkonfirmasi</li>
+      <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: #e4e4e7"></span>DP dibayar, sisa di tempat</li>
+      <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="box-sizing: border-box; width: 14px; height: 14px; border-radius: 4px; border: 2px solid #0a0a0a"></span>Menunggu bayar</li>
+      <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="box-sizing: border-box; width: 14px; height: 14px; border-radius: 4px; border: 2px dashed #71717a"></span>Permintaan, perlu jawaban</li>
+    </ul>
+
+    <sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}"><p role="status" style="margin: 0; padding: 40px 0; text-align: center; color: #71717a">Memuat jadwal lapangan...</p></sc-if>
+    <sc-if value="{{isError}}" hint-placeholder-val="{{false}}"><div role="alert" style="padding: 16px; border: 1px solid #fecaca; border-radius: 12px; background: #fef2f2; color: #991b1b; display: flex; align-items: center; gap: 12px"><span style="flex: 1">Jadwal gagal dimuat. Periksa koneksi, lalu coba lagi.</span><button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #991b1b; border-radius: 8px; background: #ffffff; color: #991b1b; cursor: pointer">Coba lagi</button></div></sc-if>
+    <sc-if value="{{isNoCourt}}" hint-placeholder-val="{{false}}"><div style="padding: 32px; border: 1px dashed #d4d4d8; border-radius: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 10px"><strong style="font-size: 15px">Belum ada lapangan</strong><span style="color: #71717a">Tambahkan lapangan dulu, lalu kaitkan ke layanan sewa supaya pelanggan bisa memesan.</span><button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; cursor: pointer">Tambah lapangan</button></div></sc-if>
+
+    <sc-if value="{{isOk}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <div style="flex: 999 1 520px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; overflow-x: auto">
+          <div style="{{gridStyle}}">
+            <div style="position: sticky; left: 0; z-index: 2; background: #ffffff; border-right: 1px solid #e4e4e7">
+              <div style="height: 48px; border-bottom: 1px solid #e4e4e7"></div>
+              <sc-for list="{{hours}}" as="h" hint-placeholder-count="15">
+                <div style="{{h.style}}"><span>{{h.label}}</span><span style="font-size: 11px; color: #71717a">{{h.peak}}</span></div>
+              </sc-for>
+            </div>
+            <sc-for list="{{cols}}" as="c" hint-placeholder-count="3">
+              <div style="position: relative; border-right: 1px solid #e4e4e7">
+                <div style="height: 48px; box-sizing: border-box; padding: 6px 10px; border-bottom: 1px solid #e4e4e7; display: flex; flex-direction: column; justify-content: center">
+                  <span style="font-weight: 600">{{c.name}}</span>
+                  <span style="font-size: 12px; color: #71717a">{{c.note}}</span>
+                </div>
+                <sc-for list="{{c.cells}}" as="e" hint-placeholder-count="15">
+                  <button type="button" class="cell" aria-label="{{e.aria}}" onClick="{{e.pick}}" style="{{e.style}}"><span style="{{e.addStyle}}">Tambah booking</span></button>
+                </sc-for>
+                <sc-for list="{{c.blocks}}" as="b" hint-placeholder-count="3">
+                  <button type="button" aria-label="{{b.aria}}" aria-pressed="{{b.on}}" onClick="{{b.pick}}" style="{{b.style}}">
+                    <span style="font-weight: 600">{{b.name}}</span>
+                    <span style="font-size: 12px">{{b.time}}</span>
+                    <span style="font-size: 12px">{{b.status}}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <aside aria-labelledby="det-h" style="flex: 1 1 260px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <h2 id="det-h" style="margin: 0; font-size: 16px; font-weight: 600">{{sel.name}}</h2>
+            <span style="color: #71717a">{{sel.wa}}</span>
+          </div>
+          <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px">
+            <dt style="color: #71717a">Jam</dt><dd style="margin: 0">{{sel.time}}</dd>
+            <dt style="color: #71717a">Lapangan</dt><dd style="margin: 0">{{sel.court}}</dd>
+            <dt style="color: #71717a">Total</dt><dd style="margin: 0">{{sel.total}}</dd>
+            <dt style="color: #71717a">Status</dt><dd style="margin: 0; font-weight: 600">{{sel.status}}</dd>
+          </dl>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <sc-if value="{{sel.canMarkPaid}}" hint-placeholder-val="{{true}}"><button type="button" style="height: 36px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Tandai sisa sudah dibayar</button></sc-if>
+            <button type="button" style="height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Pindah jam atau lapangan</button>
+            <a href="#" style="display: flex; align-items: center; justify-content: center; height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; color: #0a0a0a; text-decoration: none">Kirim WhatsApp</a>
+            <button type="button" style="height: 36px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #b91c1c; font-weight: 500; cursor: pointer">Batalkan booking</button>
+          </div>
+        </aside>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"gridState":{"editor":"enum","options":["Normal","Memuat","Gagal","Belum ada lapangan"],"default":"Normal","section":"Status"},"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'b5', cell: null }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var START = 7, END = 22, ROW = 44;
+    var fmt = function (m) { var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + '.' + (mm ? mm : '00'); };
+    var hours = [];
+    for (var h = START; h < END; h++) {
+      var peak = h >= 17;
+      hours.push({ label: fmt(h * 60), peak: peak && h === 17 ? 'Jam ramai' : '',
+        style: 'height: ' + ROW + 'px; box-sizing: border-box; padding: 4px 10px; border-bottom: 1px solid #f4f4f5; display: flex; flex-direction: column; font-size: 12px; font-variant-numeric: tabular-nums; ' + (peak ? 'background: #fafafa' : '') });
+    }
+    var B = [
+      { id: 'b1', c: 0, s: 420, e: 540, name: 'Tim Sabtu Pagi', wa: '0812-xxxx-1101', st: 'PAID', total: 'Rp300.000' },
+      { id: 'b2', c: 0, s: 960, e: 1080, name: 'Dimas', wa: '0812-xxxx-2202', st: 'DP', total: 'Rp400.000' },
+      { id: 'b3', c: 0, s: 1140, e: 1260, name: 'Klub Padel Kampus', wa: '0812-xxxx-3303', st: 'ONSITE', total: 'Rp500.000' },
+      { id: 'b4', c: 1, s: 480, e: 570, name: 'Rina', wa: '0812-xxxx-4404', st: 'PAID', total: 'Rp225.000' },
+      { id: 'b5', c: 1, s: 990, e: 1080, name: 'Pelanggan online', wa: '0812-xxxx-5505', st: 'PENDING', total: 'Rp325.000' },
+      { id: 'b6', c: 1, s: 1080, e: 1140, name: 'Andre', wa: '0812-xxxx-6606', st: 'PAID', total: 'Rp250.000' },
+      { id: 'b7', c: 2, s: 600, e: 660, name: 'Sari', wa: '0812-xxxx-7707', st: 'REQ', total: 'Rp150.000' },
+      { id: 'b8', c: 2, s: 1020, e: 1140, name: 'Fajar', wa: '0812-xxxx-8808', st: 'DP', total: 'Rp500.000' }
+    ];
+    var label = { PAID: 'Lunas', DP: 'DP dibayar, sisa di tempat', ONSITE: 'Bayar di tempat', PENDING: 'Menunggu bayar QRIS', REQ: 'Permintaan, perlu jawaban' };
+    var look = function (s, on) {
+      var base = on ? 'box-shadow: 0 0 0 3px #a1a1aa; ' : '';
+      if (s === 'PAID' || s === 'ONSITE') return base + 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a';
+      if (s === 'DP') return base + 'background: #e4e4e7; color: #0a0a0a; border: 1px solid #d4d4d8';
+      if (s === 'PENDING') return base + 'background: #ffffff; color: #0a0a0a; border: 2px solid #0a0a0a';
+      return base + 'background: #ffffff; color: #3f3f46; border: 2px dashed #71717a';
+    };
+    var courtNames = [['Lapangan 1', 'Indoor'], ['Lapangan 2', 'Indoor'], ['Lapangan 3', 'Outdoor']];
+    var cols = courtNames.map(function (cn, ci) {
+      var cells = [];
+      for (var h = START; h < END; h++) {
+        var key = ci + '-' + h, on = st.cell === key;
+        cells.push({ aria: 'Tambah booking ' + cn[0] + ' jam ' + fmt(h * 60), pick: (function (k) { return function () { self.setState({ cell: k }); }; })(key),
+          style: 'display: flex; align-items: center; justify-content: center; width: 100%; height: ' + ROW + 'px; box-sizing: border-box; padding: 0; border: 0; border-bottom: 1px solid #f4f4f5; background: ' + (on ? '#f4f4f5' : 'transparent') + '; cursor: pointer; font: inherit',
+          addStyle: on ? 'font-size: 12px; font-weight: 600; color: #0a0a0a' : 'position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)' });
+      }
+      var blocks = B.filter(function (b) { return b.c === ci; }).map(function (b) {
+        var on = st.sel === b.id;
+        return { name: b.name, time: fmt(b.s) + ' sampai ' + fmt(b.e), status: label[b.st], on: on,
+          aria: b.name + ', ' + cn[0] + ', ' + fmt(b.s) + ' sampai ' + fmt(b.e) + ', ' + label[b.st],
+          pick: function () { self.setState({ sel: b.id, cell: null }); },
+          style: 'position: absolute; left: 4px; right: 4px; top: ' + (48 + (b.s - START * 60) / 60 * ROW + 2) + 'px; height: ' + ((b.e - b.s) / 60 * ROW - 4) + 'px; box-sizing: border-box; padding: 6px 8px; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; overflow: hidden; text-align: left; font: inherit; font-size: 13px; cursor: pointer; ' + look(b.st, on) };
+      });
+      return { name: cn[0], note: cn[1], cells: cells, blocks: blocks };
+    });
+    var s = B.filter(function (b) { return b.id === st.sel; })[0] || B[0];
+    var unpaid = B.filter(function (b) { return b.st === 'DP' || b.st === 'ONSITE' || b.st === 'PENDING'; }).length;
+    var gs = this.props.gridState ?? 'Normal';
+    return { isOk: gs === 'Normal', isLoading: gs === 'Memuat', isError: gs === 'Gagal', isNoCourt: gs === 'Belum ada lapangan',
+      counts: B.length + ' booking di 3 lapangan, ' + unpaid + ' belum lunas',
+      gridStyle: 'display: grid; grid-template-columns: 72px repeat(3, minmax(160px, 1fr)); min-width: 560px',
+      hours: hours, cols: cols,
+      sel: { name: s.name, wa: s.wa, time: 'Sabtu 21 Nov, ' + fmt(s.s) + ' sampai ' + fmt(s.e), court: courtNames[s.c][0], total: s.total, status: label[s.st], canMarkPaid: s.st === 'DP' || s.st === 'ONSITE' } };
+  }
+}
+</script>
+</body>
+</html>

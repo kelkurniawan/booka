@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Kelola voucher dan kode diskon</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0;flex-shrink:0}
+.f{height:36px;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;font-size:14px;color:#0a0a0a;background:#ffffff;box-sizing:border-box;width:100%}
+.lbl{display:flex;flex-direction:column;gap:6px;font-weight:500}
+</style>
+</helmet>
+<div style="min-height: 1180px; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 24px 28px 40px">
+  <header style="max-width: 1180px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+    <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #71717a">Promosi</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Voucher</h1>
+      <p style="margin: 0; color: #71717a">Kode diskon yang diketik pelanggan saat booking.</p>
+    </div>
+    <nav aria-label="Menu promosi" style="display: flex; padding: 3px; gap: 3px; border-radius: 8px; background: #f4f4f5">
+      <a href="PromoBanner.dc.html" style="display: flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 6px; color: #52525b; text-decoration: none; font-weight: 500">Banner</a>
+      <a href="PromoVoucher.dc.html" aria-current="page" style="display: flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 6px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); text-decoration: none; font-weight: 500">Voucher</a>
+    </nav>
+  </header>
+
+  <div style="max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <section aria-labelledby="daftar-h" style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 12px">
+      <h2 id="daftar-h" style="margin: 0; font-size: 15px; font-weight: 600">Semua voucher</h2>
+      <div style="border: 1px solid #e4e4e7; border-radius: 12px; overflow-x: auto">
+        <table style="width: 100%; min-width: 560px; border-collapse: collapse">
+          <thead>
+            <tr style="text-align: left; font-size: 12px; color: #71717a">
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Kode</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Potongan</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Terpakai</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Berlaku</th>
+              <th scope="col" style="padding: 10px 14px; font-weight: 500; border-bottom: 1px solid #e4e4e7">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+              <tr>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5"><span style="font-weight: 700; letter-spacing: 0.04em">{{r.code}}</span><div style="font-size: 12px; color: #71717a">{{r.vis}}</div></td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5">{{r.cut}}<div style="font-size: 12px; color: #71717a">{{r.scope}}</div></td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5; min-width: 120px">
+                  <span>{{r.used}}</span>
+                  <div role="progressbar" aria-label="{{r.barLabel}}" aria-valuenow="{{r.pct}}" aria-valuemin="0" aria-valuemax="100" style="margin-top: 6px; height: 4px; border-radius: 999px; background: #f4f4f5"><div style="{{r.bar}}"></div></div>
+                </td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5">{{r.when}}</td>
+                <td style="padding: 12px 14px; border-bottom: 1px solid #f4f4f5"><span style="{{r.badge}}">{{r.status}}</span></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; color: #71717a; font-size: 13px">Rp1.540.000 diskon diberikan bulan ini, dari 22 booking yang memakai voucher.</p>
+    </section>
+
+    <section aria-labelledby="buat-h" style="flex: 1 1 380px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+      <h2 id="buat-h" style="margin: 0; font-size: 16px; font-weight: 600">Buat voucher</h2>
+
+      <div class="lbl">
+        <label for="kode">Kode</label>
+        <div style="display: flex; gap: 8px">
+          <input id="kode" class="f" value="WISUDA20" aria-describedby="kode-h" style="font-weight: 700; letter-spacing: 0.04em">
+          <button type="button" style="flex-shrink: 0; height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Acak</button>
+        </div>
+        <span id="kode-h" style="font-weight: 400; font-size: 12px; color: #71717a">4 sampai 16 huruf atau angka. Tidak membedakan huruf besar kecil.</span>
+      </div>
+
+      <div class="lbl">
+        <span id="jenis-l">Jenis potongan</span>
+        <div role="radiogroup" aria-labelledby="jenis-l" style="display: flex; padding: 3px; gap: 3px; border-radius: 8px; background: #f4f4f5">
+          <sc-for list="{{types}}" as="t" hint-placeholder-count="2">
+            <button type="button" role="radio" aria-checked="{{t.on}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <label class="lbl">{{valueLabel}}<input class="f" value="{{value}}" onInput="{{setValue}}" inputmode="numeric"></label>
+        <sc-if value="{{isPct}}" hint-placeholder-val="{{true}}"><label class="lbl">Maks potongan<input class="f" value="Rp100.000"></label></sc-if>
+        <label class="lbl">Min transaksi<input class="f" value="Rp0"></label>
+        <label class="lbl">Berlaku untuk<select class="f"><option>Makeup Wisuda</option><option>Semua layanan</option><option>Pilih beberapa…</option></select></label>
+        <label class="lbl">Total kuota<input class="f" value="50"></label>
+        <label class="lbl">Mulai<input class="f" type="date" value="2026-12-01"></label>
+        <label class="lbl">Selesai<input class="f" type="date" value="2026-12-31"></label>
+      </div>
+      <label style="display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; cursor: pointer"><input type="checkbox" checked="">Satu kali per nomor WhatsApp</label>
+      <label style="display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; cursor: pointer"><input type="checkbox">Hanya untuk pelanggan baru</label>
+
+      <div style="display: flex; gap: 16px; align-items: flex-start; padding: 12px; border-radius: 8px; background: #fafafa">
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span id="tampil-l" style="font-weight: 500">Tampilkan di halaman booking</span><span style="font-size: 12px; color: #71717a">{{visHint}}</span></span>
+        <button type="button" role="switch" aria-checked="{{public}}" aria-labelledby="tampil-l" onClick="{{togglePublic}}" style="{{track}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+      </div>
+
+      <p role="status" style="margin: 0; padding: 12px; border-radius: 8px; border: 1px solid #e4e4e7; line-height: 1.5">{{preview}}</p>
+      <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #71717a">Layanan DP: DP dihitung dari harga setelah diskon. Bayar di tempat: diskon tercatat di booking agar staf menagih harga yang benar.</p>
+
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan voucher</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Batal</button>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1180}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { type: 'pct', value: '20', pub: true }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var fmt = function (n) { return 'Rp' + Math.round(n).toLocaleString('id-ID'); };
+    var rows = [
+      ['WISUDA20', 'Tampil di halaman', '20%, maks Rp100.000', 'Makeup Wisuda', 12, 50, '1–31 Des', 'Aktif'],
+      ['TEMANLAMA', 'Kode rahasia', 'Rp50.000', 'Semua layanan', 8, 20, 'Tanpa batas', 'Aktif'],
+      ['LEBARAN27', 'Tampil di halaman', '15%', 'Semua layanan', 0, 100, '20 Mar – 5 Apr', 'Terjadwal'],
+      ['HEMAT50', 'Kode rahasia', 'Rp50.000, min Rp500.000', 'Semua layanan', 30, 30, 'Okt', 'Habis']
+    ].map(function (r) {
+      var pct = Math.round(r[4] / r[5] * 100), live = r[7] === 'Aktif';
+      return { code: r[0], vis: r[1], cut: r[2], scope: r[3], used: r[4] + ' dari ' + r[5], pct: pct, when: r[6], status: r[7], barLabel: r[0] + ' terpakai ' + pct + ' persen',
+        bar: 'height: 4px; border-radius: 999px; background: #0a0a0a; width: ' + pct + '%',
+        badge: 'padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; ' + (live ? 'background: #0a0a0a; color: #ffffff' : 'border: 1px solid #d4d4d8') };
+    });
+    var seg = function (on) { return 'flex: 1; height: 30px; border: 0; border-radius: 6px; font: inherit; font-weight: 500; cursor: pointer; ' + (on ? 'background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); color: #0a0a0a' : 'background: transparent; color: #52525b'); };
+    var isPct = st.type === 'pct';
+    var v = parseInt(String(st.value).replace(/\D/g, ''), 10) || 0;
+    var price = 350000, cut = isPct ? Math.min(price * Math.min(v, 100) / 100, 100000) : Math.min(v, price);
+    return {
+      rows: rows, isPct: isPct, value: st.value,
+      types: [['pct', 'Persen'], ['fix', 'Nominal']].map(function (t) { var on = st.type === t[0]; return { label: t[1], on: on, style: seg(on), pick: function () { self.setState({ type: t[0], value: t[0] === 'pct' ? '20' : '50000' }); } }; }),
+      valueLabel: isPct ? 'Diskon (%)' : 'Diskon (Rp)',
+      setValue: function (e) { self.setState({ value: e.target.value }); },
+      public: st.pub, togglePublic: function () { self.setState({ pub: !st.pub }); },
+      visHint: st.pub ? 'Kode tampil sebagai kartu promo yang bisa disalin.' : 'Kode rahasia. Bagikan sendiri lewat WhatsApp atau Instagram.',
+      track: 'flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (st.pub ? 'background: #0a0a0a; justify-content: flex-end' : 'background: #d4d4d8; justify-content: flex-start'),
+      preview: 'Contoh: Makeup Wisuda ' + fmt(price) + ' menjadi ' + fmt(price - cut) + ' (hemat ' + fmt(cut) + ').'
+    };
+  }
+}
+</script>
+</body>
+</html>

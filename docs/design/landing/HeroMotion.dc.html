@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Latar bergerak hero landing</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+:root{--hm-cotton:oklch(98.8% 0.0045 80);--hm-print:oklch(23% 0.012 38);--hm-muted:oklch(47% 0.013 45);--hm-rule:oklch(87% 0.009 55);--hm-ink:oklch(21% 0.012 38);--hm-paid:oklch(55.5% 0.15 33);--hm-track:oklch(91.5% 0.009 55);--hm-shade:32% 0.03 50}
+</style>
+</helmet>
+<div aria-hidden="true" style="{{root}}">
+  <div style="{{stage}}">
+    <div style="{{s1pos}} padding: 14px 16px; border-radius: 8px; background: var(--hm-cotton); box-shadow: 0 0 0 0.5px oklch(var(--hm-shade) / 0.22), 6px 5px 10px -6px oklch(var(--hm-shade) / 0.3); display: flex; flex-direction: column; gap: 10px; transform: rotate(-3deg)">
+      <span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--hm-muted); white-space: nowrap">marky.id/riasbysekar</span>
+      <span style="{{s1btn}}">Pilih jadwal</span>
+    </div>
+
+    <div style="{{s2pos}}">
+      <span style="position: absolute; left: 10px; right: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--hm-track)"></span>
+      <span style="{{s2fill}}"></span>
+      <span style="{{s2tip}}">{{s2time}}</span>
+      <span style="position: absolute; left: 10px; top: 50px; font-size: 12px; color: var(--hm-muted)">Jadwal</span>
+    </div>
+
+    <div style="{{s3a}}"><strong style="font-size: 14px">Jadwal dikunci</strong><span style="font-size: 12px; color: var(--hm-muted)">Sabtu 21 Nov, 10.00</span></div>
+    <div style="{{s3b}}"><strong style="font-size: 14px">DP masuk</strong><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--hm-muted)">Rp350.000</span></div>
+
+    <div style="{{s4pos}} padding: 16px; box-sizing: border-box; border-radius: 8px; background: var(--hm-cotton); box-shadow: 0 0 0 0.5px oklch(var(--hm-shade) / 0.22), 6px 5px 10px -6px oklch(var(--hm-shade) / 0.3); transform: rotate(2deg); display: flex; flex-direction: column; gap: 8px">
+      <span style="font-weight: 600; font-size: 14px">Rias by Sekar</span>
+      <span style="font-size: 12px; color: var(--hm-muted)">Makeup Wisuda, Sabtu 10.00</span>
+      <span style="height: 1px; background: var(--hm-print)"></span>
+      <span style="{{s4stamp}}">Lunas</span>
+    </div>
+
+    <span style="{{hero}}"></span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"paused":{"editor":"boolean","default":false},"compact":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":760}}'>
+// Diadaptasi dari skill explainer-engaging (Barty-Bart/motion-graphics, MIT):
+// satu hero melewati stasiun alur kerja, seek(t) murni fungsi waktu, loop mulus di pendaratan stasiun pertama.
+var D = 12;
+var clamp = function (x, a, b) { a = a ?? 0; b = b ?? 1; return Math.min(b, Math.max(a, x)); };
+var ease = function (x) { x = clamp(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+var lerp = function (a, b, k) { return a + (b - a) * k; };
+var seg = function (t, a, b) { return clamp((t - a) / (b - a)); };
+var spring = function (t, w, z) { w = w || 14; z = z || 0.82; if (t <= 0) return 0; if (z >= 1) return 1 - Math.exp(-w * t) * (1 + w * t); var wd = w * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w * t) * (Math.cos(wd * t) + (z * w / wd) * Math.sin(wd * t)); };
+// lintasan parabola: x linear, y lewat titik puncak (gravitasi konstan per segmen)
+var arc = function (p0, p1, apex, u) { var x = lerp(p0[0], p1[0], u); var c = 2 * apex - (p0[1] + p1[1]) / 2; var y = (1 - u) * (1 - u) * p0[1] + 2 * (1 - u) * u * c + u * u * p1[1]; return [x, y]; };
+var LAYOUTS = {
+  wide: { w: 1440, h: 760, S1: [245, 172], S2a: [100, 444], S2b: [360, 444], S3a: [1150, 142], S3b: [1230, 288], S4: [1205, 480], ap: [80, -40, 90, 230, -60], track: 260,
+    s1: [120, 120, 250], s2: [90, 410, 280], s3a: [1060, 70, 220], s3b: [1140, 212, 220], s4: [1080, 470, 250, 130], stampSize: 30 },
+  compact: { w: 390, h: 260, S1: [97, 84], S2a: [22, 204], S2b: [162, 204], S3a: [290, 30], S3b: [320, 96], S4: [292, 166], ap: [70, -10, 30, 100, -20], track: 140, stampSize: 22,
+    s1: [12, 14, 170], s2: [12, 170, 180], s3a: [205, 10, 170], s3b: [215, 74, 165], s4: [206, 156, 176, 96] }
+};
+var HITS = [0, 2.6, 6.6, 7.6, 8.8, 12];
+var seek = function (t, L) {
+  var S1 = L.S1, S2a = L.S2a, S2b = L.S2b, S3a = L.S3a, S3b = L.S3b, S4 = L.S4, A = L.ap;
+  t = ((t % D) + D) % D;
+  var p;
+  if (t < 1.0) p = S1;
+  else if (t < 2.6) p = arc(S1, S2a, A[0], seg(t, 1.0, 2.6));
+  else if (t < 4.6) p = [lerp(S2a[0], S2b[0], ease(seg(t, 2.6, 4.6))), S2a[1]];
+  else if (t < 6.6) p = arc(S2b, S3a, A[1], ease(seg(t, 4.6, 6.6)) * 0.6 + seg(t, 4.6, 6.6) * 0.4);
+  else if (t < 7.6) p = arc(S3a, S3b, A[2], seg(t, 6.6, 7.6));
+  else if (t < 8.8) p = arc(S3b, S4, A[3], seg(t, 7.6, 8.8));
+  else if (t < 9.8) p = S4;
+  else { var u = seg(t, 9.8, 12); var w = u + 0.1146 * Math.sin(2 * Math.PI * u); p = arc(S4, S1, A[4], clamp(w)); }
+  var k = 0; HITS.forEach(function (h) { k = Math.max(k, 1 - Math.abs(t - h) / 0.12); }); k = clamp(k);
+  var roll = t >= 2.6 && t < 4.6 ? seg(t, 2.6, 4.6) : (t >= 4.6 && t < 10.4 ? 1 : (t >= 10.4 && t < 11.2 ? 1 - seg(t, 10.4, 11.2) : 0));
+  var mins = 480 + Math.round(ease(roll) * 120 / 30) * 30;
+  var show = function (a, b) { return seg(t, a, a + 0.25) * (1 - seg(t, b, b + 0.3)); };
+  var stamp = t >= 8.8 && t < 11.2 ? 1 : 0;
+  return { p: p, k: k, roll: ease(roll), time: ('0' + Math.floor(mins / 60)).slice(-2) + '.' + ('0' + mins % 60).slice(-2), c1: show(6.6, 10.6), c2: show(7.6, 10.8), stamp: stamp, stampS: 1.6 - 0.6 * spring(t - 8.8, 18, 0.55), stampO: stamp * (1 - seg(t, 10.9, 11.2)), pressed: t < 1.2 || t > 11.85 };
+};
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { t: 9.2, vw: typeof window !== 'undefined' ? window.innerWidth : 1440 }; }
+  componentDidMount() {
+    var self = this, last = 0, start = performance.now() - 9200;
+    this.onResize = function () { self.setState({ vw: window.innerWidth }); };
+    window.addEventListener('resize', this.onResize);
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (navigator.connection && navigator.connection.saveData) return;
+    var loop = function (now) {
+      self.raf = requestAnimationFrame(loop);
+      if (self.props.paused) { start = now - self.state.t * 1000; return; }
+      if (now - last < 33) return;
+      last = now;
+      self.setState({ t: ((now - start) / 1000) % D });
+    };
+    this.raf = requestAnimationFrame(loop);
+  }
+  componentWillUnmount() { cancelAnimationFrame(this.raf); window.removeEventListener('resize', this.onResize); }
+  renderVals() {
+    var compact = !!this.props.compact, L = compact ? LAYOUTS.compact : LAYOUTS.wide;
+    var k = compact ? Math.min(1.2, (this.state.vw - 40) / L.w) : Math.min(1, this.state.vw / L.w);
+    var s = seek(this.state.t, L), T = L.track;
+    var pos = function (a) { return 'position: absolute; left: ' + a[0] + 'px; top: ' + a[1] + 'px; width: ' + a[2] + 'px;' + (a[3] ? ' height: ' + a[3] + 'px;' : ''); };
+    var card = function (a, o, rot) { return 'position: absolute; left: ' + a[0] + 'px; top: ' + a[1] + 'px; width: ' + a[2] + 'px; padding: 12px 14px; box-sizing: border-box; border-radius: 8px; background: var(--hm-cotton); box-shadow: 0 0 0 0.5px oklch(var(--hm-shade) / 0.22), 6px 5px 10px -6px oklch(var(--hm-shade) / 0.3); display: flex; flex-direction: column; gap: 2px; opacity: ' + o.toFixed(3) + '; transform: translateY(' + ((1 - o) * 14).toFixed(1) + 'px) rotate(' + rot + 'deg)'; };
+    return {
+      root: 'position: relative; width: 100%; height: ' + Math.round(L.h * (compact ? k : 1)) + 'px; overflow: hidden; text-align: left; font-family: Plus Jakarta Sans, sans-serif; color: var(--hm-print)',
+      s1pos: pos(L.s1), s2pos: pos([L.s2[0], L.s2[1], L.s2[2], 70]), s4pos: pos(L.s4),
+      stage: 'position: absolute; left: 50%; top: 0; width: ' + L.w + 'px; height: ' + L.h + 'px; transform-origin: 50% 0; transform: translateX(-50%) scale(' + k.toFixed(4) + ')',
+      hero: 'position: absolute; left: 0; top: 0; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 999px; background: var(--hm-ink); box-shadow: 4px 6px 10px -4px oklch(var(--hm-shade) / 0.5); transform: translate(' + s.p[0].toFixed(1) + 'px,' + s.p[1].toFixed(1) + 'px) scale(' + (1 + 0.25 * s.k).toFixed(3) + ',' + (1 - 0.2 * s.k).toFixed(3) + ')',
+      s1btn: 'display: flex; align-items: center; justify-content: center; height: 36px; border-radius: 8px; font-size: 13px; font-weight: 600; transform: translateY(' + (s.pressed ? 2 : 0) + 'px); ' + (s.pressed ? 'background: var(--hm-ink); color: var(--hm-cotton)' : 'background: var(--hm-track); color: var(--hm-print)'),
+      s2fill: 'position: absolute; left: 10px; top: 34px; height: 6px; border-radius: 6px; background: var(--hm-ink); width: ' + (s.roll * T).toFixed(1) + 'px',
+      s2tip: 'position: absolute; top: 0; left: ' + (s.roll * T - 8).toFixed(1) + 'px; padding: 2px 8px; border-radius: 6px; background: var(--hm-ink); color: var(--hm-cotton); font-family: Geist Mono, monospace; font-size: 12px; white-space: nowrap',
+      s2time: s.time,
+      s3a: card(L.s3a, s.c1, -2), s3b: card(L.s3b, s.c2, 1.5),
+      s4stamp: 'position: absolute; right: 12px; bottom: 6px; font-size: ' + L.stampSize + 'px; font-weight: 700; color: var(--hm-paid); opacity: ' + s.stampO.toFixed(3) + '; transform: rotate(-8deg) scale(' + (s.stamp ? s.stampS : 1).toFixed(3) + ')'
+    };
+  }
+}
+</script>
+</body>
+</html>

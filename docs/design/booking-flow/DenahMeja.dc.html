@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pengaturan denah dan meja</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">TD</span>
+      <span style="font-weight: 600">Teras Dago</span>
+    </div>
+    <a href="DashHariIni.dc.html">Hari ini</a>
+    <a href="DashBooking.dc.html">Booking</a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="DenahMeja.dc.html" aria-current="page">Denah meja</a>
+    <a href="#">Staf</a>
+    <a href="CaraBayar.dc.html">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="TemaEditor.dc.html">Tampilan</a>
+    <a href="#">Domain</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Denah meja</h1>
+        <p style="margin: 0; color: #71717a">Atur area dan meja agar reservasi tidak melebihi tempat yang ada.</p>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+    </header>
+
+    <section aria-labelledby="atur-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; align-items: flex-start; gap: 14px">
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+          <h2 id="atur-h" style="margin: 0; font-size: 15px; font-weight: 600">Pakai denah meja</h2>
+          <p style="margin: 0; color: #71717a; font-size: 13px">Mati: reservasi dibatasi total kursi per jam saja. Nyala: Marky menghitung per meja.</p>
+        </div>
+        <button type="button" role="switch" aria-checked="{{on}}" aria-labelledby="atur-h" onClick="{{toggle}}" style="{{switchStyle}}"><span aria-hidden="true" style="{{knob}}"></span></button>
+      </div>
+
+      <sc-if value="{{off}}" hint-placeholder-val="{{false}}">
+        <div style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 8px; background: #fafafa">
+          <label for="cap" style="font-weight: 500">Kapasitas per jam</label>
+          <input id="cap" value="60" inputmode="numeric" style="width: 64px; height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px">
+          <span style="color: #71717a">kursi</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{on}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-wrap: wrap; gap: 24px">
+          <fieldset style="flex: 1 1 280px; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+            <legend style="padding: 0; margin-bottom: 8px; font-weight: 500">Pelanggan boleh memilih</legend>
+            <sc-for list="{{choices}}" as="c" hint-placeholder-count="3">
+              <button type="button" role="radio" aria-checked="{{c.on}}" onClick="{{c.pick}}" style="display: flex; gap: 10px; align-items: flex-start; padding: 0; border: 0; background: transparent; color: #0a0a0a; font: inherit; text-align: left; cursor: pointer">
+                <span aria-hidden="true" style="{{c.dot}}"></span>
+                <span style="display: flex; flex-direction: column"><span style="font-weight: 500">{{c.label}}</span><span style="font-size: 13px; color: #71717a">{{c.hint}}</span></span>
+              </button>
+            </sc-for>
+          </fieldset>
+          <div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 10px">
+            <div style="display: flex; align-items: center; gap: 10px"><label for="durasi" style="flex: 1; font-weight: 500">Lama duduk</label><input id="durasi" value="90" style="width: 56px; height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px"><span style="color: #71717a; width: 40px">menit</span></div>
+            <div style="display: flex; align-items: center; gap: 10px"><label for="tahan" style="flex: 1; font-weight: 500">Meja ditahan jika telat</label><input id="tahan" value="15" style="width: 56px; height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px"><span style="color: #71717a; width: 40px">menit</span></div>
+            <label style="display: flex; align-items: center; gap: 10px; min-height: 36px; cursor: pointer"><input type="checkbox" checked="">Gabung meja otomatis untuk rombongan</label>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <sc-if value="{{on}}" hint-placeholder-val="{{true}}">
+      <section aria-labelledby="denah-h" style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+        <div style="flex: 999 1 460px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid #e4e4e7">
+            <h2 id="denah-h" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Editor denah</h2>
+            <div role="tablist" aria-label="Area" style="display: flex; gap: 4px">
+              <button type="button" role="tab" aria-selected="true" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Dalam · 8</button>
+              <button type="button" role="tab" aria-selected="false" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: #f4f4f5; color: #0a0a0a; font-weight: 500; cursor: pointer">Teras · 4</button>
+              <button type="button" style="height: 32px; padding: 0 10px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Area</button>
+            </div>
+            <span style="flex: 1"></span>
+            <button type="button" onClick="{{addRound}}" style="height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Meja bulat</button>
+            <button type="button" onClick="{{addSquare}}" style="height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Meja kotak</button>
+            <button type="button" style="height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Penanda</button>
+          </div>
+          <div style="position: relative; height: 440px; background-color: #ffffff; background-image: radial-gradient(#d4d4d8 1px, transparent 1px); background-size: 20px 20px">
+            <span aria-hidden="true" style="position: absolute; left: 20px; right: 20px; top: 0; height: 6px; background: #e4e4e7"></span>
+            <span aria-hidden="true" style="position: absolute; left: 24px; top: 12px; font-size: 11px; color: #71717a">Jendela</span>
+            <span aria-hidden="true" style="position: absolute; left: 260px; bottom: 0; width: 80px; height: 22px; border: 1px solid #a1a1aa; border-bottom: 0; border-radius: 6px 6px 0 0; font-size: 11px; color: #52525b; display: flex; align-items: center; justify-content: center; background: #ffffff">Pintu</span>
+            <span aria-hidden="true" style="position: absolute; right: 0; top: 180px; width: 60px; height: 140px; border: 1px solid #a1a1aa; border-right: 0; border-radius: 6px 0 0 6px; font-size: 11px; color: #52525b; display: flex; align-items: center; justify-content: center; background: #fafafa">Kasir</span>
+            <sc-for list="{{tables}}" as="t" hint-placeholder-count="8">
+              <button type="button" aria-pressed="{{t.on}}" aria-label="{{t.aria}}" onClick="{{t.pick}}" style="{{t.style}}">
+                <span style="font-weight: 700">{{t.name}}</span>
+                <span style="font-size: 11px">{{t.seat}}</span>
+              </button>
+            </sc-for>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; padding: 10px 12px; border-top: 1px solid #e4e4e7; font-size: 13px; color: #52525b">
+            <span>{{totals}}</span>
+            <span style="flex: 1"></span>
+            <span>Seret meja, atau pilih lalu geser dengan tombol panah.</span>
+          </div>
+        </div>
+
+        <aside aria-labelledby="prop-h" style="flex: 1 1 260px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+          <h2 id="prop-h" style="margin: 0; font-size: 15px; font-weight: 600">Meja {{sel.name}}</h2>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <label for="nm" style="font-weight: 500">Nama atau nomor</label>
+            <input id="nm" value="{{sel.name}}" style="height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span id="kursi-l" style="font-weight: 500">Jumlah tamu</span>
+            <div role="group" aria-labelledby="kursi-l" style="display: flex; align-items: center; gap: 8px">
+              <span style="color: #71717a">min</span>
+              <button type="button" aria-label="Kurangi minimum" onClick="{{minDec}}" style="width: 32px; height: 32px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">−</button>
+              <output style="width: 20px; text-align: center; font-weight: 600">{{sel.min}}</output>
+              <button type="button" aria-label="Tambah minimum" onClick="{{minInc}}" style="width: 32px; height: 32px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+</button>
+              <span style="color: #71717a; margin-left: 6px">maks</span>
+              <button type="button" aria-label="Kurangi maksimum" onClick="{{maxDec}}" style="width: 32px; height: 32px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">−</button>
+              <output style="width: 20px; text-align: center; font-weight: 600">{{sel.max}}</output>
+              <button type="button" aria-label="Tambah maksimum" onClick="{{maxInc}}" style="width: 32px; height: 32px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">+</button>
+            </div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <span style="font-weight: 500">Catatan untuk pelanggan</span>
+            <input value="{{sel.note}}" aria-label="Catatan meja" style="height: 36px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; font-size: 14px">
+          </div>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer"><input type="checkbox" checked="">Bisa dipesan online</label>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer"><input type="checkbox" checked="">Boleh digabung dengan meja sebelahnya</label>
+          <button type="button" style="align-self: flex-start; height: 32px; padding: 0 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #b91c1c; font-weight: 500; cursor: pointer">Hapus meja</button>
+        </aside>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) {
+    super(p);
+    this.state = { on: true, choice: 'table', sel: 'D5', tables: [
+      { name: 'D1', x: 40, y: 40, w: 64, h: 64, r: 999, min: 1, max: 2, note: 'Dekat jendela' }, { name: 'D2', x: 140, y: 40, w: 64, h: 64, r: 999, min: 1, max: 2, note: 'Dekat jendela' },
+      { name: 'D3', x: 240, y: 40, w: 64, h: 64, r: 10, min: 2, max: 4, note: 'Dekat jendela' }, { name: 'D4', x: 340, y: 40, w: 64, h: 64, r: 10, min: 2, max: 4, note: 'Dekat jendela' },
+      { name: 'D5', x: 60, y: 160, w: 140, h: 80, r: 12, min: 4, max: 6, note: 'Tengah ruangan' }, { name: 'D6', x: 240, y: 160, w: 140, h: 80, r: 12, min: 4, max: 6, note: 'Tengah ruangan' },
+      { name: 'D7', x: 60, y: 300, w: 80, h: 80, r: 999, min: 2, max: 4, note: 'Dekat pintu' }, { name: 'D8', x: 200, y: 300, w: 160, h: 80, r: 12, min: 6, max: 8, note: 'Meja panjang' }
+    ] };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var upd = function (fn) { self.setState({ tables: st.tables.map(function (t) { return t.name === st.sel ? fn(Object.assign({}, t)) : t; }) }); };
+    var add = function (round) { var n = 'D' + (st.tables.length + 1); self.setState({ sel: n, tables: st.tables.concat([{ name: n, x: 440, y: 340, w: 72, h: 72, r: round ? 999 : 10, min: 2, max: 4, note: '' }]) }); };
+    var tables = st.tables.map(function (t) {
+      var on = t.name === st.sel;
+      return { name: t.name, seat: t.min + '–' + t.max, on: on, aria: 'Meja ' + t.name + ', ' + t.min + ' sampai ' + t.max + ' tamu',
+        pick: function () { self.setState({ sel: t.name }); },
+        style: 'position: absolute; left: ' + t.x + 'px; top: ' + t.y + 'px; width: ' + t.w + 'px; height: ' + t.h + 'px; border-radius: ' + t.r + 'px; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: inherit; font-size: 13px; cursor: grab; ' + (on ? 'background: #0a0a0a; color: #ffffff; border: 2px solid #0a0a0a; box-shadow: 0 0 0 4px #e4e4e7' : 'background: #ffffff; color: #0a0a0a; border: 2px solid #0a0a0a') };
+    });
+    var sel = st.tables.filter(function (t) { return t.name === st.sel; })[0] || st.tables[0];
+    var seats = st.tables.reduce(function (a, t) { return a + t.max; }, 0);
+    var dot = function (on) { return 'width: 18px; height: 18px; flex-shrink: 0; margin-top: 1px; box-sizing: border-box; border-radius: 999px; ' + (on ? 'border: 5px solid #0a0a0a' : 'border: 2px solid #a1a1aa'); };
+    var choices = [['none', 'Tidak memilih', 'Restoran yang menentukan meja.'], ['area', 'Area saja', 'Contoh: Dalam atau Teras.'], ['table', 'Area dan nomor meja', 'Pelanggan melihat denah. Selalu ada opsi "Pilihkan untuk saya".']].map(function (c) {
+      var on = st.choice === c[0];
+      return { label: c[1], hint: c[2], on: on, dot: dot(on), pick: function () { self.setState({ choice: c[0] }); } };
+    });
+    return {
+      on: st.on, off: !st.on, toggle: function () { self.setState({ on: !st.on }); },
+      switchStyle: 'flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (st.on ? 'background: #0a0a0a; justify-content: flex-end' : 'background: #d4d4d8; justify-content: flex-start'),
+      knob: 'width: 20px; height: 20px; border-radius: 999px; background: #ffffff',
+      choices: choices, tables: tables, sel: sel,
+      totals: st.tables.length + ' meja · ' + seats + ' kursi di area Dalam',
+      addRound: function () { add(true); }, addSquare: function () { add(false); },
+      minDec: function () { upd(function (t) { t.min = Math.max(1, t.min - 1); return t; }); },
+      minInc: function () { upd(function (t) { t.min = Math.min(t.max, t.min + 1); return t; }); },
+      maxDec: function () { upd(function (t) { t.max = Math.max(t.min, t.max - 1); return t; }); },
+      maxInc: function () { upd(function (t) { t.max = Math.min(20, t.max + 1); return t; }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,602 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Bayar.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "04 Bayar QRIS",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "CaraBayar.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "title": "M1 Cara pembayaran per layanan",
+      "w": 900,
+      "x": 0,
+      "y": 4460
+    },
+    "DashBooking.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "D2 Booking + detail",
+      "w": 1280,
+      "x": 1360,
+      "y": 6100
+    },
+    "DashHariIni.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "D1 Hari ini",
+      "w": 1280,
+      "x": 0,
+      "y": 6100
+    },
+    "DashMobile.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "D3 Hari ini di HP",
+      "w": 390,
+      "x": 2720,
+      "y": 6100
+    },
+    "DataDiri.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "03 Data diri & ringkasan",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "DataDiriTempat.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "03b Data diri · bayar di tempat",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "DenahMeja.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "M3 Denah & meja",
+      "w": 1280,
+      "x": 2340,
+      "y": 4460
+    },
+    "Desktop.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "title": "P5 Dibuka di desktop (mobile-first)",
+      "w": 1440,
+      "x": 1880,
+      "y": 7560
+    },
+    "Jadwal.dc.html": {
+      "h": 1140,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "02 Pilih jadwal",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Kontak.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "P3 Hubungi merchant",
+      "w": 390,
+      "x": 940,
+      "y": 7560
+    },
+    "LatarGerak.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "B1 Latar bergerak di halaman",
+      "w": 390,
+      "x": 0,
+      "y": 10700
+    },
+    "LatarSetting.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "M7 Pengaturan latar bergerak",
+      "w": 1280,
+      "x": 470,
+      "y": 10700
+    },
+    "Main.dc.html": {
+      "h": 1320,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "01 Profil & pilih layanan",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Panduan.dc.html": {
+      "h": 1000,
+      "is_interactive": true,
+      "title": "G1 Panduan memulai + tur",
+      "w": 1280,
+      "x": 0,
+      "y": 12080
+    },
+    "PanduanHP.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "G2 Tur di HP",
+      "w": 390,
+      "x": 1360,
+      "y": 12080
+    },
+    "Pengaturan.dc.html": {
+      "expand": "fill",
+      "h": 1400,
+      "is_interactive": true,
+      "title": "M4 Pengaturan booking, kontak, pengingat",
+      "w": 1280,
+      "x": 3700,
+      "y": 4460
+    },
+    "Pengingat.dc.html": {
+      "h": 1060,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "P4 Atur pengingat",
+      "w": 390,
+      "x": 1410,
+      "y": 7560
+    },
+    "Pesanan.dc.html": {
+      "h": 1180,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "P1 Halaman booking saya",
+      "w": 390,
+      "x": 0,
+      "y": 7560
+    },
+    "PromoBanner.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "is_interactive": true,
+      "title": "M5 Banner promosi",
+      "w": 1280,
+      "x": 940,
+      "y": 9100
+    },
+    "PromoCheckout.dc.html": {
+      "h": 1320,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "V2 Pakai kode voucher",
+      "w": 390,
+      "x": 470,
+      "y": 9100
+    },
+    "PromoProfil.dc.html": {
+      "h": 1240,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "V1 Banner promo di halaman",
+      "w": 390,
+      "x": 0,
+      "y": 9100
+    },
+    "PromoVoucher.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "title": "M6 Voucher & kode diskon",
+      "w": 1280,
+      "x": 2300,
+      "y": 9100
+    },
+    "ResData.dc.html": {
+      "h": 1080,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "R3 Data & kirim reservasi",
+      "w": 390,
+      "x": 1410,
+      "y": 2800
+    },
+    "ResJadwal.dc.html": {
+      "h": 1120,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "R2 Tamu, tanggal, jam",
+      "w": 390,
+      "x": 470,
+      "y": 2800
+    },
+    "ResMeja.dc.html": {
+      "h": 1180,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "R2b Pilih meja (opsional)",
+      "w": 390,
+      "x": 940,
+      "y": 2800
+    },
+    "ResSelesai.dc.html": {
+      "h": 920,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "R4 Reservasi diterima",
+      "w": 390,
+      "x": 1880,
+      "y": 2800
+    },
+    "Resto.dc.html": {
+      "h": 1300,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "R1 Profil restoran",
+      "w": 390,
+      "x": 0,
+      "y": 2800
+    },
+    "Selesai.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "05 Booking terkonfirmasi",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "SelesaiTempat.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "05b Terkonfirmasi · bayar di tempat",
+      "w": 390,
+      "x": 2820,
+      "y": 0
+    },
+    "StafProfil.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "M8 Profil staf (foto & gerak)",
+      "w": 1280,
+      "x": 1830,
+      "y": 10700
+    },
+    "Tema.dc.html": {
+      "h": 860,
+      "title": "06 Tema lain (token saja)",
+      "w": 900,
+      "x": 0,
+      "y": 1560
+    },
+    "TemaEditor.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "M2 Editor tampilan & merek",
+      "w": 1280,
+      "x": 980,
+      "y": 4460
+    },
+    "UbahJadwal.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "P2 Ubah jadwal",
+      "w": 390,
+      "x": 470,
+      "y": 7560
+    },
+    "LapJadwal.dc.html": {
+      "h": 1640,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "L1 Lama main, jam, lapangan",
+      "w": 390,
+      "x": 0,
+      "y": 13600
+    },
+    "LapData.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "L2 Data diri dan rincian harga",
+      "w": 390,
+      "x": 470,
+      "y": 13600
+    },
+    "LapDashboard.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "L3 Jadwal lapangan hari ini",
+      "w": 1280,
+      "x": 940,
+      "y": 13600
+    },
+    "LapHP.dc.html": {
+      "h": 900,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "L4 Jadwal lapangan di HP",
+      "w": 390,
+      "x": 2300,
+      "y": 13600
+    },
+    "LapLayanan.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "L5 Sewa lapangan dan jam ramai",
+      "w": 1280,
+      "x": 2770,
+      "y": 13600
+    },
+    "LapDenah.dc.html": {
+      "h": 1240,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "L1b Denah, foto, dan profil lapangan",
+      "w": 390,
+      "x": 0,
+      "y": 15360
+    },
+    "LapDenahEditor.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "L6 Atur denah dan profil lapangan",
+      "w": 1280,
+      "x": 470,
+      "y": 15360
+    },
+    "FunProfil.dc.html": {
+      "h": 1400,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "F1 Profil dengan tautan dan sosmed",
+      "w": 390,
+      "x": 0,
+      "y": 17120
+    },
+    "FunMasuk.dc.html": {
+      "h": 1100,
+      "is_interactive": true,
+      "radius": 28,
+      "title": "F2 Datang dari tautan iklan",
+      "w": 390,
+      "x": 470,
+      "y": 17120
+    },
+    "FunTautan.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "F3 Buat tautan iklan dan QR",
+      "w": 1280,
+      "x": 940,
+      "y": 17120
+    },
+    "FunPixel.dc.html": {
+      "expand": "fill",
+      "h": 1100,
+      "is_interactive": true,
+      "title": "F4 Pixel iklan",
+      "w": 1280,
+      "x": 2300,
+      "y": 17120
+    },
+    "FunAnalitik.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "F5 Funnel per kanal di Analitik",
+      "w": 1280,
+      "x": 940,
+      "y": 18340
+    },
+    "FunLinkEditor.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "F6 Atur tautan dan sosmed di halaman",
+      "w": 1280,
+      "x": 2300,
+      "y": 18340
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-14T09:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "flowTitle",
+    "themeTitle",
+    "resTitle",
+    "merchTitle",
+    "dashTitle",
+    "afterTitle",
+    "promoTitle",
+    "bgTitle",
+    "guideTitle",
+    "courtTitle",
+    "courtSample",
+    "funnelTitle",
+    "funnelSample"
+  ],
+  "notes": {
+    "afterTitle": {
+      "kind": "title1",
+      "maxW": 3320,
+      "text": "Setelah booking: kelola, hubungi, ingatkan",
+      "w": 240,
+      "x": 0,
+      "y": 7300
+    },
+    "bgTitle": {
+      "kind": "title1",
+      "maxW": 3110,
+      "text": "Latar bergerak & profil staf",
+      "w": 240,
+      "x": 0,
+      "y": 10440
+    },
+    "dashTitle": {
+      "kind": "title1",
+      "maxW": 3110,
+      "text": "Dashboard merchant",
+      "w": 240,
+      "x": 0,
+      "y": 5840
+    },
+    "flowTitle": {
+      "kind": "title1",
+      "maxW": 3210,
+      "text": "Alur booking pelanggan",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "guideTitle": {
+      "kind": "title1",
+      "maxW": 1750,
+      "text": "Panduan untuk merchant baru",
+      "w": 240,
+      "x": 0,
+      "y": 11820
+    },
+    "merchTitle": {
+      "kind": "title1",
+      "maxW": 4980,
+      "text": "Pengaturan merchant",
+      "w": 240,
+      "x": 0,
+      "y": 4200
+    },
+    "promoTitle": {
+      "kind": "title1",
+      "maxW": 3580,
+      "text": "Promosi: banner & voucher",
+      "w": 240,
+      "x": 0,
+      "y": 8840
+    },
+    "resTitle": {
+      "kind": "title1",
+      "maxW": 2270,
+      "text": "Reservasi dulu, bayar di tempat",
+      "w": 240,
+      "x": 0,
+      "y": 2540
+    },
+    "themeTitle": {
+      "kind": "title1",
+      "maxW": 900,
+      "text": "Satu tata letak, tema merchant",
+      "w": 240,
+      "x": 0,
+      "y": 1300
+    },
+    "courtTitle": {
+      "kind": "title1",
+      "maxW": 4050,
+      "text": "Sewa lapangan: padel, futsal, badminton",
+      "w": 240,
+      "x": 0,
+      "y": 13340
+    },
+    "courtSample": {
+      "text": "Semua nama tempat, harga, jam, dan nama pelanggan di baris ini contoh, bukan data nyata.",
+      "w": 320,
+      "x": 4130,
+      "y": 13600,
+      "fill": "gray"
+    },
+    "funnelTitle": {
+      "kind": "title1",
+      "maxW": 3580,
+      "text": "Funnel iklan dan link-in-bio",
+      "w": 240,
+      "x": 0,
+      "y": 16860
+    },
+    "funnelSample": {
+      "text": "Nama, angka kunjungan, booking, omzet, dan ID pixel di baris ini contoh, bukan data nyata.",
+      "w": 320,
+      "x": 3660,
+      "y": 17120,
+      "fill": "gray"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Jadwal.dc.html",
+    "DataDiri.dc.html",
+    "Bayar.dc.html",
+    "Selesai.dc.html",
+    "DataDiriTempat.dc.html",
+    "SelesaiTempat.dc.html",
+    "Tema.dc.html",
+    "Resto.dc.html",
+    "ResJadwal.dc.html",
+    "ResMeja.dc.html",
+    "ResData.dc.html",
+    "ResSelesai.dc.html",
+    "CaraBayar.dc.html",
+    "TemaEditor.dc.html",
+    "DenahMeja.dc.html",
+    "Pengaturan.dc.html",
+    "DashHariIni.dc.html",
+    "DashBooking.dc.html",
+    "DashMobile.dc.html",
+    "Pesanan.dc.html",
+    "UbahJadwal.dc.html",
+    "Kontak.dc.html",
+    "Pengingat.dc.html",
+    "Desktop.dc.html",
+    "PromoProfil.dc.html",
+    "PromoCheckout.dc.html",
+    "PromoBanner.dc.html",
+    "PromoVoucher.dc.html",
+    "LatarGerak.dc.html",
+    "LatarSetting.dc.html",
+    "StafProfil.dc.html",
+    "Panduan.dc.html",
+    "PanduanHP.dc.html",
+    "LapJadwal.dc.html",
+    "LapData.dc.html",
+    "LapDashboard.dc.html",
+    "LapHP.dc.html",
+    "LapLayanan.dc.html",
+    "LapDenah.dc.html",
+    "LapDenahEditor.dc.html",
+    "FunProfil.dc.html",
+    "FunMasuk.dc.html",
+    "FunTautan.dc.html",
+    "FunPixel.dc.html",
+    "FunAnalitik.dc.html",
+    "FunLinkEditor.dc.html"
+  ],
+  "pages": [],
+  "title": "Marky Booking Flow"
+}
