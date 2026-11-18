@@ -38,8 +38,8 @@ describe("buildChecklist", () => {
 
 describe("guidePageForPath", () => {
   it("memetakan rute dashboard", () => {
-    assert.equal(GUIDE_PAGE_KEYS.length, 13);
-    assert.equal(new Set(GUIDE_PAGE_KEYS).size, 13);
+    assert.equal(GUIDE_PAGE_KEYS.length, 16);
+    assert.equal(new Set(GUIDE_PAGE_KEYS).size, 16);
     assert.equal(guidePageForPath("/dashboard"), "today");
     assert.equal(guidePageForPath("/dashboard/bookings"), "bookings");
     assert.equal(guidePageForPath("/dashboard/bookings/baru"), "bookings");
@@ -47,6 +47,9 @@ describe("guidePageForPath", () => {
     assert.equal(guidePageForPath("/dashboard/denah"), "floor_plan");
     assert.equal(guidePageForPath("/dashboard/analitik"), "analytics");
     assert.equal(guidePageForPath("/dashboard/settings/ekspor"), "settings");
+    assert.equal(guidePageForPath("/dashboard/tautan"), "links");
+    assert.equal(guidePageForPath("/dashboard/iklan"), "ads");
+    assert.equal(guidePageForPath("/dashboard/lapangan"), "courts");
     assert.equal(guidePageForPath("/dashboard/servicesx"), null);
     assert.equal(guidePageForPath("/onboarding"), null);
   });

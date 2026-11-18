@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { findCategory } from "@/lib/business/catalog";
+import { findBusinessType, findCategory } from "@/lib/business/catalog";
 import type {
   AcquisitionSource,
   BookingChannel,
@@ -22,10 +22,10 @@ import { ONLINE_PRICE_MESSAGE, isChargeablePrice, serviceFieldsSchema } from "./
  * 5..480, harga non-negatif, dan format E.164 tetap punya satu sumber kebenaran.
  */
 
-/** Harus sama persis dengan enum di 20260830171006_onboarding_profile.sql. */
+/** Harus sama persis dengan enum business_category di migration (dijaga onboarding.test.ts). */
 export const BUSINESS_CATEGORY_VALUES = [
   "KECANTIKAN", "KESEHATAN", "FOTOGRAFI", "ACARA", "PENDIDIKAN",
-  "HEWAN", "OTOMOTIF", "SERVIS", "KONSULTASI", "LAINNYA",
+  "HEWAN", "OTOMOTIF", "SERVIS", "KONSULTASI", "OLAHRAGA", "LAINNYA",
 ] as const satisfies readonly BusinessCategory[];
 
 export const TEAM_SIZE_VALUES = [
@@ -199,14 +199,46 @@ export const hoursStepSchema = z
     }
   });
 
+/**
+ * Pengaturan sewa lapangan. Hanya sah untuk jenis usaha yang punya `sport` di
+ * katalog; aturan kelipatan dan batas sama dengan CHECK services_court_* di
+ * database (save_court_service tetap menolak yang lolos ke sini).
+ */
+export const courtSetupSchema = z
+  .object({
+    unitMinutes: z.literal(30), // semua olahraga memakai unit 30 menit
+    minMinutes: z.number().int(),
+    maxMinutes: z.number().int().max(480),
+  })
+  .refine(
+    (c) =>
+      c.minMinutes > 0 &&
+      c.minMinutes % c.unitMinutes === 0 &&
+      c.maxMinutes % c.unitMinutes === 0 &&
+      c.maxMinutes >= c.minMinutes,
+    "Pengaturan sewa tidak valid",
+  );
+
 /** Seluruh jawaban wajib, dikirim ke RPC complete_onboarding sebagai satu unit. */
 export const completeOnboardingSchema = onboardingSchema
   .extend({
     ...businessFields,
     service: wizardServiceSchema,
     hours: hoursStepSchema,
+    court: courtSetupSchema.nullish().transform((c) => c ?? null),
   })
-  .superRefine(refineBusinessType);
+  .superRefine(refineBusinessType)
+  .superRefine((data, ctx) => {
+    if (!data.court) return;
+    const sport = data.business_type_slug ? findBusinessType(data.business_type_slug)?.sport : undefined;
+    if (!sport) {
+      ctx.addIssue({ code: "custom", path: ["court"], message: "Jenis usaha ini tidak menyewakan lapangan" });
+    }
+    // Durasi layanan = lama main minimum.
+    if (data.court.minMinutes !== data.service.duration_minutes) {
+      ctx.addIssue({ code: "custom", path: ["court"], message: "Pengaturan sewa tidak valid" });
+    }
+  });
 
 export type CompleteOnboardingInput = z.input<typeof completeOnboardingSchema>;
 export type CompleteOnboardingValues = z.output<typeof completeOnboardingSchema>;

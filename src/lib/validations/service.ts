@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+import { findRuleOverlap, formatRuleOverlap } from "@/lib/booking/court";
 import { computeAmounts, MAX_ONLINE_CHARGE, MIN_ONLINE_CHARGE } from "@/lib/booking/payment-mode";
 
 /**
@@ -145,3 +146,49 @@ export const serviceSchema = serviceFieldsSchema
 
 export type ServiceInput = z.input<typeof serviceSchema>;
 export type ServiceValues = z.output<typeof serviceSchema>;
+
+/**
+ * Bidang sewa lapangan. Mencerminkan services_court_* (unit 30/60, maksimum
+ * <= 480 dan kelipatan unit, minimum kelipatan unit dan <= maksimum) serta
+ * save_court_pricing (jam mulai < selesai, tanpa tumpang tindih, maksimal 50
+ * baris per-hari).
+ */
+const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+const courtRuleSchema = z
+  .object({
+    days: z.array(z.number().int().min(1).max(7)).min(1, "Pilih minimal satu hari"),
+    start: z.string().regex(CLOCK, "Jam mulai tidak valid"),
+    end: z.string().regex(CLOCK, "Jam selesai tidak valid"),
+    pricePerHour: z.number("Harga wajib diisi").int("Harga harus bilangan bulat").positive("Harga harus lebih dari 0").max(MAX_SERVICE_PRICE, "Harga terlalu besar"),
+  })
+  .refine((r) => r.start < r.end, { path: ["end"], message: "Jam selesai harus setelah jam mulai" });
+
+export const courtServiceSchema = z
+  .object({
+    unit: z.coerce.number().pipe(z.union([z.literal(30), z.literal(60)], "Jam mulai tiap 30 menit atau 1 jam")),
+    minMinutes: z.coerce.number("Lama main minimum wajib diisi").int().positive("Lama main minimum wajib diisi"),
+    maxMinutes: z.coerce.number("Lama main maksimum wajib diisi").int().max(480, "Lama main maksimal 8 jam"),
+    courtIds: z.array(z.uuid()).min(1, "Pilih minimal satu lapangan"),
+    rules: z.array(courtRuleSchema).default([]),
+  })
+  .superRefine((v, ctx) => {
+    if (v.minMinutes % v.unit !== 0) {
+      ctx.addIssue({ code: "custom", path: ["minMinutes"], message: "Lama main minimum harus kelipatan jam mulai" });
+    }
+    if (v.maxMinutes % v.unit !== 0) {
+      ctx.addIssue({ code: "custom", path: ["maxMinutes"], message: "Lama main maksimum harus kelipatan jam mulai" });
+    }
+    if (v.maxMinutes < v.minMinutes) {
+      ctx.addIssue({ code: "custom", path: ["maxMinutes"], message: "Lama main maksimum tidak boleh lebih singkat dari minimum" });
+    }
+    if (v.rules.reduce((n, r) => n + r.days.length, 0) > 50) {
+      ctx.addIssue({ code: "custom", path: ["rules"], message: "Aturan jam ramai terlalu banyak. Gabungkan hari yang jam dan harganya sama." });
+    }
+    const overlap = findRuleOverlap(v.rules);
+    if (overlap) {
+      ctx.addIssue({ code: "custom", path: ["rules", overlap.ruleIndex], message: formatRuleOverlap(overlap) });
+    }
+  });
+
+export type CourtServiceValues = z.output<typeof courtServiceSchema>;

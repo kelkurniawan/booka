@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { normalizeVoucherCode, VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
+import { eventBodySchema } from "./funnel";
 import { usernameSchema, whatsappSchema } from "./merchant";
 
 /**
@@ -35,6 +36,12 @@ export const checkVoucherRequestSchema = z.object({
   username: usernameSchema,
   serviceId: z.uuid("Layanan tidak valid"),
   code: voucherCodeSchema,
+  // Sewa lapangan: jam mulai dan lama main supaya pratinjau memakai total sewa.
+  startUtc: z.iso.datetime().nullable().default(null),
+  durationMinutes: z.number().int().min(30).max(480).nullable().default(null),
+}).refine((v) => (v.startUtc === null) === (v.durationMinutes === null), {
+  message: "startUtc dan durationMinutes harus dikirim bersama",
+  path: ["durationMinutes"],
 });
 
 /**
@@ -55,6 +62,9 @@ export const checkoutSchema = z.object({
   partySize: z.number().int().min(1).max(200).nullable().default(null),
   areaId: z.uuid().nullable().default(null),
   tableId: z.uuid().nullable().default(null),
+  // Sewa lapangan: null courtId = "Mana saja"; keduanya null untuk layanan lain.
+  courtId: z.uuid("Lapangan tidak valid").nullable().default(null),
+  durationMinutes: z.number().int("Lama main tidak valid").min(30, "Lama main tidak valid").max(480, "Lama main tidak valid").nullable().default(null),
   customerNote: z
     .string()
     .trim()
@@ -89,6 +99,9 @@ export const createBookingRequestSchema = z.object({
   partySize: z.number().int().min(1).max(200).nullable().default(null),
   areaId: z.uuid().nullable().default(null),
   tableId: z.uuid().nullable().default(null),
+  // Sewa lapangan: null courtId = "Mana saja"; durasi dalam menit (DB yang memvalidasi kelipatan).
+  courtId: z.uuid().nullable().default(null),
+  durationMinutes: z.number().int().min(30).max(480).nullable().default(null),
   customerNote: z
     .string()
     .trim()
@@ -96,6 +109,10 @@ export const createBookingRequestSchema = z.object({
     .transform((v) => v || null)
     .nullable()
     .default(null),
+  // Atribusi funnel, opsional: klien lama tanpa dua field ini tetap valid.
+  // .catch(null): analitik tidak boleh membuat booking ditolak (400) bila bentuknya salah.
+  sessionId: z.uuid().nullable().default(null).catch(null),
+  attribution: eventBodySchema.shape.attribution.nullable().default(null).catch(null),
 });
 
 export type CreateBookingRequest = z.output<typeof createBookingRequestSchema>;

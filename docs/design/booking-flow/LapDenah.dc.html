@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Denah, foto, dan profil lapangan</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1d5e4d}a:hover{color:#164a3c}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1d5e4d;outline-offset:2px}
+button:disabled{cursor:not-allowed}
+ul{margin:0;padding:0;list-style:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 1240px; position: relative; overflow: hidden; background: #e9f6f1; color: #254a41; font-family: 'Inter', system-ui, sans-serif; box-sizing: border-box">
+
+  <header style="display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-bottom: 1px solid #cfe7de">
+    <a href="LapJadwal.dc.html" aria-label="Kembali ke pilihan jadwal" style="width: 44px; height: 44px; margin-left: -10px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #254a41">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+    </a>
+    <div style="display: flex; flex-direction: column">
+      <h1 style="margin: 0; font-weight: 700; font-size: 20px; line-height: 1.2">Denah lapangan</h1>
+      <span style="font-size: 13px; color: #4d7266">Sabtu 21 Nov, 16.30 sampai 18.00 WIB</span>
+    </div>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 20px; padding: 16px 16px 0">
+
+    <section aria-labelledby="denah-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="denah-h" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Denah tempat</h2>
+      <div role="radiogroup" aria-labelledby="denah-h" style="position: relative; height: 330px; border-radius: 16px; background: #ffffff; border: 1px solid #cfe7de; overflow: hidden">
+        <span aria-hidden="true" style="position: absolute; left: 12px; top: 10px; font-size: 11px; font-weight: 600; color: #4d7266">Gedung utama</span>
+        <span aria-hidden="true" style="position: absolute; left: 8px; top: 28px; width: 206px; height: 230px; border: 1px solid #cfe7de; border-radius: 10px"></span>
+        <span aria-hidden="true" style="position: absolute; left: 232px; top: 10px; font-size: 11px; font-weight: 600; color: #4d7266">Area outdoor</span>
+        <span aria-hidden="true" style="position: absolute; left: 228px; top: 28px; width: 120px; height: 230px; border: 1px dashed #a9cfc2; border-radius: 10px"></span>
+        <span aria-hidden="true" style="position: absolute; left: 8px; top: 272px; width: 120px; height: 44px; border-radius: 8px; background: #f2f8f5; font-size: 12px; color: #4d7266; display: flex; align-items: center; justify-content: center">Ruang ganti</span>
+        <span aria-hidden="true" style="position: absolute; left: 136px; top: 272px; width: 78px; height: 44px; border-radius: 8px; background: #f2f8f5; font-size: 12px; color: #4d7266; display: flex; align-items: center; justify-content: center">Kantin</span>
+        <span aria-hidden="true" style="position: absolute; left: 228px; top: 290px; width: 120px; height: 26px; border: 1px solid #a9cfc2; border-bottom: 0; border-radius: 6px 6px 0 0; font-size: 12px; color: #254a41; display: flex; align-items: center; justify-content: center">Pintu masuk</span>
+        <sc-for list="{{courts}}" as="c" hint-placeholder-count="3">
+          <button type="button" role="radio" aria-checked="{{c.checked}}" aria-label="{{c.aria}}" onClick="{{c.pick}}" style="{{c.style}}">
+            <svg width="100%" height="100%" viewBox="0 0 80 160" preserveAspectRatio="none" aria-hidden="true" style="position: absolute; inset: 0">
+              <rect x="6" y="6" width="68" height="148" fill="none" stroke="{{c.line}}" stroke-width="1.5"></rect>
+              <path d="M6 80 L74 80" stroke="{{c.line}}" stroke-width="3"></path>
+              <path d="M6 46 L74 46 M6 114 L74 114 M40 46 L40 114" stroke="{{c.line}}" stroke-width="1"></path>
+            </svg>
+            <span style="{{c.labelStyle}}"><strong>{{c.short}}</strong><span>{{c.state}}</span></span>
+          </button>
+        </sc-for>
+      </div>
+      <ul aria-label="Arti tanda" style="display: flex; flex-wrap: wrap; gap: 14px; font-size: 12px; color: #4d7266">
+        <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 4px; background: #1d5e4d"></span>Dipilih</li>
+        <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="box-sizing: border-box; width: 14px; height: 14px; border-radius: 4px; border: 2px solid #1d5e4d; background: #ffffff"></span>Kosong</li>
+        <li style="display: flex; align-items: center; gap: 6px"><span aria-hidden="true" style="box-sizing: border-box; width: 14px; height: 14px; border-radius: 4px; border: 1px dashed #4d7266; background: #eef3f1"></span>Terisi di jam ini</li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="prof-h" style="display: flex; flex-direction: column; gap: 12px; padding-bottom: 120px">
+      <sc-if value="{{hasPhotos}}" hint-placeholder-val="{{true}}">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div aria-label="{{galleryAria}}" role="region" style="display: flex; gap: 8px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -16px; padding: 0 16px">
+            <sc-for list="{{photos}}" as="p" hint-placeholder-count="3">
+              <svg width="300" height="190" viewBox="0 0 300 190" role="img" aria-label="{{p.alt}}" style="flex-shrink: 0; scroll-snap-align: start; border-radius: 14px">
+                <rect width="300" height="190" fill="{{p.wall}}"></rect>
+                <rect y="0" width="300" height="56" fill="{{p.roof}}"></rect>
+                <path d="{{p.glass}}" stroke="#ffffff" stroke-opacity="0.7" stroke-width="1.5" fill="none"></path>
+                <path d="M20 190 L92 70 L208 70 L280 190 Z" fill="{{p.turf}}"></path>
+                <path d="M20 190 L92 70 L208 70 L280 190 Z M52 135 L248 135 M150 70 L150 190" fill="none" stroke="#ffffff" stroke-width="2"></path>
+                <path d="M44 118 L256 118" stroke="#1b2a26" stroke-width="4"></path>
+                <path d="M44 118 L44 104 M256 118 L256 104" stroke="#1b2a26" stroke-width="3"></path>
+              </svg>
+            </sc-for>
+          </div>
+          <span style="font-size: 12px; color: #4d7266">{{photoCount}}</span>
+        </div>
+      </sc-if>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <h2 id="prof-h" style="margin: 0; font-size: 18px; font-weight: 700">{{sel.name}}</h2>
+        <ul aria-label="Ciri lapangan" style="display: flex; flex-wrap: wrap; gap: 6px">
+          <sc-for list="{{sel.tags}}" as="t" hint-placeholder-count="3"><li style="padding: 4px 10px; border-radius: 999px; background: #d7ece4; color: #1d4d40; font-size: 12px; font-weight: 600">{{t}}</li></sc-for>
+        </ul>
+      </div>
+      <p style="margin: 0; font-size: 14px; line-height: 1.55">{{sel.desc}}</p>
+      <dl style="margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px">
+        <dt style="color: #4d7266">Ukuran</dt><dd style="margin: 0">10 x 20 meter</dd>
+        <dt style="color: #4d7266">Permukaan</dt><dd style="margin: 0">{{sel.surface}}</dd>
+        <dt style="color: #4d7266">Di jam ini</dt><dd style="margin: 0; font-weight: 600">{{sel.state}}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #cfe7de; box-shadow: 0 -8px 24px rgba(37,74,65,0.06); display: flex; flex-direction: column; gap: 6px">
+    <sc-if value="{{sel.free}}" hint-placeholder-val="{{true}}">
+      <a href="LapJadwal.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #1d5e4d; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Pilih {{sel.name}}</a>
+    </sc-if>
+    <sc-if value="{{sel.busy}}" hint-placeholder-val="{{false}}">
+      <p role="status" style="margin: 0; padding: 14px; border-radius: 14px; border: 1px dashed #a9cfc2; text-align: center; font-weight: 600">{{sel.name}} terisi di jam ini. Pilih lapangan lain di denah.</p>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"photoState":{"editor":"enum","options":["Ada foto","Belum ada foto"],"default":"Ada foto","section":"Status"},"$preview":{"width":390,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'l2' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var C = {
+      l1: { name: 'Lapangan 1', short: 'L1', x: 18, y: 36, busy: true, tags: ['Indoor', 'Kaca panoramik', 'Tribun penonton'], surface: 'Rumput sintetis biru', desc: 'Lapangan utama dengan dinding kaca penuh. Ada tribun kecil untuk teman yang menonton.', wall: '#cfe0ea', roof: '#a9c4d6', turf: '#2b5f8a' },
+      l2: { name: 'Lapangan 2', short: 'L2', x: 116, y: 36, busy: false, tags: ['Indoor', 'Dekat ruang ganti'], surface: 'Rumput sintetis hijau', desc: 'Paling dekat ruang ganti dan kantin. Cocok untuk main santai sebelum atau sesudah makan.', wall: '#d8e4dc', roof: '#b5cbbd', turf: '#2f7d5b' },
+      l3: { name: 'Lapangan 3', short: 'L3', x: 248, y: 36, busy: false, tags: ['Outdoor beratap', 'Lampu LED'], surface: 'Rumput sintetis hijau', desc: 'Beratap penuh, jadi tetap bisa dipakai saat hujan ringan. Lampu LED terang untuk main malam.', wall: '#e6e1d3', roof: '#c9c2ad', turf: '#3d7f6a' }
+    };
+    var courts = Object.keys(C).map(function (k) {
+      var c = C[k], on = st.sel === k;
+      var state = c.busy ? 'Terisi' : on ? 'Dipilih' : 'Kosong';
+      return { short: c.short, state: state, checked: on, line: on ? '#ffffff' : c.busy ? '#9db5ad' : '#1d5e4d',
+        aria: c.name + ', ' + (c.busy ? 'terisi di jam ini' : 'kosong') + ', ' + c.tags[0],
+        pick: function () { self.setState({ sel: k }); },
+        style: 'position: absolute; left: ' + c.x + 'px; top: ' + c.y + 'px; width: 86px; height: 210px; padding: 0; border-radius: 6px; overflow: hidden; font: inherit; cursor: pointer; ' + (on ? 'background: #1d5e4d; color: #ffffff; border: 2px solid #1d5e4d' : c.busy ? 'background: #eef3f1; color: #4d7266; border: 1px dashed #4d7266' : 'background: #ffffff; color: #1d5e4d; border: 2px solid #1d5e4d'),
+        labelStyle: 'position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; margin: 0 auto; width: 64px; padding: 6px 0; border-radius: 8px; font-size: 12px; ' + (on ? 'background: #1d5e4d' : c.busy ? 'background: #eef3f1' : 'background: #ffffff') };
+    });
+    var s = C[st.sel];
+    var glass = 'M0 56 L300 56 M60 0 L60 56 M120 0 L120 56 M180 0 L180 56 M240 0 L240 56';
+    var views = ['dari sisi tribun', 'dari belakang garis servis', 'saat malam dengan lampu menyala'];
+    var photos = views.map(function (v, i) { return { alt: 'Foto contoh ' + s.name + ' ' + v, wall: i === 2 ? '#2c3a36' : s.wall, roof: i === 2 ? '#1f2a27' : s.roof, turf: s.turf, glass: glass }; });
+    var has = (this.props.photoState ?? 'Ada foto') === 'Ada foto';
+    return { courts: courts, photos: photos, hasPhotos: has, galleryAria: 'Foto ' + s.name + ', geser untuk foto lain', photoCount: '3 foto, geser ke samping',
+      sel: { name: s.name, tags: s.tags, desc: s.desc, surface: s.surface, state: s.busy ? 'Terisi' : 'Kosong', free: !s.busy, busy: s.busy } };
+  }
+}
+</script>
+</body>
+</html>

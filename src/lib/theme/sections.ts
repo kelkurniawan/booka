@@ -1,30 +1,33 @@
 // Harus sama dengan constraint merchant_themes_section_order_valid dan
-// merchant_themes_hidden_sections_valid di migration 20261118000200.
-export const PAGE_SECTIONS = ["PROMO", "SERVICES", "FAQ"] as const;
+// merchant_themes_hidden_sections_valid di migration 20261125000200.
+export const PAGE_SECTIONS = ["LINKS", "PROMO", "SERVICES", "FAQ"] as const;
 export type PageSection = (typeof PAGE_SECTIONS)[number];
 
 /** SERVICES tidak bisa disembunyikan: halaman tanpa layanan tidak bisa menerima pesanan. */
-export const HIDEABLE_SECTIONS = ["PROMO", "FAQ"] as const;
+export const HIDEABLE_SECTIONS = ["LINKS", "PROMO", "FAQ"] as const;
 
 export const SECTION_LABELS: Record<PageSection, string> = {
+  LINKS: "Tautan",
   PROMO: "Banner promo",
   SERVICES: "Layanan",
   FAQ: "Pertanyaan umum",
 };
 
-/** Urutan lengkap: kunci asing dan duplikat dibuang, yang hilang ditambahkan di urutan bawaan. */
+/** Urutan lengkap: kunci asing dan duplikat dibuang; LINKS yang hilang di depan, sisanya di urutan bawaan. */
 export function normalizeSectionOrder(
   order: readonly string[] | null | undefined,
 ): PageSection[] {
   const hasil: PageSection[] = [];
-  for (const kunci of [...(order ?? []), ...PAGE_SECTIONS]) {
+  // Baris lama (tiga bagian) tidak punya LINKS: anggap LINKS paling depan.
+  const awal = order?.includes("LINKS") ? [] : ["LINKS"];
+  for (const kunci of [...awal, ...(order ?? []), ...PAGE_SECTIONS]) {
     const bagian = PAGE_SECTIONS.find((s) => s === kunci);
     if (bagian && !hasil.includes(bagian)) hasil.push(bagian);
   }
   return hasil;
 }
 
-/** Urutan tampil: urutan lengkap tanpa bagian yang disembunyikan (hanya PROMO/FAQ). */
+/** Urutan tampil: urutan lengkap tanpa bagian yang disembunyikan (LINKS/PROMO/FAQ). */
 export function visibleSections(
   order: readonly string[] | null | undefined,
   hidden: readonly string[] | null | undefined,

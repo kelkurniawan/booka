@@ -18,8 +18,11 @@ import { createClient } from "@/lib/supabase/server";
  * tidak pernah keluar dari server) dan `access_token` booking (tautan
  * status milik pelanggan, bukan data merchant).
  */
-export async function GET() {
-  const supabase = await createClient();
+export const GET = () => handleExport();
+
+/** Isi GET; klien disuntikkan supaya bisa diuji tanpa DB. */
+export async function handleExport(createSupabase: () => Promise<Pick<Awaited<ReturnType<typeof createClient>>, "auth" | "from">> = createClient) {
+  const supabase = await createSupabase();
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -28,7 +31,7 @@ export async function GET() {
     return NextResponse.json({ error: "Tidak diizinkan" }, { status: 401 });
   }
 
-  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables] =
+  const [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables, adLinks, merchantLinks, tracking, courts, serviceCourts, courtPriceRules, courtMedia, venueAreas, venueMarkers] =
     await Promise.all([
       supabase.from("merchants").select("*").eq("id", user.id).maybeSingle(),
       supabase.from("merchant_profiles").select("*").eq("merchant_id", user.id).maybeSingle(),
@@ -40,7 +43,7 @@ export async function GET() {
       supabase
         .from("bookings")
         .select(
-          "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, cancelled_at, cancel_reason, expires_at, created_at, voucher_code, discount_amount, party_size, area_id, table_id, joined_table_id, table_label, customer_note, capacity_mode",
+          "id, service_id, service_name, service_price, duration_minutes, start_datetime, end_datetime, customer_name, customer_whatsapp, status, payment_provider, payment_reference, paid_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, paid_on_site_method, attended_at, no_show_at, cancelled_at, cancel_reason, expires_at, created_at, voucher_code, discount_amount, party_size, area_id, table_id, joined_table_id, table_label, customer_note, capacity_mode, court_id, court_name",
         )
         .eq("merchant_id", user.id)
         .order("start_datetime", { ascending: true }),
@@ -53,9 +56,18 @@ export async function GET() {
       supabase.from("merchant_banners").select("*").eq("merchant_id", user.id),
       supabase.from("dining_areas").select("*").eq("merchant_id", user.id),
       supabase.from("dining_tables").select("*").eq("merchant_id", user.id),
+      supabase.from("ad_links").select("*").eq("merchant_id", user.id),
+      supabase.from("merchant_links").select("*").eq("merchant_id", user.id),
+      supabase.from("merchant_tracking").select("*").eq("merchant_id", user.id).maybeSingle(),
+      supabase.from("courts").select("*").eq("merchant_id", user.id),
+      supabase.from("service_courts").select("*").eq("merchant_id", user.id),
+      supabase.from("court_price_rules").select("*").eq("merchant_id", user.id),
+      supabase.from("court_media").select("*").eq("merchant_id", user.id),
+      supabase.from("venue_areas").select("*").eq("merchant_id", user.id),
+      supabase.from("venue_markers").select("*").eq("merchant_id", user.id),
     ]);
 
-  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables]
+  const failed = [merchant, profile, theme, services, media, availability, faqs, bookings, connections, settings, vouchers, banners, diningAreas, diningTables, adLinks, merchantLinks, tracking, courts, serviceCourts, courtPriceRules, courtMedia, venueAreas, venueMarkers]
     .map((result) => result.error)
     .find(Boolean);
 
@@ -86,6 +98,15 @@ export async function GET() {
     banners: banners.data,
     dining_areas: diningAreas.data,
     dining_tables: diningTables.data,
+    ad_links: adLinks.data,
+    merchant_links: merchantLinks.data,
+    merchant_tracking: tracking.data,
+    courts: courts.data,
+    service_courts: serviceCourts.data,
+    court_price_rules: courtPriceRules.data,
+    court_media: courtMedia.data,
+    venue_areas: venueAreas.data,
+    venue_markers: venueMarkers.data,
   };
 
   const date = payload.exported_at.slice(0, 10);

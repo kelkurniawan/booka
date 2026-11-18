@@ -1,4 +1,4 @@
-import type { BusinessCategory } from "@/types/database";
+import type { BusinessCategory, CourtSport } from "@/types/database";
 
 /**
  * Katalog jenis usaha. SENGAJA di TypeScript, bukan tabel referensi --
@@ -18,6 +18,15 @@ export type ServiceTemplate = {
    * TIDAK PERNAH mengisi kolom harga -- harga adalah keputusan merchant.
    */
   priceHint: string;
+  /** Hanya template sewa lapangan: layanan jadi sewa per jam dengan dua lapangan contoh. */
+  court?: CourtTemplate;
+};
+
+/** Pengaturan sewa dalam menit. `durationMinutes` template = lama main minimum. */
+export type CourtTemplate = {
+  unitMinutes: 30 | 60;
+  minMinutes: number;
+  maxMinutes: number;
 };
 
 export type BusinessType = {
@@ -25,6 +34,8 @@ export type BusinessType = {
   slug: string;
   label: string;
   templates: ServiceTemplate[];
+  /** Olahraga lapangan: dipakai untuk `courts.sport` dua lapangan contoh. */
+  sport?: CourtSport;
 };
 
 export type BusinessCategoryEntry = {
@@ -595,6 +606,78 @@ export const BUSINESS_CATEGORIES: readonly BusinessCategoryEntry[] = [
           { name: "Desain konten media sosial", durationMinutes: 60, priceHint: "Umumnya Rp 100.000-300.000" },
           { name: "Desain kemasan produk", durationMinutes: 120, priceHint: "Umumnya Rp 300.000-800.000" },
           { name: "Konsultasi branding", durationMinutes: 60, priceHint: "Umumnya Rp 250.000-600.000" },
+        ],
+      },
+    ],
+  },
+  {
+    id: "OLAHRAGA",
+    label: "Olahraga & Sewa Lapangan",
+    icon: "Trophy",
+    types: [
+      {
+        slug: "padel",
+        label: "Padel",
+        sport: "PADEL",
+        templates: [
+          {
+            name: "Sewa lapangan Padel",
+            durationMinutes: 60,
+            priceHint: "Harga per jam. Umumnya Rp 150.000-350.000",
+            court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+          },
+        ],
+      },
+      {
+        slug: "futsal",
+        label: "Futsal",
+        sport: "FUTSAL",
+        templates: [
+          {
+            name: "Sewa lapangan Futsal",
+            durationMinutes: 60,
+            priceHint: "Harga per jam. Umumnya Rp 100.000-250.000",
+            court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+          },
+        ],
+      },
+      {
+        slug: "mini-soccer",
+        label: "Mini soccer",
+        sport: "MINI_SOCCER",
+        templates: [
+          {
+            name: "Sewa lapangan Mini soccer",
+            durationMinutes: 60,
+            priceHint: "Harga per jam. Umumnya Rp 250.000-600.000",
+            court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+          },
+        ],
+      },
+      {
+        slug: "badminton",
+        label: "Badminton",
+        sport: "BADMINTON",
+        templates: [
+          {
+            name: "Sewa lapangan Badminton",
+            durationMinutes: 60,
+            priceHint: "Harga per jam. Umumnya Rp 40.000-100.000",
+            court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+          },
+        ],
+      },
+      {
+        slug: "tenis",
+        label: "Tenis",
+        sport: "TENIS",
+        templates: [
+          {
+            name: "Sewa lapangan Tenis",
+            durationMinutes: 60,
+            priceHint: "Harga per jam. Umumnya Rp 60.000-200.000",
+            court: { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 },
+          },
         ],
       },
     ],

@@ -10,7 +10,7 @@ import {
 } from "./catalog";
 
 describe("katalog jenis usaha", () => {
-  it("memuat sepuluh kategori sesuai enum business_category", () => {
+  it("memuat sebelas kategori sesuai enum business_category", () => {
     assert.deepEqual(
       BUSINESS_CATEGORIES.map((c) => c.id),
       [
@@ -23,6 +23,7 @@ describe("katalog jenis usaha", () => {
         "OTOMOTIF",
         "SERVIS",
         "KONSULTASI",
+        "OLAHRAGA",
         "LAINNYA",
       ],
     );
@@ -55,8 +56,10 @@ describe("katalog jenis usaha", () => {
     for (const category of BUSINESS_CATEGORIES) {
       for (const type of category.types) {
         assert.ok(
-          type.templates.length >= 4 && type.templates.length <= 6,
-          `${type.slug} punya ${type.templates.length} template, harus 4-6`,
+          type.sport
+            ? type.templates.length === 1
+            : type.templates.length >= 4 && type.templates.length <= 6,
+          `${type.slug} punya ${type.templates.length} template, harus 4-6 (atau 1 untuk jenis lapangan)`,
         );
       }
     }
@@ -119,5 +122,42 @@ describe("katalog jenis usaha", () => {
   it("menemukan kategori berdasarkan id", () => {
     assert.equal(findCategory("HEWAN")?.label, "Perawatan Hewan");
     assert.equal(findCategory("KULINER" as never), undefined);
+  });
+});
+
+describe("kategori OLAHRAGA", () => {
+  const jenis = typesForCategory("OLAHRAGA");
+
+  it("memuat lima jenis lapangan dengan sport sesuai enum court_sport", () => {
+    assert.deepEqual(
+      jenis.map((t) => [t.slug, t.sport]),
+      [
+        ["padel", "PADEL"],
+        ["futsal", "FUTSAL"],
+        ["mini-soccer", "MINI_SOCCER"],
+        ["badminton", "BADMINTON"],
+        ["tenis", "TENIS"],
+      ],
+    );
+    assert.equal(findCategory("OLAHRAGA")?.icon, "Trophy");
+  });
+
+  it("template sewa: nama, unit 30, minimum 60, maksimum 120, petunjuk harga per jam", () => {
+    for (const t of jenis) {
+      const [template] = t.templates;
+      assert.match(template.name, /^Sewa lapangan /);
+      assert.deepEqual(template.court, { unitMinutes: 30, minMinutes: 60, maxMinutes: 120 });
+      assert.equal(template.durationMinutes, 60);
+      assert.match(template.priceHint, /per jam/);
+    }
+  });
+
+  it("kategori lain tidak punya template sewa", () => {
+    for (const c of BUSINESS_CATEGORIES.filter((k) => k.id !== "OLAHRAGA")) {
+      for (const t of c.types) {
+        assert.equal(t.sport, undefined, t.slug);
+        for (const tpl of t.templates) assert.equal(tpl.court, undefined, tpl.name);
+      }
+    }
   });
 });

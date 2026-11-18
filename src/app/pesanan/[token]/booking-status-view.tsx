@@ -18,6 +18,7 @@ import { BookingLiveStatus } from "./booking-live-status";
 import { CancelBookingButton } from "./cancel-booking-button";
 import { ContactButton, type ContactData } from "./contact-sheet";
 import { PayNowButton } from "./pay-now-button";
+import { FinishButton } from "./finish-button";
 import { ReminderSummary } from "./reminder-summary";
 
 export type BookingPageRow = {
@@ -47,8 +48,12 @@ export type BookingPageRow = {
   discount_amount: number;
   party_size: number | null;
   table_label: string | null;
+  /** Sewa lapangan: nama lapangan yang dipesan. */
+  court_name: string | null;
   customer_note: string | null;
   capacity_mode: TableMode;
+  /** Untuk /{username}/terima-kasih?e=; bukan token akses. */
+  pixel_event_id: string;
 };
 
 export type ReminderView = {
@@ -162,6 +167,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function ReservationRows({ booking }: { booking: BookingPageRow }) {
   return (
     <>
+      {booking.court_name ? <Row label="Lapangan">{booking.court_name}</Row> : null}
       {booking.party_size ? (
         <Row label="Tamu">
           {booking.capacity_mode !== "NONE"
@@ -305,14 +311,17 @@ function Booked({
       </section>
 
       <div className="flex flex-col gap-3">
+        {booking.status === "PAID" && merchantUsername ? (
+          <FinishButton username={merchantUsername} eventId={booking.pixel_event_id} />
+        ) : null}
         {manage.cancel.allowed ? <CancelBookingButton token={token} policy={policy} /> : null}
         {merchantUsername ? (
-          <Link
+          <a
             href={ROUTES.merchantPage(merchantUsername)}
             className="text-muted-foreground hover:text-foreground text-center text-sm underline underline-offset-4"
           >
             Kembali ke halaman {merchantName}
-          </Link>
+          </a>
         ) : null}
       </div>
 
@@ -365,7 +374,7 @@ function ExpiredOrCancelled({
 
       {merchantUsername ? (
         <Button asChild variant="outline">
-          <Link href={ROUTES.merchantPage(merchantUsername)}>Pesan ulang di {merchantName}</Link>
+          <a href={ROUTES.merchantPage(merchantUsername)}>Pesan ulang di {merchantName}</a>
         </Button>
       ) : null}
     </div>

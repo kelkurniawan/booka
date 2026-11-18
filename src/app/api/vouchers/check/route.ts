@@ -17,7 +17,14 @@ const MAX_BODY_BYTES = 1024;
  * WhatsApp, jadi tidak bisa dipakai menebak riwayat pelanggan. Rate limit
  * 10 per ip+merchant per 15 menit; gagal memeriksa rate limit = ditolak (503).
  */
-export async function POST(request: NextRequest) {
+export const POST = (request: NextRequest) => handleVoucherCheck(request);
+
+/** Isi POST; klien admin disuntikkan supaya bisa diuji tanpa DB. */
+export async function handleVoucherCheck(
+  request: Request,
+  createClient: () => ReturnType<typeof createAdminClient> = createAdminClient,
+  ipHash: (headers: Headers) => string = (h) => hashClientIp(extractClientIp(h)),
+) {
   const text = await readBodyText(request, MAX_BODY_BYTES);
   let json: unknown = null;
   try {
@@ -29,9 +36,9 @@ export async function POST(request: NextRequest) {
   if (!parsed.success) {
     return NextResponse.json({ error: "Data kode voucher tidak valid" }, { status: 400 });
   }
-  const { username, serviceId, code } = parsed.data;
+  const { username, serviceId, code, startUtc, durationMinutes } = parsed.data;
 
-  const supabase = createAdminClient();
+  const supabase = createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
@@ -46,9 +53,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Merchant tidak ditemukan" }, { status: 404 });
   }
 
-  const ipHash = hashClientIp(extractClientIp(request.headers));
+  const ipHashValue = ipHash(request.headers);
   const { data: allowed, error: rateError } = await supabase.rpc("check_voucher_rate_limit", {
-    p_ip_hash: ipHash,
+    p_ip_hash: ipHashValue,
     p_merchant_id: merchant.id,
   });
   if (rateError) {
@@ -72,6 +79,9 @@ export async function POST(request: NextRequest) {
     p_merchant_id: merchant.id,
     p_code: code,
     p_service_id: serviceId,
+    // Hanya dipakai layanan sewa: min_spend dan diskon dihitung dari total sewa.
+    p_start_datetime: startUtc ?? undefined,
+    p_duration_minutes: durationMinutes ?? undefined,
   });
   const row = data?.[0];
   if (error || !row) {

@@ -34,6 +34,8 @@ export type ThemePreset =
   | "BERANI"
   | "ELEGAN";
 export type BackgroundStyle = "SOLID" | "GRADIENT" | "IMAGE" | "MOTION";
+export type AdChannel = "IG_BIO" | "META_ADS" | "TIKTOK_ADS" | "WA_STATUS" | "OTHER";
+export type FunnelEventKind = "VIEW" | "SERVICE" | "CHECKOUT" | "BOOKED" | "PAID" | "LINK_CLICK";
 export type ButtonStyle = "FILLED" | "OUTLINE" | "SOFT";
 export type BackgroundMotion = "BENTUK" | "GELOMBANG" | "AURORA" | "PARTIKEL";
 export type MotionSpeed = "SLOW" | "NORMAL";
@@ -41,6 +43,9 @@ export type FontPair = "NETRAL" | "KLASIK" | "MODERN" | "HANGAT" | "TEGAS" | "RA
 export type TextScale = "KECIL" | "SEDANG" | "BESAR";
 export type CornerStyle = "TAJAM" | "LEMBUT" | "BULAT";
 export type MediaKind = "IMAGE" | "VIDEO";
+
+export type CourtSport = "PADEL" | "FUTSAL" | "MINI_SOCCER" | "BADMINTON" | "TENIS";
+export type CourtEnvironment = "INDOOR" | "OUTDOOR" | "OUTDOOR_BERATAP";
 
 export type BusinessCategory =
   | "KECANTIKAN"
@@ -52,6 +57,7 @@ export type BusinessCategory =
   | "OTOMOTIF"
   | "SERVIS"
   | "KONSULTASI"
+  | "OLAHRAGA"
   | "LAINNYA";
 
 export type TeamSize = "SENDIRI" | "KECIL_2_5" | "MENENGAH_6_15" | "BESAR_15_PLUS";
@@ -170,7 +176,10 @@ export type GuidePageKey =
   | "promo"
   | "domain"
   | "billing"
-  | "settings";
+  | "settings"
+  | "links"
+  | "ads"
+  | "courts";
 
 /** Progres panduan. Klien hanya membaca; tulis lewat save_onboarding_progress. */
 export type MerchantOnboardingProgress = {
@@ -202,6 +211,9 @@ export type MerchantTheme = {
   button_style: ButtonStyle;
   section_order: string[];
   hidden_sections: string[];
+  show_social_icons: boolean;
+  /** Ikon WhatsApp publik; bawaan false (opt-in). */
+  public_whatsapp: boolean;
   background_motion: BackgroundMotion;
   background_motion_speed: MotionSpeed;
   created_at: string;
@@ -225,6 +237,10 @@ export type Service = {
   party_max: number | null;
   /** Terisi = layanan reservasi (15..480 menit), memakai kapasitas restoran. */
   seat_duration_minutes: number | null;
+  /** Terisi (30 atau 60) = layanan sewa lapangan; `price` jadi harga per jam. */
+  court_unit_minutes: number | null;
+  /** Lama main maksimum, kelipatan unit, maksimal 480; null bila bukan sewa. */
+  court_max_minutes: number | null;
   created_at: string;
   updated_at: string;
 };
@@ -422,6 +438,22 @@ export type Booking = {
   customer_note: string | null;
   /** Cara booking ini memakai tempat; menentukan eksklusi yang berlaku. */
   capacity_mode: TableMode;
+  /** Lapangan sewa; null untuk layanan bukan sewa. Dijaga bookings_court_no_overlap. */
+  court_id: string | null;
+  /** Snapshot nama lapangan; ikut berubah bila jadwal ulang pindah lapangan. */
+  court_name: string | null;
+  /** Atribusi funnel; hanya booking ONLINE. Tanpa session_id booking tidak masuk funnel. */
+  session_id: string | null;
+  /** null juga bila ad_link yang dikirim milik merchant lain. */
+  ad_link_id: string | null;
+  /** Maksimal 64 karakter. */
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  /** Host saja, maksimal 100. */
+  referrer_host: string | null;
+  /** event_id pixel: Lead = ini, Purchase = ini + ":paid". Bukan token akses. */
+  pixel_event_id: string;
   created_at: string;
   updated_at: string;
 };
@@ -490,6 +522,61 @@ export type MerchantBanner = {
 /** Kolom yang boleh dibaca anon; hanya banner yang sedang tayang. */
 export type PublicBanner = Omit<MerchantBanner, "published" | "created_at" | "updated_at">;
 
+/** Tautan iklan per kanal. Anon tidak punya akses langsung; resolve lewat resolve_ad_link. */
+export type AdLink = {
+  id: string;
+  merchant_id: string;
+  slug: string;
+  name: string;
+  channel: AdChannel;
+  service_id: string | null;
+  voucher_code: string | null;
+  archived_at: string | null;
+  created_at: string;
+};
+
+/** Kejadian funnel. Anon tidak punya akses; BOOKED/PAID hanya ditulis server. */
+export type FunnelEvent = {
+  id: string;
+  merchant_id: string;
+  session_id: string;
+  kind: FunnelEventKind;
+  ad_link_id: string | null;
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  /** Host saja, pola ^[a-z0-9.-]{1,100}$. */
+  referrer_host: string | null;
+  service_id: string | null;
+  booking_id: string | null;
+  merchant_link_id: string | null;
+  created_at: string;
+};
+
+/** ID pixel merchant. Anon hanya lewat get_public_tracking (ID yang aktif). */
+export type MerchantTracking = {
+  merchant_id: string;
+  meta_pixel_id: string | null;
+  tiktok_pixel_id: string | null;
+  ga4_measurement_id: string | null;
+  meta_enabled: boolean;
+  tiktok_enabled: boolean;
+  ga4_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+/** Tautan link-in-bio, maksimal 8 per merchant, url selalu https. */
+export type MerchantLink = {
+  id: string;
+  merchant_id: string;
+  label: string;
+  url: string;
+  sort_order: number;
+  is_visible: boolean;
+  created_at: string;
+};
+
 export type MerchantSettings = {
   merchant_id: string;
   allow_pay_on_site: boolean;
@@ -532,6 +619,81 @@ export type MerchantSettings = {
   created_at: string;
   updated_at: string;
 };
+
+export type Court = {
+  id: string;
+  merchant_id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  sport: CourtSport;
+  environment: CourtEnvironment;
+  surface: string | null;
+  description: string | null;
+  features: string[];
+  /** Posisi denah; hanya ditulis save_venue_layout. Keduanya null atau terisi. */
+  pos_x: number | null;
+  pos_y: number | null;
+  rotation: 0 | 90;
+  created_at: string;
+};
+
+export type ServiceCourt = {
+  service_id: string;
+  court_id: string;
+  merchant_id: string;
+};
+
+export type CourtPriceRule = {
+  id: string;
+  merchant_id: string;
+  service_id: string;
+  /** 1 (Senin) sampai 7 (Minggu), ISO. */
+  day_of_week: number;
+  /** "HH:MM:SS", tanpa lewat tengah malam. */
+  start_time: string;
+  end_time: string;
+  price_per_hour: number;
+};
+
+export type CourtMedia = {
+  id: string;
+  court_id: string;
+  merchant_id: string;
+  path: string;
+  /** Kosong tersimpan, tetapi foto tanpa alt tidak tampil di halaman publik. */
+  alt_text: string | null;
+  width: number;
+  height: number;
+  sort_order: number;
+  created_at: string;
+};
+
+export type VenueArea = {
+  id: string;
+  merchant_id: string;
+  label: string;
+  pos_x: number;
+  pos_y: number;
+  width: number;
+  height: number;
+  sort_order: number;
+};
+
+export type VenueMarker = VenueArea;
+
+/** Bentuk jsonb dari get_court_profiles (anon): hanya kolom tampilan. */
+export type CourtProfile = Pick<
+  Court,
+  | "id" | "name" | "sort_order" | "sport" | "environment" | "surface" | "description"
+  | "features" | "pos_x" | "pos_y" | "rotation"
+> & {
+  service_ids: string[];
+  /** Hanya foto beralt-teks, urut sort_order. */
+  photos: Pick<CourtMedia, "path" | "alt_text" | "width" | "height" | "sort_order">[];
+};
+
+export type VenueAreaView = Pick<VenueArea, "id" | "label" | "pos_x" | "pos_y" | "width" | "height">;
 
 export type DiningArea = {
   id: string;
@@ -657,6 +819,8 @@ export type Database = {
           | "party_min"
           | "party_max"
           | "seat_duration_minutes"
+          | "court_unit_minutes"
+          | "court_max_minutes"
         > &
           Partial<
             Pick<
@@ -665,6 +829,8 @@ export type Database = {
               | "party_min"
               | "party_max"
               | "seat_duration_minutes"
+              | "court_unit_minutes"
+              | "court_max_minutes"
               | "is_active"
               | "sort_order"
               | "payment_mode"
@@ -804,11 +970,27 @@ export type Database = {
           | "table_label"
           | "customer_note"
           | "capacity_mode"
+          | "court_id"
+          | "court_name"
+          | "session_id"
+          | "ad_link_id"
+          | "utm_source"
+          | "utm_medium"
+          | "utm_campaign"
+          | "referrer_host"
+          | "pixel_event_id"
         > &
           Partial<
             Pick<
               Booking,
               | "id"
+              | "session_id"
+              | "ad_link_id"
+              | "utm_source"
+              | "utm_medium"
+              | "utm_campaign"
+              | "referrer_host"
+              | "pixel_event_id"
               | "party_size"
               | "area_id"
               | "table_id"
@@ -816,6 +998,8 @@ export type Database = {
               | "table_label"
               | "customer_note"
               | "capacity_mode"
+              | "court_id"
+              | "court_name"
               | "source"
               | "merchant_reschedule_count"
               | "voucher_id"
@@ -874,6 +1058,34 @@ export type Database = {
         Update: Partial<Omit<Voucher, "id" | "merchant_id" | Timestamps>>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
+      ad_links: {
+        Row: AdLink;
+        Insert: Pick<AdLink, "merchant_id" | "slug" | "name" | "channel"> &
+          Partial<Pick<AdLink, "service_id" | "voucher_code">>;
+        Update: Partial<Pick<AdLink, "name" | "channel" | "service_id" | "voucher_code" | "archived_at">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      // Ditulis service_role (/api/events) dan fungsi definer; authenticated hanya membaca miliknya.
+      funnel_events: {
+        Row: FunnelEvent;
+        Insert: Pick<FunnelEvent, "merchant_id" | "session_id" | "kind"> &
+          Partial<Omit<FunnelEvent, "id" | "merchant_id" | "session_id" | "kind" | "created_at">>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_tracking: {
+        Row: MerchantTracking;
+        Insert: Partial<Omit<MerchantTracking, "merchant_id" | Timestamps>> & { merchant_id: string };
+        Update: Partial<Omit<MerchantTracking, "merchant_id" | Timestamps>>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      merchant_links: {
+        Row: MerchantLink;
+        Insert: Pick<MerchantLink, "merchant_id" | "label" | "url"> &
+          Partial<Pick<MerchantLink, "id" | "sort_order" | "is_visible">>;
+        Update: Partial<Pick<MerchantLink, "label" | "url" | "sort_order" | "is_visible">>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
       merchant_banners: {
         Row: MerchantBanner;
         Insert: Pick<MerchantBanner, "merchant_id" | "source"> &
@@ -921,6 +1133,81 @@ export type Database = {
             | "auto_join_tables"
           >
         >;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      courts: {
+        Row: Court;
+        // pos_x, pos_y, rotation hanya lewat save_venue_layout.
+        Insert: Pick<Court, "merchant_id" | "name"> &
+          Partial<
+            Pick<
+              Court,
+              | "id"
+              | "sort_order"
+              | "is_active"
+              | "sport"
+              | "environment"
+              | "surface"
+              | "description"
+              | "features"
+            >
+          >;
+        Update: Partial<
+          Pick<
+            Court,
+            | "name"
+            | "sort_order"
+            | "is_active"
+            | "sport"
+            | "environment"
+            | "surface"
+            | "description"
+            | "features"
+          >
+        >;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      service_courts: {
+        Row: ServiceCourt;
+        Insert: ServiceCourt;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"court_id", "courts">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      // Aturan harga hanya ditulis lewat RPC save_court_pricing.
+      court_price_rules: {
+        Row: CourtPriceRule;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [
+          Relationship<"service_id", "services">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      court_media: {
+        Row: CourtMedia;
+        Insert: Omit<CourtMedia, "id" | "created_at" | "sort_order"> &
+          Partial<Pick<CourtMedia, "id" | "sort_order">>;
+        Update: Partial<Pick<CourtMedia, "alt_text" | "sort_order">>;
+        Relationships: [
+          Relationship<"court_id", "courts">,
+          Relationship<"merchant_id", "merchants">,
+        ];
+      };
+      // Area dan penanda denah venue hanya ditulis lewat RPC save_venue_layout.
+      venue_areas: {
+        Row: VenueArea;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
+        Relationships: [Relationship<"merchant_id", "merchants">];
+      };
+      venue_markers: {
+        Row: VenueMarker;
+        Insert: Record<string, never>;
+        Update: Record<string, never>;
         Relationships: [Relationship<"merchant_id", "merchants">];
       };
       // Denah hanya ditulis lewat RPC save_dining_layout.
@@ -987,6 +1274,35 @@ export type Database = {
     };
     Views: { [_ in never]: never };
     Functions: {
+      /** Me-resolve ?t= untuk anon; tautan diarsipkan tidak dikembalikan. */
+      resolve_ad_link: {
+        Args: { p_username: string; p_slug: string };
+        Returns: { id: string; service_id: string | null; voucher_code: string | null; channel: AdChannel }[];
+      };
+      /** ID pixel yang aktif saja; ID yang dimatikan null. Kosong bila merchant belum publik. */
+      get_public_tracking: {
+        Args: { p_merchant_id: string };
+        Returns: {
+          meta_pixel_id: string | null;
+          tiktok_pixel_id: string | null;
+          ga4_measurement_id: string | null;
+        }[];
+      };
+      /** Kontak publik; kanal di contact_hidden dikembalikan null. whatsapp = merchants.whatsapp_number, null kecuali merchant_themes.public_whatsapp; contact_phone tidak dikembalikan. */
+      get_public_contacts: {
+        Args: { p_merchant_id: string };
+        Returns: { instagram: string | null; tiktok: string | null; whatsapp: string | null }[];
+      };
+      /** Simpan seluruh tautan link-in-bio + show_social_icons + section_order. Hanya authenticated. */
+      save_merchant_links: {
+        Args: {
+          p_links: { id: string; label: string; url: string; sort_order: number; is_visible?: boolean }[];
+          p_show_social_icons: boolean;
+          p_section_order: string[];
+          p_public_whatsapp?: boolean | null;
+        };
+        Returns: undefined;
+      };
       /** Cek klaim username dari landing. Hanya service_role. */
       check_username_claim: {
         Args: { p_username: string; p_ip_hash: string };
@@ -1023,7 +1339,13 @@ export type Database = {
       };
       /** Cek kode untuk route /api/vouchers/check (service_role). Syarat hanya terisi bila reason null. */
       check_voucher: {
-        Args: { p_merchant_id: string; p_code: string; p_service_id: string };
+        Args: {
+          p_merchant_id: string;
+          p_code: string;
+          p_service_id: string;
+          p_start_datetime?: string;
+          p_duration_minutes?: number;
+        };
         Returns: {
           code: string | null;
           kind: VoucherKind | null;
@@ -1042,6 +1364,11 @@ export type Database = {
       };
       /** 10 cek kode per (hash IP, merchant) per 15 menit (service_role). */
       check_voucher_rate_limit: {
+        Args: { p_ip_hash: string; p_merchant_id: string };
+        Returns: boolean;
+      };
+      /** 120 kejadian funnel per (hash IP, merchant) per menit (service_role). */
+      check_event_rate_limit: {
         Args: { p_ip_hash: string; p_merchant_id: string };
         Returns: boolean;
       };
@@ -1106,6 +1433,58 @@ export type Database = {
       get_table_status: {
         Args: { p_username: string; p_service_id: string; p_start: string; p_party_size: number };
         Returns: { table_id: string; status: "FREE" | "TAKEN" | "TOO_SMALL" | "TOO_LARGE" }[];
+      };
+      /** Rentang terpakai per lapangan aktif terkait layanan pada tanggal Jakarta itu; tanpa data pelanggan. */
+      get_court_availability: {
+        Args: { p_merchant_id: string; p_service_id: string; p_date: string };
+        Returns: { court_id: string; court_name: string; start_datetime: string; end_datetime: string }[];
+      };
+      /** Aturan jam ramai satu layanan aktif untuk halaman publik; tanpa data pelanggan. */
+      get_court_price_rules: {
+        Args: { p_merchant_id: string; p_service_id: string };
+        Returns: { day_of_week: number; start_time: string; end_time: string; price_per_hour: number }[];
+      };
+      get_court_profiles: {
+        Args: { p_merchant_id: string };
+        Returns: { courts: CourtProfile[]; areas: VenueAreaView[]; markers: VenueAreaView[] }[];
+      };
+      save_court_service: {
+        Args: {
+          p_service_id: string;
+          p_rental: boolean;
+          p_unit: number | null;
+          p_max: number | null;
+          p_duration: number | null;
+          p_court_ids: string[];
+          p_activate?: boolean;
+          p_rules: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+            price_per_hour: number;
+          }[];
+        };
+        Returns: undefined;
+      };
+      save_court_pricing: {
+        Args: {
+          p_service_id: string;
+          p_rules: {
+            day_of_week: number;
+            start_time: string;
+            end_time: string;
+            price_per_hour: number;
+          }[];
+        };
+        Returns: undefined;
+      };
+      save_venue_layout: {
+        Args: {
+          p_courts: { id: string; pos_x: number | null; pos_y: number | null; rotation: 0 | 90 }[];
+          p_areas: Omit<VenueArea, "merchant_id">[];
+          p_markers: Omit<VenueMarker, "merchant_id">[];
+        };
+        Returns: undefined;
       };
       save_dining_layout: {
         Args: {
@@ -1226,8 +1605,55 @@ export type Database = {
           p_area_id?: string | null;
           p_table_id?: string | null;
           p_customer_note?: string | null;
+          /** Atribusi, hanya ONLINE. Dengan session_id, BOOKED ikut ditulis. */
+          p_session_id?: string | null;
+          /** Milik merchant lain menjadi null, bukan error. */
+          p_ad_link_id?: string | null;
+          /** Dipotong 64 karakter di SQL. */
+          p_utm_source?: string | null;
+          p_utm_medium?: string | null;
+          p_utm_campaign?: string | null;
+          /** Disaring jadi host saja, maksimal 100. */
+          p_referrer_host?: string | null;
+          /** Hanya layanan sewa. Null = "Mana saja". BK070 lapangan pilihan tidak tersedia, BK072 semua penuh. */
+          p_court_id?: string | null;
+          /** Wajib untuk layanan sewa: kelipatan unit, antara minimum dan maksimum (BK071). */
+          p_duration_minutes?: number | null;
         };
         Returns: Booking[];
+      };
+      /** Tulis PAID sekali per booking PAID yang punya session_id. Hanya service_role. */
+      record_paid_event: {
+        Args: { p_booking_id: string };
+        Returns: undefined;
+      };
+      /** Ringkasan halaman terima kasih: booking PAID dibayar dalam 24 jam. amount = nominal QRIS. */
+      get_paid_event: {
+        Args: { p_event_id: string };
+        Returns: { merchant_id: string; service_name: string; amount: number; currency: string }[];
+      };
+      /** Funnel per kanal (ad_links.channel, utm_source, atau "LANGSUNG") untuk merchant yang login. */
+      funnel_summary: {
+        Args: { p_from: string; p_to: string };
+        Returns: {
+          channel: string;
+          views: number;
+          service_views: number;
+          checkouts: number;
+          booked: number;
+          paid: number;
+          revenue: number;
+        }[];
+      };
+      /** Angka per tautan iklan untuk merchant yang login. */
+      ad_link_stats: {
+        Args: { p_from: string; p_to: string };
+        Returns: { ad_link_id: string; views: number; booked: number; paid: number; revenue: number }[];
+      };
+      /** Hapus kejadian lebih tua dari 13 bulan; mengembalikan jumlah baris. Hanya service_role. */
+      prune_funnel_events: {
+        Args: Record<string, never>;
+        Returns: number;
       };
       /**
        * Merchant mencatat booking sendiri (source MANUAL). 42501 tanpa login,
@@ -1244,21 +1670,27 @@ export type Database = {
           /** Booking manual boleh memakai meja yang tidak bookable_online. */
           p_table_id?: string | null;
           p_customer_note?: string | null;
+          /** Sama dengan create_booking; harga sewa dihitung otomatis. */
+          p_court_id?: string | null;
+          p_duration_minutes?: number | null;
         };
         Returns: { id: string }[];
       };
       /**
        * Pindah jam booking PAID/CONFIRMED. BK034 tidak memenuhi syarat, BK036 sudah 3 kali,
-       * BK003 staf nonaktif, BK001 di luar jam, P0006 lampau, 23P01 bentrok.
+       * BK003 staf nonaktif, BK001 di luar jam (sewa: juga lewat jam tutup atau di luar grid unit),
+       * P0006 lampau, 23P01 bentrok, BK072 tidak ada lapangan kosong. Harga sewa tidak dihitung ulang.
+       * p_court_id (opsional, sewa): lapangan tujuan; BK070 bila tidak aktif, bukan milik merchant, tidak terkait layanan, atau terisi.
        */
       reschedule_booking_by_merchant: {
-        Args: { p_booking_id: string; p_new_start: string };
+        Args: { p_booking_id: string; p_new_start: string; p_court_id?: string | null };
         Returns: undefined;
       };
       /**
        * Ubah jadwal oleh pelanggan lewat access_token (service_role saja). BK040 tidak bisa
        * dikelola, BK041 tidak diizinkan, BK042 batas waktu lewat, BK043 kesempatan habis,
-       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01 seperti jadwal ulang merchant.
+       * BK046 jadwal baru terlalu dekat, BK003, BK001, P0006, 23P01, BK072 seperti jadwal ulang merchant,
+       * BK073 harga sewa di jam baru lebih tinggi dari service_price (atau tidak bisa dihitung).
        */
       reschedule_booking: {
         Args: { p_token: string; p_new_start: string };
@@ -1311,6 +1743,11 @@ export type Database = {
             start_time: string;
             end_time: string;
           }[];
+          // Sewa lapangan: semua null = layanan biasa (migration 20261126001000).
+          p_court_sport?: CourtSport | null;
+          p_court_unit?: number | null;
+          p_court_min?: number | null;
+          p_court_max?: number | null;
         };
         Returns: undefined;
       };

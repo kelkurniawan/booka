@@ -17,10 +17,13 @@ export function ReservationFields({
   service,
   tableMode,
   errors,
+  onReserveChange,
 }: {
   service?: Pick<Service, "party_min" | "party_max" | "seat_duration_minutes">;
   tableMode: TableMode;
   errors?: ServiceFormState["fieldErrors"];
+  /** Reservasi meja menyala mematikan sewa lapangan (CHECK services_court_xor_seat). */
+  onReserveChange?: (on: boolean) => void;
 }) {
   const [reserve, setReserve] = useState(service?.seat_duration_minutes != null);
   const hasValues =
@@ -67,7 +70,10 @@ export function ReservationFields({
           id="reserve_table"
           type="checkbox"
           checked={reserve}
-          onChange={(e) => setReserve(e.target.checked)}
+          onChange={(e) => {
+            setReserve(e.target.checked);
+            onReserveChange?.(e.target.checked);
+          }}
           className="size-4"
         />
         <label htmlFor="reserve_table" className="inline-flex min-h-11 flex-1 items-center">

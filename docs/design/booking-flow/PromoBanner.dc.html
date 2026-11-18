@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Kelola banner promosi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.f{height:36px;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;font-size:14px;color:#0a0a0a;background:#ffffff;box-sizing:border-box;width:100%}
+.lbl{display:flex;flex-direction:column;gap:6px;font-weight:500}
+</style>
+</helmet>
+<div style="min-height: 1060px; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 24px 28px 40px">
+  <header style="max-width: 1180px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+    <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #71717a">Promosi</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Banner</h1>
+      <p style="margin: 0; color: #71717a">Tampil di atas daftar layanan. Maksimal 3 banner tayang bersamaan.</p>
+    </div>
+    <nav aria-label="Menu promosi" style="display: flex; padding: 3px; gap: 3px; border-radius: 8px; background: #f4f4f5">
+      <a href="PromoBanner.dc.html" aria-current="page" style="display: flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 6px; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.1); text-decoration: none; font-weight: 500">Banner</a>
+      <a href="PromoVoucher.dc.html" style="display: flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 6px; color: #52525b; text-decoration: none; font-weight: 500">Voucher</a>
+    </nav>
+    <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">+ Banner baru</button>
+  </header>
+
+  <div style="max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <section aria-labelledby="daftar-h" style="flex: 1 1 340px; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+      <h2 id="daftar-h" style="margin: 0; padding: 12px 14px; border-bottom: 1px solid #e4e4e7; font-size: 14px; font-weight: 600">Urutan tayang</h2>
+      <ol style="list-style: none; margin: 0; padding: 0">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+          <li style="{{r.li}}">
+            <span aria-hidden="true" style="{{r.thumb}}"></span>
+            <button type="button" aria-pressed="{{r.on}}" onClick="{{r.pick}}" style="flex: 1; min-width: 0; padding: 0; border: 0; background: transparent; color: #0a0a0a; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 2px">
+              <span style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{r.title}}</span>
+              <span style="font-size: 12px; color: #71717a">{{r.when}} · {{r.clicks}}</span>
+            </button>
+            <span style="{{r.badge}}">{{r.status}}</span>
+          </li>
+        </sc-for>
+      </ol>
+      <p style="margin: 0; padding: 12px 14px; border-top: 1px solid #e4e4e7; color: #71717a; font-size: 13px">Banner selesai otomatis disembunyikan setelah tanggal berakhir.</p>
+    </section>
+
+    <section aria-labelledby="edit-h" style="flex: 999 1 520px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-wrap: wrap; gap: 24px">
+      <div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="edit-h" style="margin: 0; font-size: 16px; font-weight: 600">Ubah banner</h2>
+
+        <div role="radiogroup" aria-label="Sumber banner" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+          <sc-for list="{{modes}}" as="m" hint-placeholder-count="2">
+            <button type="button" role="radio" aria-checked="{{m.on}}" onClick="{{m.pick}}" style="{{m.style}}"><span style="font-weight: 600">{{m.label}}</span><span style="font-size: 12px; color: #71717a">{{m.hint}}</span></button>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{isUpload}}" hint-placeholder-val="{{false}}">
+          <div style="display: flex; flex-direction: column; gap: 10px">
+            <button type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 140px; border: 1.5px dashed #a1a1aa; border-radius: 10px; background: #fafafa; color: #0a0a0a; cursor: pointer">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"></path></svg>
+              <span style="font-weight: 600">Pilih gambar atau seret ke sini</span>
+              <span style="font-size: 12px; color: #71717a">Rasio 3:1, minimal 1200 × 400 px · JPG, PNG, WebP · maks 2 MB</span>
+            </button>
+            <label class="lbl">Teks alternatif <span style="font-weight: 400; font-size: 12px; color: #71717a">Wajib. Tulis isi tulisan di gambar untuk pembaca layar.</span><input class="f" placeholder="Contoh: Diskon 20% makeup wisuda sampai 31 Desember"></label>
+          </div>
+        </sc-if>
+        <sc-if value="{{isTemplate}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 12px">
+            <label class="lbl">Label kecil<input class="f" value="Promo Desember"></label>
+            <label class="lbl">Judul<input class="f" value="Diskon 20% makeup wisuda"></label>
+            <label class="lbl">Keterangan<input class="f" value="Pakai kode WISUDA20 · sampai 31 Des"></label>
+            <div style="display: flex; flex-direction: column; gap: 6px">
+              <span id="warna-l" style="font-weight: 500">Warna</span>
+              <div role="radiogroup" aria-labelledby="warna-l" style="display: flex; gap: 8px">
+                <sc-for list="{{colors}}" as="c" hint-placeholder-count="3">
+                  <button type="button" role="radio" aria-checked="{{c.on}}" aria-label="{{c.name}}" onClick="{{c.pick}}" style="{{c.style}}"></button>
+                </sc-for>
+              </div>
+              <span style="font-size: 12px; color: #71717a">Diambil dari tema halaman Anda, kontras teks sudah aman.</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <label class="lbl">Teks tombol<input class="f" value="Pakai promo"></label>
+          <label class="lbl">Tombol menuju
+            <select class="f"><option>Voucher WISUDA20</option><option>Layanan: Makeup Wisuda</option><option>Tautan lain</option></select>
+          </label>
+          <label class="lbl">Mulai tayang<input class="f" type="date" value="2026-12-01"></label>
+          <label class="lbl">Selesai<input class="f" type="date" value="2026-12-31"></label>
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap">
+          <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan &amp; jadwalkan</button>
+          <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Simpan draf</button>
+          <span style="flex: 1"></span>
+          <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #b91c1c; font-weight: 500; cursor: pointer">Hapus</button>
+        </div>
+      </div>
+
+      <aside aria-label="Pratinjau banner" style="flex: 1 1 260px; display: flex; flex-direction: column; align-items: center; gap: 8px">
+        <span style="font-size: 12px; color: #71717a">Pratinjau di HP</span>
+        <div style="width: 260px; border-radius: 28px; border: 8px solid #0a0a0a; background: #faf4ea; padding: 14px 12px 20px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px">
+          <span style="font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; color: #453425">Rias by Sekar</span>
+          <div style="{{preview}}">
+            <span style="align-self: flex-start; padding: 2px 6px; border-radius: 999px; background: rgba(255,255,255,0.22); font-size: 9px; font-weight: 700">Promo Desember</span>
+            <span style="font-family: 'Fraunces', serif; font-size: 16px; line-height: 1.1; font-weight: 600; max-width: 150px">Diskon 20% makeup wisuda</span>
+            <span style="font-size: 9px; opacity: 0.9">Pakai kode WISUDA20 · sampai 31 Des</span>
+            <span style="{{previewBtn}}">Pakai promo</span>
+          </div>
+          <div aria-hidden="true" style="height: 60px; border-radius: 12px; background: #ffffff; border: 1px solid #e8dcc9"></div>
+          <div aria-hidden="true" style="height: 60px; border-radius: 12px; background: #ffffff; border: 1px solid #e8dcc9"></div>
+        </div>
+      </aside>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'b1', mode: 'template', color: 'accent' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var data = [
+      ['b1', 'Diskon 20% makeup wisuda', '1–31 Des', '86 klik', 'Tayang', '#a8532e'],
+      ['b2', 'Paket akad + resepsi', 'Tanpa batas', '41 klik', 'Tayang', '#453425'],
+      ['b3', 'Slot Sabtu pagi', '14–21 Nov', '19 klik', 'Tayang', '#f3e3d6'],
+      ['b4', 'Promo Lebaran', '20 Mar – 5 Apr 2027', 'belum tayang', 'Terjadwal', '#d9c9b3']
+    ];
+    var rows = data.map(function (r) {
+      var on = st.sel === r[0], live = r[4] === 'Tayang';
+      return { title: r[1], when: r[2], clicks: r[3], status: r[4], on: on, pick: function () { self.setState({ sel: r[0] }); },
+        li: 'display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f4f4f5; ' + (on ? 'background: #f4f4f5' : ''),
+        thumb: 'width: 54px; height: 18px; flex-shrink: 0; border-radius: 4px; border: 1px solid #e4e4e7; background: ' + r[5],
+        badge: 'flex-shrink: 0; padding: 2px 8px; border-radius: 6px; font-size: 12px; font-weight: 600; ' + (live ? 'background: #0a0a0a; color: #ffffff' : 'border: 1px solid #d4d4d8') };
+    });
+    var seg = function (on) { return 'display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #ffffff; color: #0a0a0a; font: inherit; text-align: left; cursor: pointer; border: ' + (on ? '2px solid #0a0a0a; padding: 9px 11px' : '1px solid #e4e4e7'); };
+    var modes = [['template', 'Dari template', 'Isi teks, warna ikut tema'], ['upload', 'Unggah gambar', 'Desain sendiri, misal dari Canva']].map(function (m) { var on = st.mode === m[0]; return { label: m[1], hint: m[2], on: on, style: seg(on), pick: function () { self.setState({ mode: m[0] }); } }; });
+    var C = { accent: ['#a8532e', '#ffffff', 'Aksen tema'], dark: ['#453425', '#faf4ea', 'Gelap'], soft: ['#f3e3d6', '#453425', 'Lembut'] };
+    var colors = Object.keys(C).map(function (k) { var on = st.color === k; return { name: C[k][2], on: on, pick: function () { self.setState({ color: k }); }, style: 'width: 36px; height: 36px; border-radius: 999px; cursor: pointer; background: ' + C[k][0] + '; border: 2px solid #ffffff; box-shadow: 0 0 0 ' + (on ? '2px #0a0a0a' : '1px #d4d4d8') }; });
+    var c = C[st.color];
+    return {
+      rows: rows, modes: modes, colors: colors, isUpload: st.mode === 'upload', isTemplate: st.mode === 'template',
+      preview: 'height: 104px; border-radius: 12px; padding: 10px; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; background: ' + c[0] + '; color: ' + c[1],
+      previewBtn: 'margin-top: auto; align-self: flex-start; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; background: ' + c[1] + '; color: ' + c[0]
+    };
+  }
+}
+</script>
+</body>
+</html>

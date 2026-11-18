@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Profil staf</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=Fraunces:opsz,wght@9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+button,a,input,textarea{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0}
+.f{height:36px;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;font-size:14px;color:#0a0a0a;background:#ffffff;box-sizing:border-box;width:100%}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:no-preference){.loop{animation:sweep 2.4s ease-in-out 2}}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 24px 28px 40px">
+  <header style="max-width: 1180px; margin: 0 auto 20px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+    <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+      <span style="font-size: 13px; color: #71717a">Atur usaha</span>
+      <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Staf</h1>
+      <p style="margin: 0; color: #71717a">Profil ini tampil di bagian "Dengan siapa?" saat pelanggan memilih jadwal.</p>
+    </div>
+    <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">+ Tambah staf</button>
+  </header>
+
+  <div style="max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+    <nav aria-label="Daftar staf" style="flex: 1 1 240px; max-width: 280px; border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+      <ul style="list-style: none; margin: 0; padding: 0">
+        <sc-for list="{{list}}" as="s" hint-placeholder-count="3">
+          <li><button type="button" aria-current="{{s.current}}" onClick="{{s.pick}}" style="{{s.style}}">
+            <span aria-hidden="true" style="{{s.av}}">{{s.initial}}</span>
+            <span style="flex: 1; display: flex; flex-direction: column; text-align: left"><span style="font-weight: 600">{{s.name}}</span><span style="font-size: 12px; color: #71717a">{{s.role}}</span></span>
+          </button></li>
+        </sc-for>
+      </ul>
+    </nav>
+
+    <section aria-labelledby="h-edit" style="flex: 999 1 480px; min-width: 0; border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-wrap: wrap; gap: 24px">
+      <div style="flex: 999 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="h-edit" style="margin: 0; font-size: 16px; font-weight: 600">Profil {{cur.name}}</h2>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+          <button type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 140px; border: 1.5px dashed #a1a1aa; border-radius: 10px; background: #fafafa; color: #0a0a0a; cursor: pointer; text-align: center; padding: 8px">
+            <span style="font-weight: 600">Foto profil</span><span style="font-size: 12px; color: #71717a">JPG, PNG, WebP, persegi, maks 2 MB</span>
+          </button>
+          <button type="button" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; height: 140px; border: 1.5px dashed #a1a1aa; border-radius: 10px; background: #fafafa; color: #0a0a0a; cursor: pointer; text-align: center; padding: 8px">
+            <span style="font-weight: 600">Foto bergerak (opsional)</span><span style="font-size: 12px; color: #71717a">GIF atau video tanpa suara, maks 5 detik, 8 MB. Diubah ke MP4 agar ringan.</span>
+          </button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 500">Nama<input class="f" value="{{cur.name}}"></label>
+          <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 500">Peran<input class="f" value="{{cur.role}}"></label>
+        </div>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 500">Perkenalan singkat <span style="font-weight: 400; font-size: 12px; color: #71717a">Maksimal 140 karakter</span>
+          <textarea rows="2" style="padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 8px; font: inherit; font-weight: 400; resize: vertical">{{cur.bio}}</textarea>
+        </label>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <span style="font-weight: 500">Keahlian</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <sc-for list="{{cur.tags}}" as="t" hint-placeholder-count="2"><span style="display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px 0 10px; border-radius: 999px; background: #f4f4f5; font-size: 13px">{{t}}<button type="button" aria-label="Hapus keahlian" style="width: 22px; height: 22px; border: 0; border-radius: 999px; background: transparent; cursor: pointer">×</button></span></sc-for>
+            <button type="button" style="height: 28px; padding: 0 10px; border: 1px dashed #d4d4d8; border-radius: 999px; background: #ffffff; color: #0a0a0a; cursor: pointer">+ Tambah</button>
+          </div>
+        </div>
+        <fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+          <legend style="padding: 0; margin-bottom: 6px; font-weight: 500">Menangani layanan</legend>
+          <label style="display: flex; gap: 10px; align-items: center; cursor: pointer"><input type="checkbox" checked="">Makeup Wisuda</label>
+          <label style="display: flex; gap: 10px; align-items: center; cursor: pointer"><input type="checkbox" checked="">Makeup Pengantin</label>
+          <label style="display: flex; gap: 10px; align-items: center; cursor: pointer"><input type="checkbox">Makeup Pesta</label>
+        </fieldset>
+        <label style="display: flex; gap: 10px; align-items: center; cursor: pointer"><input type="checkbox" checked="">Tampilkan foto bergerak di halaman booking</label>
+      </div>
+
+      <aside aria-label="Pratinjau kartu staf" style="flex: 1 1 220px; display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: #faf4ea; color: #453425">
+        <span style="font-size: 12px; color: #75624d">Yang dilihat pelanggan</span>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; border-radius: 18px; background: #fffaf4; border: 2px solid #a8532e">
+          <span aria-hidden="true" style="{{cur.bigAv}}">{{cur.initial}}</span>
+          <span style="font-weight: 600">{{cur.name}}</span><span style="font-size: 12px; color: #75624d">{{cur.role}}</span>
+        </div>
+        <div style="display: flex; gap: 10px; padding: 10px; border-radius: 14px; background: #ffffff; border: 1px solid #e8dcc9">
+          <div role="img" aria-label="Contoh foto bergerak" style="{{cur.media}}"><span class="loop" aria-hidden="true" style="position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%)"></span></div>
+          <span style="font-size: 12px; line-height: 1.45; color: #75624d">{{cur.bio}}</span>
+        </div>
+      </aside>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { sel: 'sekar' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var S = [
+      { id: 'sekar', name: 'Sekar', role: 'Pemilik, MUA', bg: '#a8532e', fg: '#ffffff', bio: 'Merias wisuda dan pengantin sejak 2016. Suka riasan natural yang tahan seharian.', tags: ['Wisuda', 'Pengantin'] },
+      { id: 'nadia', name: 'Nadia', role: 'MUA', bg: '#453425', fg: '#faf4ea', bio: 'Spesialis makeup pesta dan hairdo. Bisa datang ke lokasi Anda.', tags: ['Pesta', 'Hairdo'] },
+      { id: 'rani', name: 'Rani', role: 'Hairstylist', bg: '#d9c9b3', fg: '#453425', bio: 'Sanggul modern dan hijab styling.', tags: ['Hijab', 'Sanggul'] }
+    ];
+    var c = S.filter(function (s) { return s.id === st.sel; })[0];
+    return {
+      list: S.map(function (s) { var on = s.id === st.sel; return { name: s.name, role: s.role, initial: s.name.charAt(0), current: on ? 'true' : 'false', pick: function () { self.setState({ sel: s.id }); },
+        style: 'display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 14px; border: 0; border-bottom: 1px solid #f4f4f5; font: inherit; color: #0a0a0a; cursor: pointer; background: ' + (on ? '#f4f4f5' : '#ffffff'),
+        av: 'width: 36px; height: 36px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-weight: 600; background: ' + s.bg + '; color: ' + s.fg }; }),
+      cur: { name: c.name, role: c.role, bio: c.bio, tags: c.tags, initial: c.name.charAt(0),
+        bigAv: 'width: 60px; height: 60px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-family: Fraunces, serif; font-size: 24px; font-weight: 600; background: ' + c.bg + '; color: ' + c.fg,
+        media: 'position: relative; overflow: hidden; width: 64px; height: 86px; flex-shrink: 0; border-radius: 10px; background: linear-gradient(160deg, ' + c.bg + ', #efdccb)' }
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -92,7 +92,7 @@ function AgendaItem({
             <p className="truncate font-medium">{b.customer_name}</p>
             <p className="text-muted-foreground truncate text-sm">
               {b.service_name}
-              {b.staff_name ? `, ${b.staff_name}` : ""}
+              {b.court_name ? `, ${b.court_name}` : b.staff_name ? `, ${b.staff_name}` : ""}
             </p>
             {seatText(b) ? <p className="text-muted-foreground truncate text-sm">{seatText(b)}</p> : null}
           </div>

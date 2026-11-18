@@ -11,6 +11,7 @@ import {
   PawPrint,
   Scissors,
   Sparkles,
+  Trophy,
   Wrench,
 } from "lucide-react";
 
@@ -38,6 +39,7 @@ const CATEGORY_ICONS: Record<BusinessCategory, ComponentType<{ className?: strin
   OTOMOTIF: Car,
   SERVIS: Wrench,
   KONSULTASI: Briefcase,
+  OLAHRAGA: Trophy,
   LAINNYA: Sparkles,
 };
 

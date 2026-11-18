@@ -59,6 +59,8 @@ export type WebhookDeps = {
    * lebih dari sekali untuk booking yang sama.
    */
   onPaid: (bookingId: string) => void;
+  /** Menulis kejadian PAID funnel (idempoten). Mengembalikan error bila gagal; tidak pernah melempar. */
+  recordPaidEvent: (bookingId: string) => Promise<unknown>;
 };
 
 const defaultDeps: WebhookDeps = {
@@ -66,6 +68,10 @@ const defaultDeps: WebhookDeps = {
   loadMerchantCredential,
   getAdapter,
   onPaid: (bookingId) => after(() => notifyBookingPaid(bookingId)),
+  recordPaidEvent: async (bookingId) => {
+    const { error } = await createAdminClient().rpc("record_paid_event", { p_booking_id: bookingId });
+    return error;
+  },
 };
 
 /**
@@ -161,7 +167,11 @@ export async function handleWebhook(
     // kalau pengiriman pertama sempat terputus (fungsi dihentikan sebelum
     // after() selesai), retry gateway menjadi kesempatan kedua. Yang sudah
     // terkirim tidak terkirim lagi -- notification_log yang menjaga.
-    if (booking.status === "PAID") deps.onPaid(booking.id);
+    if (booking.status === "PAID") {
+      deps.onPaid(booking.id);
+      // Retry gateway juga kesempatan kedua mencatat PAID bila percobaan pertama gagal.
+      await recordPaidSafely(deps, booking.id);
+    }
     if (booking.status === "CANCELLED") {
       console.warn(
         "[webhooks] pembayaran diterima untuk booking yang sudah CANCELLED, tidak di-flip ke PAID",
@@ -201,7 +211,21 @@ export async function handleWebhook(
   // `after()` memberi hal yang sama tanpa infrastruktur tambahan: email/WA
   // dikirim setelah respons terkirim (lihat docs/DECISIONS.md #27).
   deps.onPaid(booking.id);
+
+  await recordPaidSafely(deps, booking.id);
   return NextResponse.json({ ok: true });
+}
+
+/** Analitik tidak boleh menggagalkan webhook: kegagalan dicatat saja. Idempoten di sisi DB. */
+async function recordPaidSafely(deps: WebhookDeps, bookingId: string) {
+  try {
+    const paidEventError = await deps.recordPaidEvent(bookingId);
+    if (paidEventError) {
+      console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId, error: paidEventError });
+    }
+  } catch (e) {
+    console.error("[webhooks] gagal mencatat kejadian PAID funnel", { bookingId, error: e });
+  }
 }
 
 /**

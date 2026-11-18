@@ -1,4 +1,4 @@
-import { getOnboardingState, getTabCounts } from "@/app/dashboard/queries";
+import { getOnboardingState, getTabCounts, hasCourts } from "@/app/dashboard/queries";
 import { AppSidebar } from "@/components/layout/app-sidebar";
 import { GuideProvider } from "@/components/guide/guide-provider";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -28,10 +28,11 @@ export default async function DashboardLayout({
   // belum-onboarding untuk /dashboard/* (lihat komentar di proxy.ts), tapi
   // layout tetap memeriksa sendiri agar sidebar tidak pernah dirender tanpa
   // merchant yang valid.
-  const [{ user, merchant }, counts, onboarding] = await Promise.all([
+  const [{ user, merchant }, counts, onboarding, showCourts] = await Promise.all([
     requireMerchant(),
     getTabCounts(),
     getOnboardingState(),
+    hasCourts(),
   ]);
   const actionCount = counts?.action ?? null;
 
@@ -46,6 +47,7 @@ export default async function DashboardLayout({
       <SidebarProvider>
         <AppSidebar
           actionCount={actionCount}
+          showCourts={showCourts}
           merchant={{
             username: merchant.username,
             fullName: merchant.full_name ?? "Merchant",
@@ -64,7 +66,7 @@ export default async function DashboardLayout({
             {children}
           </div>
         </SidebarInset>
-        <MobileNav actionCount={actionCount} />
+        <MobileNav actionCount={actionCount} showCourts={showCourts} />
       </SidebarProvider>
     </GuideProvider>
   );

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Profil dengan tautan dan sosmed</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}a:hover{color:#7d3c20}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+ul{list-style:none;margin:0;padding:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1400px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif; box-sizing: border-box">
+
+  <div style="display: flex; justify-content: flex-end; padding: 16px 16px 0">
+    <button type="button" aria-label="Bagikan halaman" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #e8dcc9; background: #ffffff; color: #453425; display: flex; align-items: center; justify-content: center; cursor: pointer">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path><path d="M16 6l-4-4-4 4"></path><path d="M12 2v13"></path></svg>
+    </button>
+  </div>
+
+  <header style="display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 0 24px 24px; text-align: center">
+    <div aria-hidden="true" style="width: 88px; height: 88px; border-radius: 999px; background: #f3e3d6; border: 3px solid #ffffff; box-shadow: 0 0 0 1px #e8dcc9; display: flex; align-items: center; justify-content: center; font-family: 'Fraunces', serif; font-size: 34px; font-weight: 600; color: #a8532e">S</div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 28px; line-height: 1.15">Rias by Sekar</h1>
+      <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #75624d">Makeup wisuda, lamaran, dan pengantin. Datang ke lokasi Anda di Bandung dan sekitarnya.</p>
+    </div>
+    <ul aria-label="Media sosial" style="display: flex; gap: 8px">
+      <sc-for list="{{socials}}" as="s" hint-placeholder-count="4">
+        <li><a href="{{s.href}}" aria-label="{{s.label}}" style="width: 44px; height: 44px; border-radius: 999px; border: 1px solid #e8dcc9; background: #ffffff; color: #453425; display: flex; align-items: center; justify-content: center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{s.icon}}"></path></svg>
+        </a></li>
+      </sc-for>
+    </ul>
+  </header>
+
+  <section aria-labelledby="tautan-h" style="display: flex; flex-direction: column; gap: 10px; padding: 0 16px 28px">
+    <h2 id="tautan-h" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Tautan</h2>
+    <ul style="display: flex; flex-direction: column; gap: 10px">
+      <sc-for list="{{links}}" as="l" hint-placeholder-count="4">
+        <li><a href="{{l.href}}" style="display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 16px 8px 8px; border-radius: 16px; background: #ffffff; border: 1px solid #e8dcc9; color: #453425; text-decoration: none">
+          <span aria-hidden="true" style="width: 40px; height: 40px; flex-shrink: 0; border-radius: 12px; background: #f3e3d6; color: #a8532e; display: flex; align-items: center; justify-content: center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="{{l.icon}}"></path></svg>
+          </span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+            <span style="font-size: 15px; font-weight: 600">{{l.label}}</span>
+            <span style="font-size: 12px; color: #75624d">{{l.host}}</span>
+          </span>
+        </a></li>
+      </sc-for>
+    </ul>
+  </section>
+
+  <section aria-labelledby="layanan-h" style="display: flex; flex-direction: column; gap: 12px; padding: 0 16px">
+    <div style="display: flex; align-items: baseline; justify-content: space-between; padding: 0 4px">
+      <h2 id="layanan-h" style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px">Pilih layanan</h2>
+      <span style="font-size: 13px; color: #75624d">3 layanan</span>
+    </div>
+    <div role="radiogroup" aria-labelledby="layanan-h" style="display: flex; flex-direction: column; gap: 12px">
+      <sc-for list="{{services}}" as="s" hint-placeholder-count="3">
+        <button type="button" role="radio" aria-checked="{{s.checked}}" onClick="{{s.pick}}" style="{{s.cardStyle}}">
+          <span style="display: flex; flex-direction: column; gap: 4px; flex: 1; text-align: left">
+            <span style="font-size: 16px; font-weight: 600">{{s.name}}</span>
+            <span style="font-size: 13px; color: #75624d">{{s.meta}}</span>
+            <span style="font-size: 16px; font-weight: 600; margin-top: 4px">{{s.price}}</span>
+          </span>
+          <span aria-hidden="true" style="{{s.dotStyle}}"></span>
+        </button>
+      </sc-for>
+    </div>
+  </section>
+
+  <p style="margin: 24px 0 0; text-align: center; font-size: 12px"><a href="#" style="color: #75624d">Dibuat dengan Marky</a></p>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e8dcc9; box-shadow: 0 -8px 24px rgba(69,52,37,0.06); display: flex; align-items: center; gap: 12px">
+    <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+      <span style="font-size: 13px; color: #75624d">{{selName}}</span>
+      <span style="font-size: 18px; font-weight: 600">{{selPrice}}</span>
+    </div>
+    <a href="FunMasuk.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; padding: 0 22px; border-radius: 14px; background: #a8532e; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Pilih jadwal</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1400}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { picked: 'wisuda' }; }
+  renderVals() {
+    var self = this, picked = this.state.picked;
+    var I = {
+      ig: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4z M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7z M17.5 6.5h.01',
+      tt: 'M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5 M14 3c.5 2.5 2.5 4 5 4',
+      wa: 'M21 11.5a8.4 8.4 0 0 1-12.4 7.4L3 21l2.1-5.4A8.4 8.4 0 1 1 21 11.5z',
+      map: 'M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z M12 7.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
+      doc: 'M7 3h7l5 5v13H7z M14 3v5h5 M10 13h6 M10 17h6',
+      img: 'M4 5h16v14H4z M4 15l4-4 4 4 3-3 5 5 M15 9h.01'
+    };
+    var socials = [
+      { label: 'Instagram Rias by Sekar', href: '#', icon: I.ig },
+      { label: 'TikTok Rias by Sekar', href: '#', icon: I.tt },
+      { label: 'WhatsApp Rias by Sekar', href: '#', icon: I.wa }
+    ];
+    var links = [
+      { label: 'Portofolio riasan wisuda', host: 'instagram.com', href: '#', icon: I.img },
+      { label: 'Daftar harga lengkap', host: 'drive.google.com', href: '#', icon: I.doc },
+      { label: 'Lokasi studio', host: 'maps.google.com', href: '#', icon: I.map },
+      { label: 'Tanya jadwal lewat WhatsApp', host: 'wa.me', href: '#', icon: I.wa }
+    ];
+    var list = [
+      { id: 'wisuda', name: 'Makeup Wisuda', meta: '90 menit, bayar saat booking', price: 'Rp350.000' },
+      { id: 'pesta', name: 'Makeup Pesta', meta: '2 jam, bayar di tempat', price: 'Rp450.000' },
+      { id: 'akad', name: 'Makeup Pengantin (Akad)', meta: '3 jam, DP 30%', price: 'Rp1.500.000' }
+    ];
+    var sel = list.filter(function (s) { return s.id === picked; })[0];
+    return { socials: socials, links: links, selName: sel.name, selPrice: sel.price,
+      services: list.map(function (s) {
+        var on = s.id === picked;
+        return Object.assign({}, s, { checked: on, pick: function () { self.setState({ picked: s.id }); },
+          cardStyle: 'display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px; border-radius: 20px; cursor: pointer; font: inherit; color: inherit; background: #ffffff; border: ' + (on ? '2px solid #a8532e; padding: 13px' : '1px solid #e8dcc9'),
+          dotStyle: 'width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; box-sizing: border-box; ' + (on ? 'border: 7px solid #a8532e' : 'border: 2px solid #c9b8a2') });
+      }) };
+  }
+}
+</script>
+</body>
+</html>

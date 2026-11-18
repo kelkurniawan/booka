@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Bayar dengan QRIS</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}a:hover{color:#7d3c20}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.pulse{animation:none !important}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1100px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; padding: 20px 16px 32px">
+
+  <header style="display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center">
+    <span style="font-size: 13px; color: #75624d">Rias by Sekar</span>
+    <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 24px; line-height: 1.2">Selesaikan pembayaran</h1>
+    <p role="status" style="margin: 0; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: #fdf0d5; color: #6b4a00; font-size: 13px; font-weight: 600">
+      Menunggu pembayaran
+    </p>
+  </header>
+
+  <section aria-labelledby="qr-h" style="display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 20px; background: #ffffff; border: 1px solid #e8dcc9; border-radius: 24px">
+    <h2 id="qr-h" style="margin: 0; font-size: 13px; font-weight: 500; color: #75624d">Total dibayar</h2>
+    <span style="margin-top: -10px; font-size: 32px; font-weight: 600; letter-spacing: -0.01em">Rp350.000</span>
+
+    <div role="img" aria-label="Kode QRIS untuk membayar Rp350.000" style="padding: 14px; background: #ffffff; border: 1px solid #e8dcc9; border-radius: 16px">
+      <div aria-hidden="true" style="display: grid; grid-template-columns: repeat(25, minmax(0, 1fr)); width: 225px; height: 225px">
+        <sc-for list="{{cells}}" as="c" hint-placeholder-count="625">
+          <span style="{{c}}"></span>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 8px; font-size: 15px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2 2M9 2h6"></path></svg>
+      <span>Bayar sebelum <strong>{{deadline}}</strong> · sisa <strong style="font-variant-numeric: tabular-nums">{{left}}</strong></span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%">
+      <button type="button" style="height: 48px; border-radius: 12px; border: 1px solid #d9c9b3; background: #ffffff; color: #453425; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>
+        Simpan QR
+      </button>
+      <button type="button" style="height: 48px; border-radius: 12px; border: 1px solid #d9c9b3; background: #ffffff; color: #453425; font-size: 14px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>
+        Salin tautan
+      </button>
+    </div>
+  </section>
+
+  <section aria-labelledby="cara-h" style="display: flex; flex-direction: column; gap: 10px">
+    <h2 id="cara-h" style="margin: 0; font-size: 15px; font-weight: 600">Cara bayar</h2>
+    <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 1.5">
+      <li style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; background: #f3e3d6; color: #7d3c20; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">1</span>Buka GoPay, OVO, DANA, ShopeePay, atau m-banking.</li>
+      <li style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; background: #f3e3d6; color: #7d3c20; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">2</span>Pilih "Scan QRIS", lalu pindai kode di atas. Bayar dari HP ini? Simpan QR lalu unggah dari galeri.</li>
+      <li style="display: flex; gap: 12px"><span aria-hidden="true" style="width: 24px; height: 24px; flex-shrink: 0; border-radius: 999px; background: #f3e3d6; color: #7d3c20; font-size: 13px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span>Halaman ini berubah otomatis setelah pembayaran diterima.</li>
+    </ol>
+  </section>
+
+  <dl style="margin: 0; padding-top: 16px; border-top: 1px solid #e8dcc9; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+    <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #75624d">Layanan</dt><dd style="margin: 0; font-weight: 600">Makeup Wisuda</dd></div>
+    <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #75624d">Jadwal</dt><dd style="margin: 0; font-weight: 600">Sab, 21 Nov · 10.00 WIB</dd></div>
+    <div style="display: flex; justify-content: space-between; gap: 12px"><dt style="color: #75624d">Atas nama</dt><dd style="margin: 0; font-weight: 600">Ayu Lestari</dd></div>
+  </dl>
+
+  <a href="Selesai.dc.html" style="align-self: center; display: flex; align-items: center; min-height: 44px; font-size: 14px; font-weight: 600">Sudah bayar? Cek status</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { s: 14 * 60 + 32 }; }
+  componentDidMount() { var self = this; this.t = setInterval(function () { self.setState({ s: Math.max(0, self.state.s - 1) }); }, 1000); }
+  componentWillUnmount() { clearInterval(this.t); }
+  renderVals() {
+    var n = 25, cells = [];
+    var finder = function (r, c) {
+      var inF = function (r0, c0) { var y = r - r0, x = c - c0; if (y < 0 || x < 0 || y > 6 || x > 6) return null; return (y === 0 || y === 6 || x === 0 || x === 6 || (y > 1 && y < 5 && x > 1 && x < 5)); };
+      var a = inF(0, 0); if (a !== null) return a;
+      a = inF(0, n - 7); if (a !== null) return a;
+      a = inF(n - 7, 0); if (a !== null) return a;
+      if (r === 7 || c === 7 || r === n - 8 || c === n - 8) { if ((r < 8 && c < 8) || (r < 8 && c > n - 9) || (r > n - 9 && c < 8)) return false; }
+      return null;
+    };
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) {
+      var f = finder(r, c);
+      var on = f !== null ? f : ((r * 7 + c * 13 + r * c * 3) % 5 < 2);
+      cells.push(on ? 'background: #1f1712' : 'background: transparent');
+    }
+    var s = this.state.s, m = Math.floor(s / 60), ss = s % 60;
+    return { cells: cells, left: m + ':' + (ss < 10 ? '0' : '') + ss, deadline: '09.47 WIB' };
+  }
+}
+</script>
+</body>
+</html>

@@ -49,6 +49,8 @@ export function StepLayanan({
     pilihan && pilihan !== SENDIRI
       ? (templates.find((template) => template.name === pilihan) ?? null)
       : null;
+  // Template sewa: durasi = lama main minimum, ditetapkan template, bukan isian.
+  const court = templateTerpilih?.court ?? null;
 
   const hasil = wizardServiceSchema.safeParse({
     name,
@@ -80,6 +82,7 @@ export function StepLayanan({
       // dibuang di sini supaya schema di server tetap yang memutuskan, dan
       // string kosong tidak pernah berubah menjadi 0 dalam perjalanan.
       price,
+      court,
     });
   }
 
@@ -97,7 +100,11 @@ export function StepLayanan({
                 checked={pilihan === template.name}
                 onSelect={pilihTemplate}
                 label={template.name}
-                description={`${template.durationMinutes} menit`}
+                description={
+                  template.court
+                    ? "Dua lapangan contoh langsung disiapkan"
+                    : `${template.durationMinutes} menit`
+                }
               />
             ))}
             <OptionCard
@@ -138,6 +145,7 @@ export function StepLayanan({
             inputMode="numeric"
             min={5}
             max={480}
+            readOnly={court !== null}
             value={duration}
             onChange={(event) => setDuration(event.target.value)}
             placeholder="45"
@@ -145,13 +153,19 @@ export function StepLayanan({
           />
           {errors.duration_minutes && duration.length > 0 ? (
             <FieldError>{errors.duration_minutes}</FieldError>
+          ) : court ? (
+            <FieldDescription>
+              Lama main minimum. Pelanggan bisa memilih sampai {court.maxMinutes} menit.
+            </FieldDescription>
           ) : (
             <FieldDescription>Antara 5 dan 480 menit.</FieldDescription>
           )}
         </Field>
 
         <Field data-invalid={Boolean(errors.price && price.length > 0)}>
-          <FieldLabel htmlFor="wizard_service_price">Harga (Rp)</FieldLabel>
+          <FieldLabel htmlFor="wizard_service_price">
+            {court ? "Harga per jam (Rp)" : "Harga (Rp)"}
+          </FieldLabel>
           <Input
             id="wizard_service_price"
             type="number"

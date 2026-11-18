@@ -36,6 +36,22 @@ export const getQuotaUsage = cache(async (): Promise<QuotaUsage> => {
   return { used: row?.used ?? 0, limit: row?.quota ?? null };
 });
 
+/** True bila merchant punya layanan sewa lapangan atau lapangan (menampilkan menu Jadwal lapangan). */
+export const hasCourts = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const user = await getSessionUser();
+  if (!user) return false;
+  const [services, courts] = await Promise.all([
+    supabase.from("services").select("id", { count: "exact", head: true }).eq("merchant_id", user.id).not("court_unit_minutes", "is", null),
+    supabase.from("courts").select("id", { count: "exact", head: true }).eq("merchant_id", user.id),
+  ]);
+  if (services.error || courts.error) {
+    console.error("hasCourts gagal", { merchantId: user.id, error: services.error ?? courts.error });
+    return false;
+  }
+  return (services.count ?? 0) > 0 || (courts.count ?? 0) > 0;
+});
+
 export type OnboardingState = {
   facts: OnboardingFacts;
   stepsCompleted: ManualStepKey[];

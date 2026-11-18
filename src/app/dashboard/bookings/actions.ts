@@ -13,10 +13,9 @@ import { createClient } from "@/lib/supabase/server";
 import type { OnSitePaymentMethod } from "@/types/database";
 import { cancelBookingSchema } from "@/lib/validations/booking";
 
+import { createManualBookingOp } from "./manual-booking-op";
+import { rescheduleBookingOp } from "./reschedule-op";
 import {
-  manualBookingErrorMessage,
-  manualBookingSchema,
-  rescheduleErrorMessage,
   type ManualBookingInput,
   type ManualBookingResult,
 } from "./manual-booking";
@@ -176,43 +175,21 @@ export async function markAttendance(id: string, attended: boolean): Promise<Can
   return { ok: true };
 }
 
-/** Jadwal ulang oleh merchant; batas 3 kali dan bentrok ditegakkan RPC. */
-export async function rescheduleBooking(id: string, newStartISO: string): Promise<CancelBookingResult> {
-  const parsed = cancelBookingSchema.safeParse({ id });
-  const start = z.iso.datetime({ offset: true }).safeParse(newStartISO);
-  if (!parsed.success || !start.success) return { ok: false, message: "Jadwal tidak valid." };
-
+/** Jadwal ulang oleh merchant; batas 3 kali dan bentrok ditegakkan RPC. courtId: lapangan tujuan (sewa), null = tetap atau otomatis. */
+export async function rescheduleBooking(id: string, newStartISO: string, courtId: string | null = null): Promise<CancelBookingResult> {
   const { supabase } = await requireUser();
-  const { error } = await supabase.rpc("reschedule_booking_by_merchant", {
-    p_booking_id: parsed.data.id,
-    p_new_start: start.data,
-  });
-  if (error) return { ok: false, message: rescheduleErrorMessage(error.code) };
-
-  revalidatePath(ROUTES.dashboard, "layout");
-  return { ok: true };
+  const result = await rescheduleBookingOp(supabase, id, newStartISO, courtId);
+  if (result.ok) revalidatePath(ROUTES.dashboard, "layout");
+  return result;
 }
 
 /** Catat booking dari telepon/walk-in: langsung CONFIRMED, bayar di tempat. */
 export async function createManualBooking(input: ManualBookingInput): Promise<ManualBookingResult> {
-  const parsed = manualBookingSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, message: "Periksa lagi isian form." };
-
   const { supabase } = await requireUser();
-  const { data, error } = await supabase.rpc("create_manual_booking", {
-    p_service_id: parsed.data.serviceId,
-    p_start_datetime: parsed.data.startISO,
-    p_customer_name: parsed.data.customerName,
-    p_customer_whatsapp: parsed.data.customerWhatsapp,
-    p_staff_id: parsed.data.staffId,
-    p_party_size: parsed.data.partySize,
-    p_table_id: parsed.data.tableId,
-    p_customer_note: parsed.data.customerNote || null,
-  });
-  const id = data?.[0]?.id;
-  if (error || !id) return { ok: false, message: manualBookingErrorMessage(error?.code) };
+  const result = await createManualBookingOp(supabase, input);
+  if (!result.ok) return result;
 
-  after(() => notifyBookingCreated(id));
+  after(() => notifyBookingCreated(result.id));
   revalidatePath(ROUTES.dashboard, "layout");
-  return { ok: true, id };
+  return result;
 }

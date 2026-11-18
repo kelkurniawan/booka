@@ -21,6 +21,8 @@ export type BookingMessageData = {
   endDatetime: string;
   /** Nama staf yang menangani, khusus paket Studio. */
   staffName?: string | null;
+  /** Sewa lapangan: nama lapangan yang dipesan (menggantikan baris staf). */
+  courtName?: string | null;
   /** URL absolut /pesanan/{token} milik pelanggan. */
   statusUrl: string;
   /** URL absolut daftar booking di dashboard merchant. */
@@ -56,7 +58,9 @@ export function waLink(e164: string): string {
   return `https://wa.me/${e164.replace(/\D/g, "")}`;
 }
 
+/** Sewa lapangan tidak memakai staf, jadi baris ini memuat lapangan atau staf. */
 function staffLine(data: BookingMessageData): string | null {
+  if (data.courtName) return `Lapangan: ${data.courtName}`;
   return data.staffName ? `Staf: ${data.staffName}` : null;
 }
 
@@ -64,6 +68,11 @@ function staffLine(data: BookingMessageData): string | null {
 function seatLine(data: BookingMessageData): string | null {
   if (data.partySize == null) return null;
   return data.tableLabel ? `${data.partySize} orang, Meja ${data.tableLabel}` : `${data.partySize} orang`;
+}
+
+function staffRow(data: BookingMessageData): [string, string][] {
+  if (data.courtName) return [["Lapangan", data.courtName]];
+  return data.staffName ? [["Staf", data.staffName]] : [];
 }
 
 function noteLine(data: BookingMessageData): string | null {
@@ -104,7 +113,7 @@ export function merchantPaidEmail(data: BookingMessageData): EmailMessage {
   const rows: [string, string][] = [
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
-    ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...staffRow(data),
     ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
@@ -244,7 +253,7 @@ export function merchantConfirmedEmail(data: BookingMessageData): EmailMessage {
   const rows: [string, string][] = [
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
-    ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...staffRow(data),
     ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],
@@ -265,7 +274,7 @@ export function merchantRequestedEmail(data: BookingMessageData): EmailMessage {
   const rows: [string, string][] = [
     ["Layanan", data.serviceName],
     ["Jadwal", when(data)],
-    ...(data.staffName ? ([["Staf", data.staffName]] as [string, string][]) : []),
+    ...staffRow(data),
     ...seatRows(data, true),
     ["Pelanggan", data.customerName],
     ["WhatsApp", data.customerWhatsapp],

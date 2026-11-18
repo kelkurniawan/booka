@@ -22,8 +22,10 @@ function baris(ubah: Partial<MerchantTheme> = {}): MerchantTheme {
     logo_path: null,
     cover_path: null,
     button_style: "FILLED",
-    section_order: ["PROMO", "SERVICES", "FAQ"],
+    section_order: ["LINKS", "PROMO", "SERVICES", "FAQ"],
     hidden_sections: [],
+    show_social_icons: true,
+    public_whatsapp: false,
     background_motion: "BENTUK",
     background_motion_speed: "SLOW",
     created_at: "2026-08-20T00:00:00Z",
@@ -150,7 +152,7 @@ test("skala teks dipetakan ke pengali", () => {
 test("kolom baru: baris null memberi bawaan", () => {
   const t = resolveTheme("PRO", null);
   assert.equal(t.buttonStyle, "FILLED");
-  assert.deepEqual(t.sections, ["PROMO", "SERVICES", "FAQ"]);
+  assert.deepEqual(t.sections, ["LINKS", "PROMO", "SERVICES", "FAQ"]);
   assert.equal(t.motion, null);
   assert.equal(t.logoPath, null);
   assert.equal(t.coverPath, null);
@@ -164,7 +166,7 @@ test("STARTER: sampul, gaya tombol, dan gerak dipangkas; logo dan susunan tetap"
       button_style: "OUTLINE",
       background_style: "MOTION",
       logo_path: "m/logo-a.webp",
-      section_order: ["FAQ", "SERVICES", "PROMO"],
+      section_order: ["FAQ", "SERVICES", "PROMO", "LINKS"],
       hidden_sections: ["PROMO"],
     }),
   );
@@ -173,7 +175,7 @@ test("STARTER: sampul, gaya tombol, dan gerak dipangkas; logo dan susunan tetap"
   assert.equal(t.backgroundStyle, "SOLID");
   assert.equal(t.motion, null);
   assert.equal(t.logoPath, "m/logo-a.webp");
-  assert.deepEqual(t.sections, ["FAQ", "SERVICES"]);
+  assert.deepEqual(t.sections, ["FAQ", "SERVICES", "LINKS"]);
 });
 
 test("PRO MOTION: warna gerak diturunkan dari tema", () => {

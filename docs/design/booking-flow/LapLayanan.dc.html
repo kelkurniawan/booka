@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Layanan sewa lapangan dan jam ramai</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0}
+.f{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;font-size:14px}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+</style>
+</helmet>
+<div style="min-height: 1100px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RP</span>
+      <span style="font-weight: 600">Contoh: Rally Padel</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="LapDashboard.dc.html">Jadwal lapangan</a>
+    <a href="#">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="LapLayanan.dc.html" aria-current="page">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="#">Promosi</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 20px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <a href="#" style="font-size: 13px; color: #71717a; text-decoration: none">Layanan</a>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Sewa lapangan padel</h1>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Batal</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+      <div style="flex: 999 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+        <section aria-labelledby="sewa-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+          <div style="display: flex; align-items: flex-start; gap: 14px">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+              <h2 id="sewa-h" style="margin: 0; font-size: 15px; font-weight: 600">Sewa lapangan</h2>
+              <p style="margin: 0; color: #71717a; font-size: 13px">Pelanggan memilih lama main dan lapangan. Harga dihitung per jam.</p>
+            </div>
+            <button type="button" role="switch" aria-checked="true" aria-labelledby="sewa-h" style="flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; background: #0a0a0a; display: flex; justify-content: flex-end; cursor: pointer"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px">
+            <div style="flex: 1 1 180px; display: flex; flex-direction: column; gap: 6px">
+              <label for="harga" style="font-weight: 500">Harga per jam</label>
+              <input id="harga" class="f" value="150.000" inputmode="numeric">
+              <span style="font-size: 12px; color: #71717a">Dipakai di luar jam ramai.</span>
+            </div>
+            <fieldset style="flex: 1 1 180px; margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 6px">
+              <legend style="padding: 0; margin-bottom: 6px; font-weight: 500">Jam mulai tiap</legend>
+              <div role="radiogroup" style="display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: #f4f4f5; width: max-content">
+                <sc-for list="{{units}}" as="u" hint-placeholder-count="2">
+                  <button type="button" role="radio" aria-checked="{{u.on}}" onClick="{{u.pick}}" style="{{u.style}}">{{u.label}}</button>
+                </sc-for>
+              </div>
+            </fieldset>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px">
+            <div style="flex: 1 1 180px; display: flex; flex-direction: column; gap: 6px">
+              <label for="min" style="font-weight: 500">Lama main paling singkat</label>
+              <select id="min" class="f"><option>30 menit</option><option selected="">1 jam</option><option>1,5 jam</option><option>2 jam</option></select>
+            </div>
+            <div style="flex: 1 1 180px; display: flex; flex-direction: column; gap: 6px">
+              <label for="max" style="font-weight: 500">Lama main paling lama</label>
+              <select id="max" class="f"><option>1 jam</option><option>1,5 jam</option><option selected="">2 jam</option><option>3 jam</option><option>4 jam</option></select>
+            </div>
+          </div>
+          <p style="margin: 0; padding: 10px 12px; border-radius: 8px; background: #fafafa; color: #3f3f46">{{lengthHint}}</p>
+        </section>
+
+        <section aria-labelledby="lap-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <h2 id="lap-h" style="margin: 0; font-size: 15px; font-weight: 600">Lapangan yang dipakai</h2>
+            <p style="margin: 0; color: #71717a; font-size: 13px">Satu lapangan boleh dipakai beberapa layanan. Jadwalnya tetap satu, jadi tidak akan terpesan ganda.</p>
+          </div>
+          <sc-for list="{{courts}}" as="c" hint-placeholder-count="3">
+            <label style="display: flex; align-items: center; gap: 10px; min-height: 40px; cursor: pointer">
+              <input type="checkbox" checked="{{c.on}}">
+              <span style="flex: 1; display: flex; flex-direction: column"><span style="font-weight: 500">{{c.name}}</span><span style="font-size: 12px; color: #71717a">{{c.note}}</span></span>
+            </label>
+          </sc-for>
+          <div style="display: flex; gap: 8px">
+            <label for="baru" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Nama lapangan baru</label>
+            <input id="baru" class="f" placeholder="Nama lapangan baru, misalnya Lapangan 4" style="flex: 1">
+            <button type="button" style="height: 36px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Tambah lapangan</button>
+          </div>
+        </section>
+
+        <section aria-labelledby="ramai-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 2px">
+            <h2 id="ramai-h" style="margin: 0; font-size: 15px; font-weight: 600">Harga jam ramai</h2>
+            <p style="margin: 0; color: #71717a; font-size: 13px">Di luar aturan ini, harga per jam di atas yang berlaku. Aturan tidak boleh tumpang tindih di hari yang sama.</p>
+          </div>
+          <sc-for list="{{rules}}" as="r" hint-placeholder-count="2">
+            <div role="group" aria-label="{{r.aria}}" style="{{r.style}}">
+              <div role="group" aria-label="Hari" style="display: flex; flex-wrap: wrap; gap: 4px">
+                <sc-for list="{{r.days}}" as="d" hint-placeholder-count="7">
+                  <button type="button" aria-pressed="{{d.on}}" onClick="{{d.pick}}" style="{{d.style}}">{{d.label}}</button>
+                </sc-for>
+              </div>
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px">
+                <input class="f" value="{{r.from}}" aria-label="Mulai" style="width: 72px">
+                <span style="color: #71717a">sampai</span>
+                <input class="f" value="{{r.to}}" aria-label="Selesai" style="width: 72px">
+                <input class="f" value="{{r.price}}" aria-label="Harga per jam" style="width: 110px">
+                <span style="color: #71717a">per jam</span>
+                <button type="button" aria-label="{{r.delAria}}" style="margin-left: auto; height: 36px; padding: 0 10px; border: 0; background: transparent; color: #b91c1c; cursor: pointer">Hapus</button>
+              </div>
+              <sc-if value="{{r.err}}" hint-placeholder-val="{{false}}"><p role="alert" style="margin: 0; font-size: 13px; color: #b91c1c">Sabtu dan Minggu 17.00 sampai 18.00 sudah masuk aturan 1. Ubah jam selesainya atau lepas harinya.</p></sc-if>
+            </div>
+          </sc-for>
+          <button type="button" style="align-self: flex-start; height: 36px; padding: 0 12px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Tambah aturan</button>
+        </section>
+      </div>
+
+      <aside aria-labelledby="cek-h" style="flex: 1 1 260px; border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="cek-h" style="margin: 0; font-size: 15px; font-weight: 600">Cek harga</h2>
+        <p style="margin: 0; color: #71717a; font-size: 13px">Harga yang akan dilihat pelanggan, dihitung dari aturan di kiri.</p>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px">
+          <label style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 90px"><span style="font-size: 12px; color: #71717a">Hari</span>
+            <select class="f" onChange="{{setDay}}"><option value="6">Sabtu</option><option value="2">Selasa</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 90px"><span style="font-size: 12px; color: #71717a">Mulai</span>
+            <select class="f" onChange="{{setStart}}"><option value="990">16.30</option><option value="480">08.00</option><option value="1140">19.00</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; flex: 1 1 90px"><span style="font-size: 12px; color: #71717a">Lama</span>
+            <select class="f" onChange="{{setLen}}"><option value="90">1,5 jam</option><option value="60">1 jam</option><option value="120">2 jam</option></select></label>
+        </div>
+        <dl style="margin: 0; display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid #e4e4e7">
+          <sc-for list="{{lines}}" as="l" hint-placeholder-count="2">
+            <div style="display: flex; justify-content: space-between; gap: 8px"><dt style="color: #71717a">{{l.label}}</dt><dd style="margin: 0">{{l.price}}</dd></div>
+          </sc-for>
+          <div style="display: flex; justify-content: space-between; gap: 8px; padding-top: 6px; border-top: 1px solid #e4e4e7; font-weight: 600"><dt>Total</dt><dd style="margin: 0">{{total}}</dd></div>
+        </dl>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"ruleError":{"editor":"enum","options":["Tidak ada","Tumpang tindih"],"default":"Tidak ada","section":"Status"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { unit: 30, day: 6, start: 990, len: 90,
+    rules: [ { days: [1, 2, 3, 4, 5, 6, 7], from: 1020, to: 1320, price: 250000 }, { days: [6, 7], from: 420, to: 600, price: 200000 } ] }; }
+  renderVals() {
+    var self = this, st = this.state, BASE = 150000;
+    var rp = function (n) { return 'Rp' + n.toLocaleString('id-ID'); };
+    var fmt = function (m) { var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + '.' + (mm ? mm : '00'); };
+    var units = [[30, '30 menit'], [60, '1 jam']].map(function (u) {
+      var on = st.unit === u[0];
+      return { label: u[1], on: on, pick: function () { self.setState({ unit: u[0] }); },
+        style: 'height: 30px; padding: 0 12px; border: 0; border-radius: 8px; font: inherit; cursor: pointer; ' + (on ? 'background: #ffffff; color: #0a0a0a; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,0.08)' : 'background: transparent; color: #52525b') };
+    });
+    var DN = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    var err = (this.props.ruleError ?? 'Tidak ada') === 'Tumpang tindih';
+    var rules = st.rules.map(function (r, ri) {
+      var showErr = err && ri === 1;
+      return { from: fmt(r.from), to: showErr ? '18.00' : fmt(r.to), price: r.price.toLocaleString('id-ID'), err: showErr,
+        aria: 'Aturan ' + (ri + 1), delAria: 'Hapus aturan ' + (ri + 1),
+        style: 'display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 10px; ' + (showErr ? 'border: 1px solid #fca5a5; background: #fef2f2' : 'border: 1px solid #e4e4e7'),
+        days: DN.map(function (n, di) {
+          var on = r.days.indexOf(di + 1) >= 0;
+          return { label: n, on: on,
+            pick: function () { var next = st.rules.map(function (x, xi) { if (xi !== ri) return x; var d = on ? x.days.filter(function (v) { return v !== di + 1; }) : x.days.concat([di + 1]); return Object.assign({}, x, { days: d }); }); self.setState({ rules: next }); },
+            style: 'min-width: 44px; height: 32px; padding: 0 8px; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; ' + (on ? 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a' : 'background: #ffffff; color: #3f3f46; border: 1px solid #e4e4e7') };
+        }) };
+    });
+    var lens = []; for (var m = 60; m <= 120; m += st.unit) lens.push(m === 60 ? '1 jam' : m === 90 ? '1,5 jam' : '2 jam');
+    var perHour = function (min) {
+      for (var i = 0; i < st.rules.length; i++) { var r = st.rules[i]; if (r.days.indexOf(st.day) >= 0 && min >= r.from && min < r.to) return r.price; }
+      return BASE;
+    };
+    var lines = [], total = 0, segStart = st.start, segPrice = perHour(st.start);
+    for (var t = st.start; t <= st.start + st.len; t += 30) {
+      var p = t < st.start + st.len ? perHour(t) : -1;
+      if (p !== segPrice) {
+        var cost = segPrice * (t - segStart) / 60; total += cost;
+        lines.push({ label: fmt(segStart) + ' sampai ' + fmt(t) + (segPrice === BASE ? ', harga biasa' : ', jam ramai'), price: rp(cost) });
+        segStart = t; segPrice = p;
+      }
+    }
+    return { units: units, rules: rules, lines: lines, total: rp(total),
+      lengthHint: 'Pelanggan bisa memilih: ' + lens.join(', ') + '. Jam mulai tiap ' + (st.unit === 30 ? '30 menit' : '1 jam') + '.',
+      courts: [ { name: 'Lapangan 1', note: 'Indoor', on: true }, { name: 'Lapangan 2', note: 'Indoor', on: true }, { name: 'Lapangan 3', note: 'Outdoor, juga dipakai Sewa lapangan badminton', on: true } ],
+      setDay: function (e) { self.setState({ day: Number(e.target.value) }); },
+      setStart: function (e) { self.setState({ start: Number(e.target.value) }); },
+      setLen: function (e) { self.setState({ len: Number(e.target.value) }); } };
+  }
+}
+</script>
+</body>
+</html>

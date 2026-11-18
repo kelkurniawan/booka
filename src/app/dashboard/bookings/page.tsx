@@ -7,7 +7,6 @@ import { PageHeader } from "@/components/layout/page-header";
 import { TableSkeleton } from "@/components/ui/skeletons";
 import { parseTab } from "@/lib/booking/dashboard";
 import { ROUTES } from "@/lib/routes";
-import { createClient } from "@/lib/supabase/server";
 import { bookingSearchSchema } from "@/lib/validations/booking";
 
 import { getTabCounts } from "../queries";
@@ -15,53 +14,16 @@ import { cancelBooking, decideRequest, markAttendance, markPaidOnSite, reschedul
 import { BookingDetailPanel } from "./booking-detail-panel";
 import { BookingDetailShell } from "./booking-detail-shell";
 import {
-  BOOKING_LIST_COLUMNS,
   buildBookingsHref,
   DEFAULT_PAGE_SIZE,
   PAGE_SIZE_OPTIONS,
-  type BookingListItem,
 } from "./booking-state";
-import type { TimelineNotification } from "./booking-timeline";
+import { loadNotifications, loadOrigin, loadSelectedBooking, loadServiceCourts } from "./loaders";
 import { BookingTabs } from "./booking-tabs";
 import { BookingsFilters } from "./bookings-filters";
 import { BookingsList } from "./bookings-list";
 
 export const metadata: Metadata = { title: "Booking" };
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-/** Booking untuk panel `?b=`; null bila bukan uuid, tak ditemukan, atau milik merchant lain. */
-async function loadSelectedBooking(rawId: string | undefined, merchantId: string): Promise<BookingListItem | null> {
-  if (!rawId || !UUID_RE.test(rawId)) return null;
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("bookings")
-    .select(BOOKING_LIST_COLUMNS)
-    .eq("id", rawId)
-    .eq("merchant_id", merchantId)
-    .maybeSingle();
-  if (error) {
-    console.error("[dashboard/bookings] gagal memuat booking terpilih", { merchantId, error });
-    return null;
-  }
-  return (data as unknown as BookingListItem | null) ?? null;
-}
-
-/** Riwayat pesan satu booking; null bila gagal dimuat. */
-async function loadNotifications(bookingId: string, merchantId: string): Promise<TimelineNotification[] | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notification_log")
-    .select("kind, channel, status, created_at")
-    .eq("booking_id", bookingId)
-    .eq("merchant_id", merchantId)
-    .order("created_at", { ascending: true });
-  if (error) {
-    console.error("[dashboard/bookings] gagal memuat riwayat pesan", { merchantId, bookingId, error });
-    return null;
-  }
-  return data;
-}
 
 /**
  * Shell halaman Booking. Yang di-`await` di sini hanya query kecil (jumlah
@@ -118,7 +80,13 @@ export default async function BookingsPage({
     : DEFAULT_PAGE_SIZE;
 
   const [counts, selected] = await Promise.all([getTabCounts(), loadSelectedBooking(rawParams.b, user.id)]);
-  const notifications = selected ? await loadNotifications(selected.id, user.id) : null;
+  const [notifications, origin, serviceCourts] = selected
+    ? await Promise.all([
+        loadNotifications(selected.id, user.id),
+        loadOrigin(selected.id, user.id),
+        selected.court_id ? loadServiceCourts(selected.service_id, user.id) : Promise.resolve([]),
+      ])
+    : [null, null, []];
   const nowMs = new Date().getTime();
   const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
 
@@ -169,6 +137,8 @@ export default async function BookingsPage({
               nowMs={nowMs}
               username={merchant.username}
               notifications={notifications}
+              origin={origin}
+              courts={serviceCourts}
               actions={{
                 cancel: cancelBooking,
                 decide: decideRequest,

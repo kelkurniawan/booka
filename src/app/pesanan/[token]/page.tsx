@@ -41,7 +41,7 @@ type BookingPageParams = { token: string };
  * propnya nanti diteruskan ke komponen client di bawah.
  */
 const BOOKING_COLUMNS =
-  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count, voucher_code, discount_amount, party_size, table_label, customer_note, capacity_mode" as const;
+  "id, merchant_id, service_name, service_price, start_datetime, end_datetime, customer_name, status, payment_url, paid_at, cancelled_at, cancel_reason, expires_at, payment_mode, amount_due_now, amount_due_on_site, paid_on_site_at, service_id, staff_id, attended_at, no_show_at, reschedule_count, voucher_code, discount_amount, party_size, table_label, court_name, customer_note, capacity_mode, pixel_event_id" as const;
 
 const SETTINGS_COLUMNS =
   "allow_customer_reschedule, reschedule_min_hours, max_reschedules, allow_customer_cancel, cancel_min_hours, policy_text, contact_phone, contact_email, contact_instagram, contact_threads, contact_x, contact_tiktok, contact_hidden, reply_from, reply_until, reminder_whatsapp, reminder_email, reminder_push, reminder_day_before, reminder_same_day" as const;

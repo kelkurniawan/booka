@@ -24,13 +24,16 @@ const teksOpsional = z
   .nullable()
   .default(null);
 
-/** Permutasi persis PAGE_SECTIONS. Kosong (field tidak dikirim) memakai urutan bawaan. */
+/** Permutasi PAGE_SECTIONS, atau tanpa LINKS (baris lama). Kosong (field tidak dikirim) memakai urutan bawaan. */
 const urutanBagian = z
   .string()
   .default(PAGE_SECTIONS.join(","))
   .transform((nilai) => nilai.split(",").map((kunci) => kunci.trim()))
   .refine(
-    (kunci) => kunci.length === PAGE_SECTIONS.length && PAGE_SECTIONS.every((s) => kunci.includes(s)),
+    (kunci) => {
+      const wajib = kunci.length === PAGE_SECTIONS.length ? PAGE_SECTIONS : PAGE_SECTIONS.filter((s) => s !== "LINKS");
+      return kunci.length === wajib.length && wajib.every((s) => kunci.includes(s));
+    },
     { message: "Susunan halaman tidak lengkap. Muat ulang halaman lalu coba lagi." },
   );
 

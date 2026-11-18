@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Tur dashboard di HP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+button:disabled{opacity:.45;cursor:not-allowed}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+  <header style="display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid #e4e4e7">
+    <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">S</span>
+    <h1 style="flex: 1; margin: 0; font-size: 18px; font-weight: 600">Hari ini</h1>
+    <button type="button" aria-label="Panduan halaman ini" style="width: 44px; height: 44px; border: 1px solid #e4e4e7; border-radius: 10px; background: #ffffff; font-weight: 700; cursor: pointer">?</button>
+  </header>
+  <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px">
+    <div style="padding: 14px; border: 1px solid #0a0a0a; border-radius: 12px; display: flex; flex-direction: column; gap: 4px"><strong>Panduan memulai</strong><span style="color: #71717a">2 dari 6 selesai</span></div>
+    <div style="padding: 14px; border: 1px solid #e4e4e7; border-radius: 12px; color: #71717a">Belum ada booking hari ini.</div>
+  </div>
+  <nav aria-label="Menu utama" style="position: absolute; left: 0; right: 0; bottom: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); padding: 6px 4px 18px; background: #ffffff; border-top: 1px solid #e4e4e7; font-size: 11px; text-align: center">
+    <a href="#" aria-current="page" style="min-height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #0a0a0a; font-weight: 600">Hari ini</a>
+    <a href="#" style="min-height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #52525b">Booking</a>
+    <span style="display: flex; justify-content: center"><button type="button" aria-label="Tambah booking manual" style="width: 48px; height: 48px; border: 0; border-radius: 999px; background: #0a0a0a; color: #ffffff; font-size: 22px; cursor: pointer">+</button></span>
+    <a href="#" style="min-height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #52525b">Halaman</a>
+    <a href="#" style="min-height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; color: #52525b">Lainnya</a>
+  </nav>
+
+  <div aria-hidden="true" style="{{spot}}"></div>
+  <section role="dialog" aria-modal="true" aria-labelledby="t-h" aria-describedby="t-b" style="position: absolute; left: 12px; right: 12px; bottom: 104px; padding: 18px; border-radius: 16px; background: #ffffff; box-shadow: 0 20px 48px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 8px">
+    <div style="display: flex; gap: 4px" aria-hidden="true"><sc-for list="{{dots}}" as="d" hint-placeholder-count="4"><span style="{{d}}"></span></sc-for></div>
+    <span style="font-size: 12px; color: #71717a">Langkah {{n}} dari 4</span>
+    <h2 id="t-h" style="margin: 0; font-size: 17px; font-weight: 600">{{t.title}}</h2>
+    <p id="t-b" style="margin: 0; line-height: 1.55; color: #3f3f46">{{t.body}}</p>
+    <div style="display: flex; gap: 8px; margin-top: 4px">
+      <button type="button" style="min-height: 44px; padding: 0 6px; border: 0; background: transparent; color: #52525b; text-decoration: underline; cursor: pointer">Lewati</button>
+      <span style="flex: 1"></span>
+      <button type="button" onClick="{{prev}}" disabled="{{first}}" style="min-height: 44px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 10px; background: #ffffff; color: #0a0a0a; cursor: pointer">Kembali</button>
+      <button type="button" onClick="{{next}}" style="min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">{{nextLabel}}</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { i: 2 }; }
+  renderVals() {
+    var self = this, i = this.state.i;
+    var T = [
+      { title: 'Panduan memulai', body: 'Enam langkah sampai booking pertama masuk. Ketuk satu untuk diantar ke halamannya.', box: [16, 78, 358, 66] },
+      { title: 'Booking', body: 'Semua pesanan ada di sini. Geser untuk menandai hadir atau lunas.', box: [80, 768, 74, 48] },
+      { title: 'Catat booking dari telepon', body: 'Pelanggan menelepon atau datang langsung? Ketuk + supaya jadwalnya tidak bentrok dengan booking online.', box: [167, 764, 56, 56] },
+      { title: 'Panduan di setiap halaman', body: 'Ketuk ? kapan saja untuk penjelasan singkat dan video 1 menit.', box: [330, 8, 50, 50] }
+    ];
+    var t = T[i], b = t.box;
+    return {
+      t: t, n: i + 1, first: i === 0, nextLabel: i === 3 ? 'Selesai' : 'Lanjut',
+      next: function () { self.setState({ i: Math.min(3, i + 1) }); }, prev: function () { self.setState({ i: Math.max(0, i - 1) }); },
+      dots: T.map(function (x, k) { return 'height: 4px; flex: 1; border-radius: 4px; background: ' + (k <= i ? '#0a0a0a' : '#e4e4e7'); }),
+      spot: 'position: absolute; left: ' + b[0] + 'px; top: ' + b[1] + 'px; width: ' + b[2] + 'px; height: ' + b[3] + 'px; border-radius: 14px; box-shadow: 0 0 0 3px #ffffff, 0 0 0 9999px rgba(10,10,10,0.55); pointer-events: none'
+    };
+  }
+}
+</script>
+</body>
+</html>

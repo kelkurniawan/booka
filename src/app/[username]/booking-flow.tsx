@@ -9,10 +9,14 @@ import {
   type ReactNode,
 } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { BookingSummary } from "@/components/booking-page/booking-summary";
+import { CourtPicker, type CourtPickerState } from "@/components/booking-page/court-picker";
+import { CourtConflictBanner } from "@/components/booking-page/court-conflict-banner";
+import { CourtPaymentCard } from "@/components/booking-page/court-payment-card";
+import { CourtPriceBreakdown } from "@/components/booking-page/court-price-breakdown";
+import { CourtVenueScreen } from "@/components/booking-page/court-venue-screen";
 import { DateStrip } from "@/components/booking-page/date-strip";
 import { GuestStepper } from "@/components/booking-page/guest-stepper";
 import { PromoBanners } from "@/components/booking-page/promo-banners";
@@ -35,6 +39,9 @@ import {
   type TimeSlotState,
 } from "@/components/booking-page/time-slot-picker";
 import { VoucherPicker } from "@/components/booking-page/voucher-picker";
+import { firePixel } from "@/components/booking-page/pixel-scripts";
+import { funnelContext, trackFunnel } from "./funnel-tracker";
+import { resolveEntry, voucherFailureMessage, type Entry, type EntryNotice } from "./entry";
 import { Button } from "@/components/ui/button";
 import {
   Field,
@@ -59,6 +66,20 @@ import {
   partyRangeLabel,
   type TablePickerData,
 } from "@/lib/booking/reservation";
+import { courtPrice, durationOptions, formatDuration } from "@/lib/booking/court";
+import {
+  courtRangeLabel,
+  courtRateSummary,
+  courtSubmitErrorAction,
+  courtSummaryLines,
+  effectiveCourtTotal,
+  ENVIRONMENT_LABEL,
+  NO_COURT_VENUE,
+  pickConflictAlt,
+  reconcileCourtVoucher,
+  type CourtSlotDto,
+  type CourtVenueData,
+} from "@/lib/booking/court-ui";
 import { buildDateStrip, nextOpenDate } from "@/lib/booking/schedule";
 import { jakartaDateISO, type NearestSlot } from "@/lib/booking/slots";
 import {
@@ -100,12 +121,17 @@ export type BookingFlowProps = {
   /** Hanya petunjuk tampilan; server menentukan mode akhir saat booking dibuat. */
   paymentSettings: PaymentSettings;
   restaurant: RestaurantInfo;
+  /** Lapangan, denah, dan aturan jam ramai untuk layanan sewa. */
+  courtVenue?: CourtVenueData;
   banners: PublicBanner[];
   vouchers: PublicVoucher[];
   /** Urutan bagian halaman yang tampil (theme.sections). */
   sections: PageSection[];
   /** Slot FAQ; null bila merchant belum mengisi. */
   faq: ReactNode;
+  links: ReactNode;
+  /** Masuk dari tautan iklan atau ?kode=. */
+  entry: Entry;
 };
 
 /** 1 layanan, 2 jadwal, 3 meja (hanya reservasi mode TABLE), 4 data diri. */
@@ -145,6 +171,18 @@ const TANGGAL = new Intl.DateTimeFormat("id-ID", {
   timeZone: "UTC",
 });
 
+const TANGGAL_PENDEK = new Intl.DateTimeFormat("id-ID", {
+  weekday: "long",
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
+
+/** "Sabtu 21 Nov" untuk bar ringkasan sewa (papan L1). */
+function dateLabelShort(dateISO: string): string {
+  return TANGGAL_PENDEK.format(new Date(`${dateISO}T12:00:00Z`)).replace(",", "");
+}
+
 function dateLabel(dateISO: string): string {
   return TANGGAL.format(new Date(`${dateISO}T12:00:00Z`));
 }
@@ -157,9 +195,13 @@ type CheckoutSubmitPayload = {
   customer_name: string;
   customer_whatsapp: string;
   voucherCode: string | null;
+  sessionId?: string;
+  attribution?: unknown;
   partySize: number | null;
   areaId: string | null;
   tableId: string | null;
+  courtId: string | null;
+  durationMinutes: number | null;
   customerNote: string | null;
 };
 
@@ -179,6 +221,8 @@ type CheckoutResult = {
   payment_url: string;
   expires_at: string;
   bookingUrl: string;
+  pixelEventId: string;
+  value: number;
 };
 
 type CheckoutErrorBody = { error?: string; code?: string; issues?: unknown };
@@ -230,11 +274,13 @@ async function checkVoucherCode(
   username: string,
   serviceId: string,
   code: string,
+  // Sewa lapangan: jam mulai dan lama main supaya pratinjau memakai total sewa.
+  court?: { startUtc: string; durationMinutes: number },
 ): Promise<CheckVoucherResult> {
   const response = await fetch("/api/vouchers/check", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username, serviceId, code }),
+    body: JSON.stringify({ username, serviceId, code, ...court }),
   });
   const body: unknown = await response.json().catch(() => null);
   if (
@@ -261,25 +307,30 @@ export function BookingFlow({
   staff,
   paymentSettings,
   restaurant,
+  courtVenue = NO_COURT_VENUE,
   banners,
   vouchers,
   sections,
   faq,
+  links,
+  entry,
 }: BookingFlowProps) {
-  const router = useRouter();
 
-  const [step, setStep] = useState<Step>(1);
+  const [step, setStep] = useState<Step>(entry.serviceId ? 2 : 1);
   // null = "siapa saja" (atau merchant tanpa staf).
   const [selectedStaffId, setSelectedStaffId] = useState<string | null>(null);
   const [selectedServiceId, setSelectedServiceId] = useState<string | null>(
-    services.length === 1 ? services[0].id : null,
+    entry.serviceId ?? (services.length === 1 ? services[0].id : null),
   );
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<PickerSlot | null>(null);
   const [slotState, setSlotState] = useState<TimeSlotState>({ kind: "idle" });
 
   // Reservasi restoran: jumlah tamu, area, meja, dan catatan.
-  const [partySize, setPartySize] = useState<number | null>(null);
+  const [partySize, setPartySize] = useState<number | null>(() => {
+    const s = services.find((item) => item.id === entry.serviceId);
+    return s?.party_max != null ? (s.party_min ?? 1) : null;
+  });
   const [areaId, setAreaId] = useState<string | null>(null);
   const [tableMode, setTableMode] = useState<TablePickerMode>("auto");
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
@@ -288,6 +339,23 @@ export function BookingFlow({
     "loading",
   );
   const [customerNote, setCustomerNote] = useState("");
+
+  // Sewa lapangan: lama main, jam (dari /api/slots), pilihan lapangan, denah, dan bentrok.
+  const [courtDuration, setCourtDuration] = useState<number | null>(() => {
+    const s = services.find((item) => item.id === (entry.serviceId ?? (services.length === 1 ? services[0].id : null)));
+    return s?.court_unit_minutes != null ? s.duration_minutes : null;
+  });
+  const [courtSlotState, setCourtSlotState] = useState<
+    { kind: "idle" | "loading" | "error" } | { kind: "ready"; slots: CourtSlotDto[] }
+  >({ kind: "idle" });
+  // null = "Mana saja".
+  const [selectedCourtId, setSelectedCourtId] = useState<string | null>(null);
+  const [showVenue, setShowVenue] = useState(false);
+  const [venueCourtId, setVenueCourtId] = useState<string | null>(null);
+  const [courtConflict, setCourtConflict] = useState<{
+    takenName: string;
+    alt: { id: string; name: string } | null;
+  } | null>(null);
 
   const [customerName, setCustomerName] = useState("");
   const [customerWhatsapp, setCustomerWhatsapp] = useState("");
@@ -299,6 +367,11 @@ export function BookingFlow({
   // Pesan netral saat voucher dilepas atau tidak jadi dipasang karena layanan tidak cocok.
   const [voucherNotice, setVoucherNotice] = useState<string | null>(null);
   const serviceListRef = useRef<HTMLDivElement>(null);
+  const [entryNotice, setEntryNotice] = useState<EntryNotice | null>(entry.notice);
+  const [entryDiscount, setEntryDiscount] = useState(0);
+  const [voucherFail, setVoucherFail] = useState<{ title: string; body: string } | null>(null);
+  const pendingCodeRef = useRef(entry.voucherCode);
+  const sentStepsRef = useRef(new Set<number>());
 
   const [todayISO] = useState(() => jakartaDateISO(new Date()));
 
@@ -312,10 +385,11 @@ export function BookingFlow({
   const seat = selectedService
     ? isSeatService(selectedService, restaurant.tableMode)
     : false;
+  const isCourt = selectedService?.court_unit_minutes != null;
   const hasTableStep = seat && restaurant.tableMode === "TABLE";
   const freeSeat = seat && Number(selectedService?.price ?? 0) === 0;
   const needNearest =
-    step === 2 && staff.length > 0 && !seat && selectedServiceId !== null;
+    step === 2 && staff.length > 0 && !seat && !isCourt && selectedServiceId !== null;
   const nearestLoaded =
     selectedServiceId !== null && selectedServiceId in nearestByService;
   useEffect(() => {
@@ -344,7 +418,7 @@ export function BookingFlow({
   // bekerja di hari usaha tutup, dan sebaliknya. "Siapa saja" = gabungan.
   // Tanpa useMemo: React Compiler menolak memo manual yang bergantung pada `seat`.
   const merchantDays = availability.map((row) => row.day_of_week);
-  const dayCandidates = seat
+  const dayCandidates = seat || isCourt
     ? []
     : selectedStaffId
       ? staff.filter((m) => m.id === selectedStaffId)
@@ -377,12 +451,91 @@ export function BookingFlow({
     };
   }, [selectedServiceId, selectedSlot]);
 
+  // Kode dari tautan/?kode= dicek lewat rute yang sama dengan kolom kode,
+  // begitu ada layanan terpilih; server tetap menilai ulang saat booking.
+  useEffect(() => {
+    const code = pendingCodeRef.current;
+    if (!code || !selectedService) return;
+    // Sewa lapangan: harga baru ada setelah jam dan lama main dipilih, jadi cek ditunda.
+    const courtCheck =
+      selectedService.court_unit_minutes != null
+        ? selectedSlot && selectedDate && courtDuration !== null
+          ? { startUtc: selectedSlot.startUtc, durationMinutes: courtDuration }
+          : null
+        : undefined;
+    if (courtCheck === null) return;
+    pendingCodeRef.current = null;
+    const service = selectedService;
+    const checkedPrice =
+      courtCheck && selectedDate
+        ? effectiveCourtTotal(
+            courtPrice({
+              basePerHour: Number(service.price),
+              rules: courtVenue.rulesByService[service.id] ?? [],
+              dateISO: selectedDate,
+              startHHMM: selectedSlot?.label ?? "00:00",
+              durationMinutes: courtCheck.durationMinutes,
+              unitMinutes: service.court_unit_minutes as 30 | 60,
+            }).total,
+            courtSlotState.kind === "ready"
+              ? (courtSlotState.slots.find((x) => x.start === courtCheck.startUtc)?.price ?? 0)
+              : 0,
+          )
+        : Number(service.price);
+    void checkVoucherCode(username, service.id, code, courtCheck)
+      .then((result) => {
+        const voucher: AppliedVoucher = {
+          code: result.code,
+          kind: result.kind,
+          value: result.value,
+          max_discount: result.max_discount,
+          min_spend: result.min_spend,
+          service_ids: result.service_ids,
+          source: vouchers.some((item) => item.code === result.code) ? "PUBLIC" : "PRIVATE",
+        };
+        const reason = voucherIneligibleReason(voucher, { id: service.id, price: checkedPrice }, serviceNames);
+        if (reason) throw new Error(reason);
+        setAppliedVoucher(voucher);
+        setEntryDiscount(result.discount);
+        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "VALID").notice);
+      })
+      .catch((error: unknown) => {
+        setVoucherFail(voucherFailureMessage(error, code));
+        setEntryNotice((now) => now ?? resolveEntry({ serviceId: service.id, voucherCode: code }, services, "EXPIRED").notice);
+      });
+  }, [selectedService, selectedSlot, selectedDate, courtDuration, courtSlotState, courtVenue, username, vouchers, serviceNames, services]);
+
+  // Kejadian funnel: sekali per langkah per kunjungan. Tanpa efek kalau
+  // tracker tidak terpasang (preview dashboard).
+  useEffect(() => {
+    if ((step !== 2 && step !== 4) || sentStepsRef.current.has(step)) return;
+    sentStepsRef.current.add(step);
+    trackFunnel(step === 2 ? "SERVICE" : "CHECKOUT", selectedServiceId ? { serviceId: selectedServiceId } : {});
+    // Pixel iklan: event_id acak per kejadian (deduplikasi hanya untuk Lead/Purchase).
+    try {
+      firePixel(step === 2 ? "SERVICE" : "CHECKOUT", {
+        eventId: crypto.randomUUID(),
+        value: selectedService ? Number(selectedService.price) : undefined,
+        contentName: selectedService?.name,
+      });
+    } catch {
+      // randomUUID tidak tersedia: lewati pixel
+    }
+  }, [step, selectedServiceId, selectedService]);
+
+  // Masuk dari tautan dengan layanan: langkah Jadwal terbuka, dan Kembali ke Layanan.
+  const enterAtScheduleRef = useRef(Boolean(entry.serviceId));
   // Riwayat browser: maju langkah = pushState, tombol Kembali = popstate.
   // Ini sinkronisasi ke sistem eksternal (history), jadi memang layak di effect.
   useEffect(() => {
     // Saat dimuat selalu mulai di langkah 1, jadi parameter lama dibuang.
     if (new URLSearchParams(window.location.search).has("langkah")) {
       window.history.replaceState(null, "", urlForStep(1));
+    }
+    if (enterAtScheduleRef.current) {
+      enterAtScheduleRef.current = false;
+      window.history.replaceState(null, "", urlForStep(1));
+      window.history.pushState(null, "", urlForStep(2));
     }
 
     function onPopState() {
@@ -461,11 +614,43 @@ export function BookingFlow({
     }
   }
 
+  // Jam sewa lapangan untuk tanggal dan lama main. Mengembalikan daftar jam
+  // (null bila gagal atau sudah tertimpa request lebih baru).
+  async function loadCourtSlots(
+    serviceId: string,
+    dateISO: string,
+    minutes: number,
+  ): Promise<CourtSlotDto[] | null> {
+    const requestId = (requestIdRef.current += 1);
+    setCourtSlotState({ kind: "loading" });
+    try {
+      const params = new URLSearchParams({
+        username,
+        serviceId,
+        date: dateISO,
+        durationMinutes: String(minutes),
+      });
+      const response = await fetch(`/api/slots?${params.toString()}`);
+      if (!response.ok) throw new Error("Gagal memuat jadwal lapangan");
+      const body = (await response.json()) as { slots: CourtSlotDto[] };
+      if (requestIdRef.current !== requestId) return null;
+      setCourtSlotState({ kind: "ready", slots: body.slots });
+      return body.slots;
+    } catch {
+      if (requestIdRef.current === requestId) setCourtSlotState({ kind: "error" });
+      return null;
+    }
+  }
+
   function resetSchedule() {
     requestIdRef.current += 1;
     setSelectedDate(null);
     setSelectedSlot(null);
     setSlotState({ kind: "idle" });
+    setCourtSlotState({ kind: "idle" });
+    setSelectedCourtId(null);
+    setCourtConflict(null);
+    setShowVenue(false);
   }
 
   function handleSelectService(serviceId: string) {
@@ -477,6 +662,7 @@ export function BookingFlow({
     setAreaId(null);
     setSelectedTableId(null);
     setTableMode("auto");
+    setCourtDuration(next?.court_unit_minutes != null ? next.duration_minutes : null);
     if (appliedVoucher && next) {
       const reason = voucherIneligibleReason(
         appliedVoucher,
@@ -507,7 +693,7 @@ export function BookingFlow({
     if (selectedService) {
       const reason = voucherIneligibleReason(
         voucher,
-        selectedService,
+        courtQuote ? { ...selectedService, price: courtQuote.total } : selectedService,
         serviceNames,
       );
       if (reason) {
@@ -534,6 +720,12 @@ export function BookingFlow({
   function handleSelectDate(dateISO: string) {
     setSelectedDate(dateISO);
     setSelectedSlot(null);
+    setSelectedCourtId(null);
+    setCourtConflict(null);
+    if (isCourt && selectedServiceId && courtDuration !== null) {
+      void loadCourtSlots(selectedServiceId, dateISO, courtDuration);
+      return;
+    }
     if (selectedServiceId)
       void loadSlots(
         selectedServiceId,
@@ -542,6 +734,45 @@ export function BookingFlow({
         partySize,
         areaId,
       );
+  }
+
+  function handleCourtDuration(minutes: number) {
+    setCourtDuration(minutes);
+    setSelectedSlot(null);
+    setSelectedCourtId(null);
+    setCourtConflict(null);
+    if (selectedServiceId && selectedDate)
+      void loadCourtSlots(selectedServiceId, selectedDate, minutes);
+  }
+
+  function handleCourtSlot(slot: CourtSlotDto) {
+    setSelectedSlot({
+      startUtc: slot.start,
+      endUtc: new Date(Date.parse(slot.start) + (courtDuration ?? 0) * 60_000).toISOString(),
+      label: slot.time,
+    });
+    // Jam baru, jadi pilihan lapangan lama tidak lagi berlaku.
+    setSelectedCourtId(null);
+    setCourtConflict(null);
+    // Voucher terpasang dinilai ulang terhadap total sewa jam ini.
+    if (appliedVoucher && selectedService && selectedDate && courtDuration !== null) {
+      const total = effectiveCourtTotal(
+        courtPrice({
+          basePerHour: Number(selectedService.price),
+          rules: courtRules,
+          dateISO: selectedDate,
+          startHHMM: slot.time,
+          durationMinutes: courtDuration,
+          unitMinutes: selectedService.court_unit_minutes as 30 | 60,
+        }).total,
+        slot.price,
+      );
+      const r = reconcileCourtVoucher(appliedVoucher, selectedService, total, serviceNames);
+      if (!r.keep) {
+        setAppliedVoucher(null);
+        setVoucherNotice(r.notice);
+      }
+    }
   }
 
   // Jumlah tamu atau area berubah: jam terpilih tidak lagi berlaku, muat ulang.
@@ -595,13 +826,15 @@ export function BookingFlow({
 
     const result = checkoutSchema.safeParse({
       serviceId: selectedServiceId,
-      staffId: seat ? null : selectedStaffId,
+      staffId: seat || isCourt ? null : selectedStaffId,
       startUtc: selectedSlot.startUtc,
       customer_name: customerName,
       customer_whatsapp: customerWhatsapp,
       partySize,
       areaId: seat ? areaId : null,
       tableId: seat && tableMode === "pick" ? selectedTableId : null,
+      courtId: isCourt ? selectedCourtId : null,
+      durationMinutes: isCourt ? courtDuration : null,
       customerNote: customerNote || null,
     });
 
@@ -622,28 +855,57 @@ export function BookingFlow({
       const checkout = await submitCheckout({
         username,
         serviceId: result.data.serviceId,
-        staffId: seat ? null : result.data.staffId,
+        staffId: seat || isCourt ? null : result.data.staffId,
         startUtc: result.data.startUtc,
         customer_name: result.data.customer_name,
         customer_whatsapp: result.data.customer_whatsapp,
         voucherCode: appliedVoucher?.code ?? null,
+        ...funnelContext(),
         partySize: result.data.partySize,
         areaId: result.data.areaId,
         tableId: result.data.tableId,
+        courtId: result.data.courtId,
+        durationMinutes: result.data.durationMinutes,
         customerNote: result.data.customerNote,
       });
       // Booking sudah permanen: arahkan ke /pesanan/[token], tempat QRIS atau
       // hasil akhir ditampilkan. Selalu ikuti bookingUrl: server yang
       // menentukan status (mis. ON_SITE bisa jadi FULL karena no-show). `submitting` sengaja tidak direset karena halaman segera
       // berpindah.
-      router.push(checkout.bookingUrl);
+      firePixel("BOOKED", {
+        eventId: checkout.pixelEventId,
+        value: checkout.value,
+        contentName: selectedService?.name,
+      });
+      // Beri request pixel waktu keluar sebelum halaman berpindah (Lead tidak boleh hilang).
+      await new Promise((r) => setTimeout(r, 300));
+      // Dokumen penuh, bukan router.push: pixel di halaman ini tidak boleh ikut ke URL bertoken (SPA pushState).
+      window.location.assign(checkout.bookingUrl);
     } catch (error) {
+      setSubmitting(false);
+      const code = error instanceof CheckoutError ? error.code : undefined;
+      const courtAction = courtSubmitErrorAction(code, isCourt);
+      if (courtAction === "conflict" && selectedDate && courtDuration !== null) {
+        // Lapangan diambil orang: muat ulang jam dan tawarkan lapangan lain yang kosong.
+        const startUtc = selectedSlot.startUtc;
+        const taken = courtProfiles.find((c) => c.id === selectedCourtId);
+        const fresh = await loadCourtSlots(selectedServiceId, selectedDate, courtDuration);
+        const alt = pickConflictAlt(fresh?.find((s) => s.start === startUtc), selectedCourtId);
+        setCourtConflict({ takenName: taken?.name ?? "Lapangan ini", alt });
+        window.scrollTo({ top: 0 });
+        return;
+      }
       toast.error(
         error instanceof Error
           ? error.message
           : "Gagal membuat booking, silakan coba lagi.",
       );
-      setSubmitting(false);
+      if (courtAction === "reload-schedule" && selectedDate && courtDuration !== null) {
+        setSelectedSlot(null);
+        void loadCourtSlots(selectedServiceId, selectedDate, courtDuration);
+        goForward(2);
+        return;
+      }
       // Reservasi: kapasitas atau meja berubah selagi mengisi, buka langkah yang relevan.
       const back = seat
         ? bookingErrorStep(
@@ -668,6 +930,80 @@ export function BookingFlow({
     }
   }
 
+  // Sewa lapangan: harga = total sewa (courtPrice), sama dengan yang ditagih server.
+  const courtRules = selectedService ? (courtVenue.rulesByService[selectedService.id] ?? []) : [];
+  const courtServerPrice =
+    courtSlotState.kind === "ready" && selectedSlot
+      ? (courtSlotState.slots.find((s) => s.start === selectedSlot.startUtc)?.price ?? 0)
+      : 0;
+  const courtBase =
+    isCourt && selectedService && selectedSlot && selectedDate && courtDuration !== null
+      ? courtPrice({
+          basePerHour: Number(selectedService.price),
+          rules: courtRules,
+          dateISO: selectedDate,
+          startHHMM: selectedSlot.label,
+          durationMinutes: courtDuration,
+          unitMinutes: selectedService.court_unit_minutes as 30 | 60,
+        })
+      : null;
+  // Harga server menang bila beda (lihat effectiveCourtTotal): tampil = ditagih.
+  const courtQuote = courtBase
+    ? { ...courtBase, total: effectiveCourtTotal(courtBase.total, courtServerPrice) }
+    : null;
+  const courtProfiles = selectedService
+    ? courtVenue.courts
+        .filter((c) => c.service_ids.includes(selectedService.id))
+        .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name))
+    : [];
+  const courtFreeNow =
+    courtSlotState.kind === "ready" && selectedSlot
+      ? courtSlotState.slots.find((s) => s.start === selectedSlot.startUtc) ?? null
+      : null;
+  const courtName =
+    courtProfiles.find((c) => c.id === selectedCourtId)?.name ??
+    courtFreeNow?.courts[0]?.name ??
+    null;
+  const courtSummary = courtSummaryLines(
+    courtQuote && selectedDate && selectedSlot && courtDuration !== null
+      ? {
+          dateLabel: dateLabelShort(selectedDate),
+          time: selectedSlot.label,
+          durationLabel: formatDuration(courtDuration),
+          total: courtQuote.total,
+          courtName: courtProfiles.find((c) => c.id === selectedCourtId)?.name ?? null,
+        }
+      : null,
+  );
+
+  const courtPickerState: CourtPickerState =
+    courtSlotState.kind === "ready"
+      ? courtSlotState.slots.every((s) => s.full)
+        ? "empty"
+        : "ready"
+      : courtSlotState.kind === "error"
+        ? "error"
+        : "loading";
+  const nextCourtDate = selectedDate ? nextOpenDate(strip, selectedDate) : null;
+  const shorterMinutes = selectedService?.duration_minutes ?? 0;
+  const courtEmptyHint =
+    courtDuration !== null && courtDuration > shorterMinutes
+      ? {
+          text: nextCourtDate
+            ? `Coba main ${formatDuration(shorterMinutes)}, atau pilih ${dateLabel(nextCourtDate)}.`
+            : `Coba main ${formatDuration(shorterMinutes)}.`,
+          ...(nextCourtDate
+            ? { actionLabel: `Lihat ${dateLabel(nextCourtDate)}`, onAction: () => handleSelectDate(nextCourtDate) }
+            : {}),
+        }
+      : nextCourtDate
+        ? {
+            text: `Pilih ${dateLabel(nextCourtDate)} yang masih bisa dipesan.`,
+            actionLabel: `Lihat ${dateLabel(nextCourtDate)}`,
+            onAction: () => handleSelectDate(nextCourtDate),
+          }
+        : null;
+
   // Rincian bayar langkah 3, dihitung dari pengaturan yang terlihat anon.
   let payment: {
     discount: number;
@@ -679,14 +1015,13 @@ export function BookingFlow({
   } | null = null;
   if (selectedService) {
     const mode = effectivePaymentMode(selectedService, paymentSettings);
+    const priced = courtQuote
+      ? { ...selectedService, price: courtQuote.total }
+      : selectedService;
     const discount = appliedVoucher
-      ? computeDiscount(appliedVoucher, Number(selectedService.price))
+      ? computeDiscount(appliedVoucher, Number(priced.price))
       : 0;
-    const { dueNow, dueOnSite } = computeAmounts(
-      selectedService,
-      mode,
-      discount,
-    );
+    const { dueNow, dueOnSite } = computeAmounts(priced, mode, discount);
     const status = initialBookingStatus(mode, dueNow, paymentSettings);
     payment = {
       discount,
@@ -699,7 +1034,9 @@ export function BookingFlow({
           ? "Kirim permintaan"
           : status === "CONFIRMED"
             ? "Konfirmasi booking"
-            : `Bayar ${formatRupiah(dueNow)}`,
+            : courtQuote && mode === "DEPOSIT"
+              ? `Bayar DP ${formatRupiah(dueNow)}`
+              : `Bayar ${formatRupiah(dueNow)}`,
     };
   }
 
@@ -740,8 +1077,39 @@ export function BookingFlow({
       >
         {step === 2 && selectedService?.party_max != null
           ? "Pilih jumlah tamu, tanggal, dan jam"
-          : STEP_TITLE[step]}
+          : step === 2 && isCourt
+            ? "Pilih jadwal main"
+            : STEP_TITLE[step]}
       </h2>
+      {entryNotice && step <= 2 ? (
+        <div role="status" className="bg-muted flex flex-col gap-1 p-3 text-sm" style={{ borderRadius: "var(--radius)" }}>
+          {entryNotice === "VOUCHER_APPLIED" && appliedVoucher ? (
+            <>
+              <p className="font-medium">Kode {appliedVoucher.code} sudah terpasang.</p>
+              {selectedService && entryDiscount > 0 ? (
+                <p className="text-muted-foreground">
+                  Hemat {formatRupiah(entryDiscount)} untuk {selectedService.name}.
+                </p>
+              ) : null}
+            </>
+          ) : null}
+          {entryNotice === "VOUCHER_EXPIRED" && voucherFail ? (
+            <>
+              <p className="font-medium">{voucherFail.title}</p>
+              <p className="text-muted-foreground">{voucherFail.body}</p>
+            </>
+          ) : null}
+          {entryNotice === "SERVICE_GONE" ? (
+            <>
+              <p className="font-medium">Layanan dari tautan ini sudah tidak tersedia</p>
+              <p className="text-muted-foreground">{merchantName} masih menerima booking untuk layanan lain.</p>
+              <Button type="button" variant="outline" className="min-h-11 self-start" onClick={scrollToServices}>
+                Lihat semua layanan
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 
@@ -837,6 +1205,7 @@ export function BookingFlow({
   );
 
   const bagian: Record<PageSection, ReactNode> = {
+    LINKS: links,
     PROMO: promoSection,
     SERVICES: servicesSection,
     FAQ: faq,
@@ -875,7 +1244,9 @@ export function BookingFlow({
               </p>
               {freeSeat ? null : (
                 <p className="text-muted-foreground text-xs">
-                  {formatRupiah(selectedService.price)}
+                  {isCourt
+                    ? courtRateSummary(Number(selectedService.price), courtRules)
+                    : formatRupiah(selectedService.price)}
                 </p>
               )}
             </div>
@@ -891,6 +1262,33 @@ export function BookingFlow({
             ) : null}
           </div>
 
+          {showVenue && isCourt ? (
+            <CourtVenueScreen
+              subtitle={
+                selectedDate && selectedSlot && courtDuration !== null
+                  ? `${dateLabel(selectedDate)}, ${courtRangeLabel(selectedSlot.label, courtDuration)} WIB`
+                  : null
+              }
+              areas={courtVenue.areas}
+              markers={courtVenue.markers}
+              courts={courtProfiles}
+              busyCourtIds={
+                courtFreeNow
+                  ? courtProfiles
+                      .filter((c) => !courtFreeNow.courts.some((f) => f.id === c.id))
+                      .map((c) => c.id)
+                  : []
+              }
+              viewCourtId={venueCourtId}
+              onView={setVenueCourtId}
+              onBack={() => setShowVenue(false)}
+              onChoose={(id) => {
+                setSelectedCourtId(id);
+                setShowVenue(false);
+              }}
+            />
+          ) : (
+            <>
           {selectedService.party_max != null && partySize !== null ? (
             <GuestStepper
               value={partySize}
@@ -950,7 +1348,7 @@ export function BookingFlow({
               </div>
             ) : null}
 
-            {staff.length > 0 && !seat ? (
+            {staff.length > 0 && !seat && !isCourt ? (
               <StaffPicker
                 staff={staff}
                 selectedId={selectedStaffId}
@@ -978,26 +1376,81 @@ export function BookingFlow({
                   selected={selectedDate}
                   onSelect={handleSelectDate}
                 />
-                <TimeSlotPicker
-                  state={slotState}
-                  selected={selectedSlot?.startUtc ?? null}
-                  onSelect={setSelectedSlot}
-                  onRetry={() => selectedDate && handleSelectDate(selectedDate)}
-                  onPickDate={handleSelectDate}
-                />
+                {isCourt && courtDuration !== null && selectedService.court_unit_minutes != null ? (
+                  selectedDate ? (
+                    <CourtPicker
+                      service={{
+                        price: Number(selectedService.price),
+                        court_unit_minutes: selectedService.court_unit_minutes as 30 | 60,
+                      }}
+                      rules={courtRules}
+                      dateISO={selectedDate}
+                      durations={durationOptions({
+                        minMinutes: selectedService.duration_minutes,
+                        maxMinutes: selectedService.court_max_minutes ?? selectedService.duration_minutes,
+                        unitMinutes: selectedService.court_unit_minutes,
+                      })}
+                      selectedDuration={courtDuration}
+                      onDuration={handleCourtDuration}
+                      slots={courtSlotState.kind === "ready" ? courtSlotState.slots : []}
+                      selectedSlot={selectedSlot?.startUtc ?? null}
+                      onSlot={handleCourtSlot}
+                      courts={courtProfiles.map((c) => ({
+                        id: c.id,
+                        name: c.name,
+                        tags: [ENVIRONMENT_LABEL[c.environment], c.surface].filter(Boolean).join(", "),
+                        description: c.description,
+                        photo: (() => {
+                          const p = c.photos.find((x) => (x.alt_text ?? "").trim() !== "");
+                          return p ? { path: p.path, alt: p.alt_text as string } : null;
+                        })(),
+                      }))}
+                      selectedCourt={selectedCourtId}
+                      onCourt={setSelectedCourtId}
+                      state={courtPickerState}
+                      emptyHint={courtEmptyHint}
+                      onRetry={() => handleSelectDate(selectedDate)}
+                      onOpenVenue={
+                        courtProfiles.some((c) => c.pos_x !== null && c.pos_y !== null)
+                          ? () => {
+                              setVenueCourtId(selectedCourtId ?? courtProfiles[0]?.id ?? null);
+                              setShowVenue(true);
+                            }
+                          : null
+                      }
+                    />
+                  ) : (
+                    <p className="text-muted-foreground text-sm">
+                      Pilih tanggal dulu untuk melihat jam kosong.
+                    </p>
+                  )
+                ) : (
+                  <TimeSlotPicker
+                    state={slotState}
+                    selected={selectedSlot?.startUtc ?? null}
+                    onSelect={setSelectedSlot}
+                    onRetry={() => selectedDate && handleSelectDate(selectedDate)}
+                    onPickDate={handleSelectDate}
+                  />
+                )}
               </>
             )}
           </div>
           <StickyActionBar
+            top={isCourt ? courtSummary.top : undefined}
             summary={
-              selectedDate && selectedSlot
-                ? `${dateLabel(selectedDate)}, ${selectedSlot.label}`
-                : "Pilih tanggal dan jam"
+              isCourt
+                ? courtSummary.main
+                : selectedDate && selectedSlot
+                  ? `${dateLabel(selectedDate)}, ${selectedSlot.label}`
+                  : "Pilih tanggal dan jam"
             }
             actionLabel="Lanjut"
             disabled={!selectedSlot}
             onAction={handleScheduleNext}
           />
+            </>
+          )}
         </>
       ) : null}
 
@@ -1058,18 +1511,62 @@ export function BookingFlow({
           className="bg-card border-border flex flex-col gap-6 border p-3"
           style={{ borderRadius: "var(--radius)" }}
         >
+          {courtConflict ? (
+            <CourtConflictBanner
+              takenName={courtConflict.takenName}
+              alt={courtConflict.alt}
+              onUseAlt={(id) => {
+                setSelectedCourtId(id);
+                setCourtConflict(null);
+              }}
+              onPickOtherTime={() => {
+                setSelectedSlot(null);
+                setSelectedCourtId(null);
+                setCourtConflict(null);
+                goForward(2);
+              }}
+            />
+          ) : null}
+          {courtQuote && courtDuration !== null ? (
+            <CourtPriceBreakdown
+              title={selectedService.name}
+              when={`${dateLabel(selectedDate)}, ${courtRangeLabel(selectedSlot.label, courtDuration)} WIB`}
+              courtLine={
+                selectedCourtId
+                  ? (courtName ?? "")
+                  : courtName
+                    ? `${courtName}, dipilihkan untuk Anda`
+                    : "Lapangan dipilihkan untuk Anda"
+              }
+              segments={courtQuote.segments}
+              total={courtQuote.total}
+              voucher={
+                appliedVoucher && payment.discount > 0
+                  ? { code: appliedVoucher.code, discount: payment.discount }
+                  : null
+              }
+              onChange={() => goForward(2)}
+            />
+          ) : null}
           {/* Reservasi gratis (ResData): tanpa voucher dan tanpa ringkasan harga. */}
           {freeSeat ? null : (
             <VoucherPicker
               vouchers={vouchers}
-              service={selectedService}
+              service={courtQuote ? { ...selectedService, price: courtQuote.total } : selectedService}
               serviceNames={serviceNames}
               merchantName={merchantName}
               applied={appliedVoucher}
               onApply={handleApplyVoucher}
               onRemove={() => setAppliedVoucher(null)}
               checkCode={(code) =>
-                checkVoucherCode(username, selectedService.id, code)
+                checkVoucherCode(
+                  username,
+                  selectedService.id,
+                  code,
+                  courtQuote && courtDuration !== null
+                    ? { startUtc: selectedSlot.startUtc, durationMinutes: courtDuration }
+                    : undefined,
+                )
               }
             />
           )}
@@ -1096,7 +1593,7 @@ export function BookingFlow({
               </Button>
             </div>
           ) : null}
-          {freeSeat ? null : (
+          {freeSeat || courtQuote ? null : (
             <BookingSummary
               rows={[
                 { label: "Layanan", value: selectedService.name },
@@ -1130,8 +1627,18 @@ export function BookingFlow({
             />
           )}
 
+          {courtQuote ? (
+            <CourtPaymentCard
+              mode={effectivePaymentMode(selectedService, paymentSettings)}
+              depositType={selectedService.deposit_type}
+              depositValue={selectedService.deposit_value}
+              dueNow={payment.dueNow}
+              dueOnSite={payment.dueOnSite}
+            />
+          ) : null}
+
           <Field data-invalid={Boolean(formErrors.customer_name)}>
-            <FieldLabel htmlFor="customer_name">Nama lengkap</FieldLabel>
+            <FieldLabel htmlFor="customer_name">{isCourt ? "Nama" : "Nama lengkap"}</FieldLabel>
             <Input
               id="customer_name"
               name="customer_name"
@@ -1170,21 +1677,24 @@ export function BookingFlow({
               />
             </div>
             <FieldDescription id="customer_whatsapp_hint">
-              Dipakai merchant untuk menghubungi Anda soal booking ini.
+              {isCourt
+                ? "Konfirmasi dan pengingat main dikirim ke nomor ini."
+                : "Dipakai merchant untuk menghubungi Anda soal booking ini."}
             </FieldDescription>
             {formErrors.customer_whatsapp ? (
               <FieldError>{formErrors.customer_whatsapp}</FieldError>
             ) : null}
           </Field>
 
-          {selectedService.party_max != null ? (
+          {selectedService.party_max != null || isCourt ? (
             <Field>
               <FieldLabel htmlFor="customer_note">
-                Catatan (opsional)
+                {isCourt ? "Catatan untuk tempat (opsional)" : "Catatan (opsional)"}
               </FieldLabel>
               <Textarea
                 id="customer_note"
                 name="customer_note"
+                placeholder={isCourt ? "Misalnya: perlu sewa raket 2" : undefined}
                 value={customerNote}
                 onChange={(event) => setCustomerNote(event.target.value)}
                 maxLength={MAX_CUSTOMER_NOTE}
@@ -1196,8 +1706,9 @@ export function BookingFlow({
           <div className="text-muted-foreground flex flex-col gap-2 text-sm text-pretty">
             {payment.online ? (
               <p>
-                Pembayaran masuk langsung ke {merchantName} lewat QRIS. Jadwal
-                ditahan 15 menit selama Anda membayar.
+                {courtQuote
+                  ? `Pembayaran masuk langsung ke ${merchantName} lewat QRIS. Lapangan ditahan 15 menit selama menunggu pembayaran.`
+                  : `Pembayaran masuk langsung ke ${merchantName} lewat QRIS. Jadwal ditahan 15 menit selama Anda membayar.`}
               </p>
             ) : null}
             {payment.approval ? (
@@ -1217,7 +1728,7 @@ export function BookingFlow({
             holdSentence(restaurant.holdMinutes) ? (
               <p>{holdSentence(restaurant.holdMinutes)}</p>
             ) : null}
-            {payment.dueOnSite > 0 ? (
+            {payment.dueOnSite > 0 && !courtQuote ? (
               <p>
                 {payment.dueNow > 0
                   ? `Sisanya ${formatRupiah(payment.dueOnSite)} dibayar langsung ke ${merchantName} saat layanan.`

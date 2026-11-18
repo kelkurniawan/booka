@@ -195,6 +195,10 @@ export const GUIDE_PAGES: Record<GuidePageKey, GuidePage> = {
         term: "Jumlah tamu dan lama duduk",
         text: "Kolom ini muncul bila Anda memakai kapasitas di menu Denah meja, untuk layanan reservasi.",
       },
+      {
+        term: "Sewa lapangan",
+        text: "Nyalakan saklar Sewa lapangan. Harga adalah harga per jam di luar jam ramai. Pilih jam mulai tiap setengah jam atau tiap jam, lama main paling singkat dan paling lama, lapangan yang dipakai, dan Harga jam ramai per hari bila ada. Pelanggan memilih tanggal, lama main, jam, lalu lapangan.",
+      },
     ],
     note: "Paket Starter dibatasi 1 layanan. Video layanan hanya untuk paket Pro dan Studio.",
     video: null,
@@ -501,6 +505,176 @@ export const GUIDE_PAGES: Record<GuidePageKey, GuidePage> = {
         target: "domain-form",
         title: "Pasang domain",
         body: "Ketik domain, pasang record yang ditampilkan di DNS, lalu tekan Periksa.",
+      },
+    ],
+  },
+
+  // Sumber: src/app/dashboard/tautan/*
+  links: {
+    title: "Tautan dan sosmed",
+    summary: "Satu halaman untuk bio Instagram dan TikTok: tautan penting Anda tampil di atas tombol booking.",
+    points: [
+      {
+        term: "Tambah tautan",
+        text: "Isi nama dan alamat tautan, misalnya portofolio, daftar harga, atau lokasi studio. Ikonnya dipilih otomatis dari alamat.",
+      },
+      {
+        term: "Tampil atau sembunyi",
+        text: "Matikan sebuah tautan untuk menyembunyikannya dari halaman tanpa menghapusnya.",
+      },
+      {
+        term: "Ikon sosmed",
+        text: "Saklar untuk menampilkan ikon Instagram, TikTok, dan WhatsApp di bawah nama usaha.",
+      },
+      {
+        term: "Letak tautan",
+        text: "Pilih tautan tampil di atas daftar layanan, di bawahnya, atau paling bawah setelah FAQ.",
+      },
+      {
+        term: "Simpan",
+        text: "Perubahan baru terlihat oleh pengunjung setelah Anda menekan Simpan.",
+      },
+    ],
+    note: null,
+    video: null,
+    tour: [
+      intro("Tautan dan sosmed", "Jadikan halaman booking Anda tujuan tunggal di bio Instagram dan TikTok."),
+      {
+        target: "links-editor",
+        title: "Editor tautan",
+        body: "Tambah tautan, atur ikon sosmed, lalu tekan Simpan. Pratinjau di sebelahnya sama dengan halaman publik.",
+      },
+    ],
+  },
+
+  // Sumber: src/app/dashboard/iklan/*
+  ads: {
+    title: "Iklan",
+    summary: "Lacak iklan atau kanal mana yang menghasilkan booking, dan pasang pixel iklan.",
+    points: [
+      {
+        term: "Tautan iklan",
+        text: "Buat satu tautan per iklan atau kanal, misalnya bio Instagram, iklan TikTok, atau status WhatsApp. Pasang tautan itu di tempatnya.",
+      },
+      {
+        term: "Tujuan dan voucher",
+        text: "Pilih ke mana pengunjung langsung diarahkan, dan voucher yang otomatis terpasang bila ada.",
+      },
+      {
+        term: "QR",
+        text: "Setiap tautan punya kode QR yang bisa diunduh untuk materi cetak.",
+      },
+      {
+        term: "Pixel",
+        text: "Isi ID pixel Meta, TikTok, atau Google Analytics 4 di tab Pixel, lalu nyalakan platformnya satu per satu.",
+      },
+      {
+        term: "Data yang dikirim",
+        text: "Hanya jenis kejadian, nama layanan, dan nilai. Nama, nomor WhatsApp, dan catatan pelanggan tidak pernah dikirim ke platform iklan.",
+      },
+    ],
+    note: null,
+    video: null,
+    tour: [
+      intro("Iklan", "Tahu iklan mana yang berhasil, lalu bantu platform iklan belajar dari booking Anda."),
+      {
+        target: "ads-tabs",
+        title: "Tautan iklan dan Pixel",
+        body: "Pindah antara daftar tautan iklan dan pengaturan pixel lewat tab ini.",
+      },
+    ],
+  },
+
+  // Sumber: src/app/dashboard/lapangan/*
+  courts: {
+    title: "Lapangan",
+    summary: "Jadwal sewa per lapangan, plus tempat mengatur lapangan, foto, dan denah tempat Anda.",
+    points: [
+      {
+        term: "Jadwal",
+        text: "Tiap kolom adalah satu lapangan, tiap baris satu jam. Pindah tanggal lewat tombol di atas grid. Ketuk booking untuk melihat detail, dan pakai Booking manual untuk mencatat pesanan dari telepon.",
+      },
+      {
+        term: "Arti tanda",
+        text: "Keterangan warna ada di bawah grid. Jam yang sudah terisi tidak bisa dipesan lagi di lapangan itu.",
+      },
+      {
+        term: "Lapangan dan denah",
+        text: "Tab ini berisi daftar lapangan, profil, dan denah tempat. Tambah lapangan lalu isi jenis olahraga, lantai, dan fasilitasnya.",
+      },
+      {
+        term: "Foto lapangan",
+        text: "Satu lapangan maksimal 5 foto. Setiap foto wajib diberi teks alternatif, dan foto tanpa teks itu tidak tampil di halaman booking.",
+      },
+      {
+        term: "Denah tempat",
+        text: "Geser lapangan di denah supaya pelanggan melihat letaknya. Denah dan profil punya tombol Simpan masing-masing, jadi simpan keduanya bila Anda mengubah keduanya.",
+      },
+      {
+        term: "Lapangan nonaktif",
+        text: "Lapangan yang punya riwayat booking tidak dihapus, hanya dinonaktifkan. Lapangan nonaktif tidak bisa dipesan pelanggan.",
+      },
+    ],
+    note: "Harga, lama main, dan jam ramai diatur di menu Layanan, pada layanan yang memakai Sewa lapangan.",
+    video: null,
+    tour: [
+      intro("Lapangan", "Lihat siapa main di lapangan mana dan jam berapa, lalu atur lapangan dan denah tempat Anda."),
+      {
+        target: "nav-courts",
+        viewport: "desktop",
+        title: "Jadwal lapangan",
+        body: "Menu ini hanya ada untuk usaha sewa lapangan. Dari sini Anda membuka jadwal harian.",
+      },
+      {
+        target: "nav-courts-mobile",
+        viewport: "mobile",
+        title: "Jadwal lapangan",
+        body: "Ketuk Lapangan di menu bawah untuk membuka jadwal harian.",
+      },
+      {
+        target: "court-tabs",
+        title: "Dua tampilan",
+        body: "Jadwal untuk booking harian. Lapangan dan denah untuk mengatur lapangan itu sendiri.",
+      },
+      {
+        target: "court-date-nav",
+        title: "Pilih tanggal",
+        body: "Pindah hari untuk melihat jadwal sebelum dan sesudahnya.",
+      },
+      {
+        target: "court-grid",
+        title: "Grid jadwal",
+        body: "Tiap kolom satu lapangan. Ketuk booking untuk membuka detailnya.",
+      },
+      {
+        target: "court-legend",
+        title: "Arti tanda",
+        body: "Cocokkan warna di grid dengan keterangan ini.",
+      },
+      {
+        target: "court-add-manual",
+        title: "Booking manual",
+        body: "Catat pesanan telepon atau yang datang langsung supaya jamnya tidak terpesan ganda.",
+      },
+      {
+        target: "court-list",
+        title: "Daftar lapangan",
+        body: "Tambah, ubah, urutkan, atau nonaktifkan lapangan dari sini.",
+      },
+      {
+        target: "court-profile",
+        title: "Profil lapangan",
+        body: "Isi nama, olahraga, lantai, dan fasilitas. Tekan Simpan profil setelah selesai.",
+      },
+      {
+        target: "court-photos",
+        title: "Foto",
+        body: "Unggah sampai 5 foto dan isi teks alternatifnya, kalau tidak foto tidak tampil.",
+      },
+      {
+        target: "court-venue",
+        title: "Denah tempat",
+        body: "Geser lapangan ke posisinya, lalu tekan Simpan denah.",
       },
     ],
   },

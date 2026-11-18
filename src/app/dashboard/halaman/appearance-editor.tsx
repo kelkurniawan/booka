@@ -32,6 +32,7 @@ import type {
   CornerStyle,
   FontPair,
   MerchantFaq,
+  MerchantLink,
   MerchantTheme,
   PublicBanner,
   Service,
@@ -52,7 +53,7 @@ import { FaqEditor, validasiFaqs, type FaqDraft } from "./faq-editor";
 import { AppearancePreview } from "./preview-frame";
 
 /** Bagian tema yang bisa disunting; cerminan kolom merchant_themes. */
-type DraftTema = Omit<MerchantTheme, "merchant_id" | "created_at" | "updated_at">;
+type DraftTema = Omit<MerchantTheme, "merchant_id" | "created_at" | "updated_at" | "show_social_icons" | "public_whatsapp">;
 
 const TEMA_KOSONG: DraftTema = {
   preset: "BERSIH",
@@ -67,7 +68,7 @@ const TEMA_KOSONG: DraftTema = {
   logo_path: null,
   cover_path: null,
   button_style: "FILLED",
-  section_order: ["PROMO", "SERVICES", "FAQ"],
+  section_order: ["LINKS", "PROMO", "SERVICES", "FAQ"],
   hidden_sections: [],
   background_motion: "BENTUK",
   background_motion_speed: "SLOW",
@@ -114,6 +115,8 @@ export function AppearanceEditor({
   faqs: faqsAwal,
   paymentSettings,
   banners,
+  links,
+  contacts,
 }: {
   tier: SubscriptionTier;
   merchantId: string;
@@ -127,6 +130,8 @@ export function AppearanceEditor({
   faqs: MerchantFaq[];
   paymentSettings: PaymentSettings;
   banners: PublicBanner[];
+  links: Pick<MerchantLink, "id" | "label" | "url">[];
+  contacts: { instagram: string | null; tiktok: string | null; whatsapp: string | null } | null;
 }) {
   const starter = tier === "STARTER";
 
@@ -226,7 +231,7 @@ export function AppearanceEditor({
   // pemangkasan paket -- jadi merchant STARTER melihat persis apa yang benar
   // benar akan tampil, bukan versi yang lebih bagus dari kenyataan.
   const temaJadi = useMemo(
-    () => resolveTheme(tier, { ...tema, merchant_id: merchantId, created_at: "", updated_at: "" }),
+    () => resolveTheme(tier, { ...tema, merchant_id: merchantId, created_at: "", updated_at: "", show_social_icons: true, public_whatsapp: false }),
     [tier, tema, merchantId],
   );
 
@@ -325,6 +330,7 @@ export function AppearanceEditor({
   }
 
   const hintBagian: Record<PageSection, string> = {
+    LINKS: "Tautan di bawah profil",
     PROMO: starter
       ? "Banner promo tersedia di paket Pro"
       : banners.length > 0
@@ -832,6 +838,8 @@ export function AppearanceEditor({
       showWatermark={starter}
       paymentSettings={paymentSettings}
       banners={banners}
+      links={links}
+      contacts={contacts}
     />
   );
 

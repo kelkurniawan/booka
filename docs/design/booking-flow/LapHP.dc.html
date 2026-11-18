@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Jadwal lapangan di HP</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 390px; height: 900px; position: relative; overflow: hidden; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box">
+
+  <header style="padding: 14px 16px 10px; display: flex; flex-direction: column; gap: 12px; border-bottom: 1px solid #e4e4e7">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <h1 style="flex: 1; margin: 0; font-size: 20px; font-weight: 600">Jadwal lapangan</h1>
+      <a href="#" style="display: flex; align-items: center; height: 44px; padding: 0 14px; border-radius: 10px; background: #0a0a0a; color: #ffffff; font-weight: 500; text-decoration: none">Booking manual</a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px">
+      <button type="button" aria-label="Hari sebelumnya" style="width: 44px; height: 44px; border: 1px solid #e4e4e7; border-radius: 10px; background: #ffffff; color: #0a0a0a; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center">
+        <span style="font-weight: 600">Sabtu, 21 November</span>
+        <span style="font-size: 12px; color: #71717a">{{counts}}</span>
+      </div>
+      <button type="button" aria-label="Hari berikutnya" style="width: 44px; height: 44px; border: 1px solid #e4e4e7; border-radius: 10px; background: #ffffff; color: #0a0a0a; display: flex; align-items: center; justify-content: center; cursor: pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+    </div>
+  </header>
+
+  <p style="margin: 0; padding: 8px 16px; font-size: 12px; color: #71717a">Geser ke samping untuk lapangan lain. Ketuk jam kosong untuk menambah booking.</p>
+
+  <div style="height: 680px; overflow: auto; border-top: 1px solid #e4e4e7">
+    <div style="display: grid; grid-template-columns: 56px repeat(3, 132px); width: max-content">
+      <div style="position: sticky; left: 0; z-index: 2; background: #ffffff; border-right: 1px solid #e4e4e7">
+        <div style="position: sticky; top: 0; height: 44px; background: #ffffff; border-bottom: 1px solid #e4e4e7"></div>
+        <sc-for list="{{hours}}" as="h" hint-placeholder-count="8">
+          <div style="{{h.style}}">{{h.label}}</div>
+        </sc-for>
+      </div>
+      <sc-for list="{{cols}}" as="c" hint-placeholder-count="3">
+        <div style="position: relative; border-right: 1px solid #e4e4e7">
+          <div style="position: sticky; top: 0; z-index: 1; height: 44px; box-sizing: border-box; padding: 4px 8px; background: #ffffff; border-bottom: 1px solid #e4e4e7; display: flex; flex-direction: column; justify-content: center">
+            <span style="font-weight: 600">{{c.name}}</span>
+            <span style="font-size: 11px; color: #71717a">{{c.note}}</span>
+          </div>
+          <sc-for list="{{c.cells}}" as="e" hint-placeholder-count="8">
+            <button type="button" aria-label="{{e.aria}}" style="display: block; width: 100%; height: 72px; padding: 0; border: 0; border-bottom: 1px solid #f4f4f5; background: transparent; cursor: pointer"></button>
+          </sc-for>
+          <sc-for list="{{c.blocks}}" as="b" hint-placeholder-count="2">
+            <button type="button" aria-label="{{b.aria}}" style="{{b.style}}">
+              <span style="font-weight: 600">{{b.name}}</span>
+              <span style="font-size: 12px">{{b.time}}</span>
+              <span style="font-size: 12px">{{b.status}}</span>
+            </button>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <nav aria-label="Menu utama" style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: grid; grid-template-columns: repeat(4, 1fr); background: #ffffff; border-top: 1px solid #e4e4e7">
+    <a href="#" style="display: flex; align-items: center; justify-content: center; color: #71717a; text-decoration: none; font-size: 12px">Hari ini</a>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; color: #71717a; text-decoration: none; font-size: 12px">Booking</a>
+    <a href="LapHP.dc.html" aria-current="page" style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: #0a0a0a; text-decoration: none; font-size: 12px; font-weight: 600"><span aria-hidden="true" style="width: 24px; height: 3px; border-radius: 3px; background: #0a0a0a"></span>Lapangan</a>
+    <a href="#" style="display: flex; align-items: center; justify-content: center; color: #71717a; text-decoration: none; font-size: 12px">Lainnya</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var START = 14, END = 22, ROW = 72;
+    var fmt = function (m) { var h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + '.' + (mm ? mm : '00'); };
+    var hours = [];
+    for (var h = START; h < END; h++) hours.push({ label: fmt(h * 60), style: 'height: ' + ROW + 'px; box-sizing: border-box; padding: 4px 8px; border-bottom: 1px solid #f4f4f5; font-size: 12px; font-variant-numeric: tabular-nums; ' + (h >= 17 ? 'background: #fafafa' : '') });
+    var label = { PAID: 'Lunas', DP: 'Sisa di tempat', ONSITE: 'Bayar di tempat', PENDING: 'Menunggu bayar' };
+    var look = { PAID: 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a', ONSITE: 'background: #0a0a0a; color: #ffffff; border: 1px solid #0a0a0a', DP: 'background: #e4e4e7; color: #0a0a0a; border: 1px solid #d4d4d8', PENDING: 'background: #ffffff; color: #0a0a0a; border: 2px solid #0a0a0a' };
+    var B = [
+      { c: 0, s: 960, e: 1080, name: 'Dimas', st: 'DP' }, { c: 0, s: 1140, e: 1260, name: 'Klub Padel Kampus', st: 'ONSITE' },
+      { c: 1, s: 990, e: 1080, name: 'Pelanggan online', st: 'PENDING' }, { c: 1, s: 1080, e: 1140, name: 'Andre', st: 'PAID' },
+      { c: 2, s: 1020, e: 1140, name: 'Fajar', st: 'DP' }
+    ];
+    var names = [['Lapangan 1', 'Indoor'], ['Lapangan 2', 'Indoor'], ['Lapangan 3', 'Outdoor']];
+    var cols = names.map(function (n, ci) {
+      var cells = [];
+      for (var h = START; h < END; h++) cells.push({ aria: 'Tambah booking ' + n[0] + ' jam ' + fmt(h * 60) });
+      return { name: n[0], note: n[1], cells: cells, blocks: B.filter(function (b) { return b.c === ci; }).map(function (b) {
+        return { name: b.name, time: fmt(b.s) + ' sampai ' + fmt(b.e), status: label[b.st], aria: b.name + ', ' + n[0] + ', ' + fmt(b.s) + ' sampai ' + fmt(b.e) + ', ' + label[b.st],
+          style: 'position: absolute; left: 3px; right: 3px; top: ' + (44 + (b.s - START * 60) / 60 * ROW + 2) + 'px; height: ' + ((b.e - b.s) / 60 * ROW - 4) + 'px; box-sizing: border-box; padding: 6px; border-radius: 8px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; overflow: hidden; text-align: left; font: inherit; font-size: 13px; cursor: pointer; ' + look[b.st] };
+      }) };
+    });
+    return { hours: hours, cols: cols, counts: '8 booking, 4 belum lunas' };
+  }
+}
+</script>
+</body>
+</html>

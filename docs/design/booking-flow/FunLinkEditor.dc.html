@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Atur tautan dan sosmed di halaman</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input,select{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0}
+.f{height:36px;box-sizing:border-box;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;font-size:14px;width:100%}
+.nav a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+.ic{width:32px;height:32px;border:1px solid #e4e4e7;border-radius:8px;background:#ffffff;color:#0a0a0a;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.ic:disabled{color:#d4d4d8;cursor:not-allowed}
+</style>
+</helmet>
+<div style="min-height: 1000px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 220px; max-width: 240px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">RS</span>
+      <span style="font-weight: 600">Rias by Sekar</span>
+    </div>
+    <a href="#">Hari ini</a>
+    <a href="#">Booking</a>
+    <a href="FunAnalitik.dc.html">Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#">Layanan</a>
+    <a href="#">Jam buka</a>
+    <a href="#">Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="#">Tampilan</a>
+    <a href="FunLinkEditor.dc.html" aria-current="page">Tautan dan sosmed</a>
+    <a href="#">Promosi</a>
+    <a href="FunTautan.dc.html">Iklan</a>
+    <a href="#">Domain</a>
+  </nav>
+
+  <main style="flex: 999 1 640px; min-width: 0; box-sizing: border-box; padding: 24px 28px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 300px; display: flex; flex-direction: column; gap: 4px">
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Tautan dan sosmed</h1>
+        <p style="margin: 0; color: #71717a">Satu halaman untuk bio Instagram dan TikTok: tautan penting Anda tampil di atas tombol booking.</p>
+      </div>
+      <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan</button>
+    </header>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start">
+      <div style="flex: 999 1 460px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+        <section aria-labelledby="links-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; align-items: center; gap: 10px">
+            <h2 id="links-h" style="flex: 1; margin: 0; font-size: 15px; font-weight: 600">Tautan</h2>
+            <span style="color: #71717a">{{countLabel}}</span>
+          </div>
+          <ol style="list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px">
+            <sc-for list="{{links}}" as="l" hint-placeholder-count="4">
+              <li style="{{l.rowStyle}}">
+                <div style="display: flex; flex-direction: column; gap: 4px">
+                  <button type="button" class="ic" aria-label="{{l.upAria}}" disabled="{{l.first}}" onClick="{{l.up}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg></button>
+                  <button type="button" class="ic" aria-label="{{l.downAria}}" disabled="{{l.last}}" onClick="{{l.down}}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg></button>
+                </div>
+                <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px">
+                  <input class="f" value="{{l.label}}" aria-label="{{l.labelAria}}">
+                  <input class="f" value="{{l.url}}" aria-label="{{l.urlAria}}" aria-invalid="{{l.bad}}" style="{{l.urlStyle}}">
+                  <sc-if value="{{l.bad}}" hint-placeholder-val="{{false}}"><span role="alert" style="font-size: 13px; color: #b91c1c">Alamat harus lengkap dan diawali https://, misalnya https://maps.app.goo.gl/...</span></sc-if>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px">
+                  <label style="display: flex; align-items: center; gap: 6px; cursor: pointer"><input type="checkbox" checked="{{l.show}}">Tampil</label>
+                  <button type="button" aria-label="{{l.delAria}}" style="height: 32px; padding: 0 8px; border: 0; background: transparent; color: #b91c1c; cursor: pointer">Hapus</button>
+                </div>
+              </li>
+            </sc-for>
+          </ol>
+          <button type="button" onClick="{{add}}" disabled="{{full}}" style="align-self: flex-start; height: 36px; padding: 0 12px; border: 1px dashed #d4d4d8; border-radius: 8px; background: #ffffff; color: #0a0a0a; cursor: pointer">Tambah tautan</button>
+          <span style="font-size: 12px; color: #71717a">Ikon dipilih otomatis dari alamatnya: Instagram, TikTok, WhatsApp, Google Maps, Google Drive, atau ikon tautan biasa.</span>
+        </section>
+
+        <section aria-labelledby="sos-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+          <h2 id="sos-h" style="margin: 0; font-size: 15px; font-weight: 600">Ikon sosmed di bawah nama usaha</h2>
+          <label style="display: flex; align-items: center; gap: 10px; min-height: 32px; cursor: pointer"><input type="checkbox" checked="{{socialOn}}" onChange="{{toggleSocial}}">Tampilkan ikon Instagram, TikTok, dan WhatsApp</label>
+          <p style="margin: 0; color: #52525b">Diambil dari kontak di Pengaturan: @riasbysekar (Instagram), @riasbysekar (TikTok), 0812-xxxx-0000 (WhatsApp). <a href="#" style="font-weight: 600">Ubah di Pengaturan</a></p>
+        </section>
+
+        <section aria-labelledby="letak-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px">
+          <h2 id="letak-h" style="margin: 0; font-size: 15px; font-weight: 600">Letak tautan</h2>
+          <select aria-labelledby="letak-h" class="f" style="width: auto"><option>Di atas daftar layanan</option><option>Di bawah daftar layanan</option><option>Paling bawah, setelah FAQ</option></select>
+          <span style="color: #71717a">Urutan semua bagian juga bisa diatur di Tampilan.</span>
+        </section>
+      </div>
+
+      <aside aria-label="Pratinjau halaman" style="flex: 1 1 280px; max-width: 320px; border: 1px solid #e4e4e7; border-radius: 24px; padding: 20px 14px; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif; display: flex; flex-direction: column; align-items: center; gap: 10px">
+        <span style="align-self: flex-start; font-family: 'Geist', system-ui, sans-serif; font-size: 12px; color: #52525b">Pratinjau</span>
+        <span aria-hidden="true" style="width: 56px; height: 56px; border-radius: 999px; background: #f3e3d6; color: #a8532e; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 22px">S</span>
+        <strong style="font-size: 17px">Rias by Sekar</strong>
+        <sc-if value="{{socialOn}}" hint-placeholder-val="{{true}}">
+          <span style="display: flex; gap: 6px"><sc-for list="{{dots}}" as="d" hint-placeholder-count="3"><span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 999px; border: 1px solid #e8dcc9; background: #ffffff"></span></sc-for></span>
+        </sc-if>
+        <ul style="list-style: none; margin: 4px 0 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 8px">
+          <sc-for list="{{preview}}" as="p" hint-placeholder-count="4"><li style="padding: 10px 12px; border-radius: 12px; background: #ffffff; border: 1px solid #e8dcc9; font-size: 13px; font-weight: 600">{{p}}</li></sc-for>
+        </ul>
+        <span aria-hidden="true" style="width: 100%; height: 40px; margin-top: 4px; border-radius: 12px; background: #ffffff; border: 1px dashed #c9b8a2; display: flex; align-items: center; justify-content: center; font-size: 12px; color: #75624d">Daftar layanan</span>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"urlState":{"editor":"enum","options":["Semua benar","Alamat salah"],"default":"Semua benar","section":"Status"},"$preview":{"width":1280,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { social: true, items: [
+    { label: 'Portofolio riasan wisuda', url: 'https://instagram.com/riasbysekar', show: true },
+    { label: 'Daftar harga lengkap', url: 'https://drive.google.com/contoh', show: true },
+    { label: 'Lokasi studio', url: 'https://maps.app.goo.gl/contoh', show: true },
+    { label: 'Tanya jadwal lewat WhatsApp', url: 'https://wa.me/62812xxxx0000', show: true }
+  ] }; }
+  renderVals() {
+    var self = this, st = this.state, bad = (this.props.urlState ?? 'Semua benar') === 'Alamat salah';
+    var items = st.items;
+    var move = function (i, d) { var n = items.slice(); var t = n[i]; n[i] = n[i + d]; n[i + d] = t; self.setState({ items: n }); };
+    var links = items.map(function (l, i) {
+      var isBad = bad && i === 2;
+      return { label: l.label, url: isBad ? 'maps studio sekar' : l.url, show: l.show, bad: isBad, first: i === 0, last: i === items.length - 1,
+        labelAria: 'Teks tautan ' + (i + 1), urlAria: 'Alamat tautan ' + (i + 1), upAria: 'Naikkan ' + l.label, downAria: 'Turunkan ' + l.label, delAria: 'Hapus ' + l.label,
+        urlStyle: isBad ? 'border-color: #b91c1c' : '',
+        rowStyle: 'display: flex; align-items: flex-start; gap: 10px; padding: 10px; border-radius: 10px; ' + (isBad ? 'border: 1px solid #fca5a5; background: #fef2f2' : 'border: 1px solid #e4e4e7'),
+        up: function () { move(i, -1); }, down: function () { move(i, 1); } };
+    });
+    return { links: links, countLabel: items.length + ' dari 8', full: items.length >= 8,
+      preview: items.filter(function (l) { return l.show; }).map(function (l) { return l.label; }),
+      socialOn: st.social, dots: [1, 2, 3],
+      toggleSocial: function () { self.setState({ social: !st.social }); },
+      add: function () { self.setState({ items: items.concat([{ label: 'Tautan baru', url: 'https://', show: true }]) }); } };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pilih jadwal</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&amp;family=Fraunces:opsz,wght@9..144,500;9..144,600&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#a8532e}a:hover{color:#7d3c20}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #a8532e;outline-offset:2px}
+button:disabled{cursor:not-allowed}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+@media (prefers-reduced-motion:no-preference){.loop{animation:sweep 2.4s ease-in-out 2}}
+</style>
+</helmet>
+<div style="width: 390px; height: 1140px; position: relative; overflow: hidden; background: #faf4ea; color: #453425; font-family: 'DM Sans', system-ui, sans-serif; box-sizing: border-box">
+
+  <header style="display: flex; flex-direction: column; gap: 14px; padding: 12px 16px 16px; background: #faf4ea; border-bottom: 1px solid #e8dcc9">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <a href="Main.dc.html" aria-label="Kembali ke pilihan layanan" style="width: 44px; height: 44px; margin-left: -10px; border-radius: 999px; display: flex; align-items: center; justify-content: center; color: #453425">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+      </a>
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 13px; color: #75624d">Rias by Sekar</span>
+        <h1 style="margin: 0; font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; line-height: 1.2">Pilih jadwal</h1>
+      </div>
+    </div>
+    <ol aria-label="Langkah booking" style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px">
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #75624d"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #a8532e"></span>1. Layanan</li>
+      <li aria-current="step" style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; font-weight: 600; color: #453425"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #a8532e"></span>2. Jadwal</li>
+      <li style="display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #75624d"><span aria-hidden="true" style="height: 4px; border-radius: 4px; background: #e8dcc9"></span>3. Data diri</li>
+    </ol>
+  </header>
+
+  <div style="display: flex; flex-direction: column; gap: 28px; padding: 20px 16px 0">
+
+    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #ffffff; border: 1px solid #e8dcc9; border-radius: 16px">
+      <div style="display: flex; flex-direction: column; gap: 2px; flex: 1">
+        <span style="font-size: 15px; font-weight: 600">Makeup Wisuda</span>
+        <span style="font-size: 13px; color: #75624d">90 menit · Rp350.000</span>
+      </div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; min-height: 44px; padding: 0 8px; font-size: 14px; font-weight: 600">Ganti</a>
+    </div>
+
+    <section aria-labelledby="staf-h" style="display: flex; flex-direction: column; gap: 10px">
+      <h2 id="staf-h" style="margin: 0; font-size: 15px; font-weight: 600">Dengan siapa?</h2>
+      <div role="radiogroup" aria-labelledby="staf-h" style="display: flex; gap: 10px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px">
+        <sc-for list="{{staff}}" as="m" hint-placeholder-count="3">
+          <button type="button" role="radio" aria-checked="{{m.checked}}" aria-label="{{m.aria}}" onClick="{{m.pick}}" style="{{m.style}}">
+            <span aria-hidden="true" style="{{m.avatar}}"><span style="{{m.ring}}"></span>{{m.initial}}</span>
+            <span style="font-size: 14px; font-weight: 600">{{m.name}}</span>
+            <span style="font-size: 12px; color: #75624d">{{m.role}}</span>
+            <span style="font-size: 12px; font-weight: 600; color: #6e3519">{{m.next}}</span>
+          </button>
+        </sc-for>
+      </div>
+      <sc-if value="{{hasProfile}}" hint-placeholder-val="{{true}}">
+        <div aria-live="polite" style="display: flex; gap: 12px; padding: 12px; border-radius: 16px; background: #ffffff; border: 1px solid #e8dcc9">
+          <div role="img" aria-label="{{prof.mediaAlt}}" style="{{prof.media}}"><span class="loop" aria-hidden="true" style="{{prof.shine}}"></span></div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 6px">
+            <span style="font-weight: 600">{{prof.name}}</span>
+            <span style="font-size: 13px; line-height: 1.45; color: #75624d">{{prof.bio}}</span>
+            <span style="display: flex; flex-wrap: wrap; gap: 6px">
+              <sc-for list="{{prof.tags}}" as="t" hint-placeholder-count="2"><span style="padding: 2px 8px; border-radius: 999px; background: #f3e3d6; color: #6e3519; font-size: 12px; font-weight: 600">{{t}}</span></sc-for>
+            </span>
+          </div>
+        </div>
+      </sc-if>
+    </section>
+
+    <section aria-labelledby="tgl-h" style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="tgl-h" style="margin: 0; font-size: 15px; font-weight: 600">Tanggal</h2>
+        <span style="font-size: 13px; color: #75624d">November 2026</span>
+      </div>
+      <div role="radiogroup" aria-labelledby="tgl-h" style="display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px; padding: 4px 16px 6px">
+        <sc-for list="{{dates}}" as="d" hint-placeholder-count="7">
+          <button type="button" role="radio" aria-checked="{{d.checked}}" aria-label="{{d.aria}}" disabled="{{d.closed}}" onClick="{{d.pick}}" style="{{d.style}}">
+            <span style="font-size: 12px; font-weight: 500">{{d.dow}}</span>
+            <span style="font-size: 20px; font-weight: 600; line-height: 1">{{d.day}}</span>
+            <span style="font-size: 11px">{{d.note}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section aria-labelledby="jam-h" style="display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; justify-content: space-between; align-items: baseline">
+        <h2 id="jam-h" style="margin: 0; font-size: 15px; font-weight: 600">Jam mulai</h2>
+        <span style="font-size: 13px; color: #75624d">Waktu Indonesia Barat</span>
+      </div>
+      <sc-if value="{{isLoading}}" hint-placeholder-val="{{false}}"><p role="status" style="margin: 0; display: flex; align-items: center; gap: 8px; color: #75624d"><span aria-hidden="true" style="width: 14px; height: 14px; border-radius: 999px; border: 2px solid #d9c9b3; border-top-color: #a8532e"></span>Memuat jam kosong...</p></sc-if>
+      <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}"><div style="padding: 16px; border-radius: 16px; border: 1px dashed #d9c9b3; display: flex; flex-direction: column; gap: 8px"><strong>Jam di tanggal ini sudah penuh</strong><span style="font-size: 14px; color: #75624d">Tanggal terdekat yang masih kosong: Senin 23 Nov.</span><button type="button" style="align-self: flex-start; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #a8532e; background: #ffffff; color: #a8532e; font: inherit; font-weight: 600; cursor: pointer">Lihat Senin 23 Nov</button></div></sc-if>
+      <sc-if value="{{isError}}" hint-placeholder-val="{{false}}"><div role="alert" style="padding: 16px; border-radius: 16px; background: #fdecea; color: #8a1c13; display: flex; flex-direction: column; gap: 8px"><strong>Jam kosong gagal dimuat</strong><span style="font-size: 14px">Periksa koneksi, lalu coba lagi.</span><button type="button" style="align-self: flex-start; min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid #8a1c13; background: #ffffff; color: #8a1c13; font: inherit; font-weight: 600; cursor: pointer">Coba lagi</button></div></sc-if>
+      <sc-if value="{{isOk}}" hint-placeholder-val="{{true}}">
+      <sc-for list="{{groups}}" as="g" hint-placeholder-count="3">
+        <div role="radiogroup" aria-label="{{g.label}}" style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-size: 13px; color: #75624d">{{g.label}}</span>
+          <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+            <sc-for list="{{g.slots}}" as="t" hint-placeholder-count="4">
+              <button type="button" role="radio" aria-checked="{{t.checked}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-for>
+      </sc-if>
+    </section>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #e8dcc9; box-shadow: 0 -8px 24px rgba(69,52,37,0.06); display: flex; align-items: center; gap: 12px">
+    <div aria-live="polite" style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+      <span style="font-size: 13px; color: #75624d">Jadwal dipilih</span>
+      <span style="font-size: 16px; font-weight: 600">{{summary}}</span>
+    </div>
+    <a href="DataDiri.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; padding: 0 22px; border-radius: 14px; background: #a8532e; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">
+      Lanjut
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"slotState":{"editor":"enum","options":["Normal","Memuat","Kosong","Gagal"],"default":"Normal","section":"Status"},"$preview":{"width":390,"height":1140}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { staff: 'sekar', date: '21', slot: '10.00' }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var pill = function (on) {
+      return 'min-height: 44px; padding: 0 16px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; ' +
+        (on ? 'background: #453425; color: #ffffff; border: 1px solid #453425' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9');
+    };
+    var S = [
+      { id: 'any', name: 'Siapa saja', role: 'Paling cepat', next: 'Sab 08.00', bg: '#f3e3d6', fg: '#a8532e', initial: '★' },
+      { id: 'sekar', name: 'Sekar', role: 'Pemilik, MUA', next: 'Sab 10.00', bg: '#a8532e', fg: '#ffffff', initial: 'S', bio: 'Merias wisuda dan pengantin sejak 2016. Suka riasan natural yang tahan seharian.', tags: ['Wisuda', 'Pengantin'] },
+      { id: 'nadia', name: 'Nadia', role: 'MUA', next: 'Sab 13.00', bg: '#453425', fg: '#faf4ea', initial: 'N', bio: 'Spesialis makeup pesta dan hairdo. Bisa datang ke lokasi Anda.', tags: ['Pesta', 'Hairdo'] },
+      { id: 'rani', name: 'Rani', role: 'Hairstylist', next: 'Min tutup', bg: '#d9c9b3', fg: '#453425', initial: 'R', bio: 'Sanggul modern dan hijab styling.', tags: ['Hijab', 'Sanggul'] }
+    ];
+    var staff = S.map(function (m) {
+      var on = st.staff === m.id;
+      return { name: m.name, role: m.role, next: m.next, initial: m.initial, checked: on, aria: m.name + ', ' + m.role + ', kosong paling cepat ' + m.next,
+        pick: function () { self.setState({ staff: m.id }); },
+        style: 'flex-shrink: 0; width: 112px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 8px; border-radius: 18px; font: inherit; color: #453425; cursor: pointer; text-align: center; ' + (on ? 'background: #fffaf4; border: 2px solid #a8532e; padding: 11px 7px' : 'background: #ffffff; border: 1px solid #e8dcc9'),
+        avatar: 'position: relative; width: 60px; height: 60px; margin-bottom: 4px; border-radius: 999px; display: flex; align-items: center; justify-content: center; font-family: Fraunces, serif; font-size: 24px; font-weight: 600; background: ' + m.bg + '; color: ' + m.fg,
+        ring: on && m.id !== 'any' ? 'position: absolute; inset: -4px; border-radius: 999px; border: 2px solid #a8532e' : 'display: none' };
+    });
+    var cur = S.filter(function (m) { return m.id === st.staff; })[0];
+    var hasProfile = cur && cur.id !== 'any';
+    var raw = [['Sab', '14', 'Hari ini'], ['Min', '15', 'Tutup'], ['Sen', '16', ''], ['Sel', '17', ''], ['Rab', '18', ''], ['Kam', '19', ''], ['Jum', '20', ''], ['Sab', '21', ''], ['Min', '22', 'Tutup'], ['Sen', '23', '']];
+    var dates = raw.map(function (r) {
+      var closed = r[2] === 'Tutup', on = st.date === r[1];
+      var base = 'width: 60px; height: 76px; flex-shrink: 0; border-radius: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font: inherit; cursor: pointer; ';
+      var look = closed ? 'background: transparent; color: #a5947f; border: 1px dashed #d9c9b3' : on ? 'background: #a8532e; color: #ffffff; border: 1px solid #a8532e' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9';
+      return { dow: r[0], day: r[1], note: r[2], closed: closed, checked: on, aria: r[0] + ' ' + r[1] + ' November' + (closed ? ', tutup' : ''), style: base + look, pick: function () { self.setState({ date: r[1], slot: null }); } };
+    });
+    var slot = function (t) {
+      var on = st.slot === t;
+      return { label: t, checked: on, pick: function () { self.setState({ slot: t }); }, style: 'height: 48px; border-radius: 12px; font: inherit; font-size: 15px; font-weight: 500; cursor: pointer; ' + (on ? 'background: #a8532e; color: #ffffff; border: 1px solid #a8532e' : 'background: #ffffff; color: #453425; border: 1px solid #e8dcc9') };
+    };
+    var groups = [
+      { label: 'Pagi', slots: ['08.00', '08.30', '09.00', '10.00'].map(slot) },
+      { label: 'Siang', slots: ['12.00', '13.30'].map(slot) },
+      { label: 'Sore', slots: ['15.00', '16.30', '17.00'].map(slot) }
+    ];
+    var d = raw.filter(function (r) { return r[1] === st.date; })[0];
+    var ss = this.props.slotState ?? 'Normal';
+    return { isOk: ss === 'Normal', isLoading: ss === 'Memuat', isEmpty: ss === 'Kosong', isError: ss === 'Gagal', staff: staff, hasProfile: !!hasProfile,
+      prof: hasProfile ? { name: cur.name + ', ' + cur.role, bio: cur.bio, tags: cur.tags, mediaAlt: 'Video singkat ' + cur.name + ' sedang merias',
+        media: 'position: relative; overflow: hidden; width: 84px; height: 112px; flex-shrink: 0; border-radius: 12px; background: linear-gradient(160deg, ' + cur.bg + ', #efdccb)',
+        shine: 'position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgba(255,255,255,0.45) 50%, transparent 70%)' } : { name: '', bio: '', tags: [], mediaAlt: '', media: '', shine: '' },
+      dates: dates, groups: groups, summary: st.slot ? d[0] + ', ' + d[1] + ' Nov · ' + st.slot + ' WIB' : 'Pilih jam dulu' };
+  }
+}
+</script>
+</body>
+</html>

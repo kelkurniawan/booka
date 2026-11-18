@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Profil restoran</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Playfair+Display:wght@600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#1f5c45}a:hover{color:#123a2b}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:3px solid #1f5c45;outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1300px; position: relative; overflow: hidden; background: #f7f5ef; color: #1f2a24; font-family: 'Inter', system-ui, sans-serif">
+
+  <div aria-hidden="true" style="height: 150px; background: repeating-linear-gradient(135deg, #2b6b52 0 14px, #286349 14px 28px); display: flex; align-items: flex-end; justify-content: flex-end; padding: 10px 12px; box-sizing: border-box; font-size: 11px; color: #d6e6dd">Foto sampul</div>
+
+  <header style="display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 0 24px 20px; margin-top: -44px; text-align: center">
+    <div aria-hidden="true" style="width: 88px; height: 88px; border-radius: 999px; background: #1f5c45; border: 4px solid #f7f5ef; display: flex; align-items: center; justify-content: center; font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 700; color: #f7f5ef">TD</div>
+    <h1 style="margin: 0; font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px; line-height: 1.1">Teras Dago</h1>
+    <p style="margin: 0; font-size: 15px; color: #5b675f">Masakan Sunda · Dago, Bandung</p>
+    <p style="margin: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 999px; background: #1f8a5a"></span>Buka sekarang · tutup 22.00</p>
+  </header>
+
+  <nav aria-label="Tautan" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 0 16px 20px">
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border-radius: 14px; background: #ffffff; border: 1px solid #dfe3da; color: #1f2a24; text-decoration: none; font-size: 13px; font-weight: 500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f5c45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"></path><path d="M8 7h8M8 11h6"></path></svg>Lihat menu</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border-radius: 14px; background: #ffffff; border: 1px solid #dfe3da; color: #1f2a24; text-decoration: none; font-size: 13px; font-weight: 500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f5c45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-12a7 7 0 0 1 14 0c0 5.8-7 12-7 12z"></path><circle cx="12" cy="9" r="2.5"></circle></svg>Petunjuk arah</a>
+    <a href="#" style="display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 4px; border-radius: 14px; background: #ffffff; border: 1px solid #dfe3da; color: #1f2a24; text-decoration: none; font-size: 13px; font-weight: 500">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1f5c45" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><path d="M17.5 6.5h.01"></path></svg>Instagram</a>
+  </nav>
+
+  <section aria-labelledby="meja-h" style="margin: 0 16px; padding: 18px; border-radius: 20px; background: #1f5c45; color: #f7f5ef; display: flex; flex-direction: column; gap: 10px">
+    <span style="align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: #e3eee7; color: #123a2b; font-size: 12px; font-weight: 600">Gratis · bayar di tempat</span>
+    <h2 id="meja-h" style="margin: 0; font-family: 'Playfair Display', serif; font-size: 24px; font-weight: 700">Reservasi meja</h2>
+    <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #d6e6dd">Untuk 1–12 orang. Meja ditahan 15 menit dari jam reservasi.</p>
+    <a href="ResJadwal.dc.html" style="display: flex; align-items: center; justify-content: center; gap: 8px; height: 52px; margin-top: 4px; border-radius: 14px; background: #f7f5ef; color: #1f2a24; font-size: 16px; font-weight: 600; text-decoration: none">Pilih tanggal &amp; jam</a>
+  </section>
+
+  <section aria-labelledby="paket-h" style="display: flex; flex-direction: column; gap: 12px; padding: 28px 16px 0">
+    <h2 id="paket-h" style="margin: 0 4px; font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700">Paket acara</h2>
+    <a href="#" style="display: flex; gap: 14px; padding: 14px; border-radius: 20px; background: #ffffff; border: 1px solid #dfe3da; color: inherit; text-decoration: none">
+      <div aria-hidden="true" style="width: 76px; height: 76px; flex-shrink: 0; border-radius: 14px; background: repeating-linear-gradient(135deg, #e3eee7 0 8px, #d7e7dd 8px 16px)"></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+        <span style="font-size: 16px; font-weight: 600">Paket Ulang Tahun</span>
+        <span style="font-size: 13px; color: #5b675f">15–25 orang · 3 jam</span>
+        <span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px">
+          <span style="font-size: 15px; font-weight: 600">Rp1.500.000</span>
+          <span style="padding: 2px 8px; border-radius: 999px; background: #fdf0d5; color: #6b4a00; font-size: 12px; font-weight: 600">DP 30% di muka</span>
+        </span>
+      </div>
+    </a>
+    <a href="#" style="display: flex; gap: 14px; padding: 14px; border-radius: 20px; background: #ffffff; border: 1px solid #dfe3da; color: inherit; text-decoration: none">
+      <div aria-hidden="true" style="width: 76px; height: 76px; flex-shrink: 0; border-radius: 14px; background: repeating-linear-gradient(135deg, #e3eee7 0 8px, #d7e7dd 8px 16px)"></div>
+      <div style="display: flex; flex-direction: column; gap: 4px; flex: 1">
+        <span style="font-size: 16px; font-weight: 600">Sewa Rooftop Privat</span>
+        <span style="font-size: 13px; color: #5b675f">Hingga 40 orang · 4 jam</span>
+        <span style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px">
+          <span style="font-size: 15px; font-weight: 600">Mulai Rp5.000.000</span>
+          <span style="padding: 2px 8px; border-radius: 999px; background: #e6ecf7; color: #1e3a6b; font-size: 12px; font-weight: 600">Ajukan dulu</span>
+        </span>
+      </div>
+    </a>
+  </section>
+
+  <p style="margin: 28px 0 0; text-align: center; font-size: 12px"><a href="https://marky.id" style="color: #5b675f">Dibuat dengan Marky</a></p>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #ffffff; border-top: 1px solid #dfe3da; box-shadow: 0 -8px 24px rgba(31,42,36,0.06)">
+    <a href="ResJadwal.dc.html" style="display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 14px; background: #1f5c45; color: #ffffff; font-size: 16px; font-weight: 600; text-decoration: none">Reservasi meja</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1300}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

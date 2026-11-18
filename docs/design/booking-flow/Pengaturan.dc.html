@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Pengaturan booking, kontak, dan pengingat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}
+button,a,input{font-family:inherit}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:#0a0a0a;margin:0;flex-shrink:0}
+.toc a{display:flex;align-items:center;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none}
+.toc a:hover{background:#f4f4f5}
+.field{height:36px;padding:0 10px;border:1px solid #e4e4e7;border-radius:8px;font-size:14px;color:#0a0a0a;box-sizing:border-box}
+</style>
+</helmet>
+<div style="min-height: 1400px; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px; box-sizing: border-box; padding: 24px 28px 48px">
+  <header style="max-width: 1040px; margin: 0 auto 24px; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+    <div style="flex: 1 1 300px">
+      <span style="font-size: 13px; color: #71717a">Pengaturan</span>
+      <h1 style="margin: 2px 0 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Booking &amp; pelanggan</h1>
+    </div>
+    <button type="button" style="height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Simpan perubahan</button>
+  </header>
+
+  <div style="max-width: 1040px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+    <nav class="toc" aria-label="Bagian pengaturan" style="flex: 1 1 200px; max-width: 220px; display: flex; flex-direction: column; gap: 2px">
+      <a href="#s-tanpa-bayar" aria-current="true" style="background: #f4f4f5; color: #0a0a0a; font-weight: 600">Booking tanpa bayar</a>
+      <a href="#s-ubah">Ubah jadwal &amp; batal</a>
+      <a href="#s-kontak">Kontak &amp; media sosial</a>
+      <a href="#s-ingat">Pengingat pelanggan</a>
+    </nav>
+
+    <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 20px">
+
+      <section id="s-tanpa-bayar" aria-labelledby="h-tb" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+        <div style="display: flex; gap: 16px; align-items: flex-start; padding: 18px">
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+            <h2 id="h-tb" style="margin: 0; font-size: 16px; font-weight: 600">Izinkan booking tanpa bayar di muka</h2>
+            <p style="margin: 0; color: #71717a; line-height: 1.5">Pelanggan memesan dulu dan membayar di tempat. Berlaku untuk layanan yang cara bayarnya "Bayar di tempat".</p>
+          </div>
+          <button type="button" role="switch" aria-checked="{{payLater}}" aria-labelledby="h-tb" onClick="{{togglePayLater}}" style="{{payLaterTrack}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+        </div>
+        <sc-if value="{{payLater}}" hint-placeholder-val="{{true}}">
+          <div style="display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; border-top: 1px solid #e4e4e7; background: #fafafa">
+            <p style="margin: 0; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap"><span>Dipakai oleh <strong>2 layanan</strong>: Makeup Pesta, Reservasi meja.</span><a href="CaraBayar.dc.html" style="font-weight: 500">Atur per layanan</a></p>
+            <label style="display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; cursor: pointer"><input type="checkbox" checked="">Konfirmasi otomatis. Jika dimatikan, setiap booking menunggu persetujuan Anda.</label>
+            <label style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; cursor: pointer"><input type="checkbox" checked="">Satu nomor WhatsApp maksimal <input class="field" value="2" aria-label="Jumlah booking aktif maksimal" style="width: 48px"> booking aktif</label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; line-height: 1.45; cursor: pointer"><input type="checkbox">Nomor yang pernah tidak datang wajib bayar DP di booking berikutnya</label>
+          </div>
+        </sc-if>
+        <sc-if value="{{payLaterOff}}" hint-placeholder-val="{{false}}">
+          <p role="status" style="margin: 0; padding: 14px 18px; border-top: 1px solid #e4e4e7; background: #fafafa; line-height: 1.5">Mati: 2 layanan yang memakai "Bayar di tempat" otomatis meminta <strong>bayar penuh saat booking</strong> sampai fitur ini dinyalakan lagi. Booking yang sudah ada tidak berubah.</p>
+        </sc-if>
+      </section>
+
+      <section id="s-ubah" aria-labelledby="h-ubah" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 16px">
+        <h2 id="h-ubah" style="margin: 0; font-size: 16px; font-weight: 600">Ubah jadwal &amp; batal oleh pelanggan</h2>
+        <sc-for list="{{policies}}" as="p" hint-placeholder-count="2">
+          <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #f4f4f5">
+            <div style="display: flex; gap: 16px; align-items: center">
+              <span id="{{p.id}}" style="flex: 1; font-weight: 500">{{p.label}}</span>
+              <button type="button" role="switch" aria-checked="{{p.on}}" aria-labelledby="{{p.id}}" onClick="{{p.toggle}}" style="{{p.track}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+            </div>
+            <sc-if value="{{p.on}}" hint-placeholder-val="{{true}}">
+              <div style="display: flex; flex-wrap: wrap; gap: 16px; color: #3f3f46; align-items: center">
+                <label style="display: flex; align-items: center; gap: 8px">Paling lambat <input class="field" value="{{p.hours}}" style="width: 56px"> jam sebelum jadwal</label>
+                <sc-if value="{{p.isMove}}" hint-placeholder-val="{{true}}">
+                  <label style="display: flex; align-items: center; gap: 8px">Maksimal <input class="field" value="1" style="width: 48px"> kali</label>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+        <label style="display: flex; flex-direction: column; gap: 6px; font-weight: 500">Kebijakan yang dilihat pelanggan
+          <textarea rows="2" style="padding: 8px 10px; border: 1px solid #e4e4e7; border-radius: 8px; font: inherit; font-weight: 400; resize: vertical">DP tidak dikembalikan jika dibatalkan, tetapi bisa dipakai untuk jadwal baru.</textarea>
+        </label>
+      </section>
+
+      <section id="s-kontak" aria-labelledby="h-kontak" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-kontak" style="margin: 0; font-size: 16px; font-weight: 600">Kontak &amp; media sosial</h2>
+          <p style="margin: 0; color: #71717a">Tampil di halaman booking dan tombol "Hubungi". Kosongkan yang tidak dipakai.</p>
+        </div>
+        <table style="width: 100%; border-collapse: collapse">
+          <thead><tr style="text-align: left; font-size: 12px; color: #71717a"><th scope="col" style="padding: 6px 0; font-weight: 500">Kanal</th><th scope="col" style="padding: 6px 8px; font-weight: 500">Alamat</th><th scope="col" style="padding: 6px 0; font-weight: 500; text-align: right">Tampil</th></tr></thead>
+          <tbody>
+            <sc-for list="{{contacts}}" as="c" hint-placeholder-count="7">
+              <tr style="border-top: 1px solid #f4f4f5">
+                <th scope="row" style="padding: 8px 0; font-weight: 500; text-align: left; white-space: nowrap">{{c.label}}</th>
+                <td style="padding: 8px"><input class="field" value="{{c.value}}" placeholder="{{c.ph}}" aria-label="{{c.aria}}" style="width: 100%"></td>
+                <td style="padding: 8px 0; text-align: right"><input type="checkbox" checked="{{c.on}}" aria-label="{{c.showAria}}"></td>
+              </tr>
+            </sc-for>
+          </tbody>
+        </table>
+        <label style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap">Jam balas pesan <input class="field" value="09.00" style="width: 64px"> sampai <input class="field" value="20.00" style="width: 64px"> WIB</label>
+      </section>
+
+      <section id="s-ingat" aria-labelledby="h-ingat" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; flex-direction: column; gap: 4px">
+          <h2 id="h-ingat" style="margin: 0; font-size: 16px; font-weight: 600">Pengingat untuk pelanggan</h2>
+          <p style="margin: 0; color: #71717a">Kanal yang Anda nyalakan bisa dipilih pelanggan. Pelanggan tetap bisa mematikannya sendiri.</p>
+        </div>
+        <sc-for list="{{reminders}}" as="r" hint-placeholder-count="3">
+          <div style="display: flex; gap: 16px; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #f4f4f5">
+            <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span id="{{r.id}}" style="font-weight: 500">{{r.label}}</span><span style="font-size: 13px; color: #71717a">{{r.hint}}</span></span>
+            <button type="button" role="switch" aria-checked="{{r.on}}" aria-labelledby="{{r.id}}" onClick="{{r.toggle}}" style="{{r.track}}"><span aria-hidden="true" style="width: 20px; height: 20px; border-radius: 999px; background: #ffffff"></span></button>
+          </div>
+        </sc-for>
+        <div style="display: flex; flex-direction: column; gap: 8px">
+          <span style="font-weight: 500">Jadwal bawaan</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <span style="padding: 6px 10px; border-radius: 999px; background: #0a0a0a; color: #ffffff; font-size: 13px">H-1 pukul 10.00</span>
+            <span style="padding: 6px 10px; border-radius: 999px; background: #0a0a0a; color: #ffffff; font-size: 13px">2 jam sebelum</span>
+            <span style="padding: 6px 10px; border-radius: 999px; border: 1px solid #e4e4e7; font-size: 13px">30 menit sebelum</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1400}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { payLater: true, move: true, cancel: true, rem: { wa: true, email: true, push: true } }; }
+  renderVals() {
+    var self = this, st = this.state;
+    var track = function (on) { return 'flex-shrink: 0; width: 44px; height: 24px; padding: 2px; border: 0; border-radius: 999px; cursor: pointer; display: flex; ' + (on ? 'background: #0a0a0a; justify-content: flex-end' : 'background: #d4d4d8; justify-content: flex-start'); };
+    var policies = [['move', 'Pelanggan boleh ubah jadwal sendiri', '24'], ['cancel', 'Pelanggan boleh batal sendiri', '24']].map(function (p) {
+      var on = !!st[p[0]];
+      return { id: 'pol-' + p[0], label: p[1], hours: p[2], on: on, isMove: p[0] === 'move', track: track(on), toggle: function () { var n = {}; n[p[0]] = !on; self.setState(n); } };
+    });
+    var contacts = [['WhatsApp', '0812-9876-5432', '08xx', true], ['Telepon', '0812-9876-5432', '08xx', true], ['Email', 'halo@riasbysekar.id', 'nama@domain.com', true], ['Instagram', '@riasbysekar', '@akun', true], ['Threads', '@riasbysekar', '@akun', true], ['X', '@riasbysekar', '@akun', true], ['TikTok', '', '@akun', false]].map(function (c) {
+      return { label: c[0], value: c[1], ph: c[2], on: c[3], aria: 'Alamat ' + c[0], showAria: 'Tampilkan ' + c[0] };
+    });
+    var reminders = [['wa', 'WhatsApp', 'Paling sering dibaca. Termasuk tombol ubah jadwal & batal.'], ['email', 'Email', 'Dengan file kalender .ics.'], ['push', 'Notifikasi HP (web push)', 'Gratis, tanpa aplikasi. Di iPhone pelanggan perlu menambah halaman ke Layar Utama.']].map(function (r) {
+      var on = !!st.rem[r[0]];
+      return { id: 'rem-' + r[0], label: r[1], hint: r[2], on: on, track: track(on), toggle: function () { var n = Object.assign({}, st.rem); n[r[0]] = !on; self.setState({ rem: n }); } };
+    });
+    return {
+      payLater: st.payLater, payLaterOff: !st.payLater, payLaterTrack: track(st.payLater),
+      togglePayLater: function () { self.setState({ payLater: !st.payLater }); },
+      policies: policies, contacts: contacts, reminders: reminders
+    };
+  }
+}
+</script>
+</body>
+</html>

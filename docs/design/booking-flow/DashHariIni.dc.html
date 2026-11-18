@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Dashboard, hari ini</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#0a0a0a}a:hover{color:#3f3f46}
+button,a{font-family:inherit}
+button:focus-visible,a:focus-visible{outline:2px solid #0a0a0a;outline-offset:2px}
+.nav a{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border-radius:8px;color:#3f3f46;text-decoration:none;font-size:14px}
+.nav a:hover{background:#f4f4f5;color:#0a0a0a}
+.nav a[aria-current=page]{background:#f4f4f5;color:#0a0a0a;font-weight:600}
+.nav h3{margin:16px 10px 6px;font-size:12px;font-weight:500;color:#71717a}
+</style>
+</helmet>
+<div style="min-height: 1100px; display: flex; flex-wrap: wrap; background: #ffffff; color: #0a0a0a; font-family: 'Geist', system-ui, sans-serif; font-size: 14px">
+
+  <nav class="nav" aria-label="Menu utama" style="flex: 1 1 240px; max-width: 260px; box-sizing: border-box; padding: 16px 12px; background: #fafafa; border-right: 1px solid #e4e4e7; display: flex; flex-direction: column; gap: 2px">
+    <div style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 12px">
+      <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 8px; background: #0a0a0a; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 700">TD</span>
+      <span style="display: flex; flex-direction: column"><span style="font-weight: 600">Teras Dago</span><span style="font-size: 12px; color: #71717a">Paket Pro</span></span>
+    </div>
+    <div style="display: flex; align-items: center; gap: 6px; margin: 0 4px 8px; padding: 6px 6px 6px 10px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff">
+      <span style="flex: 1; font-size: 13px; color: #3f3f46; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">marky.id/terasdago</span>
+      <button type="button" aria-label="Salin tautan halaman" style="width: 28px; height: 28px; border: 0; border-radius: 6px; background: #f4f4f5; color: #0a0a0a; cursor: pointer; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg></button>
+    </div>
+    <a href="DashHariIni.dc.html" aria-current="page"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Hari ini</a>
+    <a href="DashBooking.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path></svg><span style="flex: 1">Booking</span><span aria-label="3 perlu tindakan" style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #0a0a0a; color: #ffffff; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center">3</span></a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3v18h18M7 15l4-4 3 3 5-6"></path></svg>Analitik</a>
+    <h3>Atur usaha</h3>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10"></path></svg>Layanan</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Jam buka</a>
+    <a href="DenahMeja.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="18" height="7" rx="1"></rect></svg>Denah meja</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="8" r="3.5"></circle><path d="M2 21a7 7 0 0 1 14 0M16 4a3.5 3.5 0 0 1 0 7M22 21a7 7 0 0 0-4-6.3"></path></svg>Staf</a>
+    <a href="CaraBayar.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path></svg>Pembayaran</a>
+    <h3>Halaman booking</h3>
+    <a href="TemaEditor.dc.html"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="13.5" cy="6.5" r="1.5"></circle><circle cx="17.5" cy="10.5" r="1.5"></circle><circle cx="8.5" cy="7.5" r="1.5"></circle><path d="M12 22a10 10 0 1 1 10-10c0 2.8-2.2 3-4 3h-2a2 2 0 0 0-1 3.7A2 2 0 0 1 12 22z"></path></svg>Tampilan</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"></path></svg>Domain</a>
+    <div style="flex: 1"></div>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18.5 21 12 16.5 5.5 21l2-7.5L2 9h7z"></path></svg>Langganan</a>
+    <a href="#"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>Pengaturan</a>
+  </nav>
+
+  <main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 24px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px">
+      <div style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 13px; color: #71717a">Sabtu, 14 November 2026</span>
+        <h1 style="margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Hari ini</h1>
+      </div>
+      <a href="#" style="display: flex; align-items: center; height: 36px; padding: 0 14px; border: 1px solid #e4e4e7; border-radius: 8px; text-decoration: none; font-weight: 500">Lihat halaman</a>
+      <button type="button" style="display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Booking manual</button>
+    </header>
+
+    <sc-if value="{{showSetup}}" hint-placeholder-val="{{false}}">
+      <section aria-labelledby="setup-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+        <div style="display: flex; justify-content: space-between; align-items: baseline; gap: 12px">
+          <h2 id="setup-h" style="margin: 0; font-size: 16px; font-weight: 600">Siapkan halaman booking</h2>
+          <span style="font-size: 13px; color: #71717a">2 dari 4 selesai</span>
+        </div>
+        <div role="progressbar" aria-valuenow="2" aria-valuemin="0" aria-valuemax="4" aria-label="Kemajuan persiapan" style="height: 6px; border-radius: 999px; background: #f4f4f5"><div style="width: 50%; height: 6px; border-radius: 999px; background: #0a0a0a"></div></div>
+        <ol style="list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px">
+          <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #fafafa; color: #71717a; text-decoration: line-through">✓ Tambah layanan</li>
+          <li style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; background: #fafafa; color: #71717a; text-decoration: line-through">✓ Atur jam buka</li>
+          <li><a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; border: 1px solid #e4e4e7; text-decoration: none; font-weight: 500">Hubungkan pembayaran <span aria-hidden="true">→</span></a></li>
+          <li><a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 8px; border: 1px solid #e4e4e7; text-decoration: none; font-weight: 500">Bagikan tautan ke bio IG <span aria-hidden="true">→</span></a></li>
+        </ol>
+      </section>
+    </sc-if>
+
+    <div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start">
+      <div style="flex: 999 1 480px; min-width: 0; display: flex; flex-direction: column; gap: 24px">
+
+        <section aria-labelledby="aksi-h" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e4e4e7">
+            <h2 id="aksi-h" style="margin: 0; font-size: 16px; font-weight: 600">Perlu tindakan <span style="color: #71717a; font-weight: 500">· 3</span></h2>
+            <a href="DashBooking.dc.html" style="font-size: 13px; font-weight: 500">Lihat semua</a>
+          </div>
+          <ul style="list-style: none; margin: 0; padding: 0">
+            <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #f4f4f5">
+              <span style="padding: 2px 8px; border-radius: 6px; border: 1px solid #0a0a0a; font-size: 12px; font-weight: 600">Permintaan</span>
+              <span style="flex: 1 1 220px; display: flex; flex-direction: column"><span style="font-weight: 600">Sewa Rooftop Privat · Dimas Pratama</span><span style="font-size: 13px; color: #71717a">40 orang · Sab, 28 Nov 18.00 · otomatis ditolak dalam 21 jam</span></span>
+              <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Tolak</button>
+              <button type="button" style="height: 32px; padding: 0 12px; border: 0; border-radius: 8px; background: #0a0a0a; color: #ffffff; font-weight: 500; cursor: pointer">Setujui &amp; kirim tagihan</button>
+            </li>
+            <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #f4f4f5">
+              <span style="padding: 2px 8px; border-radius: 6px; background: #f4f4f5; font-size: 12px; font-weight: 600">Belum bayar</span>
+              <span style="flex: 1 1 220px; display: flex; flex-direction: column"><span style="font-weight: 600">Paket Ulang Tahun · Rina Wulandari</span><span style="font-size: 13px; color: #71717a">DP Rp450.000 · slot dilepas dalam 9 menit</span></span>
+              <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Ingatkan via WhatsApp</button>
+            </li>
+            <li style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 16px">
+              <span style="padding: 2px 8px; border-radius: 6px; background: #f4f4f5; font-size: 12px; font-weight: 600">Kemarin</span>
+              <span style="flex: 1 1 220px; display: flex; flex-direction: column"><span style="font-weight: 600">2 reservasi belum ditandai hadir</span><span style="font-size: 13px; color: #71717a">Tandai agar laporan no-show dan pendapatan akurat</span></span>
+              <button type="button" style="height: 32px; padding: 0 12px; border: 1px solid #e4e4e7; border-radius: 8px; background: #ffffff; color: #0a0a0a; font-weight: 500; cursor: pointer">Tandai sekarang</button>
+            </li>
+          </ul>
+        </section>
+
+        <section aria-labelledby="agenda-h" style="border: 1px solid #e4e4e7; border-radius: 12px; overflow: hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-bottom: 1px solid #e4e4e7">
+            <h2 id="agenda-h" style="margin: 0; font-size: 16px; font-weight: 600">Agenda hari ini <span style="color: #71717a; font-weight: 500">· {{count}} booking, {{guests}} tamu</span></h2>
+          </div>
+          <ol style="list-style: none; margin: 0; padding: 0">
+            <sc-for list="{{agenda}}" as="a" hint-placeholder-count="6">
+              <sc-if value="{{a.nowLine}}" hint-placeholder-val="{{false}}">
+                <li aria-label="Sekarang 18.40" style="display: flex; align-items: center; gap: 8px; padding: 0 16px; height: 20px; font-size: 11px; font-weight: 600"><span>18.40</span><span aria-hidden="true" style="flex: 1; height: 1px; background: #0a0a0a"></span></li>
+              </sc-if>
+              <li style="{{a.row}}">
+                <span style="width: 52px; font-weight: 600; font-variant-numeric: tabular-nums">{{a.time}}</span>
+                <span style="flex: 1 1 200px; display: flex; flex-direction: column; min-width: 0"><span style="font-weight: 600">{{a.name}}</span><span style="font-size: 13px; color: #71717a">{{a.detail}}</span></span>
+                <span style="flex: 0 1 190px; display: flex; flex-direction: column; font-size: 13px"><span style="font-weight: 500">{{a.pay}}</span><span style="color: #71717a">{{a.payNote}}</span></span>
+                <button type="button" aria-pressed="{{a.done}}" onClick="{{a.toggle}}" style="{{a.btn}}">{{a.btnText}}</button>
+              </li>
+            </sc-for>
+          </ol>
+        </section>
+      </div>
+
+      <aside style="flex: 1 1 260px; display: flex; flex-direction: column; gap: 16px">
+        <section aria-labelledby="tagih-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px">
+          <h2 id="tagih-h" style="margin: 0; font-size: 13px; font-weight: 500; color: #71717a">Ditagih di tempat hari ini</h2>
+          <span style="font-size: 24px; font-weight: 600; letter-spacing: -0.01em">Rp1.695.000</span>
+          <span style="font-size: 13px; color: #71717a">3 booking · Rp450.000 sudah ditandai lunas</span>
+        </section>
+        <section aria-labelledby="minggu-h" style="border: 1px solid #e4e4e7; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="minggu-h" style="margin: 0; font-size: 13px; font-weight: 500; color: #71717a">7 hari terakhir</h2>
+          <dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+            <div><dt style="font-size: 12px; color: #71717a">Booking</dt><dd style="margin: 0; font-size: 20px; font-weight: 600">48</dd></div>
+            <div><dt style="font-size: 12px; color: #71717a">Masuk via QRIS</dt><dd style="margin: 0; font-size: 20px; font-weight: 600">Rp4,2 jt</dd></div>
+            <div><dt style="font-size: 12px; color: #71717a">Kunjungan halaman</dt><dd style="margin: 0; font-size: 20px; font-weight: 600">1.204</dd></div>
+            <div><dt style="font-size: 12px; color: #71717a">No-show</dt><dd style="margin: 0; font-size: 20px; font-weight: 600">2 <span style="font-size: 12px; font-weight: 500; color: #71717a">(4%)</span></dd></div>
+          </dl>
+          <a href="#" style="font-size: 13px; font-weight: 500">Buka analitik</a>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"showSetup":{"editor":"boolean","default":false,"section":"Status"},"$preview":{"width":1280,"height":1100}}'>
+class Component extends DCLogic {
+  constructor(p) { super(p); this.state = { done: { a1: true, a2: true, a3: true } }; }
+  renderVals() {
+    var self = this, d = this.state.done;
+    var rows = [
+      ['a1', '11.00', 'Hendra · 2 orang', 'Meja D1 · dekat jendela', 'Bayar di tempat', 'Lunas Rp180.000 · tunai', true],
+      ['a2', '12.30', 'Keluarga Sutanto · 6 orang', 'Meja D8 · catatan: kursi bayi', 'Bayar di tempat', 'Lunas Rp270.000 · QRIS', true],
+      ['a3', '17.00', 'Ayu Lestari · 4 orang', 'Meja D5 · ulang tahun', 'Bayar di tempat', 'Rp450.000 belum ditagih', true],
+      ['a4', '19.00', 'Bima & tim · 8 orang', 'Teras T4', 'Bayar di tempat', 'Perkiraan Rp900.000', false],
+      ['a5', '19.30', 'Rina Wulandari · 20 orang', 'Paket Ulang Tahun · Rooftop', 'DP Rp450.000 lunas', 'Sisa Rp1.050.000 di tempat', false],
+      ['a6', '20.30', 'Nadia · 2 orang', 'Dipilihkan restoran', 'Bayar di tempat', '', false]
+    ];
+    var agenda = rows.map(function (r, i) {
+      var done = !!d[r[0]], past = r[6];
+      return { time: r[1], name: r[2], detail: r[3], pay: r[4], payNote: r[5], done: done, nowLine: i === 3,
+        toggle: function () { var n = Object.assign({}, d); n[r[0]] = !done; self.setState({ done: n }); },
+        btnText: done ? '✓ Hadir' : 'Tandai hadir',
+        btn: 'flex-shrink: 0; height: 32px; padding: 0 12px; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; ' + (done ? 'border: 1px solid #e4e4e7; background: #f4f4f5; color: #3f3f46' : 'border: 1px solid #0a0a0a; background: #ffffff; color: #0a0a0a'),
+        row: 'display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f4f4f5; ' + (past ? 'color: #52525b' : '') };
+    });
+    return { agenda: agenda, count: rows.length, guests: 42, showSetup: !!this.props.showSetup };
+  }
+}
+</script>
+</body>
+</html>

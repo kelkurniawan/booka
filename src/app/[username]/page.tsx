@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ROUTES } from "@/lib/routes";
+import { isCourtService, loadCourtVenue } from "@/lib/booking/court-loader";
+import type { CourtVenueData } from "@/lib/booking/court-ui";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
 import { DEFAULT_PAYMENT_SETTINGS, type PaymentSettings } from "@/lib/booking/payment-mode";
@@ -16,7 +18,12 @@ import type {
   ServiceMedia,
 } from "@/types/database";
 
+import { VOUCHER_CODE_PATTERN } from "@/lib/booking/voucher";
+
 import { BookingPageView } from "./booking-page-view";
+import { resolveEntry } from "./entry";
+import { PixelScripts } from "@/components/booking-page/pixel-scripts";
+import { FunnelTracker } from "./funnel-tracker";
 import type { RestaurantInfo } from "./booking-flow";
 
 type MerchantPageParams = { username: string };
@@ -78,7 +85,7 @@ const getMerchantPageData = cache(async (username: string) => {
     .merchant_themes;
   const themeRow = Array.isArray(themeRaw) ? (themeRaw[0] ?? null) : (themeRaw ?? null);
 
-  const [servicesResult, availabilityResult, faqsResult, settingsResult] = await Promise.all([
+  const [servicesResult, availabilityResult, faqsResult, settingsResult, linksResult, contactsResult, trackingResult] = await Promise.all([
     supabase
       .from("services")
       .select("*, service_media(*)")
@@ -98,6 +105,15 @@ const getMerchantPageData = cache(async (username: string) => {
       .select("allow_pay_on_site, auto_confirm_on_site, table_mode, table_hold_minutes")
       .eq("merchant_id", onboardedMerchant.id)
       .maybeSingle(),
+    // Anon hanya melihat tautan tampil; kontak lewat fungsi yang menghormati contact_hidden.
+    supabase
+      .from("merchant_links")
+      .select("id, label, url")
+      .eq("merchant_id", onboardedMerchant.id)
+      .order("sort_order", { ascending: true }),
+    supabase.rpc("get_public_contacts", { p_merchant_id: onboardedMerchant.id }),
+    // ID pixel aktif; gagal baca = tanpa pixel (halaman tetap jalan).
+    supabase.rpc("get_public_tracking", { p_merchant_id: onboardedMerchant.id }),
   ]);
 
   // Sama alasannya dengan merchant di atas: kalau query-nya gagal, itu bukan
@@ -150,6 +166,15 @@ const getMerchantPageData = cache(async (username: string) => {
   } catch (error) {
     console.error("[booking-page] gagal memuat staf", { username, error });
     throw new Error("Gagal memuat staf merchant.");
+  }
+
+  // Lapangan hanya dimuat bila ada layanan sewa; merchant lain tidak memicu RPC.
+  let courtVenue: CourtVenueData;
+  try {
+    courtVenue = await loadCourtVenue(supabase, onboardedMerchant.id, services.filter(isCourtService).map((s) => s.id));
+  } catch (error) {
+    console.error("[booking-page] gagal memuat lapangan", { username, error });
+    throw new Error("Gagal memuat lapangan merchant.");
   }
 
   // Tanpa baris atau gagal baca: pakai bawaan. Label hanya petunjuk; server
@@ -209,11 +234,21 @@ const getMerchantPageData = cache(async (username: string) => {
     }
   }
 
+  // Tautan dan ikon sosial pelengkap: gagal baca dicatat, halaman tetap jalan.
+  if (linksResult.error) console.error("[booking-page] gagal memuat tautan", { username, error: linksResult.error });
+  if (contactsResult.error) console.error("[booking-page] gagal memuat kontak", { username, error: contactsResult.error });
+  const links = linksResult.error ? [] : (linksResult.data ?? []);
+  const contacts = themeRow?.show_social_icons === false ? null : (contactsResult.data?.[0] ?? null);
+
   return {
+    tracking: trackingResult.data?.[0],
+    links,
+    contacts,
     banners,
     vouchers,
     paymentSettings,
     restaurant,
+    courtVenue,
     merchant: onboardedMerchant,
     staff,
     theme: resolveTheme(onboardedMerchant.subscription_tier, themeRow),
@@ -261,21 +296,43 @@ export async function generateMetadata({
 
 export default async function MerchantPublicPage({
   params,
+  searchParams,
 }: {
   params: Promise<MerchantPageParams>;
+  searchParams: Promise<{ t?: string | string[]; kode?: string | string[] }>;
 }) {
   const { username } = await params;
-  const data = await getMerchantPageData(username);
+  const query = await searchParams;
+  // resolve_ad_link memakai username, jadi bisa jalan bersamaan dengan data halaman.
+  const slug = typeof query.t === "string" ? query.t.trim().toLowerCase() : "";
+  const linkRows = /^[a-z0-9-]{3,40}$/.test(slug)
+    ? createPublicClient().rpc("resolve_ad_link", { p_username: username, p_slug: slug })
+    : null;
+  const [data, linkResult] = await Promise.all([getMerchantPageData(username), linkRows]);
 
   if (!data) {
     notFound();
   }
 
-  const { merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, banners, vouchers } =
+  const { tracking, merchant, staff, theme, services, mediaByService, availability, faqs, paymentSettings, restaurant, courtVenue, banners, vouchers, links, contacts } =
     data;
 
+  // Tautan iklan (?t=) dan kode manual (?kode=); kode di URL menang atas voucher tautan.
+  let link: { serviceId: string | null; voucherCode: string | null } | null = null;
+  const row = linkResult?.data?.[0];
+  if (row) link = { serviceId: row.service_id, voucherCode: row.voucher_code };
+  const kode = typeof query.kode === "string" ? query.kode.trim().toUpperCase() : "";
+  if (VOUCHER_CODE_PATTERN.test(kode)) link = { serviceId: link?.serviceId ?? null, voucherCode: kode };
+  const entry = resolveEntry(link, services, null);
+
   return (
+    <>
+    <FunnelTracker merchantId={merchant.id} />
+    <PixelScripts
+      ids={{ meta: tracking?.meta_pixel_id, tiktok: tracking?.tiktok_pixel_id, ga4: tracking?.ga4_measurement_id }}
+    />
     <BookingPageView
+      entry={entry}
       merchant={merchant}
       theme={theme}
       services={services}
@@ -285,8 +342,12 @@ export default async function MerchantPublicPage({
       faqs={faqs}
       paymentSettings={paymentSettings}
       restaurant={restaurant}
+      courtVenue={courtVenue}
       banners={banners}
       vouchers={vouchers}
+      links={links}
+      contacts={contacts}
     />
+    </>
   );
 }

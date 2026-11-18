@@ -21,6 +21,8 @@ const BASE: BookingListItem = {
   expires_at: "2026-11-15T09:00:00Z",
   staff_id: null,
   staff_name: null,
+  court_id: null,
+  court_name: null,
   created_at: "2026-11-14T02:00:00Z",
   payment_mode: "DEPOSIT",
   amount_due_now: 30000,

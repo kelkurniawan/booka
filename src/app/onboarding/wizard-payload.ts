@@ -14,6 +14,8 @@ export type WizardAnswersPayload = {
   business_type_slug: string | null;
   service: { name: string; duration_minutes: number; price: string } | null;
   hours: { days: number[]; start_time: string; end_time: string } | null;
+  /** Layanan sewa lapangan: aksi onboarding menambah dua lapangan contoh. */
+  court: { unitMinutes: number; minMinutes: number; maxMinutes: number } | null;
 };
 
 /**
@@ -39,6 +41,13 @@ export function answersToPayload(answers: WizardAnswers): WizardAnswersPayload {
           days: answers.hours.days,
           start_time: answers.hours.startTime,
           end_time: answers.hours.endTime,
+        }
+      : null,
+    court: answers.service?.court
+      ? {
+          unitMinutes: answers.service.court.unitMinutes,
+          minMinutes: answers.service.court.minMinutes,
+          maxMinutes: answers.service.court.maxMinutes,
         }
       : null,
   };

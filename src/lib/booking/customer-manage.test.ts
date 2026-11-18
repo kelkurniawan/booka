@@ -41,6 +41,8 @@ test("bookingCode", () => assert.equal(bookingCode(b.id), "BK-7F3A9C"));
 test("customerManageErrorMessage", () => {
   assert.equal(customerManageErrorMessage("BK043"), "Anda sudah memakai semua kesempatan ubah jadwal.");
   assert.equal(customerManageErrorMessage("BK044"), "Merchant tidak mengizinkan pembatalan lewat halaman ini.");
+  assert.equal(customerManageErrorMessage("BK072"), "Semua lapangan penuh di jam itu. Pilih jam lain.");
+  assert.equal(customerManageErrorMessage("BK073"), "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini.");
   assert.equal(customerManageErrorMessage("zzz"), "Gagal menyimpan. Coba lagi.");
   assert.equal(customerManageErrorMessage(undefined), "Gagal menyimpan. Coba lagi.");
 });

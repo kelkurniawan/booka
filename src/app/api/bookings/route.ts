@@ -36,7 +36,23 @@ import { createBookingRequestSchema } from "@/lib/validations/booking";
  * Kode voucher (opsional) diteruskan ke create_booking, yang menilai ulang
  * kelayakannya di dalam transaksi; charge tetap sebesar amount_due_now.
  */
-export async function POST(request: NextRequest) {
+export const POST = (request: NextRequest) => handleBooking(request);
+
+type BookingDeps = {
+  createClient: () => ReturnType<typeof createAdminClient>;
+  findProvider: typeof findChargeProvider;
+  schedule: (task: () => unknown) => void;
+  ipHash: (headers: Headers) => string;
+};
+const realDeps: BookingDeps = {
+  createClient: createAdminClient,
+  findProvider: findChargeProvider,
+  schedule: (task) => after(task),
+  ipHash: (h) => hashClientIp(extractClientIp(h)),
+};
+
+/** Isi POST; dependensi disuntikkan supaya pemetaan error dan argumen RPC bisa diuji. */
+export async function handleBooking(request: Request, deps: BookingDeps = realDeps) {
   // Batas ukuran body: payload sah di bawah 2 KB; Content-Length bisa dipalsukan
   // jadi panjang teks yang sudah terbaca diperiksa juga.
   const MAX_BODY_BYTES = 8 * 1024;
@@ -64,12 +80,13 @@ export async function POST(request: NextRequest) {
 
   const { username, serviceId, staffId, startUtc, customer_name, customer_whatsapp, voucherCode } =
     parsed.data;
-  const { partySize, areaId, tableId, customerNote } = parsed.data;
+  const { partySize, areaId, tableId, customerNote, sessionId, attribution } = parsed.data;
+  const { courtId, durationMinutes } = parsed.data;
 
   // Service role -- anon tidak punya hak apa pun ke bookings/payment_connections.
   // Setiap query di bawah difilter merchant_id/username secara eksplisit
   // (AGENTS.md: createAdminClient() tidak punya jaring pengaman sendiri).
-  const supabase = createAdminClient();
+  const supabase = deps.createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
@@ -117,7 +134,7 @@ export async function POST(request: NextRequest) {
   // mengikuti filosofi yang sama dengan p_ip_hash kosong di fungsi SQL-nya
   // ("membiarkan lewat lebih aman daripada memblokir semua orang"), cukup
   // dicatat di log supaya kalau ini sering terjadi tetap terlihat.
-  const ipHash = hashClientIp(extractClientIp(request.headers));
+  const ipHash = deps.ipHash(request.headers);
   const { data: rateLimitAllowed, error: rateLimitError } = await supabase.rpc(
     "check_booking_rate_limit",
     { p_ip_hash: ipHash, p_merchant_id: merchant.id },
@@ -140,13 +157,25 @@ export async function POST(request: NextRequest) {
   // booking yang harus dibayar online bila provider null.
   let provider;
   try {
-    provider = await findChargeProvider(supabase, merchant.id);
+    provider = await deps.findProvider(supabase, merchant.id);
   } catch (providerError) {
     console.error("[api/bookings] gagal memuat koneksi payment", {
       merchantId: merchant.id,
       error: providerError,
     });
     return NextResponse.json({ error: "Gagal memuat data pembayaran merchant" }, { status: 500 });
+  }
+
+  // Tautan iklan diurai di server, difilter merchant; tautan terarsip tetap mengatribusi.
+  let adLinkId: string | null = null;
+  if (attribution?.adLinkSlug) {
+    const { data: adLink } = await supabase
+      .from("ad_links")
+      .select("id")
+      .eq("merchant_id", merchant.id)
+      .eq("slug", attribution.adLinkSlug)
+      .maybeSingle();
+    adLinkId = adLink?.id ?? null;
   }
 
   const { data: bookingRows, error: bookingError } = await supabase.rpc("create_booking", {
@@ -162,6 +191,15 @@ export async function POST(request: NextRequest) {
     p_area_id: areaId,
     p_table_id: tableId,
     p_customer_note: customerNote,
+    p_session_id: sessionId,
+    p_ad_link_id: adLinkId,
+    p_utm_source: attribution?.utmSource ?? null,
+    p_utm_medium: attribution?.utmMedium ?? null,
+    p_utm_campaign: attribution?.utmCampaign ?? null,
+    p_referrer_host: attribution?.referrerHost ?? null,
+    // Sewa lapangan: layanan lain mengabaikan keduanya di dalam create_booking.
+    p_court_id: courtId,
+    p_duration_minutes: durationMinutes,
   });
 
   if (bookingError) {
@@ -191,9 +229,9 @@ export async function POST(request: NextRequest) {
 
   if (booking.status !== "PENDING") {
     // CONFIRMED (bayar di tempat) atau REQUESTED: tidak ada charge.
-    after(() => notifyBookingCreated(booking.id));
+    deps.schedule(() => notifyBookingCreated(booking.id));
     return NextResponse.json(
-      { bookingId: booking.id, status: booking.status, bookingUrl },
+      { bookingId: booking.id, status: booking.status, bookingUrl, pixelEventId: booking.pixel_event_id, value: Number(booking.amount_due_now) + Number(booking.amount_due_on_site) },
       { status: 201 },
     );
   }
@@ -248,6 +286,8 @@ export async function POST(request: NextRequest) {
         expires_at: booking.expires_at,
         // Token mentahnya TIDAK dikirim, hanya path yang menyematkannya.
         bookingUrl,
+        pixelEventId: booking.pixel_event_id,
+        value: Number(booking.amount_due_now) + Number(booking.amount_due_on_site),
       },
       { status: 201 },
     );

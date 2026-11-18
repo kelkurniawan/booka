@@ -5,16 +5,19 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   CalendarClock,
+  CalendarRange,
   CreditCard,
   ExternalLink,
   Globe,
   LayoutGrid,
   LayoutList,
+  Link2,
   Megaphone,
   Palette,
   Settings,
   Sparkles,
   Sun,
+  Target,
   Users,
   Wallet,
 } from "lucide-react";
@@ -62,7 +65,9 @@ const NAV_GROUPS = [
     label: "Halaman booking",
     items: [
       { title: "Tampilan", href: ROUTES.appearance, icon: Palette },
+      { title: "Tautan dan sosmed", href: ROUTES.links, icon: Link2 },
       { title: "Promosi", href: ROUTES.promoBanners, icon: Megaphone },
+      { title: "Iklan", href: ROUTES.ads, icon: Target },
       { title: "Domain", href: ROUTES.domain, icon: Globe },
     ],
   },
@@ -75,6 +80,8 @@ const NAV_GROUPS = [
   },
 ] as const;
 
+const COURT_NAV_ITEM = { title: "Jadwal lapangan", href: ROUTES.courts, icon: CalendarRange, tour: "nav-courts" } as const;
+
 const TIER_LABEL: Record<SubscriptionTier, string> = {
   STARTER: "Starter",
   PRO: "Pro",
@@ -84,8 +91,11 @@ const TIER_LABEL: Record<SubscriptionTier, string> = {
 export function AppSidebar({
   merchant,
   actionCount,
+  showCourts = false,
 }: {
   actionCount: number | null;
+  /** Merchant punya layanan sewa atau lapangan. */
+  showCourts?: boolean;
   merchant: {
     username: string;
     fullName: string;
@@ -124,7 +134,10 @@ export function AppSidebar({
             {group.label ? <SidebarGroupLabel>{group.label}</SidebarGroupLabel> : null}
             <SidebarGroupContent>
               <SidebarMenu>
-                {group.items.map((item) => {
+                {(group.label === null && showCourts
+                  ? [...group.items.slice(0, 2), COURT_NAV_ITEM, ...group.items.slice(2)]
+                  : group.items
+                ).map((item) => {
                   const active =
                     "exact" in item
                       ? pathname === item.href

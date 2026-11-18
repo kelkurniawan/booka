@@ -115,3 +115,40 @@ test("BK037 (di atas batas QRIS) -> 422, pesan batas Rp10.000.000", () => {
   assert.equal(result.status, 422);
   assert.match(result.message, /maksimal Rp10\.000\.000/);
 });
+
+test("BK070/BK071/BK072 -> pesan lapangan", () => {
+  assert.equal(mapBookingError("BK070").status, 409);
+  assert.equal(mapBookingError("BK071").status, 422);
+  assert.match(mapBookingError("BK072").message, /Semua lapangan penuh untuk .* di tanggal ini/);
+});
+
+test("route publik /api/bookings: setiap errcode lapangan dan RPC terpetakan (status, code, pesan)", () => {
+  const table: [string, number, string][] = [
+    ["BK070", 409, "Lapangan yang dipilih tidak tersedia. Pilih lapangan lain atau Mana saja."],
+    ["BK071", 422, "Lama main tidak valid untuk layanan ini."],
+    ["BK072", 409, "Semua lapangan penuh untuk lama main ini di tanggal ini. Coba lama main lebih singkat atau pilih tanggal lain."],
+    ["BK073", 409, "Jam baru harganya lebih tinggi. Hubungi merchant untuk pindah ke jam ini."],
+    ["BK001", 409, "Slot yang dipilih di luar jam kerja merchant, silakan pilih jadwal lain."],
+    ["BK054", 409, "Harga layanan belum memenuhi minimal transaksi voucher ini."],
+    ["23P01", 409, "Jam tersebut baru saja dipesan orang lain, silakan pilih jadwal lain."],
+    ["22023", 422, "Data tidak valid. Periksa isian lalu coba lagi."],
+    ["23514", 422, "Data tidak valid. Periksa isian lalu coba lagi."],
+    ["23503", 409, "Lapangan atau layanan yang dipilih tidak cocok. Muat ulang halaman lalu coba lagi."],
+    ["42501", 403, "Anda tidak punya akses untuk tindakan ini."],
+  ];
+  for (const [errcode, status, message] of table) {
+    const { mapped, code } = mapPublicBookingError(errcode);
+    assert.equal(mapped.status, status, errcode);
+    assert.equal(mapped.message, message, errcode);
+    assert.equal(code, errcode, errcode);
+  }
+});
+
+test("error PostgREST/jaringan (PGRST202, 23505, null) -> 500 generik tanpa code", () => {
+  for (const errcode of ["PGRST202", "PGRST116", "23505", "57014", null]) {
+    const { mapped, code } = mapPublicBookingError(errcode);
+    assert.equal(mapped.status, 500);
+    assert.equal(mapped.message, "Gagal membuat booking, silakan coba lagi.");
+    assert.equal(code, undefined);
+  }
+});

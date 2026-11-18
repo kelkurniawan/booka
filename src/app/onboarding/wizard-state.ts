@@ -1,3 +1,4 @@
+import type { CourtTemplate } from "@/lib/business/catalog";
 import type { BusinessCategory, DayOfWeek } from "@/types/database";
 
 /**
@@ -34,6 +35,8 @@ export type WizardServiceAnswer = {
   durationMinutes: number;
   /** String karena berasal langsung dari <input>; divalidasi Zod saat kirim. */
   price: string;
+  /** Hanya template sewa lapangan; null/tidak ada = layanan biasa. */
+  court?: CourtTemplate | null;
 };
 
 export type WizardHoursAnswer = {
@@ -229,7 +232,20 @@ function isValidServiceAnswer(value: unknown): value is WizardServiceAnswer {
   return (
     typeof candidate.name === "string" &&
     typeof candidate.durationMinutes === "number" &&
-    typeof candidate.price === "string"
+    typeof candidate.price === "string" &&
+    isValidCourtAnswer(candidate.court)
+  );
+}
+
+/** `court` boleh hilang atau null (layanan biasa); kalau ada, tiga angkanya wajib lengkap. */
+function isValidCourtAnswer(value: unknown): boolean {
+  if (value === undefined || value === null) return true;
+  if (typeof value !== "object") return false;
+  const c = value as Record<string, unknown>;
+  return (
+    typeof c.unitMinutes === "number" &&
+    typeof c.minMinutes === "number" &&
+    typeof c.maxMinutes === "number"
   );
 }
 

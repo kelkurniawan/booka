@@ -9,9 +9,12 @@ import {
   jakartaWallClockToUtc,
   type SeatSlot,
 } from "@/lib/booking/slots";
+import { courtSlotsResponse, isCourtService, loadCourtData } from "@/lib/booking/court-loader";
 import { loadPublicStaff } from "@/lib/booking/staff";
-import { createPublicClient } from "@/lib/supabase/server";
+import { createClient as createSessionClient, createPublicClient } from "@/lib/supabase/server";
 import { usernameSchema } from "@/lib/validations/merchant";
+
+type PublicClient = ReturnType<typeof createPublicClient>;
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -25,6 +28,47 @@ const querySchema = z.object({
   party: z.coerce.number().int().min(1).max(200).nullable(),
   areaId: z.uuid("areaId tidak valid").nullable(),
 });
+
+/** Rentang booking milik merchant yang sedang login, dikecualikan dari "terpakai" saat jadwal ulang. */
+export type OwnBooking = { courtId: string | null; start: string; end: string };
+export type OwnBookingResolver = (bookingId: string, merchantId: string, serviceId: string) => Promise<OwnBooking | null>;
+
+type SessionClient = Pick<Awaited<ReturnType<typeof createSessionClient>>, "auth" | "from">;
+
+/**
+ * `excludeBookingId` hanya berlaku bila sesi Supabase pemanggil adalah merchant
+ * pemilik booking itu (route /api/* tidak lewat proxy, jadi diverifikasi di sini
+ * lewat getUser()). Selain itu diabaikan diam-diam, supaya anon tidak bisa
+ * menebak id booking.
+ */
+export async function ownBookingRange(
+  bookingId: string,
+  merchantId: string,
+  serviceId: string,
+  getClient: () => Promise<SessionClient> = createSessionClient,
+): Promise<OwnBooking | null> {
+  try {
+    const supabase = await getClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || user.id !== merchantId) return null;
+    const { data } = await supabase
+      .from("bookings")
+      .select("court_id, start_datetime, end_datetime")
+      .eq("id", bookingId)
+      .eq("merchant_id", merchantId)
+      .eq("service_id", serviceId)
+      .in("status", ["PENDING", "PAID", "CONFIRMED", "REQUESTED"])
+      .maybeSingle();
+    return data ? { courtId: data.court_id, start: data.start_datetime, end: data.end_datetime } : null;
+  } catch (error) {
+    console.error("[api/slots] gagal memeriksa excludeBookingId", { error });
+    return null;
+  }
+}
+
+const sameInstant = (a: string, b: string) => Date.parse(a) === Date.parse(b);
 
 /**
  * GET /api/slots?username=&serviceId=&date=&staffId=
@@ -44,7 +88,14 @@ const querySchema = z.object({
  * `get_seat_availability` menentukan mana yang masih muat untuk `party`
  * tamu (Keputusan 5 F8). Respons: `{ slots: SeatSlot[] }`, hanya yang kosong.
  */
-export async function GET(request: NextRequest) {
+export const GET = (request: NextRequest) => handleSlots(request);
+
+/** Isi GET; klien Supabase disuntikkan supaya cabang sewa bisa diuji tanpa DB. */
+export async function handleSlots(
+  request: Request,
+  createClient: () => PublicClient = createPublicClient,
+  resolveOwn: OwnBookingResolver = ownBookingRange,
+) {
   const url = new URL(request.url);
   const parsed = querySchema.safeParse({
     username: url.searchParams.get("username") ?? "",
@@ -63,6 +114,8 @@ export async function GET(request: NextRequest) {
   }
 
   const { username, serviceId, date, staffId, party, areaId } = parsed.data;
+  const excludeRaw = url.searchParams.get("excludeBookingId");
+  const excludeId = excludeRaw && z.uuid().safeParse(excludeRaw).success ? excludeRaw : null;
 
   // Tanggal lolos regex bisa saja tidak valid secara kalender (mis.
   // "2026-02-30"). new Date() JS akan diam-diam menormalkannya jadi tanggal
@@ -79,7 +132,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Tanggal tidak valid" }, { status: 400 });
   }
 
-  const supabase = createPublicClient();
+  const supabase = createClient();
 
   const { data: merchant, error: merchantError } = await supabase
     .from("merchants")
@@ -97,7 +150,7 @@ export async function GET(request: NextRequest) {
 
   const { data: service, error: serviceError } = await supabase
     .from("services")
-    .select("id, duration_minutes, party_max, seat_duration_minutes")
+    .select("id, price, duration_minutes, party_max, seat_duration_minutes, court_unit_minutes, court_max_minutes")
     .eq("id", serviceId)
     .eq("merchant_id", merchant.id)
     .eq("is_active", true)
@@ -119,6 +172,35 @@ export async function GET(request: NextRequest) {
   if (availabilityError) {
     console.error("[api/slots] gagal memuat jam kerja", { username, error: availabilityError });
     return NextResponse.json({ error: "Gagal memuat jam kerja" }, { status: 500 });
+  }
+
+  const own = excludeId ? await resolveOwn(excludeId, merchant.id, serviceId) : null;
+
+  // Sewa lapangan: grid unit, lapangan, dan harga jam ramai (court-loader.ts).
+  // Melewati staf, kursi, dan `party`.
+  if (isCourtService(service)) {
+    return courtSlotsResponse({
+      service: {
+        price: Number(service.price),
+        court_unit_minutes: service.court_unit_minutes as 30 | 60,
+        court_max_minutes: service.court_max_minutes!,
+        duration_minutes: service.duration_minutes,
+      },
+      availability: availability ?? [],
+      dateISO: date,
+      durationRaw: url.searchParams.get("durationMinutes"),
+      now: new Date(),
+      load: async () => {
+        const data = await loadCourtData(supabase, merchant.id, serviceId, date);
+        if (!own) return data;
+        return {
+          ...data,
+          booked: data.booked.filter(
+            (b) => !(b.courtId === own.courtId && sameInstant(b.start_datetime, own.start) && sameInstant(b.end_datetime, own.end)),
+          ),
+        };
+      },
+    });
   }
 
   // Tidak ada baris merchant_settings = mode NONE (grant anon: Task 1 F8).
@@ -192,12 +274,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Gagal memuat jadwal staf" }, { status: 500 });
   }
 
+  // Hanya satu rentang yang sama persis dilepas (booking staf lain di jam sama tetap menahan).
+  const ownIdx = own ? (bookedRanges ?? []).findIndex((r) => sameInstant(r.start_datetime, own.start) && sameInstant(r.end_datetime, own.end)) : -1;
+  const effectiveBooked = (bookedRanges ?? []).filter((_, i) => i !== ownIdx);
+
   const slots = computeStaffSlots({
     dateISO: date,
     durationMinutes: service.duration_minutes,
     merchantAvailability: availability ?? [],
     staff,
-    bookedRanges: bookedRanges ?? [],
+    bookedRanges: effectiveBooked,
     staffId,
   });
 

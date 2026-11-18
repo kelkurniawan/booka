@@ -63,6 +63,16 @@ test("createBookingRequestSchema menerima input valid", () => {
   assert.equal(parsed.customer_whatsapp, "+6281234567890");
 });
 
+test("createBookingRequestSchema: sessionId dan attribution rusak jadi null, booking tetap valid", () => {
+  const parsed = createBookingRequestSchema.parse({
+    ...VALID_BOOKING_REQUEST,
+    sessionId: "bukan-uuid",
+    attribution: { utmSource: 123, aneh: true },
+  });
+  assert.equal(parsed.sessionId, null);
+  assert.equal(parsed.attribution, null);
+});
+
 test("createBookingRequestSchema menolak body kosong dengan issues per-field, bukan 500", () => {
   const result = createBookingRequestSchema.safeParse({});
   assert.equal(result.success, false);
@@ -171,4 +181,40 @@ test("createBookingRequestSchema: customerNote kosong jadi null, partySize 0 dan
   assert.equal(createBookingRequestSchema.parse({ ...base, customerNote: "  " }).customerNote, null);
   assert.equal(createBookingRequestSchema.safeParse({ ...base, partySize: 0 }).success, false);
   assert.equal(createBookingRequestSchema.safeParse({ ...base, customerNote: "a".repeat(301) }).success, false);
+});
+
+// --- sewa lapangan: courtId dan durationMinutes di checkoutSchema ---
+
+test("checkoutSchema sewa lapangan: courtId dan durationMinutes valid lolos", () => {
+  const parsed = checkoutSchema.parse({
+    ...VALID_INPUT,
+    courtId: "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    durationMinutes: 90,
+  });
+  assert.equal(parsed.courtId, "7c9e6679-7425-40de-944b-e07fc1f90ae7");
+  assert.equal(parsed.durationMinutes, 90);
+});
+
+test("checkoutSchema sewa lapangan: tanpa kedua field berarti null (non-sewa utuh)", () => {
+  const parsed = checkoutSchema.parse(VALID_INPUT);
+  assert.equal(parsed.courtId, null);
+  assert.equal(parsed.durationMinutes, null);
+});
+
+test("checkoutSchema sewa lapangan: Mana saja (courtId null) dengan durasi lolos", () => {
+  assert.equal(checkoutSchema.safeParse({ ...VALID_INPUT, courtId: null, durationMinutes: 60 }).success, true);
+});
+
+test("checkoutSchema sewa lapangan: courtId bukan uuid ditolak", () => {
+  const r = checkoutSchema.safeParse({ ...VALID_INPUT, courtId: "lapangan-2", durationMinutes: 60 });
+  assert.equal(r.success, false);
+  assert.equal(r.error?.issues[0].path[0], "courtId");
+});
+
+test("checkoutSchema sewa lapangan: durasi di luar 30..480 atau bukan bilangan bulat ditolak", () => {
+  for (const durationMinutes of [10, 481, 60.5, -30]) {
+    const r = checkoutSchema.safeParse({ ...VALID_INPUT, durationMinutes });
+    assert.equal(r.success, false, String(durationMinutes));
+    assert.equal(r.error?.issues[0].path[0], "durationMinutes");
+  }
 });

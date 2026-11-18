@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import type { SubscriptionTier, TableMode } from "@/types/database";
 
 import type { ServicePaymentSettings } from "./payment-mode-field";
+import type { CourtFormData } from "./court-data";
 import { ServiceFormDialog } from "./service-form-dialog";
 
 export function AddServiceButton({
@@ -14,11 +15,13 @@ export function AddServiceButton({
   tier,
   settings,
   tableMode,
+  courtData,
 }: {
   merchantId: string;
   tier: SubscriptionTier;
   settings: ServicePaymentSettings;
   tableMode: TableMode;
+  courtData: CourtFormData;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -35,6 +38,7 @@ export function AddServiceButton({
         tier={tier}
         settings={settings}
         tableMode={tableMode}
+        courtData={courtData}
       />
     </>
   );
