@@ -32,3 +32,15 @@ test("readAttribution: referrer hanya host, slug buruk jadi null", () => {
   assert.equal(readAttribution(new URL("https://marky.id/a"), "http://[::1]/", self).referrerHost, null);
   assert.equal(readAttribution(new URL("https://marky.id/a"), null, self).utmMedium, null);
 });
+
+test("readAttribution: utm_source/medium huruf kecil, campaign apa adanya", () => {
+  const a = readAttribution(new URL("https://marky.id/a?utm_source=%20Instagram%20&utm_medium=BIO&utm_campaign=%20Promo%20"), null, self);
+  assert.equal(a.utmSource, "instagram");
+  assert.equal(a.utmMedium, "bio");
+  assert.equal(a.utmCampaign, "Promo");
+});
+
+test("readAttribution: userinfo dan port tidak ikut referrerHost", () => {
+  const a = readAttribution(new URL("https://marky.id/a"), "https://user:pass@L.Instagram.com:8443/x", self);
+  assert.equal(a.referrerHost, "l.instagram.com");
+});

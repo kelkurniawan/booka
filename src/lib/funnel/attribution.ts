@@ -55,8 +55,8 @@ export function readAttribution(url: URL, referrer: string | null, selfHost: str
   const t = p.get("t")?.trim().toLowerCase() ?? "";
   return {
     adLinkSlug: SLUG_PATTERN.test(t) ? t : null,
-    utmSource: clean(p.get("utm_source"), UTM_MAX),
-    utmMedium: clean(p.get("utm_medium"), UTM_MAX),
+    utmSource: clean(p.get("utm_source"), UTM_MAX)?.toLowerCase() ?? null,
+    utmMedium: clean(p.get("utm_medium"), UTM_MAX)?.toLowerCase() ?? null,
     utmCampaign: clean(p.get("utm_campaign"), UTM_MAX),
     referrerHost: hostOf(referrer, selfHost),
   };
