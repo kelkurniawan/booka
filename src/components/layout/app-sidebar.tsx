@@ -16,6 +16,7 @@ import {
   Settings,
   Sparkles,
   Sun,
+  Target,
   Users,
   Wallet,
 } from "lucide-react";
@@ -65,6 +66,7 @@ const NAV_GROUPS = [
       { title: "Tampilan", href: ROUTES.appearance, icon: Palette },
       { title: "Tautan dan sosmed", href: ROUTES.links, icon: Link2 },
       { title: "Promosi", href: ROUTES.promoBanners, icon: Megaphone },
+      { title: "Iklan", href: ROUTES.ads, icon: Target },
       { title: "Domain", href: ROUTES.domain, icon: Globe },
     ],
   },

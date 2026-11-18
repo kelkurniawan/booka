@@ -30,6 +30,7 @@ export const ROUTES = {
   analytics: "/dashboard/analitik",
   appearance: "/dashboard/halaman",
   links: "/dashboard/tautan",
+  ads: "/dashboard/iklan",
   promoBanners: "/dashboard/promosi",
   promoVouchers: "/dashboard/promosi/voucher",
   services: "/dashboard/services",

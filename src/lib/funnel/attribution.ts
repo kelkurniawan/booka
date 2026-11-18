@@ -32,6 +32,34 @@ export function adLinkUrls(input: { origin: string; username: string; slug: stri
   return { short, full };
 }
 
+const CHANNEL_SUFFIX: Record<AdChannel, string> = { IG_BIO: "ig", META_ADS: "meta", TIKTOK_ADS: "tt", WA_STATUS: "wa", OTHER: "lain" };
+
+/** Nama + kanal jadi slug `^[a-z0-9-]{3,40}$`, mis. "Iklan TikTok Wisuda" + TIKTOK_ADS -> "iklan-tiktok-wisuda-tt". */
+export function slugifyAdLink(name: string, channel: AdChannel): string {
+  const suffix = CHANNEL_SUFFIX[channel];
+  const base = name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40 - suffix.length - 1)
+    .replace(/-$/, "");
+  return `${base || "tautan"}-${suffix}`;
+}
+
+/** Bentrok dengan slug yang sudah ada (termasuk yang diarsipkan) diberi akhiran -2, -3, dst. */
+export function uniqueSlug(slug: string, taken: ReadonlySet<string>): string {
+  if (!taken.has(slug)) return slug;
+  for (let n = 2; ; n++) {
+    const tail = `-${n}`;
+    const candidate = slug.slice(0, 40 - tail.length).replace(/-$/, "") + tail;
+    if (!taken.has(candidate)) return candidate;
+  }
+}
+
 const clean = (v: string | null, max: number) => {
   const s = v?.trim().slice(0, max);
   return s ? s : null;

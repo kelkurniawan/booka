@@ -1,15 +1,17 @@
 import { z } from "zod";
 
+import type { AdChannel } from "@/types/database";
+
 import { LINK_PLACEMENTS } from "@/lib/funnel/link-placement";
 import { isSafeLinkUrl, isValidGa4Id, isValidMetaPixelId, isValidTiktokPixelId } from "@/lib/funnel/pixel-ids";
 
-export const AD_CHANNELS = ["IG_BIO", "META_ADS", "TIKTOK_ADS", "WA_STATUS", "OTHER"] as const;
+export const AD_CHANNELS = ["IG_BIO", "META_ADS", "TIKTOK_ADS", "WA_STATUS", "OTHER"] as const satisfies readonly AdChannel[];
 
 export const adLinkSchema = z.object({
   name: z.string().trim().min(1, "Beri nama tautan").max(60, "Nama tautan maksimal 60 karakter"),
   channel: z.enum(AD_CHANNELS, "Pilih kanal"),
   serviceId: z.string().uuid().nullable(),
-  voucherCode: z.string().nullable(),
+  voucherCode: z.string().trim().min(1).max(40).nullable(),
 });
 
 const linkUrl = z.string().trim().refine(isSafeLinkUrl, "Alamat harus lengkap dan diawali https://, misalnya https://maps.app.goo.gl/...");
