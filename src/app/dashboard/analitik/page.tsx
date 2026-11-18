@@ -27,7 +27,10 @@ import { ROUTES } from "@/lib/routes";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 
+import { CHANNEL_LABELS, type FunnelRow } from "@/lib/analytics/funnel";
+
 import { ColumnChart } from "./column-chart";
+import { FUNNEL_RANGES, FunnelSection } from "./funnel-section";
 
 export const metadata: Metadata = { title: "Analitik" };
 
@@ -47,10 +50,10 @@ function percent(value: number | null): string {
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ periode?: string }>;
+  searchParams: Promise<{ periode?: string; fr?: string; kanal?: string }>;
 }) {
   const { user, merchant } = await requireMerchant();
-  const { periode } = await searchParams;
+  const { periode, fr, kanal } = await searchParams;
   const periodKey: PeriodKey = periode && periode in PERIODS ? (periode as PeriodKey) : "30";
   const period = PERIODS[periodKey];
 
@@ -99,6 +102,17 @@ export default async function AnalyticsPage({
   if (error) {
     console.error("[analitik] gagal memuat booking", { userId: user.id, error });
     throw new Error("Gagal memuat data analitik.");
+  }
+
+  const funnelDays = FUNNEL_RANGES.find((d) => String(d) === fr) ?? 30;
+  const funnelChannel = (CHANNEL_LABELS as readonly string[]).includes(kanal ?? "") ? kanal! : "ALL";
+  const { data: funnelData, error: funnelError } = await supabase.rpc("funnel_summary", {
+    p_from: new Date(to.getTime() - funnelDays * DAY_MS).toISOString(),
+    p_to: to.toISOString(),
+  });
+  if (funnelError) {
+    console.error("[analitik] gagal memuat funnel", { userId: user.id, error: funnelError });
+    throw new Error("Gagal memuat data funnel.");
   }
 
   const summary = aggregateBookings(data ?? [], { from, to }, period.bucket);
@@ -200,6 +214,13 @@ export default async function AnalyticsPage({
           </CardContent>
         </Card>
       ) : null}
+
+      <FunnelSection
+        rows={(funnelData ?? []) as FunnelRow[]}
+        days={funnelDays}
+        channel={funnelChannel}
+        periode={periodKey}
+      />
     </>
   );
 }

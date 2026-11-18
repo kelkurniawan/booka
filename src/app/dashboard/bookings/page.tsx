@@ -12,6 +12,7 @@ import { bookingSearchSchema } from "@/lib/validations/booking";
 
 import { getTabCounts } from "../queries";
 import { cancelBooking, decideRequest, markAttendance, markPaidOnSite, rescheduleBooking } from "./actions";
+import { channelLabel } from "@/lib/analytics/funnel";
 import { BookingDetailPanel } from "./booking-detail-panel";
 import { BookingDetailShell } from "./booking-detail-shell";
 import {
@@ -45,6 +46,35 @@ async function loadSelectedBooking(rawId: string | undefined, merchantId: string
     return null;
   }
   return (data as unknown as BookingListItem | null) ?? null;
+}
+
+/** Asal booking untuk panel; null bila tak ada atribusi. */
+async function loadOrigin(bookingId: string, merchantId: string): Promise<{ label: string; adLinkName: string | null } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("ad_link_id, utm_source, referrer_host")
+    .eq("id", bookingId)
+    .eq("merchant_id", merchantId)
+    .maybeSingle();
+  if (error || !data) {
+    if (error) console.error("[dashboard/bookings] gagal memuat asal booking", { merchantId, bookingId, error });
+    return null;
+  }
+  let adLinkName: string | null = null;
+  let channel: string | null = data.utm_source;
+  if (data.ad_link_id) {
+    const { data: link } = await supabase
+      .from("ad_links")
+      .select("name, channel")
+      .eq("id", data.ad_link_id)
+      .eq("merchant_id", merchantId)
+      .maybeSingle();
+    adLinkName = link?.name ?? null;
+    channel = link?.channel ?? channel;
+  }
+  if (!channel && !data.referrer_host && !adLinkName) return null;
+  return { label: channelLabel(channel), adLinkName };
 }
 
 /** Riwayat pesan satu booking; null bila gagal dimuat. */
@@ -118,7 +148,9 @@ export default async function BookingsPage({
     : DEFAULT_PAGE_SIZE;
 
   const [counts, selected] = await Promise.all([getTabCounts(), loadSelectedBooking(rawParams.b, user.id)]);
-  const notifications = selected ? await loadNotifications(selected.id, user.id) : null;
+  const [notifications, origin] = selected
+    ? await Promise.all([loadNotifications(selected.id, user.id), loadOrigin(selected.id, user.id)])
+    : [null, null];
   const nowMs = new Date().getTime();
   const closeHref = buildBookingsHref({ tab, q: searchTerm, page, size: pageSize });
 
@@ -169,6 +201,7 @@ export default async function BookingsPage({
               nowMs={nowMs}
               username={merchant.username}
               notifications={notifications}
+              origin={origin}
               actions={{
                 cancel: cancelBooking,
                 decide: decideRequest,

@@ -52,6 +52,7 @@ export function BookingDetailPanel({
   nowMs,
   username,
   notifications,
+  origin = null,
   actions,
 }: {
   booking: BookingListItem;
@@ -60,6 +61,8 @@ export function BookingDetailPanel({
   username: string;
   /** null = riwayat pesan gagal dimuat. */
   notifications: TimelineNotification[] | null;
+  /** Asal booking dari iklan/tautan; null = tak ada atribusi (baris disembunyikan). */
+  origin?: { label: string; adLinkName: string | null } | null;
   actions: BookingDetailActions;
 }) {
   const router = useRouter();
@@ -181,6 +184,15 @@ export function BookingDetailPanel({
           <>
             <dt className="text-muted-foreground">Catatan pelanggan</dt>
             <dd className="break-words">{booking.customer_note}</dd>
+          </>
+        ) : null}
+        {origin ? (
+          <>
+            <dt className="text-muted-foreground">Datang dari</dt>
+            <dd>
+              {origin.label}
+              {origin.adLinkName ? ` (${origin.adLinkName})` : ""}
+            </dd>
           </>
         ) : null}
         <dt className="text-muted-foreground">Dibuat</dt>
