@@ -24,6 +24,7 @@ import {
   shiftDateISO,
   type ScheduleBooking,
 } from "./schedule-grid";
+import { CourtsManager } from "./courts-manager";
 import { ScheduleLegend, ScheduleView } from "./schedule-view";
 
 export const metadata: Metadata = { title: "Jadwal lapangan" };
@@ -113,12 +114,44 @@ export default async function CourtsPage({
   );
 
   if (tab === "lapangan") {
-    // Task 9 mengganti placeholder ini dengan daftar lapangan dan denah.
+    const supabase = await createClient();
+    const [courts, media, areas, markers] = await Promise.all([
+      supabase
+        .from("courts")
+        .select("id, name, sport, environment, surface, description, features, is_active, pos_x, pos_y, rotation")
+        .eq("merchant_id", user.id)
+        .order("sort_order")
+        .order("name"),
+      supabase.from("court_media").select("id, court_id, path, alt_text, width, height").eq("merchant_id", user.id).order("sort_order").order("created_at"),
+      supabase.from("venue_areas").select("*").eq("merchant_id", user.id).order("sort_order"),
+      supabase.from("venue_markers").select("*").eq("merchant_id", user.id).order("sort_order"),
+    ]);
+    const error = courts.error ?? media.error ?? areas.error ?? markers.error;
+    if (error) {
+      console.error("[dashboard/lapangan] gagal memuat daftar lapangan", { merchantId: user.id, error });
+      return (
+        <>
+          {header}
+          {tabs}
+          <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            <span className="flex-1">Daftar lapangan gagal dimuat. Periksa koneksi, lalu coba lagi.</span>
+            <Link href={`${ROUTES.courts}?tab=lapangan`} className="inline-flex h-11 items-center rounded-lg border border-red-800 bg-white px-3">
+              Coba lagi
+            </Link>
+          </div>
+        </>
+      );
+    }
     return (
       <>
         {header}
         {tabs}
-        <p className="text-muted-foreground text-sm">Daftar lapangan dan denah segera hadir di sini.</p>
+        <CourtsManager
+          merchantId={user.id}
+          initialCourts={(courts.data ?? []).map((c) => ({ ...c, photos: (media.data ?? []).filter((m) => m.court_id === c.id) }))}
+          areas={areas.data ?? []}
+          markers={markers.data ?? []}
+        />
       </>
     );
   }
