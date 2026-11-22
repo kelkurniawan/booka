@@ -11,6 +11,7 @@ self.addEventListener("push", (event) => {
   event.waitUntil(
     self.registration.showNotification(data.title || "Pengingat booking", {
       body: data.body,
+      icon: "/brand/marky-192.png",
       tag: data.tag,
       data: { url: data.url },
     }),
