@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { MarkyLogo } from "@/components/brand/marky-mark";
 import { ROUTES } from "@/lib/routes";
 
 import { MastheadMenu } from "./masthead-menu";
@@ -37,7 +38,7 @@ export function Masthead() {
             lineHeight: 1,
           }}
         >
-          marky
+          <MarkyLogo />
         </Link>
         <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: "var(--space-md)" }}>
           <Link href={ROUTES.login} className="masthead-login" style={{ fontSize: "var(--text-small)", textDecoration: "none" }}>

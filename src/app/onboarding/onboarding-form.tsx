@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState, useTransition } from "react";
 import { useFormStatus } from "react-dom";
 import { AlertCircle, ArrowRight, Check } from "lucide-react";
 
+import { MarkyLoader } from "@/components/brand/marky-mark";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
@@ -300,10 +301,17 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
 
   return (
-    <Button type="submit" disabled={pending || disabled} className="min-h-11 w-full">
-      {pending ? <Spinner /> : null}
-      Selesai
-      {pending ? null : <ArrowRight />}
-    </Button>
+    <>
+      <Button type="submit" disabled={pending || disabled} className="min-h-11 w-full">
+        {pending ? <Spinner /> : null}
+        Selesai
+        {pending ? null : <ArrowRight />}
+      </Button>
+      {pending ? (
+        <div className="bg-background/95 fixed inset-0 z-50 flex items-center justify-center">
+          <MarkyLoader label="Menyiapkan halaman booking Anda" />
+        </div>
+      ) : null}
+    </>
   );
 }

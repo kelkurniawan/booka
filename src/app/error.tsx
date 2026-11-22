@@ -13,6 +13,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
+import { MarkyLogo } from "@/components/brand/marky-mark";
 import { ROUTES } from "@/lib/routes";
 
 /**
@@ -42,6 +43,9 @@ export default function Error({
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 py-10">
+      <Link href={ROUTES.home} aria-label="Marky, beranda" className="mb-8 self-center text-lg">
+        <MarkyLogo />
+      </Link>
       <Empty>
         <EmptyHeader>
           <EmptyMedia variant="icon">
