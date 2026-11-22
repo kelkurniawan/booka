@@ -1,0 +1,18 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-11-19T03:00:00Z" },
+  "title": "Marky Logo",
+  "launch": { "view": "canvas" },
+  "pages": [],
+  "boards": {
+    "Main.dc.html": { "x": 0, "y": 0, "w": 1440, "h": 1240, "title": "B1 Variasi simbol", "is_interactive": true },
+    "Kecil.dc.html": { "x": 0, "y": 1360, "w": 1440, "h": 700, "title": "B2 Tab browser dan ikon aplikasi", "is_interactive": true },
+    "Loading.dc.html": { "x": 0, "y": 2180, "w": 1440, "h": 560, "title": "B3 Animasi loading", "is_interactive": true },
+    "Mark.dc.html": { "x": 1520, "y": 0, "w": 200, "h": 200, "title": "Komponen simbol" }
+  },
+  "order": ["Main.dc.html", "Kecil.dc.html", "Loading.dc.html", "Mark.dc.html"],
+  "notes": {
+    "judul": { "x": 0, "y": -300, "text": "Logo Marky: booking cepat, lunas, simpel, terpercaya", "kind": "title1", "maxW": 1720 }
+  },
+  "designSystems": []
+}

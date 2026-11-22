@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 
+import { markDataUri } from "@/lib/brand/mark";
 import { OG_IMAGE_SIZE } from "@/lib/site";
 import { createPublicClient } from "@/lib/supabase/server";
 import { resolveTheme } from "@/lib/theme/resolve";
@@ -93,7 +94,10 @@ export default async function Image({
           >
             Pesan jadwal sekarang
           </div>
-          <div style={{ fontFamily: "monospace", color: theme.mutedForeground }}>marky</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, color: theme.mutedForeground }}>
+            <img src={markDataUri({ color: theme.mutedForeground })} width={24} height={24} alt="" />
+            <div style={{ fontFamily: "monospace" }}>marky</div>
+          </div>
         </div>
       </div>
     ),

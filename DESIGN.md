@@ -30,6 +30,14 @@ Arah visual yang mengikat semua UI Marky. Disusun untuk dibaca agen (antislop R-
 - Produk diperlihatkan sebagai alat tulis: slip booking, mutasi QRIS, kartu pengingat.
 - Satu gerakan saat dimuat, lalu diam.
 
+## Logo
+
+- Simbol "Cap m": cap bersudut membulat, miring 8 derajat, huruf m dilubangi. Kanvas: https://claude.ai/artifact/EcQsGazAHZAP9ULhzKuiMx, spek: `docs/superpowers/specs/2026-11-22-marky-logo-design.md`.
+- Satu sumber bentuk: `src/lib/brand/mark.ts`. Komponen: `MarkyMark`, `MarkyLogo`, `MarkyLoader` di `src/components/brand/marky-mark.tsx`. Ikon statis dibuat ulang dengan `npm run brand:icons`.
+- Satu warna saja: tinta di landing, `currentColor` di dashboard, kertas di atas latar gelap. Coral tidak untuk favicon atau dashboard. Tanpa gradasi atau glow.
+- Tulisan "marky" huruf kecil, General Sans 700, `letter-spacing: -0.05em`.
+- Badan halaman merchant (`/[username]`, `/pesanan/[token]`) tidak menampilkan logo Marky. Loader logo hanya untuk loading layar penuh di auth dan onboarding; isi halaman tetap memakai skeleton.
+
 ## Larangan untuk semua permukaan
 
 - Tanpa em dash, tanpa eyebrow di atas judul, tanpa label huruf kapital berjarak, tanpa titik tengah sebagai pemisah, tanpa panah menempel di teks tombol.

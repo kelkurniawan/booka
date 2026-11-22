@@ -108,6 +108,17 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+/**
+ * Kepala email ke merchant: logo Marky (PNG, karena Gmail tidak menampilkan
+ * SVG) dari origin dashboard, plus "marky" sebagai teks supaya tetap terbaca
+ * bila gambar diblokir. Email ke pelanggan tidak memakainya: itu atas nama
+ * merchant.
+ */
+function brandHeader(data: BookingMessageData): string {
+  const logo = `${new URL(data.dashboardUrl).origin}/brand/marky-email.png`;
+  return `<p style="margin:0 0 16px"><img src="${escapeHtml(logo)}" width="24" height="24" alt="Marky" style="vertical-align:middle;border:0"> <strong style="letter-spacing:-0.05em">marky</strong></p>`;
+}
+
 /** Email ke merchant: ada booking baru yang DP-nya sudah dibayar. */
 export function merchantPaidEmail(data: BookingMessageData): EmailMessage {
   const rows: [string, string][] = [
@@ -130,7 +141,7 @@ export function merchantPaidEmail(data: BookingMessageData): EmailMessage {
     `Lihat di dashboard: ${data.dashboardUrl}`,
   ].join("\n");
 
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">${brandHeader(data)}
 <p>Booking baru di <strong>${escapeHtml(data.merchantName)}</strong> sudah dibayar.</p>
 <table style="border-collapse:collapse">${rows
     .map(
@@ -302,7 +313,7 @@ function simpleEmail(
     `Chat pelanggan: ${waLink(data.customerWhatsapp)}`,
     `Buka dashboard: ${data.dashboardUrl}`,
   ].join("\n");
-  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">
+  const html = `<div style="font-family:system-ui,sans-serif;font-size:15px;line-height:1.5;color:#18181b">${brandHeader(data)}
 <p>${escapeHtml(intro)}</p>
 <table style="border-collapse:collapse">${rows
     .map(

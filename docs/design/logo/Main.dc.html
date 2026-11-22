@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Variasi simbol Marky</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"General Sans";src:url("/_blob/35be21e39e1260a16938cb4d11e21451") format("woff2");font-weight:200 700;font-display:swap}
+body{margin:0}
+button:focus-visible{outline:2px solid oklch(54% 0.165 29);outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1240px; box-sizing: border-box; padding: 64px 72px; display: flex; flex-direction: column; gap: 40px; background: {{t.bg}}; color: {{t.ink}}; font-family: 'General Sans', ui-sans-serif, system-ui, sans-serif">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap">
+<div style="display: flex; flex-direction: column; gap: 10px; max-width: 760px">
+<h1 style="margin: 0; font-size: 44px; font-weight: 700; letter-spacing: -0.04em; line-height: 1.05">Enam simbol, satu janji: booking cepat, lunas</h1>
+<p style="margin: 0; font-size: 18px; line-height: 1.5; color: {{t.muted}}">Semua bentuk padat satu warna, tanpa gradasi dan tanpa detail halus, supaya tetap terbaca di tab browser 16 px. Tulisan marky tetap huruf kecil General Sans tebal, sama seperti di landing.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 14px; color: {{t.muted}}">Latar</span>
+<div style="display: flex; gap: 8px">
+<sc-for list="{{themes}}" as="th" hint-placeholder-count="3">
+<button type="button" onClick="{{th.pick}}" style="{{th.style}}">{{th.label}}</button>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; flex-grow: 1">
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
+<div style="{{m.cardStyle}}">
+<div style="display: flex; justify-content: space-between; align-items: flex-start">
+<dc-import name="Mark" variant="{{m.id}}" size="{{big}}" color="{{markColor}}" hint-size="150px,150px"></dc-import>
+<span style="font-size: 14px; font-weight: 600; color: {{t.muted}}">{{m.id}}</span>
+</div>
+<div style="display: flex; align-items: flex-end; gap: 18px">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s48}}" color="{{markColor}}" hint-size="48px,48px"></dc-import>
+<dc-import name="Mark" variant="{{m.id}}" size="{{s32}}" color="{{markColor}}" hint-size="32px,32px"></dc-import>
+<dc-import name="Mark" variant="{{m.id}}" size="{{s16}}" color="{{markColor}}" hint-size="16px,16px"></dc-import>
+<span style="font-size: 13px; color: {{t.muted}}">48, 32, 16 px</span>
+</div>
+<div style="display: flex; align-items: center; gap: 10px; padding-top: 18px; border-top: 1px solid {{t.rule}}">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s34}}" color="{{markColor}}" hint-size="34px,34px"></dc-import>
+<span style="font-size: 32px; font-weight: 700; letter-spacing: -0.05em; line-height: 1">marky</span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<h2 style="margin: 0; font-size: 21px; font-weight: 650; letter-spacing: -0.02em">{{m.name}}</h2>
+<p style="margin: 0; font-size: 15px; line-height: 1.45; color: {{t.muted}}">{{m.note}}</p>
+</div>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"warna":{"editor":"enum","options":["Tinta","Coral"],"default":"Tinta"},"$preview":{"width":1440,"height":1240}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: 'kertas' };
+  }
+  renderVals() {
+    const themes = {
+      kertas: { label: 'Kertas landing', bg: 'oklch(97% 0.006 55)', card: 'oklch(94.5% 0.007 55)', ink: 'oklch(21% 0.012 38)', muted: 'oklch(43% 0.012 40)', rule: 'oklch(87% 0.01 55)', coral: 'oklch(54% 0.165 29)' },
+      gelap: { label: 'Gelap', bg: 'oklch(21% 0.012 38)', card: 'oklch(26% 0.013 40)', ink: 'oklch(97% 0.006 55)', muted: 'oklch(78% 0.01 50)', rule: 'oklch(36% 0.012 40)', coral: 'oklch(74% 0.125 30)' },
+      dashboard: { label: 'Dashboard', bg: '#ffffff', card: '#fafafa', ink: '#0a0a0a', muted: '#52525b', rule: '#e4e4e7', coral: 'oklch(54% 0.165 29)' },
+    };
+    const key = this.state.theme;
+    const t = themes[key];
+    const marks = [
+      { id: 'A', name: 'm tebal', note: 'Huruf m yang padat. Paling sederhana dan paling mudah diingat, tetap jelas di 16 px.' },
+      { id: 'B', name: 'Stempel', note: 'Alat cap untuk menandai lunas. Paling harfiah soal pembayaran, kurang bicara soal booking.' },
+      { id: 'C', name: 'Slip lunas', note: 'Slip booking dengan centang di tengah. Booking dan lunas dalam satu bentuk.' },
+      { id: 'D', name: 'm centang', note: 'Kaki terakhir m berubah jadi centang. Cepat dibaca, tapi centang adalah tanda yang paling umum.' },
+      { id: 'E', name: 'Cap m', note: 'Cap miring berisi m, menyambung cap Lunas di landing. Saran saya untuk logo utama.' },
+      { id: 'F', name: 'Cincin selesai', note: 'Lingkaran yang hampir tertutup. Paling alami untuk animasi loading, paling lemah sebagai merek.' },
+    ].map((m) => ({
+      ...m,
+      cardStyle: 'display: flex; flex-direction: column; gap: 22px; padding: 28px; border-radius: 20px; background: ' + t.card + (m.id === 'E' ? '; box-shadow: inset 0 0 0 2px ' + t.coral : ''),
+    }));
+    return {
+      t,
+      marks,
+      markColor: (this.props.warna ?? 'Tinta') === 'Coral' ? t.coral : t.ink,
+      big: 150, s48: 48, s32: 32, s16: 16, s34: 34,
+      themes: Object.keys(themes).map((k) => ({
+        label: themes[k].label,
+        pick: () => this.setState({ theme: k }),
+        style: 'min-height: 44px; padding: 0 16px; border-radius: 10px; font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; border: 1px solid ' + t.rule + '; ' + (k === key ? 'background: ' + t.ink + '; color: ' + t.bg : 'background: transparent; color: ' + t.ink),
+      })),
+    };
+  }
+}
+</script>
+</body>
+</html>

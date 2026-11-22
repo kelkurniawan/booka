@@ -155,3 +155,37 @@
     animation: none;
   }
 }
+/* Loader logo Marky (MarkyLoader di src/components/brand/marky-mark.tsx):
+   cap ditekan lalu lepas, 1,6 detik berulang. Hanya untuk loading layar
+   penuh; isi halaman tetap memakai skeleton. */
+@keyframes marky-cap-press {
+  0% {
+    transform: scale(1.28) rotate(-6deg);
+    opacity: 0;
+  }
+  28% {
+    transform: scale(0.94) rotate(0deg);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1);
+  }
+  82% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.marky-cap-press {
+  animation: marky-cap-press 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marky-cap-press {
+    animation: none;
+  }
+}

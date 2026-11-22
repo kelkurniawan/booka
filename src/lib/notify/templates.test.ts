@@ -283,3 +283,23 @@ test("pesan non-sewa persis sama dengan keluaran sebelum fitur lapangan (snapsho
     "Booking baru di Studio Mawar sudah dibayar.\n\nLayanan: Makeup Wisuda\nJadwal: Rabu, 19 Agustus 2026 pukul 17:30 WIB\nStaf: Dewi\nPelanggan: Rina\nWhatsApp: +6289876543210\nDibayar: Rp\u00a0100.000\nSisa di tempat: Rp\u00a050.000\n\nChat pelanggan: https://wa.me/6289876543210\nLihat di dashboard: https://marky.id/dashboard/bookings",
   );
 });
+
+test("email ke merchant diawali logo Marky dari origin dashboard", () => {
+  const logo = `${new URL(base.dashboardUrl).origin}/brand/marky-email.png`;
+  for (const msg of [
+    merchantPaidEmail(base),
+    merchantConfirmedEmail(base),
+    merchantRequestedEmail(base),
+    merchantCustomerCancelledEmail(base),
+    merchantRescheduledEmail(base, base.startDatetime),
+  ]) {
+    assert.ok(msg.html.includes(`src="${logo}"`), msg.subject);
+    assert.match(msg.html, /alt="Marky"/);
+    assert.match(msg.html, />marky</);
+    assert.ok(!msg.text.includes("marky-email.png"), "teks polos tanpa logo");
+  }
+});
+
+test("email pengingat ke pelanggan tidak memakai logo Marky", () => {
+  assert.ok(!customerReminderEmail(base, "DAY_BEFORE").html.includes("marky-email.png"));
+});

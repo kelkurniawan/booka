@@ -25,6 +25,11 @@ export async function GET(
       scope: path,
       display: "standalone",
       background_color: "#ffffff",
+      // Ikon Marky (public/brand, dibuat npm run brand:icons) sebagai ikon bawaan aplikasi pesanan.
+      icons: [
+        { src: "/brand/marky-192.png", sizes: "192x192", type: "image/png" },
+        { src: "/brand/marky-512.png", sizes: "512x512", type: "image/png" },
+      ],
     }),
     { headers: { "content-type": "application/manifest+json", "cache-control": "private, no-store" } },
   );
