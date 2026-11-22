@@ -26,7 +26,7 @@ import { ROUTES } from "@/lib/routes";
 export default function NotFound() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col justify-center px-4 py-10">
-      <Link href={ROUTES.home} aria-label="Marky, beranda" className="mb-8 self-center text-lg">
+      <Link href={ROUTES.home} aria-label="Marky, beranda" className="mb-8 inline-flex min-h-11 items-center self-center text-lg">
         <MarkyLogo />
       </Link>
       <Empty>

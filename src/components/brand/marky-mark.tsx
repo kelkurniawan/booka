@@ -45,13 +45,16 @@ export function MarkyMark({ className, title }: { className?: string; title?: st
 
 /**
  * Simbol + tulisan "marky". Ukurannya mengikuti font-size induk: simbol
- * 1,05 kali tinggi huruf, jarak 0,3 em (spek logo).
+ * 1,05 kali tinggi huruf, jarak 0,3 em (spek logo). Font: General Sans dari
+ * layout pemasaran (display optional, tanpa geser) bila ada, selain itu
+ * --font-wordmark dari layout akar. var() tanpa cadangan membuat seluruh
+ * font-family gugur, jadi cadangannya wajib ada.
  */
 export function MarkyLogo({ className }: { className?: string }) {
   return (
     <span className={cn("inline-flex items-center gap-[0.3em] leading-none", className)}>
       <MarkyMark className="size-[1.05em]" />
-      <span className="font-[family-name:var(--font-wordmark),var(--font-general-sans),ui-sans-serif,system-ui,sans-serif] font-bold tracking-[-0.05em]">
+      <span className="font-[family-name:var(--font-general-sans,var(--font-wordmark)),ui-sans-serif,system-ui,sans-serif] font-bold tracking-[-0.05em]">
         marky
       </span>
     </span>

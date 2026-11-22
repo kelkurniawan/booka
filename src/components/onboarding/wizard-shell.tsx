@@ -1,8 +1,6 @@
 import type * as React from "react";
-import Link from "next/link";
 
 import { MarkyLogo } from "@/components/brand/marky-mark";
-import { ROUTES } from "@/lib/routes";
 
 import { WizardProgress } from "./wizard-progress";
 
@@ -27,9 +25,8 @@ export function WizardShell({
 }) {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-2xl flex-col px-4 py-8">
-      <Link href={ROUTES.home} aria-label="Marky, beranda" className="mb-6 self-start text-xl">
-        <MarkyLogo />
-      </Link>
+      {/* Bukan tautan: isian langkah identitas hanya ada di memori, ketukan tak sengaja akan menghapusnya. */}
+      <MarkyLogo className="mb-6 self-start text-xl" />
       <WizardProgress current={progress} />
 
       <header className="mt-8 flex flex-col gap-2">

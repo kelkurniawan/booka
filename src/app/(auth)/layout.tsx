@@ -6,7 +6,7 @@ import { ROUTES } from "@/lib/routes";
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-svh flex-col items-center justify-center gap-8 px-4 py-10">
-      <Link href={ROUTES.home} aria-label="Marky, beranda" className="text-2xl">
+      <Link href={ROUTES.home} aria-label="Marky, beranda" className="inline-flex min-h-11 items-center text-2xl">
         <MarkyLogo />
       </Link>
       <main className="w-full max-w-sm">{children}</main>
