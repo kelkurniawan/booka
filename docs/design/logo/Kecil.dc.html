@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Simbol Marky di tab dan ikon aplikasi</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"General Sans";src:url("/_blob/35be21e39e1260a16938cb4d11e21451") format("woff2");font-weight:200 700;font-display:swap}
+body{margin:0}
+</style>
+</helmet>
+<div style="width: 1440px; height: 700px; box-sizing: border-box; padding: 56px 72px; display: flex; flex-direction: column; gap: 36px; background: oklch(97% 0.006 55); color: oklch(21% 0.012 38); font-family: 'General Sans', ui-sans-serif, system-ui, sans-serif">
+<div style="display: flex; flex-direction: column; gap: 8px">
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.03em">Ukuran sebenarnya: tab browser dan layar HP</h1>
+<p style="margin: 0; font-size: 17px; color: oklch(43% 0.012 40)">Simbol yang tidak terbaca di sini tidak layak jadi favicon. Ikon tab memakai simbol tinta tanpa kotak; ikon aplikasi memakai kotak tinta dengan simbol kertas.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 15px; font-weight: 600">Tab browser terang</span>
+<div style="display: flex; gap: 2px; padding: 8px 8px 0; background: #dee1e6; border-radius: 12px 12px 0 0">
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 8px; width: 200px; height: 34px; padding: 0 12px; box-sizing: border-box; background: #ffffff; border-radius: 9px 9px 0 0; font-family: system-ui, sans-serif; font-size: 12px; color: #1f1f1f">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s16}}" color="#1f1f1f" hint-size="16px,16px"></dc-import>
+<span>{{m.id}} Marky, booking</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 12px">
+<span style="font-size: 15px; font-weight: 600">Tab browser gelap</span>
+<div style="display: flex; gap: 2px; padding: 8px 8px 0; background: #1f1f1f; border-radius: 12px 12px 0 0">
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; align-items: center; gap: 8px; width: 200px; height: 34px; padding: 0 12px; box-sizing: border-box; background: #3c3c3c; border-radius: 9px 9px 0 0; font-family: system-ui, sans-serif; font-size: 12px; color: #e8eaed">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s16}}" color="#e8eaed" hint-size="16px,16px"></dc-import>
+<span>{{m.id}} Marky, booking</span>
+</div>
+</sc-for>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-size: 15px; font-weight: 600">Ikon di layar HP (60 px)</span>
+<div style="display: flex; gap: 40px">
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<div style="width: 60px; height: 60px; border-radius: 14px; background: oklch(21% 0.012 38); display: flex; align-items: center; justify-content: center">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s40}}" color="oklch(97% 0.006 55)" hint-size="40px,40px"></dc-import>
+</div>
+<span style="font-size: 13px">{{m.id}} {{m.name}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":700}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {
+      s16: 16,
+      s40: 40,
+      marks: [
+        { id: 'A', name: 'm tebal' },
+        { id: 'B', name: 'Stempel' },
+        { id: 'C', name: 'Slip lunas' },
+        { id: 'D', name: 'm centang' },
+        { id: 'E', name: 'Cap m' },
+        { id: 'F', name: 'Cincin' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

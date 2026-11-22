@@ -131,6 +131,10 @@ atomik, onboarding kategori Olahraga, dan landing `/untuk/lapangan`. Pelanggan
 tidak bisa pindah ke slot lebih mahal (BK073). Kode BK070 sampai BK073 dan semua
 pemetaan error ada di `docs/ERROR-CODES.md` (DECISIONS #43).
 
+Logo Marky "Cap m" (DESIGN.md bagian Logo): bentuk satu sumber di
+`src/lib/brand/mark.ts`, komponen di `src/components/brand/marky-mark.tsx`,
+favicon dan ikon dibuat ulang dengan `npm run brand:icons`.
+
 Rute auth berbahasa Indonesia: `/masuk`, `/daftar`, `/lupa-password`,
 `/reset-password`. Email+password adalah jalur utama; Google dan Magic Link
 tetap tersedia.

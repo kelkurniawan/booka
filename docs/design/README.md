@@ -7,6 +7,7 @@ dibaca dan dipakai dari akun atau mesin lain tanpa akses ke kanvasnya.
 | --- | --- | --- |
 | `booking-flow/` | https://claude.ai/artifact/RSGQtRjX4RQivoVekkfgeo | Alur booking pelanggan, restoran, dashboard, promosi, latar bergerak, panduan, sewa lapangan (L1 sampai L6), funnel iklan (F1 sampai F6) |
 | `landing/` | https://claude.ai/artifact/LMDhFXG7AvvbmjpCGUhx5a | Landing page Marky |
+| `logo/` | https://claude.ai/artifact/EcQsGazAHZAP9ULhzKuiMx | Logo Marky: enam variasi simbol (B1), ukuran tab dan ikon HP (B2), animasi loading (B3). Terpilih: E Cap m |
 
 ## Cara membaca
 
@@ -32,3 +33,4 @@ dibaca dan dipakai dari akun atau mesin lain tanpa akses ke kanvasnya.
 
 - Sewa lapangan: `docs/superpowers/specs/2026-11-18-court-booking-design.md`
 - Funnel iklan: `docs/superpowers/specs/2026-11-18-ads-funnel-design.md`
+- Logo: `docs/superpowers/specs/2026-11-22-marky-logo-design.md`

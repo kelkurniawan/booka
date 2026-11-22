@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Animasi loading Marky</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+@font-face{font-family:"General Sans";src:url("/_blob/35be21e39e1260a16938cb4d11e21451") format("woff2");font-weight:200 700;font-display:swap}
+body{margin:0}
+@keyframes marky-cap{0%{transform:scale(1.28) rotate(-6deg);opacity:0}28%{transform:scale(.94) rotate(0deg);opacity:1}40%{transform:scale(1)}82%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+@keyframes marky-putar{to{transform:rotate(360deg)}}
+.anim-cap{animation:marky-cap 1.6s cubic-bezier(.2,.8,.2,1) infinite}
+.anim-putar{animation:marky-putar 1s linear infinite}
+@media (prefers-reduced-motion: reduce){.anim-cap,.anim-putar{animation:none}}
+button:focus-visible{outline:2px solid oklch(54% 0.165 29);outline-offset:2px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 560px; box-sizing: border-box; padding: 56px 72px; display: flex; flex-direction: column; gap: 36px; background: oklch(97% 0.006 55); color: oklch(21% 0.012 38); font-family: 'General Sans', ui-sans-serif, system-ui, sans-serif">
+<div style="display: flex; justify-content: space-between; align-items: flex-end; gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 8px; max-width: 900px">
+<h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.03em">Loading layar penuh: cap ditekan, lalu lepas</h1>
+<p style="margin: 0; font-size: 17px; line-height: 1.5; color: oklch(43% 0.012 40)">Dipakai hanya saat aplikasi pertama dibuka atau pindah ke layar baru. Isi halaman tetap memakai skeleton. Gerakan berhenti bila pengguna memilih kurangi gerakan.</p>
+</div>
+<button type="button" onClick="{{toggle}}" style="min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid oklch(87% 0.01 55); background: transparent; color: oklch(21% 0.012 38); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer">{{toggleLabel}}</button>
+</div>
+<div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 20px; flex-grow: 1">
+<sc-for list="{{marks}}" as="m" hint-placeholder-count="6">
+<div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; border-radius: 20px; background: oklch(94.5% 0.007 55)">
+<div class="{{m.cls}}" style="{{playStyle}}">
+<dc-import name="Mark" variant="{{m.id}}" size="{{s88}}" color="oklch(21% 0.012 38)" hint-size="88px,88px"></dc-import>
+</div>
+<span style="font-size: 15px; font-weight: 600">{{m.id}} {{m.name}}</span>
+<span style="font-size: 13px; color: oklch(43% 0.012 40)">{{m.motion}}</span>
+</div>
+</sc-for>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { paused: false };
+  }
+  renderVals() {
+    const paused = this.state.paused;
+    return {
+      s88: 88,
+      toggle: () => this.setState({ paused: !paused }),
+      toggleLabel: paused ? 'Putar animasi' : 'Jeda animasi',
+      playStyle: 'line-height: 0; animation-play-state: ' + (paused ? 'paused' : 'running'),
+      marks: [
+        { id: 'A', name: 'm tebal', motion: 'Cap ditekan', cls: 'anim-cap' },
+        { id: 'B', name: 'Stempel', motion: 'Cap ditekan', cls: 'anim-cap' },
+        { id: 'C', name: 'Slip lunas', motion: 'Cap ditekan', cls: 'anim-cap' },
+        { id: 'D', name: 'm centang', motion: 'Cap ditekan', cls: 'anim-cap' },
+        { id: 'E', name: 'Cap m', motion: 'Cap ditekan', cls: 'anim-cap' },
+        { id: 'F', name: 'Cincin selesai', motion: 'Berputar', cls: 'anim-putar' },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>
