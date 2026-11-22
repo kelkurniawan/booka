@@ -95,7 +95,6 @@ export default async function Image({
             Pesan jadwal sekarang
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, color: theme.mutedForeground }}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- Satori hanya mengenal <img> */}
             <img src={markDataUri({ color: theme.mutedForeground })} width={24} height={24} alt="" />
             <div style={{ fontFamily: "monospace" }}>marky</div>
           </div>
