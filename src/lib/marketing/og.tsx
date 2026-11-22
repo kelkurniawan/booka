@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { ImageResponse } from "next/og";
 
+import { markDataUri } from "@/lib/brand/mark";
 import { OG_IMAGE_SIZE } from "@/lib/site";
 
 // Satori tidak membaca oklch, jadi hex dari token Coral (Keputusan 19).
@@ -32,7 +33,11 @@ export async function renderOgCard({ title, subtitle }: { title: string; subtitl
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 44, letterSpacing: -2 }}>marky</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- Satori hanya mengenal <img> */}
+            <img src={markDataUri({ color: INK })} width={46} height={46} alt="" />
+            <div style={{ fontSize: 44, letterSpacing: -2 }}>marky</div>
+          </div>
           <div
             style={{
               display: "flex",
